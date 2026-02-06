@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -113,25 +113,28 @@ export default function FormPreview() {
   /**
    * Follow edges from a given node, recursively resolving condition nodes
    * until we reach a question node or dead-end.
-   * Prevents infinite loops with a visited set.
    */
-  const walkGraph = useCallback((fromNodeId: string, visited = new Set<string>()): string | null => {
+  const walkGraph = useCallback((fromNodeId: string, currentAnswers: Record<string, any>, visited = new Set<string>()): string | null => {
     if (!form || visited.has(fromNodeId)) return null;
     visited.add(fromNodeId);
 
     let nextNodeId: string | null = null;
 
     // Per-option routing from question nodes
-    if (fromNodeId.startsWith('q-') && currentQuestion?.routingMode === 'per_option' && currentQuestion.options) {
-      const answer = answers[currentQuestion.id];
-      const selectedOption = currentQuestion.options.find(o => o.id === answer);
-      if (selectedOption?.nextNodeId) {
-        nextNodeId = selectedOption.nextNodeId;
-      } else {
-        const optionEdge = form.flowEdges?.find(e =>
-          e.source === fromNodeId && e.sourceHandle === `option-${answer}`
-        );
-        if (optionEdge) nextNodeId = optionEdge.target;
+    if (fromNodeId.startsWith('q-')) {
+      const qId = fromNodeId.replace('q-', '');
+      const q = form.questions.find(qq => qq.id === qId);
+      if (q?.routingMode === 'per_option' && q.options) {
+        const answer = currentAnswers[q.id];
+        const selectedOption = q.options.find(o => o.id === answer);
+        if (selectedOption?.nextNodeId) {
+          nextNodeId = selectedOption.nextNodeId;
+        } else {
+          const optionEdge = form.flowEdges?.find(e =>
+            e.source === fromNodeId && e.sourceHandle === `option-${answer}`
+          );
+          if (optionEdge) nextNodeId = optionEdge.target;
+        }
       }
     }
 
@@ -140,7 +143,7 @@ export default function FormPreview() {
       const condId = fromNodeId.replace('c-', '');
       const cond = (form.conditions || []).find(c => c.id === condId);
       if (cond) {
-        nextNodeId = resolveConditionNextNode(fromNodeId, cond, answers, form.flowEdges || []);
+        nextNodeId = resolveConditionNextNode(fromNodeId, cond, currentAnswers, form.flowEdges || []);
       }
     }
 
@@ -153,23 +156,17 @@ export default function FormPreview() {
     }
 
     if (!nextNodeId) return null;
-
-    // If we landed on a question node, return it
     if (nextNodeId.startsWith('q-')) return nextNodeId;
-
-    // If we landed on a condition node, recursively evaluate it
-    if (nextNodeId.startsWith('c-')) return walkGraph(nextNodeId, visited);
-
-    // Unknown node type — dead end
+    if (nextNodeId.startsWith('c-')) return walkGraph(nextNodeId, currentAnswers, visited);
     return null;
-  }, [form, currentQuestion, answers]);
+  }, [form]);
 
   /** Resolve the next node ID by following edges from the current node */
   const resolveNextNodeId = useCallback((): string | null => {
     if (!form) return null;
     const sourceId = currentNodeId || 'start';
-    return walkGraph(sourceId);
-  }, [form, currentNodeId, walkGraph]);
+    return walkGraph(sourceId, answers);
+  }, [form, currentNodeId, walkGraph, answers]);
 
   const goNext = useCallback(() => {
     if (currentQuestion && currentQuestion.required && !isCurrentAnswerValid()) {
@@ -186,6 +183,10 @@ export default function FormPreview() {
       setFinished(true);
     }
   }, [currentQuestion, isCurrentAnswerValid, triggerShake, resolveNextNodeId, currentNodeId]);
+
+  // Ref to always have the latest goNext for auto-advance timeouts
+  const goNextRef = useRef(goNext);
+  goNextRef.current = goNext;
 
   const goBack = useCallback(() => {
     setShowError(false);
@@ -358,7 +359,7 @@ export default function FormPreview() {
                     value={answers[currentQuestion.id]}
                     onChange={setAnswer}
                     onToggleMulti={toggleMulti}
-                    onNext={goNext}
+                    onNext={() => goNextRef.current()}
                     blinkId={blinkId}
                     triggerBlink={triggerBlink}
                   />
