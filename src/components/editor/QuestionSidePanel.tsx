@@ -51,7 +51,7 @@ const SUPPORTS_VALIDATION: QuestionType[] = [
   'short_text', 'long_text', 'email', 'phone', 'number', 'website',
 ];
 const NO_CONTENT_TYPES: QuestionType[] = ['welcome_screen', 'end_screen', 'statement', 'redirect_url'];
-const CHOICE_TYPES: QuestionType[] = ['multiple_choice', 'single_choice', 'dropdown', 'ranking'];
+const CHOICE_TYPES: QuestionType[] = ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'];
 
 export default function QuestionSidePanel({ question, index, onChange, onDelete, onClose, routingTargets }: Props) {
   const Icon = QUESTION_TYPE_ICONS[question.type];
