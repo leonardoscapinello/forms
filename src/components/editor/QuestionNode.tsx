@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Question, QUESTION_TYPE_LABELS } from '@/types/form';
 import { getNodeCategoryStyle } from './nodeCategoryStyles';
@@ -14,10 +14,30 @@ interface QuestionNodeData {
 }
 
 function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }) {
-  const { question, index, onSelect } = data;
+  const { question, index, onSelect, onChange } = data;
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(question.title);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const Icon = QUESTION_TYPE_ICONS[question.type];
   const catStyle = getNodeCategoryStyle(question.type);
+
+  useEffect(() => {
+    setEditValue(question.title);
+  }, [question.title]);
+
+  const startEditing = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, []);
+
+  const commitEdit = useCallback(() => {
+    setEditing(false);
+    if (editValue !== question.title) {
+      onChange({ title: editValue });
+    }
+  }, [editValue, question.title, onChange]);
 
   return (
     <div
@@ -27,7 +47,6 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
       onDoubleClick={onSelect}
     >
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
-      {/* Default source handle — hidden when per_option routing is active on choice types */}
       {!(question.routingMode === 'per_option' && ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'].includes(question.type)) && (
         <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
       )}
@@ -45,10 +64,25 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
 
       {/* Body */}
       <div className="px-3 py-2.5 space-y-2">
-        {/* Title */}
-        <p className="text-sm font-medium text-foreground truncate">
-          {question.title || 'Sem título'}
-        </p>
+        {/* Inline-editable Title */}
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') { setEditValue(question.title); setEditing(false); } }}
+            className="text-sm font-medium text-foreground w-full bg-transparent border-0 border-b border-primary outline-none px-0 py-0.5"
+            placeholder="Título da pergunta"
+          />
+        ) : (
+          <p
+            className="text-sm font-medium text-foreground truncate hover:text-primary/80 cursor-text"
+            onClick={startEditing}
+          >
+            {question.title || 'Sem título'}
+          </p>
+        )}
         {question.description && (
           <p className="text-[11px] text-muted-foreground truncate">
             {question.description}
