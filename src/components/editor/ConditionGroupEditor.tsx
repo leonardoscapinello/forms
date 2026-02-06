@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionOperator, Question, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Layers } from 'lucide-react';
@@ -83,112 +83,190 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
   }, [group, onChange]);
 
   const totalItems = group.rules.length + group.groups.length;
-  const logicLabel = group.logic === 'and' ? 'E' : 'OU';
-  const logicColor = group.logic === 'and' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning';
+  const isAnd = group.logic === 'and';
+
+  // Colors based on depth to visually distinguish nesting
+  const depthStyles = [
+    { border: 'border-primary/30', bg: 'bg-primary/5', pill: 'bg-primary text-primary-foreground' },
+    { border: 'border-warning/30', bg: 'bg-warning/5', pill: 'bg-warning text-warning-foreground' },
+    { border: 'border-destructive/30', bg: 'bg-destructive/5', pill: 'bg-destructive text-destructive-foreground' },
+  ];
+  const style = depthStyles[depth % depthStyles.length];
+
+  // Collect all items (rules + groups) to render separators between them
+  const items: Array<{ type: 'rule'; rule: ConditionRule } | { type: 'group'; group: ConditionGroup }> = [
+    ...group.rules.map(r => ({ type: 'rule' as const, rule: r })),
+    ...group.groups.map(g => ({ type: 'group' as const, group: g })),
+  ];
+
+  const logicSeparator = (
+    <div className="flex items-center gap-1.5 py-0.5">
+      <div className="flex-1 h-px bg-border" />
+      <button
+        onClick={toggleLogic}
+        className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full ${style.pill} hover:opacity-80 transition-opacity select-none`}
+      >
+        {isAnd ? 'E' : 'OU'}
+      </button>
+      <div className="flex-1 h-px bg-border" />
+    </div>
+  );
 
   return (
-    <div className={`space-y-1.5 ${depth > 0 ? 'ml-2 pl-2 border-l-2 border-border/60' : ''}`}>
-      {/* Rules */}
-      {group.rules.map((rule, idx) => (
-        <div key={rule.id}>
-          {idx > 0 || group.groups.length > 0 ? (
-            <div className="flex justify-center my-0.5">
-              <button
-                onClick={toggleLogic}
-                className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${logicColor} hover:opacity-80 transition-opacity`}
-              >
-                {logicLabel}
-              </button>
-            </div>
-          ) : null}
-          <div className="flex flex-col gap-1 p-1.5 rounded bg-muted/20 border border-border/50">
-            <div className="flex items-center gap-1">
-              {/* Question selector */}
-              <Select value={rule.questionId} onValueChange={v => updateRule(rule.id, { questionId: v })}>
-                <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
-                  <SelectValue placeholder="Pergunta" />
-                </SelectTrigger>
-                <SelectContent className="z-[200] bg-popover">
-                  {questions.map(q => (
-                    <SelectItem key={q.id} value={q.id} className="text-[10px]">
-                      {q.title || 'Sem título'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {totalItems > 1 && (
-                <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => removeRule(rule.id)}>
-                  <Trash2 className="h-2 w-2" />
-                </Button>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              {/* Operator */}
-              <Select value={rule.operator} onValueChange={v => updateRule(rule.id, { operator: v as ConditionOperator })}>
-                <SelectTrigger className="h-5 text-[10px] flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[200] bg-popover">
-                  {OPERATORS.map(op => (
-                    <SelectItem key={op.value} value={op.value} className="text-[10px]">
-                      {op.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* Value */}
-              {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (
-                <Input
-                  value={rule.value}
-                  onChange={e => updateRule(rule.id, { value: e.target.value })}
-                  placeholder="Valor"
-                  className="text-[10px] h-5 flex-1"
-                />
-              )}
-            </div>
-          </div>
+    <div className={`rounded-md ${depth > 0 ? `border ${style.border} ${style.bg} p-2` : ''}`}>
+      {/* Logic toggle at top for root level */}
+      {depth === 0 && totalItems > 1 && (
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[9px] text-muted-foreground">Lógica:</span>
+          <button
+            onClick={toggleLogic}
+            className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full transition-colors ${
+              isAnd ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            E
+          </button>
+          <button
+            onClick={toggleLogic}
+            className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full transition-colors ${
+              !isAnd ? 'bg-warning text-warning-foreground' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            OU
+          </button>
         </div>
-      ))}
+      )}
 
-      {/* Sub-groups */}
-      {group.groups.map((sub, idx) => (
-        <div key={sub.id}>
-          {(group.rules.length > 0 || idx > 0) && (
-            <div className="flex justify-center my-0.5">
-              <button
-                onClick={toggleLogic}
-                className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${logicColor} hover:opacity-80 transition-opacity`}
-              >
-                {logicLabel}
-              </button>
-            </div>
+      {/* Sub-group logic toggle */}
+      {depth > 0 && totalItems > 1 && (
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleLogic}
+              className={`text-[9px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                isAnd ? style.pill : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              E
+            </button>
+            <button
+              onClick={toggleLogic}
+              className={`text-[9px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                !isAnd ? style.pill : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              OU
+            </button>
+          </div>
+          {onRemove && (
+            <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive" onClick={onRemove}>
+              <Trash2 className="h-2.5 w-2.5" />
+            </Button>
           )}
-          <ConditionGroupEditor
-            group={sub}
-            questions={questions}
-            onChange={updated => updateSubGroup(sub.id, updated)}
-            onRemove={() => removeSubGroup(sub.id)}
-            depth={depth + 1}
-          />
+        </div>
+      )}
+
+      {items.map((item, idx) => (
+        <div key={item.type === 'rule' ? item.rule.id : item.group.id}>
+          {idx > 0 && logicSeparator}
+
+          {item.type === 'rule' ? (
+            <RuleRow
+              rule={item.rule}
+              questions={questions}
+              canRemove={totalItems > 1}
+              onUpdate={(patch) => updateRule(item.rule.id, patch)}
+              onRemove={() => removeRule(item.rule.id)}
+            />
+          ) : (
+            <ConditionGroupEditor
+              group={item.group}
+              questions={questions}
+              onChange={updated => updateSubGroup(item.group.id, updated)}
+              onRemove={() => removeSubGroup(item.group.id)}
+              depth={depth + 1}
+            />
+          )}
         </div>
       ))}
 
       {/* Actions */}
-      <div className="flex gap-1 pt-0.5">
-        <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5" onClick={addRule}>
+      <div className="flex gap-1 mt-1.5">
+        <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5 hover:text-foreground" onClick={addRule}>
           <Plus className="mr-0.5 h-2 w-2" />
           Regra
         </Button>
         {depth < 2 && (
-          <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5" onClick={addSubGroup}>
+          <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5 hover:text-foreground" onClick={addSubGroup}>
             <Layers className="mr-0.5 h-2 w-2" />
             Grupo
           </Button>
         )}
-        {onRemove && (
+        {depth > 0 && onRemove && totalItems <= 1 && (
           <Button variant="ghost" size="sm" className="h-5 text-[9px] text-destructive px-1.5 ml-auto" onClick={onRemove}>
             <Trash2 className="mr-0.5 h-2 w-2" />
           </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Single rule row */
+function RuleRow({
+  rule,
+  questions,
+  canRemove,
+  onUpdate,
+  onRemove,
+}: {
+  rule: ConditionRule;
+  questions: Question[];
+  canRemove: boolean;
+  onUpdate: (patch: Partial<ConditionRule>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded bg-card border border-border p-1.5 space-y-1">
+      <div className="flex items-center gap-1">
+        <Select value={rule.questionId} onValueChange={v => onUpdate({ questionId: v })}>
+          <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
+            <SelectValue placeholder="Pergunta" />
+          </SelectTrigger>
+          <SelectContent className="z-[200] bg-popover">
+            {questions.map(q => (
+              <SelectItem key={q.id} value={q.id} className="text-[10px]">
+                {q.title || 'Sem título'}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {canRemove && (
+          <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={onRemove}>
+            <Trash2 className="h-2 w-2" />
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-1">
+        <Select value={rule.operator} onValueChange={v => onUpdate({ operator: v as ConditionOperator })}>
+          <SelectTrigger className="h-5 text-[10px] flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[200] bg-popover">
+            {OPERATORS.map(op => (
+              <SelectItem key={op.value} value={op.value} className="text-[10px]">
+                {op.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (
+          <Input
+            value={rule.value}
+            onChange={e => onUpdate({ value: e.target.value })}
+            placeholder="Valor"
+            className="text-[10px] h-5 flex-1"
+          />
         )}
       </div>
     </div>
