@@ -182,12 +182,29 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
   }, [onFormUpdate]);
 
   const onNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
+    // Intercept node removals to actually delete questions/conditions from form data
+    const removeChanges = changes.filter(c => c.type === 'remove');
+    if (removeChanges.length > 0) {
+      for (const change of removeChanges) {
+        if (change.type === 'remove') {
+          const nodeId = change.id;
+          if (nodeId.startsWith('q-')) {
+            onQuestionDelete(nodeId.replace('q-', ''));
+          } else if (nodeId.startsWith('c-')) {
+            onConditionDelete(nodeId.replace('c-', ''));
+          }
+        }
+      }
+      // Filter out remove changes for start node (prevent deleting it)
+      changes = changes.filter(c => !(c.type === 'remove' && c.id === 'start'));
+    }
+
     onNodesChangeBase(changes);
     const hasDragEnd = changes.some(c => c.type === 'position' && c.dragging === false);
     if (hasDragEnd) {
       setNodes(prev => { savePositions(prev); return prev; });
     }
-  }, [onNodesChangeBase, savePositions, setNodes]);
+  }, [onNodesChangeBase, savePositions, setNodes, onQuestionDelete, onConditionDelete]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
