@@ -104,12 +104,34 @@ export type ConditionOperator =
   | 'is_empty'
   | 'is_not_empty';
 
+export type LogicOperator = 'and' | 'or';
+
+/** A single rule: "question X operator value" */
+export interface ConditionRule {
+  id: string;
+  questionId: string;
+  operator: ConditionOperator;
+  value: string;
+}
+
+/** A group of rules combined by AND or OR, which can nest other groups */
+export interface ConditionGroup {
+  id: string;
+  logic: LogicOperator;
+  rules: ConditionRule[];
+  groups: ConditionGroup[]; // nested sub-groups
+}
+
 export interface ConditionBranch {
   id: string;
   label: string;
-  questionId: string; // which question to evaluate
-  operator: ConditionOperator;
-  value: string;
+  /** @deprecated — kept for backward compat, use conditionGroup instead */
+  questionId?: string;
+  /** @deprecated */
+  operator?: ConditionOperator;
+  /** @deprecated */
+  value?: string;
+  conditionGroup: ConditionGroup;
 }
 
 export interface ConditionNodeData {
@@ -201,6 +223,20 @@ export const DEFAULT_FORM_STYLE: FormStyle = {
   backgroundColor: '30 20% 98%',
   fontFamily: 'Inter',
 };
+
+export function createDefaultConditionGroup(firstQuestionId: string): ConditionGroup {
+  return {
+    id: crypto.randomUUID(),
+    logic: 'and',
+    rules: [{
+      id: crypto.randomUUID(),
+      questionId: firstQuestionId,
+      operator: 'equals',
+      value: '',
+    }],
+    groups: [],
+  };
+}
 
 export function createDefaultQuestion(type: QuestionType): Question {
   const base: Question = {
