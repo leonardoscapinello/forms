@@ -69,6 +69,11 @@ function KpiCards({ items }: { items: GraphicDataItem[] }) {
   );
 }
 
+// Simple fallback for advanced chart types in preview mode
+function SimpleBarFallback({ items }: { items: GraphicDataItem[] }) {
+  return <BarChart items={items} />;
+}
+
 const CHART_COMPONENTS: Record<ChartType, React.FC<{ items: GraphicDataItem[] }>> = {
   bar: BarChart,
   column: ColumnChart,
@@ -76,6 +81,12 @@ const CHART_COMPONENTS: Record<ChartType, React.FC<{ items: GraphicDataItem[] }>
   line: LineChart,
   thermometer: ThermometerChart,
   speedometer: SpeedometerChart,
+  area: LineChart,
+  radar: SimpleBarFallback,
+  funnel: SimpleBarFallback,
+  waterfall: SimpleBarFallback,
+  treemap: SimpleBarFallback,
+  radialBar: SimpleBarFallback,
 };
 
 export default function GraphicPreview({ variant, chartType = 'bar', items, title, description }: Props) {

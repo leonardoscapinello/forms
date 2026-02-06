@@ -59,7 +59,7 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
     setActiveTab('data');
   }, [onChange]);
 
-  const showSuffix = chartType === 'speedometer' || chartType === 'thermometer' || chartType === 'bar' || chartType === 'column';
+  const showSuffix = chartType === 'speedometer' || chartType === 'thermometer' || chartType === 'bar' || chartType === 'column' || chartType === 'radialBar';
 
   const previewWidth = PREVIEW_SIZES.find(p => p.key === previewSize)?.width || '100%';
 
