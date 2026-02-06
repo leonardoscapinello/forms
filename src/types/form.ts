@@ -40,7 +40,12 @@ export interface QuestionOption {
   id: string;
   label: string;
   imageUrl?: string;
+  /** For per-option routing: the node ID this option should navigate to */
+  nextNodeId?: string;
 }
+
+/** How a choice question routes to the next step */
+export type RoutingMode = 'all_next' | 'per_option';
 
 export interface InputMask {
   type: 'none' | 'cpf' | 'cnpj' | 'cep' | 'phone' | 'currency' | 'custom';
@@ -65,6 +70,8 @@ export interface Question {
   required: boolean;
   options?: QuestionOption[];
   maxRating?: number;
+  // Routing
+  routingMode?: RoutingMode;
   // Advanced config
   mask?: InputMask;
   validation?: ValidationRule;
