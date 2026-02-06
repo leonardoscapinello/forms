@@ -171,3 +171,43 @@
 .animate-shake {
   animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
+
+/* React Flow connection drag feedback */
+.react-flow.connecting .react-flow__handle {
+  animation: handle-pulse 1.2s ease-in-out infinite;
+}
+
+.react-flow.connecting .react-flow__handle.connectingto {
+  animation: handle-pulse-active 0.8s ease-in-out infinite;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
+}
+
+.react-flow.connecting {
+  cursor: grabbing !important;
+}
+
+.react-flow.connecting .react-flow__node {
+  cursor: grabbing !important;
+}
+
+@keyframes handle-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px hsl(var(--primary) / 0);
+    transform: scale(1.3);
+  }
+}
+
+@keyframes handle-pulse-active {
+  0%, 100% {
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.3);
+    transform: scale(1.2);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+    transform: scale(1.5);
+  }
+}
