@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -42,32 +42,74 @@ export default function FormPreview() {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
 
-  if (!form) return null;
-
-  const totalSteps = form.questions.length;
+  const totalSteps = form?.questions.length ?? 0;
   const isWelcome = step === -1;
   const isThankYou = step >= totalSteps;
-  const currentQuestion = !isWelcome && !isThankYou ? form.questions[step] : null;
+  const currentQuestion = form && !isWelcome && !isThankYou ? form.questions[step] : null;
   const progress = isWelcome ? 0 : isThankYou ? 100 : ((step + 1) / totalSteps) * 100;
 
-  const goNext = () => { setDirection(1); setStep(s => s + 1); };
-  const goBack = () => { setDirection(-1); setStep(s => Math.max(-1, s - 1)); };
+  const goNext = useCallback(() => { setDirection(1); setStep(s => s + 1); }, []);
+  const goBack = useCallback(() => { setDirection(-1); setStep(s => Math.max(-1, s - 1)); }, []);
 
-  const setAnswer = (value: any) => {
+  const setAnswer = useCallback((value: any) => {
     if (currentQuestion) {
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: value }));
     }
-  };
+  }, [currentQuestion]);
 
-  const toggleMulti = (optionId: string) => {
+  const toggleMulti = useCallback((optionId: string) => {
     if (!currentQuestion) return;
-    const current: string[] = answers[currentQuestion.id] || [];
-    setAnswer(
-      current.includes(optionId)
-        ? current.filter((id: string) => id !== optionId)
-        : [...current, optionId]
-    );
-  };
+    setAnswers(prev => {
+      const current: string[] = prev[currentQuestion.id] || [];
+      return {
+        ...prev,
+        [currentQuestion.id]: current.includes(optionId)
+          ? current.filter((id: string) => id !== optionId)
+          : [...current, optionId],
+      };
+    });
+  }, [currentQuestion]);
+
+  // Keyboard navigation: arrows up/down + letter shortcuts A-H
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      if (e.key === 'ArrowDown' || (e.key === 'Enter' && !isInput)) {
+        e.preventDefault();
+        goNext();
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        goBack();
+        return;
+      }
+
+      // Letter shortcuts for choice fields
+      if (currentQuestion && !isInput) {
+        const letter = e.key.toLowerCase();
+        const letterIndex = letter.charCodeAt(0) - 97; // a=0, b=1, ...
+        if (letterIndex >= 0 && letterIndex <= 7) {
+          const options = currentQuestion.options || [];
+          if (letterIndex < options.length) {
+            const opt = options[letterIndex];
+            if (currentQuestion.type === 'single_choice') {
+              setAnswer(opt.id);
+            } else if (currentQuestion.type === 'multiple_choice') {
+              toggleMulti(opt.id);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentQuestion, goNext, goBack, setAnswer, toggleMulti]);
+
+  if (!form) return null;
 
   const variants = {
     enter: (d: number) => ({ y: d > 0 ? 40 : -40, opacity: 0 }),
