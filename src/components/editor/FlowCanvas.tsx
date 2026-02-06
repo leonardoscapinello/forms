@@ -19,11 +19,12 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Question, FormData as FormDataType, FlowEdge } from '@/types/form';
+import { Question, FormData as FormDataType, FlowEdge, ConditionNodeData, ConditionBranch } from '@/types/form';
 import QuestionNode from './QuestionNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
 import AddNode from './AddNode';
+import ConditionNode from './ConditionNode';
 
 const NODE_SPACING = 350;
 
@@ -32,6 +33,7 @@ const nodeTypes = {
   startNode: StartNode,
   endNode: EndNode,
   addNode: AddNode,
+  conditionNode: ConditionNode,
 };
 
 const defaultEdgeOptions = {
@@ -45,6 +47,9 @@ interface Props {
   onQuestionChange: (qId: string, patch: Partial<Question>) => void;
   onQuestionDelete: (qId: string) => void;
   onQuestionAdd: (question: Question) => void;
+  onConditionAdd: () => void;
+  onConditionChange: (cId: string, patch: Partial<ConditionNodeData>) => void;
+  onConditionDelete: (cId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
 }
 
@@ -53,7 +58,7 @@ function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number
   return stored ? { x: stored.x, y: stored.y } : { x: fallbackX, y: fallbackY };
 }
 
-export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onFormUpdate }: Props) {
+export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onConditionAdd, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Build initial nodes
@@ -84,17 +89,35 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       });
     });
 
-    // Add node (always at the right end)
+    // Add node (after questions)
     const addX = (form.questions.length + 1) * NODE_SPACING;
     n.push({
       id: 'add',
       type: 'addNode',
       position: getStoredPosition(form, 'add', addX, 15),
-      data: { onAdd: onQuestionAdd },
+      data: { onAdd: onQuestionAdd, onAddCondition: onConditionAdd },
+    });
+
+    // Condition nodes
+    (form.conditions || []).forEach((cond, i) => {
+      const nodeId = `c-${cond.id}`;
+      n.push({
+        id: nodeId,
+        type: 'conditionNode',
+        position: getStoredPosition(form, nodeId, addX + NODE_SPACING, (i + 1) * 200),
+        data: {
+          conditionId: cond.id,
+          label: cond.label,
+          branches: cond.branches,
+          questions: form.questions,
+          onChange: (patch: Partial<ConditionNodeData>) => onConditionChange(cond.id, patch),
+          onDelete: () => onConditionDelete(cond.id),
+        },
+      });
     });
 
     return n;
-  }, [form, onQuestionChange, onQuestionDelete, onQuestionAdd]);
+  }, [form, onQuestionChange, onQuestionDelete, onQuestionAdd, onConditionAdd, onConditionChange, onConditionDelete]);
 
   // Build initial edges from stored or defaults
   const initialEdges = useMemo((): Edge[] => {
@@ -102,6 +125,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       return form.flowEdges.map(fe => ({
         id: fe.id,
         source: fe.source,
+        sourceHandle: fe.sourceHandle,
         target: fe.target,
         label: fe.label,
         ...defaultEdgeOptions,
@@ -140,6 +164,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     const flowEdges: FlowEdge[] = currentEdges.map(e => ({
       id: e.id,
       source: e.source,
+      sourceHandle: e.sourceHandle as string | undefined,
       target: e.target,
       label: e.label as string | undefined,
     }));

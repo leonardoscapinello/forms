@@ -94,9 +94,34 @@ export interface NodePosition {
   y: number;
 }
 
+export type ConditionOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'contains'
+  | 'not_contains'
+  | 'greater_than'
+  | 'less_than'
+  | 'is_empty'
+  | 'is_not_empty';
+
+export interface ConditionBranch {
+  id: string;
+  label: string;
+  questionId: string; // which question to evaluate
+  operator: ConditionOperator;
+  value: string;
+}
+
+export interface ConditionNodeData {
+  id: string;
+  label: string;
+  branches: ConditionBranch[];
+}
+
 export interface FlowEdge {
   id: string;
   source: string;
+  sourceHandle?: string;
   target: string;
   label?: string;
 }
@@ -110,6 +135,7 @@ export interface FormData {
   thankYouTitle?: string;
   thankYouDescription?: string;
   questions: Question[];
+  conditions?: ConditionNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
   style: FormStyle;
