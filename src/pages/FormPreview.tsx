@@ -132,7 +132,8 @@ export default function FormPreview() {
                 </div>
 
                 <div className="ml-5">
-                  {(currentQuestion.type === 'short_text' || currentQuestion.type === 'email' || currentQuestion.type === 'number') && (
+                  {/* Text-like inputs */}
+                  {(['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(currentQuestion.type)) && (
                     <Input
                       type={currentQuestion.type === 'email' ? 'email' : currentQuestion.type === 'number' ? 'number' : 'text'}
                       value={answers[currentQuestion.id] || ''}
@@ -154,6 +155,22 @@ export default function FormPreview() {
                     />
                   )}
 
+                  {/* Contact info — multiple fields */}
+                  {currentQuestion.type === 'contact_info' && (
+                    <div className="space-y-3">
+                      {['name', 'email', 'phone'].map(field => (
+                        <Input
+                          key={field}
+                          value={(answers[currentQuestion.id] || {})[field] || ''}
+                          onChange={e => setAnswer({ ...(answers[currentQuestion.id] || {}), [field]: e.target.value })}
+                          placeholder={field === 'name' ? 'Nome' : field === 'email' ? 'Email' : 'Telefone'}
+                          className="text-base border-0 border-b rounded-none px-0 shadow-none focus-visible:ring-0"
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Single choice */}
                   {currentQuestion.type === 'single_choice' && (
                     <div className="space-y-2">
                       {(currentQuestion.options || []).map(opt => (
@@ -172,6 +189,7 @@ export default function FormPreview() {
                     </div>
                   )}
 
+                  {/* Multiple choice */}
                   {currentQuestion.type === 'multiple_choice' && (
                     <div className="space-y-2">
                       {(currentQuestion.options || []).map(opt => {
@@ -193,6 +211,59 @@ export default function FormPreview() {
                     </div>
                   )}
 
+                  {/* Dropdown */}
+                  {currentQuestion.type === 'dropdown' && (
+                    <select
+                      value={answers[currentQuestion.id] || ''}
+                      onChange={e => setAnswer(e.target.value)}
+                      className="w-full text-base border border-border rounded-lg px-4 py-3 bg-card text-foreground focus:outline-none focus:border-primary"
+                    >
+                      <option value="">Selecione...</option>
+                      {(currentQuestion.options || []).map(opt => (
+                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {/* Yes/No */}
+                  {currentQuestion.type === 'yes_no' && (
+                    <div className="flex gap-3">
+                      {['Sim', 'Não'].map(label => (
+                        <button
+                          key={label}
+                          onClick={() => setAnswer(label)}
+                          className={`flex-1 px-4 py-3 rounded-lg border text-base font-medium transition-colors ${
+                            answers[currentQuestion.id] === label
+                              ? 'border-primary bg-primary/5 text-foreground'
+                              : 'border-border hover:border-primary/40 text-foreground'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Legal / Checkbox */}
+                  {(currentQuestion.type === 'legal' || currentQuestion.type === 'checkbox') && (
+                    <button
+                      onClick={() => setAnswer(!answers[currentQuestion.id])}
+                      className="flex items-center gap-3 text-left"
+                    >
+                      <div className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
+                        answers[currentQuestion.id]
+                          ? 'border-primary bg-primary'
+                          : 'border-border'
+                      }`}>
+                        {answers[currentQuestion.id] && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-base text-foreground">
+                        {currentQuestion.type === 'legal' ? 'Aceito os termos e condições' : 'Marcar opção'}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Rating */}
                   {currentQuestion.type === 'rating' && (
                     <div className="flex gap-2">
                       {Array.from({ length: currentQuestion.maxRating || 5 }).map((_, i) => (
@@ -211,6 +282,47 @@ export default function FormPreview() {
                     </div>
                   )}
 
+                  {/* NPS / Opinion Scale */}
+                  {(currentQuestion.type === 'nps' || currentQuestion.type === 'opinion_scale') && (
+                    <div className="space-y-2">
+                      <div className="flex gap-1">
+                        {Array.from({ length: (currentQuestion.scaleMax || 10) - (currentQuestion.scaleMin || 0) + 1 }).map((_, i) => {
+                          const val = (currentQuestion.scaleMin || 0) + i;
+                          return (
+                            <button
+                              key={val}
+                              onClick={() => setAnswer(val)}
+                              className={`flex-1 h-10 rounded border text-sm font-medium transition-colors ${
+                                answers[currentQuestion.id] === val
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border hover:border-primary/40 text-foreground'
+                              }`}
+                            >
+                              {val}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{currentQuestion.labelMin}</span>
+                        <span>{currentQuestion.labelMax}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ranking */}
+                  {currentQuestion.type === 'ranking' && (
+                    <div className="space-y-2">
+                      {(currentQuestion.options || []).map((opt, i) => (
+                        <div key={opt.id} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border text-foreground">
+                          <span className="text-sm font-medium text-muted-foreground">{i + 1}.</span>
+                          <span className="text-base">{opt.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Date */}
                   {currentQuestion.type === 'date' && (
                     <Input
                       type="date"
@@ -218,6 +330,22 @@ export default function FormPreview() {
                       onChange={e => setAnswer(e.target.value)}
                       className="text-base w-56"
                     />
+                  )}
+
+                  {/* File upload */}
+                  {currentQuestion.type === 'file_upload' && (
+                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                      <p className="text-muted-foreground">Arraste ou clique para enviar arquivo</p>
+                      <p className="text-xs text-muted-foreground mt-1">Máx: {currentQuestion.maxFileSize || 10}MB</p>
+                    </div>
+                  )}
+
+                  {/* Statement — just a continue button, no input */}
+                  {currentQuestion.type === 'statement' && (
+                    <Button onClick={goNext} className="mt-2">
+                      {currentQuestion.buttonText || 'Continuar'}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
                   )}
                 </div>
               </div>
