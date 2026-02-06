@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus, Settings2 } from 'lucide-react';
 import InlineAddMenu from './InlineAddMenu';
+import { getNodeCategoryStyle } from './nodeCategoryStyles';
 import { QUESTION_TYPE_ICONS } from '@/components/editor/questionIcons';
 import {
   Select,
@@ -53,6 +54,7 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const Icon = QUESTION_TYPE_ICONS[question.type];
+  const catStyle = getNodeCategoryStyle(question.type);
   const hasMask = SUPPORTS_MASK.includes(question.type);
   const hasPlaceholder = SUPPORTS_PLACEHOLDER.includes(question.type);
   const hasValidation = SUPPORTS_VALIDATION.includes(question.type);
@@ -79,15 +81,15 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
     <div className="relative">
       <div
         className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-          selected ? 'border-primary shadow-md ring-2 ring-primary/10' : 'border-border'
+          selected ? 'border-primary shadow-md ring-2 ring-primary/10' : catStyle.border
         }`}
       >
         <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
         <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 rounded-t-xl">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
+      <div className={`flex items-center gap-2 px-3 py-2 border-b rounded-t-xl ${catStyle.bg} ${catStyle.border}`}>
+        <div className={`flex items-center gap-1.5 ${catStyle.accent}`}>
           <Icon className="h-3.5 w-3.5" />
           <span className="text-[11px] font-medium uppercase tracking-wide">
             {QUESTION_TYPE_LABELS[question.type]}

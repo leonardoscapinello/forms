@@ -50,6 +50,20 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+
+    /* Node category colors */
+    --node-contact: 220 80% 94%;
+    --node-contact-accent: 220 70% 55%;
+    --node-text: 160 50% 92%;
+    --node-text-accent: 160 50% 40%;
+    --node-choice: 32 80% 93%;
+    --node-choice-accent: 32 70% 50%;
+    --node-rating: 270 60% 94%;
+    --node-rating-accent: 270 50% 55%;
+    --node-other: 340 50% 94%;
+    --node-other-accent: 340 45% 55%;
+    --node-condition: 200 70% 93%;
+    --node-condition-accent: 200 60% 45%;
   }
 
   .dark {
@@ -84,6 +98,20 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+
+    /* Node category colors (dark) */
+    --node-contact: 220 40% 20%;
+    --node-contact-accent: 220 60% 65%;
+    --node-text: 160 30% 18%;
+    --node-text-accent: 160 45% 55%;
+    --node-choice: 32 40% 20%;
+    --node-choice-accent: 32 60% 60%;
+    --node-rating: 270 30% 20%;
+    --node-rating-accent: 270 45% 65%;
+    --node-other: 340 30% 20%;
+    --node-other-accent: 340 40% 60%;
+    --node-condition: 200 35% 20%;
+    --node-condition-accent: 200 50% 60%;
   }
 }
 
