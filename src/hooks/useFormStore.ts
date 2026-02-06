@@ -37,20 +37,31 @@ export function useFormStore() {
       responseCount: 0,
       completionRate: 0,
     };
-    persist([...forms, form]);
+    setForms(prev => {
+      const updated = [...prev, form];
+      saveForms(updated);
+      return updated;
+    });
     return form;
-  }, [forms, persist]);
+  }, []);
 
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {
-    const updated = forms.map(f =>
-      f.id === id ? { ...f, ...patch, updatedAt: new Date().toISOString() } : f
-    );
-    persist(updated);
-  }, [forms, persist]);
+    setForms(prev => {
+      const updated = prev.map(f =>
+        f.id === id ? { ...f, ...patch, updatedAt: new Date().toISOString() } : f
+      );
+      saveForms(updated);
+      return updated;
+    });
+  }, []);
 
   const deleteForm = useCallback((id: string) => {
-    persist(forms.filter(f => f.id !== id));
-  }, [forms, persist]);
+    setForms(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      saveForms(updated);
+      return updated;
+    });
+  }, []);
 
   const getForm = useCallback((id: string) => {
     return forms.find(f => f.id === id);
