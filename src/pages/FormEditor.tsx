@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { Question, FormData } from '@/types/form';
+import { Question, FormData, ConditionNodeData, ConditionBranch } from '@/types/form';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,44 @@ export default function FormEditor() {
   const handleAddQuestion = useCallback((question: Question) => {
     if (!form) return;
     updateForm(form.id, { questions: [...form.questions, question] });
+  }, [form, updateForm]);
+
+  const handleConditionAdd = useCallback(() => {
+    if (!form) return;
+    const cond: ConditionNodeData = {
+      id: crypto.randomUUID(),
+      label: 'Nova condição',
+      branches: [{
+        id: crypto.randomUUID(),
+        label: 'Caminho 1',
+        questionId: form.questions[0]?.id || '',
+        operator: 'equals',
+        value: '',
+      }],
+    };
+    updateForm(form.id, { conditions: [...(form.conditions || []), cond] });
+  }, [form, updateForm]);
+
+  const handleConditionChange = useCallback((cId: string, patch: Partial<ConditionNodeData>) => {
+    if (!form) return;
+    const conditions = (form.conditions || []).map(c =>
+      c.id === cId ? { ...c, ...patch } : c
+    );
+    updateForm(form.id, { conditions });
+  }, [form, updateForm]);
+
+  const handleConditionDelete = useCallback((cId: string) => {
+    if (!form) return;
+    const nodeId = `c-${cId}`;
+    const flowEdges = (form.flowEdges || []).filter(
+      e => e.source !== nodeId && e.target !== nodeId && !e.sourceHandle?.includes(cId)
+    );
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== nodeId);
+    updateForm(form.id, {
+      conditions: (form.conditions || []).filter(c => c.id !== cId),
+      flowEdges,
+      nodePositions,
+    });
   }, [form, updateForm]);
 
   const handleFormUpdate = useCallback((patch: Partial<FormData>) => {
@@ -90,6 +128,9 @@ export default function FormEditor() {
           onQuestionChange={handleQuestionChange}
           onQuestionDelete={handleDeleteQuestion}
           onQuestionAdd={handleAddQuestion}
+          onConditionAdd={handleConditionAdd}
+          onConditionChange={handleConditionChange}
+          onConditionDelete={handleConditionDelete}
           onFormUpdate={handleFormUpdate}
         />
       </div>
