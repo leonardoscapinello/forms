@@ -42,6 +42,8 @@ export default function FormPreview() {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
   const [blinkId, setBlinkId] = useState<string | null>(null);
+  const [shaking, setShaking] = useState(false);
+  const [showError, setShowError] = useState(false);
 
   const triggerBlink = useCallback((optId: string) => {
     setBlinkId(optId);
@@ -54,11 +56,40 @@ export default function FormPreview() {
   const currentQuestion = form && !isWelcome && !isThankYou ? form.questions[step] : null;
   const progress = isWelcome ? 0 : isThankYou ? 100 : ((step + 1) / totalSteps) * 100;
 
-  const goNext = useCallback(() => { setDirection(1); setStep(s => s + 1); }, []);
-  const goBack = useCallback(() => { setDirection(-1); setStep(s => Math.max(-1, s - 1)); }, []);
+  /** Check if the current answer satisfies the required constraint */
+  const isCurrentAnswerValid = useCallback(() => {
+    if (!currentQuestion || !currentQuestion.required) return true;
+    const answer = answers[currentQuestion.id];
+    if (answer === undefined || answer === null || answer === '') return false;
+    if (Array.isArray(answer) && answer.length === 0) return false;
+    if (typeof answer === 'object' && !Array.isArray(answer)) {
+      // contact_info: at least one field filled
+      return Object.values(answer).some((v: any) => v && String(v).trim() !== '');
+    }
+    return true;
+  }, [currentQuestion, answers]);
+
+  const triggerShake = useCallback(() => {
+    setShaking(true);
+    setShowError(true);
+    setTimeout(() => setShaking(false), 600);
+  }, []);
+
+  const goNext = useCallback(() => {
+    if (currentQuestion && currentQuestion.required && !isCurrentAnswerValid()) {
+      triggerShake();
+      return;
+    }
+    setShowError(false);
+    setDirection(1);
+    setStep(s => s + 1);
+  }, [currentQuestion, isCurrentAnswerValid, triggerShake]);
+
+  const goBack = useCallback(() => { setShowError(false); setDirection(-1); setStep(s => Math.max(-1, s - 1)); }, []);
 
   const setAnswer = useCallback((value: any) => {
     if (currentQuestion) {
+      setShowError(false);
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: value }));
     }
   }, [currentQuestion]);
@@ -183,7 +214,7 @@ export default function FormPreview() {
             )}
 
             {currentQuestion && (
-              <div className="space-y-10">
+              <div className={`space-y-10 ${shaking ? 'animate-shake' : ''}`}>
                 {/* Question header */}
                 <div>
                   <div className="flex items-start gap-3">
@@ -214,6 +245,14 @@ export default function FormPreview() {
                     blinkId={blinkId}
                     triggerBlink={triggerBlink}
                   />
+
+                  {/* Required field error */}
+                  {showError && currentQuestion.required && !isCurrentAnswerValid() && (
+                    <p className="mt-4 text-sm text-destructive flex items-center gap-2 animate-fade-in">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
+                      Este campo é obrigatório
+                    </p>
+                  )}
                 </div>
               </div>
             )}
