@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -38,24 +38,57 @@ export default function FormPreview() {
   const navigate = useNavigate();
   const { getForm } = useFormStore();
   const form = getForm(id!);
-  const [stepHistory, setStepHistory] = useState<number[]>([]); // for back navigation with routing
-  const [step, setStep] = useState(-1);
+  // Graph-based navigation: track current node ID instead of array index
+  const [currentNodeId, setCurrentNodeId] = useState<string | null>(null); // null = welcome
+  const [nodeHistory, setNodeHistory] = useState<(string | null)[]>([]);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
   const [blinkId, setBlinkId] = useState<string | null>(null);
   const [shaking, setShaking] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [finished, setFinished] = useState(false);
 
   const triggerBlink = useCallback((optId: string) => {
     setBlinkId(optId);
     setTimeout(() => setBlinkId(null), 500);
   }, []);
 
-  const totalSteps = form?.questions.length ?? 0;
-  const isWelcome = step === -1;
-  const isThankYou = step >= totalSteps;
-  const currentQuestion = form && !isWelcome && !isThankYou ? form.questions[step] : null;
-  const progress = isWelcome ? 0 : isThankYou ? 100 : ((step + 1) / totalSteps) * 100;
+  // Resolve current question from node ID
+  const currentQuestion = useMemo(() => {
+    if (!form || !currentNodeId || finished) return null;
+    if (currentNodeId.startsWith('q-')) {
+      const qId = currentNodeId.replace('q-', '');
+      return form.questions.find(q => q.id === qId) || null;
+    }
+    return null;
+  }, [form, currentNodeId, finished]);
+
+  // Count steps by traversing the graph for progress calculation
+  const orderedNodeIds = useMemo(() => {
+    if (!form?.flowEdges?.length) return form?.questions.map(q => `q-${q.id}`) || [];
+    const ids: string[] = [];
+    const visited = new Set<string>();
+    let node = 'start';
+    while (node) {
+      if (visited.has(node)) break;
+      visited.add(node);
+      if (node.startsWith('q-')) ids.push(node);
+      const edge = form.flowEdges.find(e =>
+        e.source === node && !e.sourceHandle?.startsWith('option-') && !e.sourceHandle?.startsWith('branch-')
+      );
+      if (edge) node = edge.target;
+      else break;
+    }
+    return ids;
+  }, [form]);
+
+  const totalSteps = orderedNodeIds.length;
+  const currentStepIndex = currentNodeId ? orderedNodeIds.indexOf(currentNodeId) : -1;
+  const isWelcome = currentNodeId === null && !finished;
+  const isThankYou = finished;
+  const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 0;
+  // For display: step number (may not be in orderedNodeIds if reached via routing)
+  const displayStepNumber = currentStepIndex >= 0 ? currentStepIndex + 1 : (nodeHistory.filter(n => n !== null).length + 1);
 
   /** Check if the current answer satisfies the required constraint */
   const isCurrentAnswerValid = useCallback(() => {
@@ -76,24 +109,30 @@ export default function FormPreview() {
     setTimeout(() => setShaking(false), 600);
   }, []);
 
-  /** Resolve per-option routing to a step index */
-  const resolveNextStep = useCallback((): number => {
-    if (!form || !currentQuestion) return step + 1;
+  /** Resolve the next node ID by following edges from the current node */
+  const resolveNextNodeId = useCallback((): string | null => {
+    if (!form) return null;
+    const sourceId = currentNodeId || 'start';
 
-    if (currentQuestion.routingMode === 'per_option' && currentQuestion.options) {
+    // Per-option routing: check option handles/edges
+    if (currentQuestion?.routingMode === 'per_option' && currentQuestion.options) {
       const answer = answers[currentQuestion.id];
-      // For single_choice, answer is the option ID
+      // Check option's nextNodeId
       const selectedOption = currentQuestion.options.find(o => o.id === answer);
-      if (selectedOption?.nextNodeId) {
-        // nextNodeId is like "q-{uuid}" — extract the question id
-        const targetQId = selectedOption.nextNodeId.replace(/^q-/, '');
-        const targetIdx = form.questions.findIndex(q => q.id === targetQId);
-        if (targetIdx >= 0) return targetIdx;
-      }
+      if (selectedOption?.nextNodeId) return selectedOption.nextNodeId;
+      // Check edge from option handle
+      const optionEdge = form.flowEdges?.find(e =>
+        e.source === sourceId && e.sourceHandle === `option-${answer}`
+      );
+      if (optionEdge) return optionEdge.target;
     }
 
-    return step + 1;
-  }, [form, currentQuestion, answers, step]);
+    // Default: follow the regular edge
+    const edge = form.flowEdges?.find(e =>
+      e.source === sourceId && !e.sourceHandle?.startsWith('option-') && !e.sourceHandle?.startsWith('branch-')
+    );
+    return edge?.target || null;
+  }, [form, currentNodeId, currentQuestion, answers]);
 
   const goNext = useCallback(() => {
     if (currentQuestion && currentQuestion.required && !isCurrentAnswerValid()) {
@@ -102,21 +141,30 @@ export default function FormPreview() {
     }
     setShowError(false);
     setDirection(1);
-    const nextStep = resolveNextStep();
-    setStepHistory(prev => [...prev, step]);
-    setStep(nextStep);
-  }, [currentQuestion, isCurrentAnswerValid, triggerShake, resolveNextStep, step]);
+    const nextId = resolveNextNodeId();
+    setNodeHistory(prev => [...prev, currentNodeId]);
+    if (nextId && nextId.startsWith('q-')) {
+      setCurrentNodeId(nextId);
+    } else {
+      setFinished(true);
+    }
+  }, [currentQuestion, isCurrentAnswerValid, triggerShake, resolveNextNodeId, currentNodeId]);
 
   const goBack = useCallback(() => {
     setShowError(false);
     setDirection(-1);
-    setStepHistory(prev => {
+    if (finished) {
+      setFinished(false);
+      return;
+    }
+    setNodeHistory(prev => {
       const copy = [...prev];
-      const prevStep = copy.pop();
-      setStep(prevStep ?? Math.max(-1, step - 1));
+      const prevNode = copy.pop();
+      if (prevNode === undefined) return prev;
+      setCurrentNodeId(prevNode);
       return copy;
     });
-  }, [step]);
+  }, [finished]);
 
   const setAnswer = useCallback((value: any) => {
     if (currentQuestion) {
@@ -206,7 +254,7 @@ export default function FormPreview() {
       <div className="flex-1 flex items-center justify-center px-8">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
-            key={step}
+            key={currentNodeId ?? (finished ? 'end' : 'welcome')}
             custom={direction}
             variants={variants}
             initial="enter"
@@ -249,7 +297,7 @@ export default function FormPreview() {
                 {/* Question header */}
                 <div>
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl font-semibold text-primary mt-0.5">{step + 1}</span>
+                    <span className="text-2xl font-semibold text-primary mt-0.5">{displayStepNumber}</span>
                     <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
                     <div>
                       <h2 className="text-2xl font-semibold text-foreground leading-snug">
@@ -299,7 +347,7 @@ export default function FormPreview() {
             Voltar
           </Button>
           <Button onClick={goNext} className="text-sm px-6">
-            {step === totalSteps - 1 ? 'Enviar' : 'OK'}
+            {resolveNextNodeId() === null || !resolveNextNodeId()?.startsWith('q-') ? 'Enviar' : 'OK'}
             <Check className="ml-2 h-4 w-4" />
           </Button>
         </div>
