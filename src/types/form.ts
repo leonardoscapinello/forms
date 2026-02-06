@@ -65,11 +65,21 @@ export type ChartType = 'bar' | 'column' | 'pie' | 'line' | 'thermometer' | 'spe
 export interface GraphicDataItem {
   id: string;
   label: string;
-  value: string;       // numeric for chart/kpis, date for timeline
-  description?: string; // for timeline/steps
-  color?: string;       // for chart bars/slices
-  icon?: string;        // emoji for steps
-  suffix?: string;      // for kpis (e.g. "%", "clientes")
+  value: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  suffix?: string;
+}
+
+export interface ChartStyle {
+  showGrid?: boolean;
+  showLabels?: boolean;
+  showLegend?: boolean;
+  showValues?: boolean;
+  animated?: boolean;
+  innerRadius?: number; // for donut (0-80)
+  colorScheme?: string; // preset name
 }
 
 export interface ValidationRule {
@@ -104,6 +114,7 @@ export interface Question {
   graphicVariant?: GraphicVariant;
   graphicChartType?: ChartType;
   graphicData?: GraphicDataItem[];
+  chartStyle?: ChartStyle;
   // For opinion scale / NPS
   scaleMin?: number;
   scaleMax?: number;
