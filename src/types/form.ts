@@ -58,6 +58,20 @@ export interface InputMask {
   pattern?: string; // for custom masks
 }
 
+// Graphic field types
+export type GraphicVariant = 'chart' | 'timeline' | 'steps' | 'kpis';
+export type ChartType = 'bar' | 'pie' | 'line';
+
+export interface GraphicDataItem {
+  id: string;
+  label: string;
+  value: string;       // numeric for chart/kpis, date for timeline
+  description?: string; // for timeline/steps
+  color?: string;       // for chart bars/slices
+  icon?: string;        // emoji for steps
+  suffix?: string;      // for kpis (e.g. "%", "clientes")
+}
+
 export interface ValidationRule {
   minLength?: number;
   maxLength?: number;
@@ -87,6 +101,9 @@ export interface Question {
   buttonText?: string;
   // For graphic (display-only)
   emoji?: string;
+  graphicVariant?: GraphicVariant;
+  graphicChartType?: ChartType;
+  graphicData?: GraphicDataItem[];
   // For opinion scale / NPS
   scaleMin?: number;
   scaleMax?: number;
@@ -312,9 +329,13 @@ export function createDefaultQuestion(type: QuestionType): Question {
   if (type === 'end_screen') base.buttonText = 'Enviar novamente';
   if (type === 'statement') base.buttonText = 'Continuar';
   if (type === 'graphic') {
-    base.title = 'Informação';
-    base.description = '';
-    base.emoji = '📊';
+    base.title = 'Visualização';
+    base.graphicVariant = 'kpis';
+    base.graphicChartType = 'bar';
+    base.graphicData = [
+      { id: crypto.randomUUID(), label: 'Item 1', value: '75', suffix: '%' },
+      { id: crypto.randomUUID(), label: 'Item 2', value: '120', suffix: '' },
+    ];
   }
   if (type === 'legal') base.required = true;
   if (type === 'file_upload') {
