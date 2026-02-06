@@ -7,6 +7,9 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveConditionNextNode } from '@/lib/conditionEvaluator';
+import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
+import AddressFieldPreview from '@/components/preview/AddressFieldPreview';
+import WebsiteFieldPreview from '@/components/preview/WebsiteFieldPreview';
 
 /** Typeform-style underline input — large, clean */
 function TypeformInput({
@@ -423,8 +426,23 @@ function FieldRenderer({
     }
   }, [triggerBlink, onNext]);
 
+  // Phone — with DDI selector
+  if (q.type === 'phone') {
+    return <PhoneFieldPreview value={value} onChange={onChange} />;
+  }
+
+  // Address — with country + CEP auto-fill
+  if (q.type === 'address') {
+    return <AddressFieldPreview value={value} onChange={onChange} />;
+  }
+
+  // Website — with URL validation
+  if (q.type === 'website') {
+    return <WebsiteFieldPreview value={value} onChange={onChange} placeholder={q.placeholder} />;
+  }
+
   // Text-like inputs — large underline style
-  if (['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(q.type)) {
+  if (['short_text', 'email', 'number'].includes(q.type)) {
     return (
       <TypeformInput
         type={q.type === 'email' ? 'email' : q.type === 'number' ? 'number' : 'text'}
