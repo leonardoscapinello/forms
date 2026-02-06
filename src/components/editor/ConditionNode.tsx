@@ -65,9 +65,9 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-accent/40 rounded-t-xl">
-        <GitBranch className="h-3.5 w-3.5 text-primary" />
-        <span className="text-[11px] font-medium uppercase tracking-wide text-primary">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-node-condition-accent/30 bg-node-condition rounded-t-xl">
+        <GitBranch className="h-3.5 w-3.5 text-node-condition-accent" />
+        <span className="text-[11px] font-medium uppercase tracking-wide text-node-condition-accent">
           Condicional
         </span>
         <div className="ml-auto">
