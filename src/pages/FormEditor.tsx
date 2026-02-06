@@ -3,10 +3,13 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { Question, FormData, ConditionNodeData, createDefaultConditionGroup } from '@/types/form';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import QuestionSidePanel from '@/components/editor/QuestionSidePanel';
+import FormResponses from '@/components/editor/FormResponses';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
+
+type EditorTab = 'workflow' | 'responses';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +17,7 @@ export default function FormEditor() {
   const { getForm, updateForm } = useFormStore();
   const form = getForm(id!);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<EditorTab>('workflow');
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
@@ -125,6 +129,31 @@ export default function FormEditor() {
             className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-sm bg-transparent"
             placeholder="Título do formulário"
           />
+
+          {/* Tabs */}
+          <div className="flex items-center gap-1 ml-6">
+            <button
+              onClick={() => setActiveTab('workflow')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'workflow'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              Workflow
+            </button>
+            <button
+              onClick={() => setActiveTab('responses')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'responses'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              Respostas
+            </button>
+          </div>
+
           <div className="ml-auto flex items-center gap-2">
             <Button
               variant="outline"
@@ -145,39 +174,47 @@ export default function FormEditor() {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          <FlowCanvas
-            form={form}
-            onQuestionChange={handleQuestionChange}
-            onQuestionDelete={handleDeleteQuestion}
-            onQuestionAdd={handleAddQuestion}
-            onQuestionAddAtPosition={handleAddQuestionAtPosition}
-            onConditionAddAtPosition={handleConditionAddAtPosition}
-            onConditionChange={handleConditionChange}
-            onConditionDelete={handleConditionDelete}
-            onFormUpdate={handleFormUpdate}
-            onQuestionSelect={setSelectedQuestionId}
-          />
-        </div>
+        {activeTab === 'workflow' && (
+          <>
+            <div className="flex-1 overflow-hidden">
+              <FlowCanvas
+                form={form}
+                onQuestionChange={handleQuestionChange}
+                onQuestionDelete={handleDeleteQuestion}
+                onQuestionAdd={handleAddQuestion}
+                onQuestionAddAtPosition={handleAddQuestionAtPosition}
+                onConditionAddAtPosition={handleConditionAddAtPosition}
+                onConditionChange={handleConditionChange}
+                onConditionDelete={handleConditionDelete}
+                onFormUpdate={handleFormUpdate}
+                onQuestionSelect={setSelectedQuestionId}
+              />
+            </div>
 
-        {/* Side panel */}
-        {selectedQuestion && (
-          <QuestionSidePanel
-            key={selectedQuestion.id}
-            question={selectedQuestion}
-            index={selectedIndex}
-            onChange={patch => handleQuestionChange(selectedQuestion.id, patch)}
-            onDelete={() => handleDeleteQuestion(selectedQuestion.id)}
-            onClose={() => setSelectedQuestionId(null)}
-            routingTargets={
-              form.questions
-                .filter(q => q.id !== selectedQuestion.id)
-                .map((q, i) => ({ id: `q-${q.id}`, label: `#${i + 1} ${q.title || 'Sem título'}` }))
-                .concat(
-                  (form.conditions || []).map(c => ({ id: `c-${c.id}`, label: `⑃ ${c.label}` }))
-                )
-            }
-          />
+            {/* Side panel */}
+            {selectedQuestion && (
+              <QuestionSidePanel
+                key={selectedQuestion.id}
+                question={selectedQuestion}
+                index={selectedIndex}
+                onChange={patch => handleQuestionChange(selectedQuestion.id, patch)}
+                onDelete={() => handleDeleteQuestion(selectedQuestion.id)}
+                onClose={() => setSelectedQuestionId(null)}
+                routingTargets={
+                  form.questions
+                    .filter(q => q.id !== selectedQuestion.id)
+                    .map((q, i) => ({ id: `q-${q.id}`, label: `#${i + 1} ${q.title || 'Sem título'}` }))
+                    .concat(
+                      (form.conditions || []).map(c => ({ id: `c-${c.id}`, label: `⑃ ${c.label}` }))
+                    )
+                }
+              />
+            )}
+          </>
+        )}
+
+        {activeTab === 'responses' && (
+          <FormResponses form={form} />
         )}
       </div>
     </div>
