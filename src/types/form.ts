@@ -88,6 +88,19 @@ export interface FormStyle {
   fontFamily: string;
 }
 
+export interface NodePosition {
+  id: string; // matches question id or 'start'/'add'
+  x: number;
+  y: number;
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+}
+
 export interface FormData {
   id: string;
   title: string;
@@ -97,6 +110,8 @@ export interface FormData {
   thankYouTitle?: string;
   thankYouDescription?: string;
   questions: Question[];
+  nodePositions?: NodePosition[];
+  flowEdges?: FlowEdge[];
   style: FormStyle;
   status: 'draft' | 'published' | 'archived';
   createdAt: string;

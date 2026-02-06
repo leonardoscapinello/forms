@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { Question } from '@/types/form';
+import { Question, FormData } from '@/types/form';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,12 +27,27 @@ export default function FormEditor() {
 
   const handleDeleteQuestion = useCallback((qId: string) => {
     if (!form) return;
-    updateForm(form.id, { questions: form.questions.filter(q => q.id !== qId) });
+    // Also remove edges referencing this question
+    const nodeId = `q-${qId}`;
+    const flowEdges = (form.flowEdges || []).filter(
+      e => e.source !== nodeId && e.target !== nodeId
+    );
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== nodeId);
+    updateForm(form.id, {
+      questions: form.questions.filter(q => q.id !== qId),
+      flowEdges,
+      nodePositions,
+    });
   }, [form, updateForm]);
 
   const handleAddQuestion = useCallback((question: Question) => {
     if (!form) return;
     updateForm(form.id, { questions: [...form.questions, question] });
+  }, [form, updateForm]);
+
+  const handleFormUpdate = useCallback((patch: Partial<FormData>) => {
+    if (!form) return;
+    updateForm(form.id, patch);
   }, [form, updateForm]);
 
   if (!form) return null;
@@ -75,6 +90,7 @@ export default function FormEditor() {
           onQuestionChange={handleQuestionChange}
           onQuestionDelete={handleDeleteQuestion}
           onQuestionAdd={handleAddQuestion}
+          onFormUpdate={handleFormUpdate}
         />
       </div>
     </div>
