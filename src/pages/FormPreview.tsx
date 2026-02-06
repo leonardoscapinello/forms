@@ -2,18 +2,43 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+/** Typeform-style underline input */
+function TypeformInput({
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  autoFocus = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-lg py-2 text-foreground placeholder:text-muted-foreground/50 transition-colors"
+    />
+  );
+}
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getForm } = useFormStore();
   const form = getForm(id!);
-  const [step, setStep] = useState(-1); // -1 = welcome, questions, then thank you
+  const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
 
@@ -25,14 +50,8 @@ export default function FormPreview() {
   const currentQuestion = !isWelcome && !isThankYou ? form.questions[step] : null;
   const progress = isWelcome ? 0 : isThankYou ? 100 : ((step + 1) / totalSteps) * 100;
 
-  const goNext = () => {
-    setDirection(1);
-    setStep(s => s + 1);
-  };
-  const goBack = () => {
-    setDirection(-1);
-    setStep(s => Math.max(-1, s - 1));
-  };
+  const goNext = () => { setDirection(1); setStep(s => s + 1); };
+  const goBack = () => { setDirection(-1); setStep(s => Math.max(-1, s - 1)); };
 
   const setAnswer = (value: any) => {
     if (currentQuestion) {
@@ -58,7 +77,7 @@ export default function FormPreview() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Close button */}
+      {/* Close */}
       <div className="absolute top-4 right-4 z-20">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/editor/${id}`)}>
           <X className="h-4 w-4" />
@@ -83,7 +102,7 @@ export default function FormPreview() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="w-full max-w-lg"
+            className="w-full max-w-xl"
           >
             {isWelcome && (
               <div className="text-center space-y-4">
@@ -115,238 +134,34 @@ export default function FormPreview() {
             )}
 
             {currentQuestion && (
-              <div className="space-y-6">
+              <div className="space-y-8">
+                {/* Question header */}
                 <div>
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-sm text-muted-foreground">{step + 1}.</span>
-                    <h2 className="text-xl font-semibold text-foreground">
-                      {currentQuestion.title || 'Sem título'}
-                      {currentQuestion.required && <span className="text-destructive ml-1">*</span>}
-                    </h2>
+                  <div className="flex items-start gap-3 mb-2">
+                    <span className="text-lg font-medium text-foreground mt-0.5">{step + 1}.</span>
+                    <div>
+                      <h2 className="text-xl font-semibold text-foreground leading-snug">
+                        {currentQuestion.title || 'Sem título'}
+                        {currentQuestion.required && <span className="text-destructive ml-1">*</span>}
+                      </h2>
+                      {currentQuestion.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {currentQuestion.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {currentQuestion.description && (
-                    <p className="text-sm text-muted-foreground ml-5">
-                      {currentQuestion.description}
-                    </p>
-                  )}
                 </div>
 
-                <div className="ml-5">
-                  {/* Text-like inputs */}
-                  {(['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(currentQuestion.type)) && (
-                    <Input
-                      type={currentQuestion.type === 'email' ? 'email' : currentQuestion.type === 'number' ? 'number' : 'text'}
-                      value={answers[currentQuestion.id] || ''}
-                      onChange={e => setAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder || 'Digite sua resposta...'}
-                      className="text-base border-0 border-b rounded-none px-0 shadow-none focus-visible:ring-0"
-                      autoFocus
-                    />
-                  )}
-
-                  {currentQuestion.type === 'long_text' && (
-                    <Textarea
-                      value={answers[currentQuestion.id] || ''}
-                      onChange={e => setAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder || 'Digite sua resposta...'}
-                      rows={4}
-                      className="text-base"
-                      autoFocus
-                    />
-                  )}
-
-                  {/* Contact info — multiple fields */}
-                  {currentQuestion.type === 'contact_info' && (
-                    <div className="space-y-3">
-                      {['name', 'email', 'phone'].map(field => (
-                        <Input
-                          key={field}
-                          value={(answers[currentQuestion.id] || {})[field] || ''}
-                          onChange={e => setAnswer({ ...(answers[currentQuestion.id] || {}), [field]: e.target.value })}
-                          placeholder={field === 'name' ? 'Nome' : field === 'email' ? 'Email' : 'Telefone'}
-                          className="text-base border-0 border-b rounded-none px-0 shadow-none focus-visible:ring-0"
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Single choice */}
-                  {currentQuestion.type === 'single_choice' && (
-                    <div className="space-y-2">
-                      {(currentQuestion.options || []).map(opt => (
-                        <button
-                          key={opt.id}
-                          onClick={() => setAnswer(opt.id)}
-                          className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
-                            answers[currentQuestion.id] === opt.id
-                              ? 'border-primary bg-primary/5 text-foreground'
-                              : 'border-border hover:border-primary/40 text-foreground'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Multiple choice */}
-                  {currentQuestion.type === 'multiple_choice' && (
-                    <div className="space-y-2">
-                      {(currentQuestion.options || []).map(opt => {
-                        const selected = (answers[currentQuestion.id] || []).includes(opt.id);
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => toggleMulti(opt.id)}
-                            className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
-                              selected
-                                ? 'border-primary bg-primary/5 text-foreground'
-                                : 'border-border hover:border-primary/40 text-foreground'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Dropdown */}
-                  {currentQuestion.type === 'dropdown' && (
-                    <select
-                      value={answers[currentQuestion.id] || ''}
-                      onChange={e => setAnswer(e.target.value)}
-                      className="w-full text-base border border-border rounded-lg px-4 py-3 bg-card text-foreground focus:outline-none focus:border-primary"
-                    >
-                      <option value="">Selecione...</option>
-                      {(currentQuestion.options || []).map(opt => (
-                        <option key={opt.id} value={opt.id}>{opt.label}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {/* Yes/No */}
-                  {currentQuestion.type === 'yes_no' && (
-                    <div className="flex gap-3">
-                      {['Sim', 'Não'].map(label => (
-                        <button
-                          key={label}
-                          onClick={() => setAnswer(label)}
-                          className={`flex-1 px-4 py-3 rounded-lg border text-base font-medium transition-colors ${
-                            answers[currentQuestion.id] === label
-                              ? 'border-primary bg-primary/5 text-foreground'
-                              : 'border-border hover:border-primary/40 text-foreground'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Legal / Checkbox */}
-                  {(currentQuestion.type === 'legal' || currentQuestion.type === 'checkbox') && (
-                    <button
-                      onClick={() => setAnswer(!answers[currentQuestion.id])}
-                      className="flex items-center gap-3 text-left"
-                    >
-                      <div className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        answers[currentQuestion.id]
-                          ? 'border-primary bg-primary'
-                          : 'border-border'
-                      }`}>
-                        {answers[currentQuestion.id] && <Check className="h-3 w-3 text-primary-foreground" />}
-                      </div>
-                      <span className="text-base text-foreground">
-                        {currentQuestion.type === 'legal' ? 'Aceito os termos e condições' : 'Marcar opção'}
-                      </span>
-                    </button>
-                  )}
-
-                  {/* Rating */}
-                  {currentQuestion.type === 'rating' && (
-                    <div className="flex gap-2">
-                      {Array.from({ length: currentQuestion.maxRating || 5 }).map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setAnswer(i + 1)}
-                          className={`h-12 w-12 rounded-lg border text-sm font-medium transition-colors ${
-                            answers[currentQuestion.id] === i + 1
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border hover:border-primary/40 text-foreground'
-                          }`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* NPS / Opinion Scale */}
-                  {(currentQuestion.type === 'nps' || currentQuestion.type === 'opinion_scale') && (
-                    <div className="space-y-2">
-                      <div className="flex gap-1">
-                        {Array.from({ length: (currentQuestion.scaleMax || 10) - (currentQuestion.scaleMin || 0) + 1 }).map((_, i) => {
-                          const val = (currentQuestion.scaleMin || 0) + i;
-                          return (
-                            <button
-                              key={val}
-                              onClick={() => setAnswer(val)}
-                              className={`flex-1 h-10 rounded border text-sm font-medium transition-colors ${
-                                answers[currentQuestion.id] === val
-                                  ? 'border-primary bg-primary text-primary-foreground'
-                                  : 'border-border hover:border-primary/40 text-foreground'
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{currentQuestion.labelMin}</span>
-                        <span>{currentQuestion.labelMax}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ranking */}
-                  {currentQuestion.type === 'ranking' && (
-                    <div className="space-y-2">
-                      {(currentQuestion.options || []).map((opt, i) => (
-                        <div key={opt.id} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border text-foreground">
-                          <span className="text-sm font-medium text-muted-foreground">{i + 1}.</span>
-                          <span className="text-base">{opt.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Date */}
-                  {currentQuestion.type === 'date' && (
-                    <Input
-                      type="date"
-                      value={answers[currentQuestion.id] || ''}
-                      onChange={e => setAnswer(e.target.value)}
-                      className="text-base w-56"
-                    />
-                  )}
-
-                  {/* File upload */}
-                  {currentQuestion.type === 'file_upload' && (
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                      <p className="text-muted-foreground">Arraste ou clique para enviar arquivo</p>
-                      <p className="text-xs text-muted-foreground mt-1">Máx: {currentQuestion.maxFileSize || 10}MB</p>
-                    </div>
-                  )}
-
-                  {/* Statement — just a continue button, no input */}
-                  {currentQuestion.type === 'statement' && (
-                    <Button onClick={goNext} className="mt-2">
-                      {currentQuestion.buttonText || 'Continuar'}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  )}
+                {/* Field area */}
+                <div className="pl-7">
+                  <FieldRenderer
+                    question={currentQuestion}
+                    value={answers[currentQuestion.id]}
+                    onChange={setAnswer}
+                    onToggleMulti={toggleMulti}
+                    onNext={goNext}
+                  />
                 </div>
               </div>
             )}
@@ -369,4 +184,294 @@ export default function FormPreview() {
       )}
     </div>
   );
+}
+
+/** Renders the appropriate field UI based on question type — Typeform style */
+function FieldRenderer({
+  question,
+  value,
+  onChange,
+  onToggleMulti,
+  onNext,
+}: {
+  question: any;
+  value: any;
+  onChange: (v: any) => void;
+  onToggleMulti: (optionId: string) => void;
+  onNext: () => void;
+}) {
+  const q = question;
+
+  // Text-like inputs — underline style
+  if (['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(q.type)) {
+    return (
+      <TypeformInput
+        type={q.type === 'email' ? 'email' : q.type === 'number' ? 'number' : 'text'}
+        value={value || ''}
+        onChange={onChange}
+        placeholder={q.placeholder || 'Digite sua resposta...'}
+        autoFocus
+      />
+    );
+  }
+
+  if (q.type === 'long_text') {
+    return (
+      <Textarea
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={q.placeholder || 'Digite sua resposta...'}
+        rows={4}
+        className="text-lg bg-transparent border-0 border-b-2 border-border focus:border-primary rounded-none shadow-none focus-visible:ring-0 resize-none placeholder:text-muted-foreground/50"
+        autoFocus
+      />
+    );
+  }
+
+  // Contact info — Typeform table layout
+  if (q.type === 'contact_info') {
+    const fields = [
+      { key: 'firstName', label: 'Nome' },
+      { key: 'lastName', label: 'Sobrenome' },
+      { key: 'phone', label: 'Telefone' },
+      { key: 'email', label: 'Email' },
+      { key: 'company', label: 'Empresa' },
+    ];
+    const data = value || {};
+    return (
+      <div className="border border-border rounded-lg overflow-hidden">
+        {fields.map((f, idx) => (
+          <div
+            key={f.key}
+            className={`flex items-center ${idx > 0 ? 'border-t border-border' : ''}`}
+          >
+            <span className="text-sm font-medium text-muted-foreground w-32 px-4 py-3 bg-muted/30 border-r border-border flex-shrink-0">
+              {f.label}
+            </span>
+            <input
+              value={data[f.key] || ''}
+              onChange={e => onChange({ ...data, [f.key]: e.target.value })}
+              placeholder={f.label}
+              className="flex-1 px-4 py-3 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/40"
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Single choice — pill buttons
+  if (q.type === 'single_choice') {
+    return (
+      <div className="space-y-2">
+        {(q.options || []).map((opt: any, i: number) => (
+          <button
+            key={opt.id}
+            onClick={() => onChange(opt.id)}
+            className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3 ${
+              value === opt.id
+                ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                : 'border-border hover:border-primary/40 text-foreground'
+            }`}
+          >
+            <span className={`h-6 w-6 rounded-md border text-xs font-medium flex items-center justify-center flex-shrink-0 ${
+              value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+            }`}>
+              {String.fromCharCode(65 + i)}
+            </span>
+            <span className="text-base">{opt.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // Multiple choice
+  if (q.type === 'multiple_choice') {
+    const selected: string[] = value || [];
+    return (
+      <div className="space-y-2">
+        {(q.options || []).map((opt: any, i: number) => {
+          const isSelected = selected.includes(opt.id);
+          return (
+            <button
+              key={opt.id}
+              onClick={() => onToggleMulti(opt.id)}
+              className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3 ${
+                isSelected
+                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                  : 'border-border hover:border-primary/40 text-foreground'
+              }`}
+            >
+              <span className={`h-6 w-6 rounded-md border text-xs font-medium flex items-center justify-center flex-shrink-0 ${
+                isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+              }`}>
+                {isSelected ? <Check className="h-3 w-3" /> : String.fromCharCode(65 + i)}
+              </span>
+              <span className="text-base">{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Dropdown
+  if (q.type === 'dropdown') {
+    return (
+      <select
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        className="w-full text-lg bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none py-2 text-foreground"
+      >
+        <option value="">Selecione...</option>
+        {(q.options || []).map((opt: any) => (
+          <option key={opt.id} value={opt.id}>{opt.label}</option>
+        ))}
+      </select>
+    );
+  }
+
+  // Yes/No
+  if (q.type === 'yes_no') {
+    return (
+      <div className="flex gap-3">
+        {[{ key: 'Sim', letter: 'S' }, { key: 'Não', letter: 'N' }].map(item => (
+          <button
+            key={item.key}
+            onClick={() => onChange(item.key)}
+            className={`flex-1 px-4 py-3 rounded-lg border text-base font-medium transition-all flex items-center justify-center gap-2 ${
+              value === item.key
+                ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                : 'border-border hover:border-primary/40 text-foreground'
+            }`}
+          >
+            <span className={`h-6 w-6 rounded-md border text-xs font-bold flex items-center justify-center ${
+              value === item.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+            }`}>
+              {item.letter}
+            </span>
+            {item.key}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // Legal / Checkbox
+  if (q.type === 'legal' || q.type === 'checkbox') {
+    return (
+      <button onClick={() => onChange(!value)} className="flex items-center gap-3 text-left group">
+        <div className={`h-6 w-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+          value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
+        }`}>
+          {value && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
+        </div>
+        <span className="text-base text-foreground">
+          {q.type === 'legal' ? 'Aceito os termos e condições' : 'Marcar opção'}
+        </span>
+      </button>
+    );
+  }
+
+  // Rating
+  if (q.type === 'rating') {
+    return (
+      <div className="flex gap-2">
+        {Array.from({ length: q.maxRating || 5 }).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => onChange(i + 1)}
+            className={`h-12 w-12 rounded-lg border text-sm font-medium transition-all ${
+              value === i + 1
+                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                : 'border-border hover:border-primary/40 text-foreground'
+            }`}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // NPS / Opinion Scale
+  if (q.type === 'nps' || q.type === 'opinion_scale') {
+    const min = q.scaleMin ?? 0;
+    const max = q.scaleMax ?? 10;
+    return (
+      <div className="space-y-2">
+        <div className="flex gap-1">
+          {Array.from({ length: max - min + 1 }).map((_, i) => {
+            const val = min + i;
+            return (
+              <button
+                key={val}
+                onClick={() => onChange(val)}
+                className={`flex-1 h-11 rounded-lg border text-sm font-medium transition-all ${
+                  value === val
+                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                    : 'border-border hover:border-primary/40 text-foreground'
+                }`}
+              >
+                {val}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{q.labelMin}</span>
+          <span>{q.labelMax}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Ranking
+  if (q.type === 'ranking') {
+    return (
+      <div className="space-y-2">
+        {(q.options || []).map((opt: any, i: number) => (
+          <div key={opt.id} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border text-foreground">
+            <span className="text-sm font-medium text-muted-foreground w-5">{i + 1}.</span>
+            <span className="text-base">{opt.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Date
+  if (q.type === 'date') {
+    return (
+      <input
+        type="date"
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        className="bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-lg py-2 text-foreground transition-colors"
+      />
+    );
+  }
+
+  // File upload
+  if (q.type === 'file_upload') {
+    return (
+      <div className="border-2 border-dashed border-border rounded-lg p-10 text-center hover:border-primary/40 transition-colors cursor-pointer">
+        <p className="text-muted-foreground text-base">Arraste ou clique para enviar arquivo</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">Máx: {q.maxFileSize || 10}MB</p>
+      </div>
+    );
+  }
+
+  // Statement
+  if (q.type === 'statement') {
+    return (
+      <Button onClick={onNext} className="mt-2">
+        {q.buttonText || 'Continuar'}
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    );
+  }
+
+  return null;
 }
