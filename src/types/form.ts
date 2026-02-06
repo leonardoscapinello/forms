@@ -60,7 +60,7 @@ export interface InputMask {
 
 // Graphic field types
 export type GraphicVariant = 'chart' | 'timeline' | 'steps' | 'kpis';
-export type ChartType = 'bar' | 'pie' | 'line';
+export type ChartType = 'bar' | 'column' | 'pie' | 'line' | 'thermometer' | 'speedometer';
 
 export interface GraphicDataItem {
   id: string;

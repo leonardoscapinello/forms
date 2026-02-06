@@ -21,9 +21,12 @@ const VARIANT_OPTIONS: { value: GraphicVariant; label: string; emoji: string }[]
 ];
 
 const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
-  { value: 'bar', label: 'Barras' },
-  { value: 'pie', label: 'Pizza' },
   { value: 'line', label: 'Linha' },
+  { value: 'column', label: 'Colunas' },
+  { value: 'pie', label: 'Pizza' },
+  { value: 'bar', label: 'Barras' },
+  { value: 'thermometer', label: 'Termômetro' },
+  { value: 'speedometer', label: 'Velocímetro' },
 ];
 
 interface Props {
@@ -87,13 +90,13 @@ export default function GraphicSidePanelSection({ question, onChange }: Props) {
       {variant === 'chart' && (
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Tipo de gráfico</Label>
-          <div className="flex gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5">
             {CHART_TYPE_OPTIONS.map(ct => (
               <Button
                 key={ct.value}
                 variant={chartType === ct.value ? 'default' : 'outline'}
                 size="sm"
-                className="flex-1 text-[11px] h-7"
+                className="text-[10px] h-7"
                 onClick={() => onChange({ graphicChartType: ct.value })}
               >
                 {ct.label}
