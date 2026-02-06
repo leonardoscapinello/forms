@@ -2,7 +2,7 @@ import {
   Type, AlignLeft, List, CircleDot, Star, Mail, Hash, Calendar,
   Phone, MapPin, Globe, ChevronDown, ThumbsUp, Scale, BarChart3,
   Trophy, Upload, FileText, MonitorPlay, Flag, ExternalLink,
-  Users, CheckSquare, Gavel, Webhook,
+  Users, CheckSquare, Gavel, Webhook, Image,
 } from 'lucide-react';
 import { QuestionType } from '@/types/form';
 import { LucideIcon } from 'lucide-react';
@@ -29,6 +29,7 @@ export const QUESTION_TYPE_ICONS: Record<QuestionType, LucideIcon> = {
   date: Calendar,
   file_upload: Upload,
   statement: FileText,
+  graphic: Image,
   welcome_screen: MonitorPlay,
   end_screen: Flag,
   redirect_url: ExternalLink,

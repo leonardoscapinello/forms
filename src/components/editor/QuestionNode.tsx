@@ -284,6 +284,16 @@ function NodeSummary({ question }: { question: Question }) {
     ) : null;
   }
 
+  // Graphic (display-only info block)
+  if (q.type === 'graphic') {
+    return (
+      <div className="rounded-lg bg-muted/50 border border-border px-2.5 py-2 text-center space-y-0.5">
+        {q.emoji && <span className="text-lg">{q.emoji}</span>}
+        {q.description && <p className="text-[9px] text-muted-foreground truncate">{q.description}</p>}
+      </div>
+    );
+  }
+
   if (q.type === 'redirect_url' && q.redirectUrl) {
     return (
       <div className="rounded bg-muted px-2 py-1 truncate">
