@@ -158,6 +158,18 @@ export default function FormPreview() {
       nextNodeId = edge?.target || null;
     }
 
+    // Fallback: no edges found, use sequential question order
+    if (!nextNodeId && fromNodeId.startsWith('q-')) {
+      const qId = fromNodeId.replace('q-', '');
+      const idx = form.questions.findIndex(q => q.id === qId);
+      if (idx >= 0 && idx < form.questions.length - 1) {
+        nextNodeId = `q-${form.questions[idx + 1].id}`;
+      }
+    }
+    if (!nextNodeId && fromNodeId === 'start' && form.questions.length > 0) {
+      nextNodeId = `q-${form.questions[0].id}`;
+    }
+
     if (!nextNodeId) return null;
     if (nextNodeId.startsWith('q-')) return nextNodeId;
     if (nextNodeId.startsWith('c-')) return walkGraph(nextNodeId, currentAnswers, visited);
@@ -171,6 +183,11 @@ export default function FormPreview() {
     return walkGraph(sourceId, answers);
   }, [form, currentNodeId, walkGraph, answers]);
 
+  /** Check if current question is a terminal type (end_screen, redirect_url) */
+  const isTerminalQuestion = useCallback((q: any) => {
+    return q && (q.type === 'end_screen' || q.type === 'redirect_url');
+  }, []);
+
   const goNext = useCallback(() => {
     if (currentQuestion && currentQuestion.required && !isCurrentAnswerValid()) {
       triggerShake();
@@ -178,14 +195,22 @@ export default function FormPreview() {
     }
     setShowError(false);
     setDirection(1);
+
+    // If current question is a terminal type, finish
+    if (isTerminalQuestion(currentQuestion)) {
+      setFinished(true);
+      return;
+    }
+
     const nextId = resolveNextNodeId();
     setNodeHistory(prev => [...prev, currentNodeId]);
     if (nextId && nextId.startsWith('q-')) {
       setCurrentNodeId(nextId);
     } else {
+      // Only finish if there truly are no more questions to show
       setFinished(true);
     }
-  }, [currentQuestion, isCurrentAnswerValid, triggerShake, resolveNextNodeId, currentNodeId]);
+  }, [currentQuestion, isCurrentAnswerValid, triggerShake, resolveNextNodeId, currentNodeId, isTerminalQuestion]);
 
   // Ref to always have the latest goNext for auto-advance timeouts
   const goNextRef = useRef(goNext);
@@ -389,7 +414,7 @@ export default function FormPreview() {
             Voltar
           </Button>
           <Button onClick={goNext} className="text-sm px-6">
-            {resolveNextNodeId() === null || !resolveNextNodeId()?.startsWith('q-') ? 'Enviar' : 'OK'}
+            {isTerminalQuestion(currentQuestion) || resolveNextNodeId() === null ? 'Enviar' : 'OK'}
             <Check className="ml-2 h-4 w-4" />
           </Button>
         </div>
