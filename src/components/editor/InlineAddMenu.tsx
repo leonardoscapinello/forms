@@ -5,14 +5,20 @@ import { Plus, GitBranch } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { QUESTION_TYPE_LABELS } from '@/types/form';
 
 const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other'] as const;
+
+const CATEGORY_STYLES: Record<string, { accent: string; iconBg: string }> = {
+  contact_info: { accent: 'text-node-contact-accent', iconBg: 'bg-node-contact-accent/15' },
+  text: { accent: 'text-node-text-accent', iconBg: 'bg-node-text-accent/15' },
+  choice: { accent: 'text-node-choice-accent', iconBg: 'bg-node-choice-accent/15' },
+  rating_ranking: { accent: 'text-node-rating-accent', iconBg: 'bg-node-rating-accent/15' },
+  other: { accent: 'text-node-other-accent', iconBg: 'bg-node-other-accent/15' },
+};
 
 interface Props {
   onAdd: (question: Question) => void;
@@ -36,28 +42,44 @@ export default function InlineAddMenu({ onAdd, onAddCondition, size = 'sm' }: Pr
           <Plus className={iconSize} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="bottom" className="w-64 max-h-96 overflow-y-auto bg-popover z-[100]">
-        <DropdownMenuItem onClick={onAddCondition}>
-          <GitBranch className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-          <span className="font-medium">Condicional</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent align="start" side="bottom" className="w-72 max-h-[28rem] overflow-y-auto bg-popover z-[100] p-2">
+        {/* Condition */}
+        <button
+          className="flex items-center gap-3 w-full px-2 py-2 text-sm hover:bg-accent rounded-lg text-left transition-colors"
+          onClick={onAddCondition}
+        >
+          <div className="h-8 w-8 rounded-lg bg-node-condition flex items-center justify-center flex-shrink-0">
+            <GitBranch className="h-4 w-4 text-node-condition-accent" />
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Condicional</span>
+            <p className="text-[10px] text-muted-foreground">Ramificar o fluxo</p>
+          </div>
+        </button>
+        <DropdownMenuSeparator className="my-1.5" />
 
         {CATEGORY_ORDER.map((catKey, catIdx) => {
           const cat = QUESTION_CATEGORIES[catKey];
+          const style = CATEGORY_STYLES[catKey];
           return (
             <div key={catKey}>
-              {catIdx > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              {catIdx > 0 && <DropdownMenuSeparator className="my-1.5" />}
+              <div className={`px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${style.accent}`}>
                 {cat.label}
-              </DropdownMenuLabel>
+              </div>
               {cat.types.map(type => {
                 const Icon = QUESTION_TYPE_ICONS[type];
                 return (
-                  <DropdownMenuItem key={type} onClick={() => onAdd(createDefaultQuestion(type))}>
-                    <Icon className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{QUESTION_TYPE_LABELS[type]}</span>
-                  </DropdownMenuItem>
+                  <button
+                    key={type}
+                    className="flex items-center gap-3 w-full px-2 py-1.5 text-sm hover:bg-accent rounded-lg text-left transition-colors group"
+                    onClick={() => onAdd(createDefaultQuestion(type))}
+                  >
+                    <div className={`h-7 w-7 rounded-lg ${style.iconBg} flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110`}>
+                      <Icon className={`h-3.5 w-3.5 ${style.accent}`} />
+                    </div>
+                    <span className="text-foreground">{QUESTION_TYPE_LABELS[type]}</span>
+                  </button>
                 );
               })}
             </div>
