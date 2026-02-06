@@ -217,33 +217,9 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
                 </div>
 
                 {routingMode === 'per_option' && (
-                  <div className="space-y-2 mt-2">
-                    {(question.options || []).map(opt => (
-                      <div key={opt.id} className="space-y-0.5">
-                        <span className="text-[10px] text-muted-foreground truncate block">
-                          {opt.label || 'Sem rótulo'}
-                        </span>
-                        <Select
-                          value={opt.nextNodeId || '_next'}
-                          onValueChange={v => updateOptionRouting(opt.id, v === '_next' ? undefined : v)}
-                        >
-                          <SelectTrigger className="text-[11px] h-7">
-                            <SelectValue placeholder="Próximo" />
-                          </SelectTrigger>
-                          <SelectContent className="z-[200] bg-popover">
-                            <SelectItem value="_next" className="text-[11px]">
-                              → Próximo (padrão)
-                            </SelectItem>
-                            {routingTargets.map(t => (
-                              <SelectItem key={t.id} value={t.id} className="text-[11px]">
-                                {t.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Conecte cada opção ao destino arrastando do ponto no canvas.
+                  </p>
                 )}
               </div>
             </div>

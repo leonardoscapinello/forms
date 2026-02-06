@@ -27,7 +27,10 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
       onDoubleClick={onSelect}
     >
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
-      <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+      {/* Default source handle — hidden when per_option routing is active on choice types */}
+      {!(question.routingMode === 'per_option' && ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'].includes(question.type)) && (
+        <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+      )}
 
       {/* Header */}
       <div className={`flex items-center gap-2 px-3 py-2 border-b rounded-t-xl ${catStyle.bg} ${catStyle.border}`}>
@@ -83,27 +86,56 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
 function NodeSummary({ question }: { question: Question }) {
   const q = question;
 
-  // Choice types: show options list
+  // Choice types: show options list with optional per-option handles
+  const isPerOption = q.routingMode === 'per_option';
   if (['multiple_choice', 'single_choice', 'dropdown', 'ranking'].includes(q.type) && q.options?.length) {
     return (
       <div className="space-y-0.5">
-        {q.options.slice(0, 4).map((opt, i) => (
-          <div key={opt.id} className="flex items-center gap-1.5">
+        {q.options.slice(0, 6).map((opt, i) => (
+          <div key={opt.id} className="flex items-center gap-1.5 relative">
             <div className={`h-2.5 w-2.5 flex-shrink-0 border border-border ${
               q.type === 'single_choice' ? 'rounded-full' : 'rounded-[2px]'
             }`} />
-            <span className="text-[10px] text-muted-foreground truncate">{opt.label}</span>
+            <span className="text-[10px] text-muted-foreground truncate flex-1">{opt.label}</span>
+            {isPerOption && (
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`option-${opt.id}`}
+                className="!w-2.5 !h-2.5 !bg-primary !border-2 !border-card !right-[-6px]"
+                style={{ top: 'auto', position: 'absolute', right: -6 }}
+              />
+            )}
           </div>
         ))}
-        {q.options.length > 4 && (
-          <span className="text-[9px] text-muted-foreground/50">+{q.options.length - 4} mais</span>
+        {q.options.length > 6 && (
+          <span className="text-[9px] text-muted-foreground/50">+{q.options.length - 6} mais</span>
         )}
       </div>
     );
   }
 
-  // Yes/No
+  // Yes/No with per-option handles
   if (q.type === 'yes_no') {
+    if (isPerOption && q.options?.length) {
+      return (
+        <div className="space-y-0.5">
+          {q.options.map(opt => (
+            <div key={opt.id} className="flex items-center gap-1.5 relative">
+              <div className="h-2.5 w-2.5 flex-shrink-0 border border-border rounded-full" />
+              <span className="text-[10px] text-muted-foreground truncate flex-1">{opt.label}</span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`option-${opt.id}`}
+                className="!w-2.5 !h-2.5 !bg-primary !border-2 !border-card !right-[-6px]"
+                style={{ top: 'auto', position: 'absolute', right: -6 }}
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
     return (
       <div className="flex gap-1.5">
         <div className="flex-1 text-center py-1 rounded border border-border text-[10px] text-muted-foreground">Sim</div>
