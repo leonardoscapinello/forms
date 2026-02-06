@@ -45,6 +45,13 @@ export default function FormEditor() {
     updateForm(form.id, { questions: [...form.questions, question] });
   }, [form, updateForm]);
 
+  const handleAddQuestionAfter = useCallback((afterIndex: number, question: Question) => {
+    if (!form) return;
+    const questions = [...form.questions];
+    questions.splice(afterIndex + 1, 0, question);
+    updateForm(form.id, { questions });
+  }, [form, updateForm]);
+
   const handleConditionAdd = useCallback(() => {
     if (!form) return;
     const cond: ConditionNodeData = {
@@ -128,6 +135,7 @@ export default function FormEditor() {
           onQuestionChange={handleQuestionChange}
           onQuestionDelete={handleDeleteQuestion}
           onQuestionAdd={handleAddQuestion}
+          onQuestionAddAfter={handleAddQuestionAfter}
           onConditionAdd={handleConditionAdd}
           onConditionChange={handleConditionChange}
           onConditionDelete={handleConditionDelete}
