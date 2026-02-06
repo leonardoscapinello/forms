@@ -7,6 +7,7 @@ import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import FormEditor from "./pages/FormEditor";
 import FormPreview from "./pages/FormPreview";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
         <Routes>
           {/* Pages with sidebar layout */}
           <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
           
           {/* Full-screen pages (no sidebar) */}
           <Route path="/editor/:id" element={<FormEditor />} />
