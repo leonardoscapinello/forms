@@ -26,15 +26,20 @@ export type QuestionType =
   | 'file_upload'
   | 'statement'
   | 'welcome_screen'
+  // Ending
   | 'end_screen'
-  | 'redirect_url';
+  | 'redirect_url'
+  // Integration
+  | 'webhook';
 
 export type QuestionCategory =
   | 'contact_info'
   | 'text'
   | 'choice'
   | 'rating_ranking'
-  | 'other';
+  | 'other'
+  | 'ending'
+  | 'integration';
 
 export interface QuestionOption {
   id: string;
@@ -87,6 +92,9 @@ export interface Question {
   // For file upload
   allowedFileTypes?: string[];
   maxFileSize?: number; // MB
+  // For webhook
+  webhookUrl?: string;
+  webhookMethod?: 'GET' | 'POST' | 'PUT';
 }
 
 export interface FormStyle {
@@ -196,7 +204,15 @@ export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; type
   },
   other: {
     label: 'Outros',
-    types: ['number', 'date', 'file_upload', 'statement', 'welcome_screen', 'end_screen', 'redirect_url'],
+    types: ['number', 'date', 'file_upload', 'statement', 'welcome_screen'],
+  },
+  ending: {
+    label: 'Encerramento',
+    types: ['end_screen', 'redirect_url'],
+  },
+  integration: {
+    label: 'Integração',
+    types: ['webhook'],
   },
 };
 
@@ -225,6 +241,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   welcome_screen: 'Tela de boas-vindas',
   end_screen: 'Tela final',
   redirect_url: 'Redirecionar URL',
+  webhook: 'Webhook',
 };
 
 export const DEFAULT_FORM_STYLE: FormStyle = {
@@ -294,6 +311,11 @@ export function createDefaultQuestion(type: QuestionType): Question {
   if (type === 'file_upload') {
     base.allowedFileTypes = ['image/*', 'application/pdf'];
     base.maxFileSize = 10;
+  }
+  if (type === 'webhook') {
+    base.webhookUrl = '';
+    base.webhookMethod = 'POST';
+    base.title = 'Webhook';
   }
 
   return base;

@@ -2,7 +2,7 @@ import { Question, QuestionType, QUESTION_CATEGORIES, createDefaultQuestion, QUE
 import { QUESTION_TYPE_ICONS } from '@/components/editor/questionIcons';
 import { GitBranch } from 'lucide-react';
 
-const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other'] as const;
+const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other', 'ending', 'integration'] as const;
 
 const CATEGORY_STYLES: Record<string, { bg: string; accent: string; iconBg: string }> = {
   contact_info: { bg: 'bg-node-contact', accent: 'text-node-contact-accent', iconBg: 'bg-node-contact-accent/15' },
@@ -10,6 +10,8 @@ const CATEGORY_STYLES: Record<string, { bg: string; accent: string; iconBg: stri
   choice: { bg: 'bg-node-choice', accent: 'text-node-choice-accent', iconBg: 'bg-node-choice-accent/15' },
   rating_ranking: { bg: 'bg-node-rating', accent: 'text-node-rating-accent', iconBg: 'bg-node-rating-accent/15' },
   other: { bg: 'bg-node-other', accent: 'text-node-other-accent', iconBg: 'bg-node-other-accent/15' },
+  ending: { bg: 'bg-node-ending', accent: 'text-node-ending-accent', iconBg: 'bg-node-ending-accent/15' },
+  integration: { bg: 'bg-node-integration', accent: 'text-node-integration-accent', iconBg: 'bg-node-integration-accent/15' },
 };
 
 interface Props {

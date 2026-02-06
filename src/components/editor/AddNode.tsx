@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Plus } from 'lucide-react';
-import { QUESTION_CATEGORIES, createDefaultQuestion, Question, QuestionType } from '@/types/form';
+import { QUESTION_CATEGORIES, QUESTION_TYPE_LABELS, createDefaultQuestion, Question, QuestionType } from '@/types/form';
 import { GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +19,7 @@ interface AddNodeData {
   onAddCondition: () => void;
 }
 
-const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other'] as const;
+const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other', 'ending', 'integration'] as const;
 
 function AddNode({ data }: NodeProps & { data: AddNodeData }) {
   return (
@@ -53,36 +53,10 @@ function AddNode({ data }: NodeProps & { data: AddNodeData }) {
                 </DropdownMenuLabel>
                 {cat.types.map(type => {
                   const Icon = QUESTION_TYPE_ICONS[type];
-                  const labels: Record<QuestionType, string> = {
-                    contact_info: 'Informações de Contato',
-                    email: 'Email',
-                    phone: 'Telefone',
-                    address: 'Endereço',
-                    website: 'Website',
-                    short_text: 'Texto curto',
-                    long_text: 'Texto longo',
-                    multiple_choice: 'Múltipla escolha',
-                    single_choice: 'Seleção única',
-                    dropdown: 'Dropdown',
-                    yes_no: 'Sim/Não',
-                    legal: 'Termos legais',
-                    checkbox: 'Checkbox',
-                    nps: 'NPS',
-                    opinion_scale: 'Escala de opinião',
-                    rating: 'Avaliação',
-                    ranking: 'Ranking',
-                    number: 'Número',
-                    date: 'Data',
-                    file_upload: 'Upload de arquivo',
-                    statement: 'Statement',
-                    welcome_screen: 'Tela de boas-vindas',
-                    end_screen: 'Tela final',
-                    redirect_url: 'Redirecionar URL',
-                  };
                   return (
                     <DropdownMenuItem key={type} onClick={() => data.onAdd(createDefaultQuestion(type))}>
                       <Icon className="h-4 w-4 mr-2 flex-shrink-0" />
-                      <span>{labels[type]}</span>
+                      <span>{QUESTION_TYPE_LABELS[type]}</span>
                     </DropdownMenuItem>
                   );
                 })}

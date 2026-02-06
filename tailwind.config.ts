@@ -78,6 +78,10 @@ export default {
           "other-accent": "hsl(var(--node-other-accent))",
           condition: "hsl(var(--node-condition))",
           "condition-accent": "hsl(var(--node-condition-accent))",
+          ending: "hsl(var(--node-ending))",
+          "ending-accent": "hsl(var(--node-ending-accent))",
+          integration: "hsl(var(--node-integration))",
+          "integration-accent": "hsl(var(--node-integration-accent))",
         },
       },
       borderRadius: {

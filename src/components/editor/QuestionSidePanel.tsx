@@ -148,6 +148,37 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
             </div>
           )}
 
+          {/* Webhook config */}
+          {question.type === 'webhook' && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">URL do Webhook</Label>
+                <Input
+                  value={question.webhookUrl || ''}
+                  onChange={e => onChange({ webhookUrl: e.target.value })}
+                  placeholder="https://api.exemplo.com/webhook"
+                  className="text-xs font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Método HTTP</Label>
+                <Select
+                  value={question.webhookMethod || 'POST'}
+                  onValueChange={v => onChange({ webhookMethod: v as 'GET' | 'POST' | 'PUT' })}
+                >
+                  <SelectTrigger className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200] bg-popover">
+                    <SelectItem value="GET" className="text-xs">GET</SelectItem>
+                    <SelectItem value="POST" className="text-xs">POST</SelectItem>
+                    <SelectItem value="PUT" className="text-xs">PUT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Button text */}
           {(question.type === 'welcome_screen' || question.type === 'end_screen' || question.type === 'statement') && (
             <div className="space-y-1.5">
