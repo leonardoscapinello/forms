@@ -1,53 +1,53 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { Question } from '@/types/form';
-import QuestionCard from '@/components/editor/QuestionCard';
-import AddQuestionMenu from '@/components/editor/AddQuestionMenu';
+import FlowCanvas from '@/components/editor/FlowCanvas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getForm, updateForm } = useFormStore();
   const form = getForm(id!);
-  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
   }, [form, navigate]);
 
-  if (!form) return null;
-
-  const handleQuestionChange = (qId: string, patch: Partial<Question>) => {
+  const handleQuestionChange = useCallback((qId: string, patch: Partial<Question>) => {
+    if (!form) return;
     const questions = form.questions.map(q =>
       q.id === qId ? { ...q, ...patch } : q
     );
     updateForm(form.id, { questions });
-  };
+  }, [form, updateForm]);
 
-  const handleDeleteQuestion = (qId: string) => {
+  const handleDeleteQuestion = useCallback((qId: string) => {
+    if (!form) return;
     updateForm(form.id, { questions: form.questions.filter(q => q.id !== qId) });
-  };
+  }, [form, updateForm]);
 
-  const handleAddQuestion = (question: Question) => {
+  const handleAddQuestion = useCallback((question: Question) => {
+    if (!form) return;
     updateForm(form.id, { questions: [...form.questions, question] });
-    setActiveQuestionId(question.id);
-  };
+  }, [form, updateForm]);
+
+  if (!form) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="flex items-center gap-3 py-3 px-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+    <div className="h-screen flex flex-col bg-background">
+      <header className="flex-shrink-0 border-b border-border bg-card">
+        <div className="flex items-center gap-3 py-3 px-5">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <Input
             value={form.title}
             onChange={e => updateForm(form.id, { title: e.target.value })}
-            className="text-lg font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-md bg-transparent"
+            className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-sm bg-transparent"
             placeholder="Título do formulário"
           />
           <div className="ml-auto flex items-center gap-2">
@@ -69,22 +69,14 @@ export default function FormEditor() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
-        <div className="space-y-3 mb-6">
-          {form.questions.map((q, i) => (
-            <QuestionCard
-              key={q.id}
-              question={q}
-              index={i}
-              isActive={activeQuestionId === q.id}
-              onSelect={() => setActiveQuestionId(q.id)}
-              onChange={patch => handleQuestionChange(q.id, patch)}
-              onDelete={() => handleDeleteQuestion(q.id)}
-            />
-          ))}
-        </div>
-        <AddQuestionMenu onAdd={handleAddQuestion} />
-      </main>
+      <div className="flex-1 overflow-hidden">
+        <FlowCanvas
+          form={form}
+          onQuestionChange={handleQuestionChange}
+          onQuestionDelete={handleDeleteQuestion}
+          onQuestionAdd={handleAddQuestion}
+        />
+      </div>
     </div>
   );
 }
