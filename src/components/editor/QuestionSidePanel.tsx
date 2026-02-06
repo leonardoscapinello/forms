@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
-import { Question, QUESTION_TYPE_LABELS, InputMask, QuestionType } from '@/types/form';
+import { Question, QUESTION_TYPE_LABELS, InputMask, QuestionType, RoutingMode } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Trash2, Plus, X } from 'lucide-react';
+import { Trash2, Plus, X, ArrowRight, GitBranch } from 'lucide-react';
 import { QUESTION_TYPE_ICONS } from '@/components/editor/questionIcons';
 import { getNodeCategoryStyle } from './nodeCategoryStyles';
 import {
@@ -17,12 +17,19 @@ import {
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+interface RoutingTarget {
+  id: string;
+  label: string;
+}
+
 interface Props {
   question: Question;
   index: number;
   onChange: (patch: Partial<Question>) => void;
   onDelete: () => void;
   onClose: () => void;
+  /** All possible routing targets (other question nodes, condition nodes, etc.) */
+  routingTargets: RoutingTarget[];
 }
 
 const MASK_OPTIONS: { value: InputMask['type']; label: string }[] = [
@@ -46,7 +53,7 @@ const SUPPORTS_VALIDATION: QuestionType[] = [
 const NO_CONTENT_TYPES: QuestionType[] = ['welcome_screen', 'end_screen', 'statement', 'redirect_url'];
 const CHOICE_TYPES: QuestionType[] = ['multiple_choice', 'single_choice', 'dropdown', 'ranking'];
 
-export default function QuestionSidePanel({ question, index, onChange, onDelete, onClose }: Props) {
+export default function QuestionSidePanel({ question, index, onChange, onDelete, onClose, routingTargets }: Props) {
   const Icon = QUESTION_TYPE_ICONS[question.type];
   const catStyle = getNodeCategoryStyle(question.type);
   const hasMask = SUPPORTS_MASK.includes(question.type);
@@ -71,6 +78,15 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
   const removeOption = useCallback((optionId: string) => {
     onChange({ options: (question.options || []).filter(o => o.id !== optionId) });
   }, [question.options, onChange]);
+
+  const updateOptionRouting = useCallback((optionId: string, nextNodeId: string | undefined) => {
+    const options = (question.options || []).map(o =>
+      o.id === optionId ? { ...o, nextNodeId } : o
+    );
+    onChange({ options });
+  }, [question.options, onChange]);
+
+  const routingMode = question.routingMode || 'all_next';
 
   return (
     <div className="w-80 border-l border-border bg-card flex flex-col h-full">
@@ -169,7 +185,71 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
             </div>
           )}
 
-          {/* Rating config */}
+          {/* Routing config for choice types */}
+          {isChoice && (
+            <div className="space-y-3">
+              <div className="border-t border-border" />
+              <div className="flex items-center gap-2">
+                <GitBranch className="h-3.5 w-3.5 text-primary" />
+                <Label className="text-xs font-medium">Roteamento</Label>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex gap-1.5">
+                  <Button
+                    variant={routingMode === 'all_next' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 text-[11px] h-7"
+                    onClick={() => onChange({ routingMode: 'all_next' })}
+                  >
+                    <ArrowRight className="mr-1 h-3 w-3" />
+                    Todos → próximo
+                  </Button>
+                  <Button
+                    variant={routingMode === 'per_option' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 text-[11px] h-7"
+                    onClick={() => onChange({ routingMode: 'per_option' })}
+                  >
+                    <GitBranch className="mr-1 h-3 w-3" />
+                    Por opção
+                  </Button>
+                </div>
+
+                {routingMode === 'per_option' && (
+                  <div className="space-y-2 mt-2">
+                    {(question.options || []).map(opt => (
+                      <div key={opt.id} className="space-y-0.5">
+                        <span className="text-[10px] text-muted-foreground truncate block">
+                          {opt.label || 'Sem rótulo'}
+                        </span>
+                        <Select
+                          value={opt.nextNodeId || '_next'}
+                          onValueChange={v => updateOptionRouting(opt.id, v === '_next' ? undefined : v)}
+                        >
+                          <SelectTrigger className="text-[11px] h-7">
+                            <SelectValue placeholder="Próximo" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[200] bg-popover">
+                            <SelectItem value="_next" className="text-[11px]">
+                              → Próximo (padrão)
+                            </SelectItem>
+                            {routingTargets.map(t => (
+                              <SelectItem key={t.id} value={t.id} className="text-[11px]">
+                                {t.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+
           {question.type === 'rating' && (
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Número de estrelas</Label>

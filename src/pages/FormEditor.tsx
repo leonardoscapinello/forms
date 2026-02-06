@@ -169,6 +169,14 @@ export default function FormEditor() {
             onChange={patch => handleQuestionChange(selectedQuestion.id, patch)}
             onDelete={() => handleDeleteQuestion(selectedQuestion.id)}
             onClose={() => setSelectedQuestionId(null)}
+            routingTargets={
+              form.questions
+                .filter(q => q.id !== selectedQuestion.id)
+                .map((q, i) => ({ id: `q-${q.id}`, label: `#${i + 1} ${q.title || 'Sem título'}` }))
+                .concat(
+                  (form.conditions || []).map(c => ({ id: `c-${c.id}`, label: `⑃ ${c.label}` }))
+                )
+            }
           />
         )}
       </div>

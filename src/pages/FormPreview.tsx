@@ -38,6 +38,7 @@ export default function FormPreview() {
   const navigate = useNavigate();
   const { getForm } = useFormStore();
   const form = getForm(id!);
+  const [stepHistory, setStepHistory] = useState<number[]>([]); // for back navigation with routing
   const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
@@ -75,6 +76,25 @@ export default function FormPreview() {
     setTimeout(() => setShaking(false), 600);
   }, []);
 
+  /** Resolve per-option routing to a step index */
+  const resolveNextStep = useCallback((): number => {
+    if (!form || !currentQuestion) return step + 1;
+
+    if (currentQuestion.routingMode === 'per_option' && currentQuestion.options) {
+      const answer = answers[currentQuestion.id];
+      // For single_choice, answer is the option ID
+      const selectedOption = currentQuestion.options.find(o => o.id === answer);
+      if (selectedOption?.nextNodeId) {
+        // nextNodeId is like "q-{uuid}" — extract the question id
+        const targetQId = selectedOption.nextNodeId.replace(/^q-/, '');
+        const targetIdx = form.questions.findIndex(q => q.id === targetQId);
+        if (targetIdx >= 0) return targetIdx;
+      }
+    }
+
+    return step + 1;
+  }, [form, currentQuestion, answers, step]);
+
   const goNext = useCallback(() => {
     if (currentQuestion && currentQuestion.required && !isCurrentAnswerValid()) {
       triggerShake();
@@ -82,10 +102,21 @@ export default function FormPreview() {
     }
     setShowError(false);
     setDirection(1);
-    setStep(s => s + 1);
-  }, [currentQuestion, isCurrentAnswerValid, triggerShake]);
+    const nextStep = resolveNextStep();
+    setStepHistory(prev => [...prev, step]);
+    setStep(nextStep);
+  }, [currentQuestion, isCurrentAnswerValid, triggerShake, resolveNextStep, step]);
 
-  const goBack = useCallback(() => { setShowError(false); setDirection(-1); setStep(s => Math.max(-1, s - 1)); }, []);
+  const goBack = useCallback(() => {
+    setShowError(false);
+    setDirection(-1);
+    setStepHistory(prev => {
+      const copy = [...prev];
+      const prevStep = copy.pop();
+      setStep(prevStep ?? Math.max(-1, step - 1));
+      return copy;
+    });
+  }, [step]);
 
   const setAnswer = useCallback((value: any) => {
     if (currentQuestion) {
