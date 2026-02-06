@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus, Settings2 } from 'lucide-react';
-import InlineAddMenu from './InlineAddMenu';
 import { getNodeCategoryStyle } from './nodeCategoryStyles';
 import { QUESTION_TYPE_ICONS } from '@/components/editor/questionIcons';
 import {
@@ -23,8 +22,6 @@ interface QuestionNodeData {
   index: number;
   onChange: (patch: Partial<Question>) => void;
   onDelete: () => void;
-  onAddAfter: (question: Question) => void;
-  onAddCondition: () => void;
 }
 
 const MASK_OPTIONS: { value: InputMask['type']; label: string }[] = [
@@ -50,7 +47,7 @@ const SUPPORTS_VALIDATION: string[] = [
 const NO_CONTENT_TYPES: string[] = ['welcome_screen', 'end_screen', 'statement', 'redirect_url'];
 
 function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }) {
-  const { question, index, onChange, onDelete, onAddAfter, onAddCondition } = data;
+  const { question, index, onChange, onDelete } = data;
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const Icon = QUESTION_TYPE_ICONS[question.type];
@@ -78,12 +75,11 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
   }, [question.options, onChange]);
 
   return (
-    <div className="relative">
-      <div
-        className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-          selected ? 'border-primary shadow-md ring-2 ring-primary/10' : catStyle.border
-        }`}
-      >
+    <div
+      className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
+        selected ? 'border-primary shadow-md ring-2 ring-primary/10' : catStyle.border
+      }`}
+    >
         <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
         <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
 
@@ -405,11 +401,6 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
             />
           </div>
         )}
-      </div>
-      </div>
-      {/* Inline add button */}
-      <div className="absolute -right-4 top-1/2 translate-x-full -translate-y-1/2 z-10">
-        <InlineAddMenu onAdd={onAddAfter} onAddCondition={onAddCondition} size="sm" />
       </div>
     </div>
   );
