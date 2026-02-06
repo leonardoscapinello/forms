@@ -23,7 +23,6 @@ import { Question, FormData as FormDataType, FlowEdge, ConditionNodeData } from 
 import QuestionNode from './QuestionNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
-import AddNode from './AddNode';
 import ConditionNode from './ConditionNode';
 
 const NODE_SPACING = 350;
@@ -32,7 +31,6 @@ const nodeTypes = {
   questionNode: QuestionNode,
   startNode: StartNode,
   endNode: EndNode,
-  addNode: AddNode,
   conditionNode: ConditionNode,
 };
 
@@ -91,12 +89,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     });
 
     const addX = (form.questions.length + 1) * NODE_SPACING;
-    n.push({
-      id: 'add',
-      type: 'addNode',
-      position: getStoredPosition(form, 'add', addX, 15),
-      data: { onAdd: onQuestionAdd, onAddCondition: onConditionAdd },
-    });
 
     (form.conditions || []).forEach((cond, i) => {
       const nodeId = `c-${cond.id}`;
@@ -136,12 +128,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       const prevId = i === 0 ? 'start' : `q-${form.questions[i - 1].id}`;
       e.push({ id: `e-${prevId}-${nodeId}`, source: prevId, target: nodeId, ...defaultEdgeOptions });
     });
-    if (form.questions.length > 0) {
-      const lastId = `q-${form.questions[form.questions.length - 1].id}`;
-      e.push({ id: `e-${lastId}-add`, source: lastId, target: 'add', ...defaultEdgeOptions, style: { ...defaultEdgeOptions.style, strokeDasharray: '6 3' } });
-    } else {
-      e.push({ id: 'e-start-add', source: 'start', target: 'add', ...defaultEdgeOptions, style: { ...defaultEdgeOptions.style, strokeDasharray: '6 3' } });
-    }
     return e;
   }, [form.flowEdges, form.questions]);
 
