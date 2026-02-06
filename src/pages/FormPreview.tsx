@@ -244,6 +244,14 @@ function FieldRenderer({
   onNext: () => void;
 }) {
   const q = question;
+  // Track which option just blinked
+  const [blinkId, setBlinkId] = useState<string | null>(null);
+
+  const handleSelect = useCallback((optId: string, selectFn: () => void) => {
+    setBlinkId(optId);
+    selectFn();
+    setTimeout(() => setBlinkId(null), 400);
+  }, []);
 
   // Text-like inputs — large underline style
   if (['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(q.type)) {
@@ -307,14 +315,15 @@ function FieldRenderer({
         {(q.options || []).map((opt: any, i: number) => (
           <button
             key={opt.id}
-            onClick={() => onChange(opt.id)}
+            onClick={() => handleSelect(opt.id, () => onChange(opt.id))}
             className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+              blinkId === opt.id ? 'animate-option-blink' :
               value === opt.id
                 ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                 : 'border-border hover:border-primary/40 text-foreground'
             }`}
           >
-            <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 ${
+            <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
               value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
             }`}>
               {String.fromCharCode(65 + i)}
@@ -336,14 +345,15 @@ function FieldRenderer({
           return (
             <button
               key={opt.id}
-              onClick={() => onToggleMulti(opt.id)}
+              onClick={() => handleSelect(opt.id, () => onToggleMulti(opt.id))}
               className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+                blinkId === opt.id ? 'animate-option-blink' :
                 isSelected
                   ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                   : 'border-border hover:border-primary/40 text-foreground'
               }`}
             >
-              <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 ${
+              <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
                 isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
               }`}>
                 {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
@@ -379,14 +389,15 @@ function FieldRenderer({
         {[{ key: 'Sim', letter: 'S' }, { key: 'Não', letter: 'N' }].map(item => (
           <button
             key={item.key}
-            onClick={() => onChange(item.key)}
+            onClick={() => handleSelect(item.key, () => onChange(item.key))}
             className={`flex-1 px-5 py-4 rounded-xl border-2 text-lg font-medium transition-all flex items-center justify-center gap-3 ${
+              blinkId === item.key ? 'animate-option-blink' :
               value === item.key
                 ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                 : 'border-border hover:border-primary/40 text-foreground'
             }`}
           >
-            <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center ${
+            <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center transition-all ${
               value === item.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
             }`}>
               {item.letter}

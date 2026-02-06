@@ -124,3 +124,14 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Blink animation for option selection */
+@keyframes option-blink {
+  0% { background-color: hsl(var(--primary) / 0.15); border-color: hsl(var(--primary)); }
+  50% { background-color: transparent; border-color: hsl(var(--border)); }
+  100% { background-color: hsl(var(--primary) / 0.05); border-color: hsl(var(--primary)); }
+}
+
+.animate-option-blink {
+  animation: option-blink 0.4s ease-in-out;
+}
