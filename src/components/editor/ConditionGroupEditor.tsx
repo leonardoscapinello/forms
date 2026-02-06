@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { ConditionGroup, ConditionRule, ConditionOperator, Question } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Layers } from 'lucide-react';
+import { Plus, Trash2, Parentheses } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -30,11 +30,29 @@ interface Props {
   depth?: number;
 }
 
-export default function ConditionGroupEditor({ group, questions, onChange, onRemove, depth = 0 }: Props) {
-  const setLogic = useCallback((logic: 'and' | 'or') => {
-    onChange({ ...group, logic });
-  }, [group, onChange]);
+type Item = { type: 'rule'; rule: ConditionRule } | { type: 'group'; group: ConditionGroup };
 
+function getItemLogic(item: Item): LogicOperator {
+  if (item.type === 'rule') return item.rule.logicWithPrev || 'and';
+  // For groups, use the first rule's logicWithPrev or group logic
+  return item.group.rules[0]?.logicWithPrev || item.group.logic || 'and';
+}
+
+function setItemLogic(item: Item, logic: LogicOperator, onChange: (group: ConditionGroup) => void, group: ConditionGroup) {
+  if (item.type === 'rule') {
+    onChange({
+      ...group,
+      rules: group.rules.map(r => r.id === item.rule.id ? { ...r, logicWithPrev: logic } : r),
+    });
+  } else {
+    onChange({
+      ...group,
+      groups: group.groups.map(g => g.id === item.group.id ? { ...g, logic } : g),
+    });
+  }
+}
+
+export default function ConditionGroupEditor({ group, questions, onChange, onRemove, depth = 0 }: Props) {
   const updateRule = useCallback((ruleId: string, patch: Partial<ConditionRule>) => {
     onChange({ ...group, rules: group.rules.map(r => (r.id === ruleId ? { ...r, ...patch } : r)) });
   }, [group, onChange]);
@@ -49,6 +67,7 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
       questionId: questions[0]?.id || '',
       operator: 'equals',
       value: '',
+      logicWithPrev: 'and',
     };
     onChange({ ...group, rules: [...group.rules, rule] });
   }, [group, questions, onChange]);
@@ -56,13 +75,11 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
   const addSubGroup = useCallback(() => {
     const sub: ConditionGroup = {
       id: crypto.randomUUID(),
-      logic: group.logic === 'and' ? 'or' : 'and',
-      rules: [{
-        id: crypto.randomUUID(),
-        questionId: questions[0]?.id || '',
-        operator: 'equals',
-        value: '',
-      }],
+      logic: 'and',
+      rules: [
+        { id: crypto.randomUUID(), questionId: questions[0]?.id || '', operator: 'equals', value: '' },
+        { id: crypto.randomUUID(), questionId: questions[0]?.id || '', operator: 'equals', value: '', logicWithPrev: 'and' },
+      ],
       groups: [],
     };
     onChange({ ...group, groups: [...group.groups, sub] });
@@ -76,66 +93,26 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
     onChange({ ...group, groups: group.groups.filter(g => g.id !== subId) });
   }, [group, onChange]);
 
-  const totalItems = group.rules.length + group.groups.length;
-  const isAnd = group.logic === 'and';
-
-  const depthBorders = ['border-primary/25', 'border-warning/25', 'border-destructive/25'];
-  const depthBgs = ['bg-primary/5', 'bg-warning/5', 'bg-destructive/5'];
-  const borderClass = depthBorders[depth % 3];
-  const bgClass = depthBgs[depth % 3];
-
-  const items: Array<{ type: 'rule'; rule: ConditionRule } | { type: 'group'; group: ConditionGroup }> = [
+  // Build flat ordered list of items
+  const items: Item[] = [
     ...group.rules.map(r => ({ type: 'rule' as const, rule: r })),
     ...group.groups.map(g => ({ type: 'group' as const, group: g })),
   ];
 
-  const logicLabel = (
-    <div className="flex items-center py-0.5">
-      <div className="flex-1 h-px bg-border" />
-      <span className={`text-[8px] font-bold px-2 py-px rounded-full select-none ${
-        isAnd ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'
-      }`}>
-        {isAnd ? 'E' : 'OU'}
-      </span>
-      <div className="flex-1 h-px bg-border" />
-    </div>
-  );
+  const totalItems = items.length;
+
+  const depthBorders = ['border-primary/20', 'border-warning/20', 'border-destructive/20'];
+  const depthBgs = ['bg-primary/5', 'bg-warning/5', 'bg-destructive/5'];
 
   return (
-    <div className={`rounded-md ${depth > 0 ? `border ${borderClass} ${bgClass} p-2` : ''}`}>
-      {/* Logic toggle — always at top when there are 2+ items */}
-      {totalItems > 1 && (
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="text-[9px] text-muted-foreground whitespace-nowrap">
-            {depth > 0 ? 'Grupo:' : 'Combinar com:'}
+    <div className={`${depth > 0 ? `rounded-lg border ${depthBorders[depth % 3]} ${depthBgs[depth % 3]} p-2` : ''}`}>
+      {/* Group header for sub-groups */}
+      {depth > 0 && onRemove && (
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <Parentheses className="h-2.5 w-2.5" />
+            Grupo
           </span>
-          <button
-            onClick={() => setLogic('and')}
-            className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full transition-colors ${
-              isAnd ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            E
-          </button>
-          <button
-            onClick={() => setLogic('or')}
-            className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full transition-colors ${
-              !isAnd ? 'bg-warning text-warning-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            OU
-          </button>
-          {depth > 0 && onRemove && (
-            <Button variant="ghost" size="icon" className="h-4 w-4 ml-auto text-muted-foreground hover:text-destructive" onClick={onRemove}>
-              <Trash2 className="h-2.5 w-2.5" />
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Single item with remove for sub-groups */}
-      {totalItems <= 1 && depth > 0 && onRemove && (
-        <div className="flex items-center justify-end mb-1">
           <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive" onClick={onRemove}>
             <Trash2 className="h-2.5 w-2.5" />
           </Button>
@@ -144,7 +121,14 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
 
       {items.map((item, idx) => (
         <div key={item.type === 'rule' ? item.rule.id : item.group.id}>
-          {idx > 0 && logicLabel}
+          {/* Logic connector between items — clickable toggle */}
+          {idx > 0 && (
+            <LogicConnector
+              logic={getItemLogic(item)}
+              onToggle={(logic) => setItemLogic(item, logic, onChange, group)}
+            />
+          )}
+
           {item.type === 'rule' ? (
             <RuleRow
               rule={item.rule}
@@ -173,11 +157,32 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
         </Button>
         {depth < 2 && (
           <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5 hover:text-foreground" onClick={addSubGroup}>
-            <Layers className="mr-0.5 h-2 w-2" />
+            <Parentheses className="mr-0.5 h-2 w-2" />
             Grupo
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Clickable AND/OR toggle between rules */
+function LogicConnector({ logic, onToggle }: { logic: LogicOperator; onToggle: (v: LogicOperator) => void }) {
+  const isAnd = logic === 'and';
+  return (
+    <div className="flex items-center py-0.5 my-0.5">
+      <div className="flex-1 h-px bg-border" />
+      <button
+        onClick={() => onToggle(isAnd ? 'or' : 'and')}
+        className={`text-[8px] font-bold px-2.5 py-0.5 rounded-full select-none cursor-pointer transition-colors ${
+          isAnd
+            ? 'bg-primary/15 text-primary hover:bg-primary/25'
+            : 'bg-warning/15 text-warning hover:bg-warning/25'
+        }`}
+      >
+        {isAnd ? 'E' : 'OU'}
+      </button>
+      <div className="flex-1 h-px bg-border" />
     </div>
   );
 }

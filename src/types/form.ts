@@ -112,6 +112,8 @@ export interface ConditionRule {
   questionId: string;
   operator: ConditionOperator;
   value: string;
+  /** How this rule connects to the previous item (ignored for the first rule) */
+  logicWithPrev?: LogicOperator;
 }
 
 /** A group of rules combined by AND or OR, which can nest other groups */
