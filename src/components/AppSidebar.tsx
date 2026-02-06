@@ -1,20 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import {
-  FileText,
-  BarChart3,
-  Settings,
-  LogOut,
-  LayoutDashboard,
+  FileText, BarChart3, Settings, LogOut, LayoutDashboard,
 } from 'lucide-react';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarFooter,
 } from '@/components/ui/sidebar';
 
@@ -31,6 +22,7 @@ const configItems = [
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { profile, signOut, role } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -105,13 +97,18 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-            U
+            {(profile?.display_name || profile?.email || 'U')[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">Usuário</p>
-            <p className="text-xs text-muted-foreground truncate">usuario@email.com</p>
+            <p className="text-sm font-medium text-foreground truncate">
+              {profile?.display_name || 'Usuário'}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {profile?.email || ''}
+              {role === 'admin' && <span className="ml-1 text-primary">• Admin</span>}
+            </p>
           </div>
-          <button className="text-muted-foreground hover:text-foreground">
+          <button onClick={signOut} className="text-muted-foreground hover:text-foreground" title="Sair">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
