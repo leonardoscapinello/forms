@@ -51,7 +51,7 @@ const SUPPORTS_PLACEHOLDER: QuestionType[] = [
 const SUPPORTS_VALIDATION: QuestionType[] = [
   'short_text', 'long_text', 'email', 'phone', 'number', 'website',
 ];
-const NO_CONTENT_TYPES: QuestionType[] = ['welcome_screen', 'end_screen', 'statement', 'redirect_url'];
+const NO_CONTENT_TYPES: QuestionType[] = ['welcome_screen', 'end_screen', 'statement', 'redirect_url', 'graphic'];
 const CHOICE_TYPES: QuestionType[] = ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'];
 
 export default function QuestionSidePanel({ question, index, onChange, onDelete, onClose, routingTargets }: Props) {
@@ -191,6 +191,32 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
                 placeholder="Texto do botão"
                 className="text-xs"
               />
+            </div>
+          )}
+
+          {/* Graphic config */}
+          {question.type === 'graphic' && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Emoji / Ícone</Label>
+                <Input
+                  value={question.emoji || ''}
+                  onChange={e => onChange({ emoji: e.target.value })}
+                  placeholder="📊"
+                  className="text-lg text-center w-20"
+                  maxLength={4}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Descrição</Label>
+                <Textarea
+                  value={question.description || ''}
+                  onChange={e => onChange({ description: e.target.value })}
+                  placeholder="Texto informativo exibido ao respondente..."
+                  className="text-xs"
+                  rows={3}
+                />
+              </div>
             </div>
           )}
 

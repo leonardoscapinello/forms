@@ -740,5 +740,19 @@ function FieldRenderer({
     );
   }
 
+  // Graphic (display-only informational block)
+  if (q.type === 'graphic') {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        {q.emoji && <span className="text-5xl">{q.emoji}</span>}
+        {q.description && (
+          <p className="text-base text-muted-foreground text-center max-w-md whitespace-pre-line leading-relaxed">
+            {q.description}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return null;
 }

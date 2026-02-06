@@ -25,6 +25,7 @@ export type QuestionType =
   | 'date'
   | 'file_upload'
   | 'statement'
+  | 'graphic'
   | 'welcome_screen'
   // Ending
   | 'end_screen'
@@ -84,6 +85,8 @@ export interface Question {
   redirectUrl?: string;
   // For statement / welcome / end
   buttonText?: string;
+  // For graphic (display-only)
+  emoji?: string;
   // For opinion scale / NPS
   scaleMin?: number;
   scaleMax?: number;
@@ -204,7 +207,7 @@ export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; type
   },
   other: {
     label: 'Outros',
-    types: ['number', 'date', 'file_upload', 'statement', 'welcome_screen'],
+    types: ['number', 'date', 'file_upload', 'statement', 'graphic', 'welcome_screen'],
   },
   ending: {
     label: 'Encerramento',
@@ -238,6 +241,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   date: 'Data',
   file_upload: 'Upload de arquivo',
   statement: 'Statement',
+  graphic: 'Gráfico',
   welcome_screen: 'Tela de boas-vindas',
   end_screen: 'Tela final',
   redirect_url: 'Redirecionar URL',
@@ -307,6 +311,11 @@ export function createDefaultQuestion(type: QuestionType): Question {
   if (type === 'welcome_screen') base.buttonText = 'Começar';
   if (type === 'end_screen') base.buttonText = 'Enviar novamente';
   if (type === 'statement') base.buttonText = 'Continuar';
+  if (type === 'graphic') {
+    base.title = 'Informação';
+    base.description = '';
+    base.emoji = '📊';
+  }
   if (type === 'legal') base.required = true;
   if (type === 'file_upload') {
     base.allowedFileTypes = ['image/*', 'application/pdf'];
