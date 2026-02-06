@@ -53,6 +53,7 @@ interface Props {
   onConditionChange: (cId: string, patch: Partial<ConditionNodeData>) => void;
   onConditionDelete: (cId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
+  onQuestionSelect: (qId: string) => void;
 }
 
 function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number, fallbackY: number) {
@@ -60,7 +61,7 @@ function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number
   return stored ? { x: stored.x, y: stored.y } : { x: fallbackX, y: fallbackY };
 }
 
-function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAtPosition, onConditionAddAtPosition, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
+function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAtPosition, onConditionAddAtPosition, onConditionChange, onConditionDelete, onFormUpdate, onQuestionSelect }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectStartRef = useRef<{ nodeId: string; handleId?: string | null } | null>(null);
   const [dropMenu, setDropMenu] = useState<{ screenPos: { x: number; y: number }; flowPos: { x: number; y: number }; sourceNodeId: string; sourceHandle?: string } | null>(null);
@@ -87,6 +88,7 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
           index: i,
           onChange: (patch: Partial<Question>) => onQuestionChange(q.id, patch),
           onDelete: () => onQuestionDelete(q.id),
+          onSelect: () => onQuestionSelect(q.id),
         },
       });
     });
@@ -111,7 +113,7 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
     });
 
     return n;
-  }, [form, onQuestionChange, onQuestionDelete, onConditionChange, onConditionDelete]);
+  }, [form, onQuestionChange, onQuestionDelete, onQuestionSelect, onConditionChange, onConditionDelete]);
 
   const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {
