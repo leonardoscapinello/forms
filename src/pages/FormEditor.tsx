@@ -2,20 +2,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { Question, FormData, ConditionNodeData, createDefaultConditionGroup } from '@/types/form';
 import FlowCanvas from '@/components/editor/FlowCanvas';
+import QuestionSidePanel from '@/components/editor/QuestionSidePanel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye } from 'lucide-react';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getForm, updateForm } = useFormStore();
   const form = getForm(id!);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
   }, [form, navigate]);
+
+  const selectedQuestion = form?.questions.find(q => q.id === selectedQuestionId) || null;
+  const selectedIndex = form?.questions.findIndex(q => q.id === selectedQuestionId) ?? -1;
 
   const handleQuestionChange = useCallback((qId: string, patch: Partial<Question>) => {
     if (!form) return;
@@ -27,7 +32,7 @@ export default function FormEditor() {
 
   const handleDeleteQuestion = useCallback((qId: string) => {
     if (!form) return;
-    // Also remove edges referencing this question
+    if (selectedQuestionId === qId) setSelectedQuestionId(null);
     const nodeId = `q-${qId}`;
     const flowEdges = (form.flowEdges || []).filter(
       e => e.source !== nodeId && e.target !== nodeId
@@ -38,7 +43,7 @@ export default function FormEditor() {
       flowEdges,
       nodePositions,
     });
-  }, [form, updateForm]);
+  }, [form, updateForm, selectedQuestionId]);
 
   const handleAddQuestion = useCallback((question: Question) => {
     if (!form) return;
@@ -139,18 +144,33 @@ export default function FormEditor() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-hidden">
-        <FlowCanvas
-          form={form}
-          onQuestionChange={handleQuestionChange}
-          onQuestionDelete={handleDeleteQuestion}
-          onQuestionAdd={handleAddQuestion}
-          onQuestionAddAtPosition={handleAddQuestionAtPosition}
-          onConditionAddAtPosition={handleConditionAddAtPosition}
-          onConditionChange={handleConditionChange}
-          onConditionDelete={handleConditionDelete}
-          onFormUpdate={handleFormUpdate}
-        />
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-hidden">
+          <FlowCanvas
+            form={form}
+            onQuestionChange={handleQuestionChange}
+            onQuestionDelete={handleDeleteQuestion}
+            onQuestionAdd={handleAddQuestion}
+            onQuestionAddAtPosition={handleAddQuestionAtPosition}
+            onConditionAddAtPosition={handleConditionAddAtPosition}
+            onConditionChange={handleConditionChange}
+            onConditionDelete={handleConditionDelete}
+            onFormUpdate={handleFormUpdate}
+            onQuestionSelect={setSelectedQuestionId}
+          />
+        </div>
+
+        {/* Side panel */}
+        {selectedQuestion && (
+          <QuestionSidePanel
+            key={selectedQuestion.id}
+            question={selectedQuestion}
+            index={selectedIndex}
+            onChange={patch => handleQuestionChange(selectedQuestion.id, patch)}
+            onDelete={() => handleDeleteQuestion(selectedQuestion.id)}
+            onClose={() => setSelectedQuestionId(null)}
+          />
+        )}
       </div>
     </div>
   );
