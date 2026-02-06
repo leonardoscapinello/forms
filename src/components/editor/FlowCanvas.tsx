@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -19,7 +19,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Question, FormData as FormDataType, FlowEdge, ConditionNodeData, ConditionBranch } from '@/types/form';
+import { Question, FormData as FormDataType, FlowEdge, ConditionNodeData } from '@/types/form';
 import QuestionNode from './QuestionNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
@@ -37,7 +37,7 @@ const nodeTypes = {
 };
 
 const defaultEdgeOptions = {
-  type: 'smoothstep',
+  type: 'default',
   style: { stroke: 'hsl(var(--border))', strokeWidth: 2 },
   markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))' },
 };
@@ -61,11 +61,10 @@ function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number
 export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onConditionAdd, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Build initial nodes
-  const initialNodes = useMemo((): Node[] => {
+  // Build nodes from form data
+  const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
 
-    // Start node
     n.push({
       id: 'start',
       type: 'startNode',
@@ -73,7 +72,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       data: {},
     });
 
-    // Question nodes
     form.questions.forEach((q, i) => {
       const nodeId = `q-${q.id}`;
       n.push({
@@ -89,7 +87,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       });
     });
 
-    // Add node (after questions)
     const addX = (form.questions.length + 1) * NODE_SPACING;
     n.push({
       id: 'add',
@@ -98,7 +95,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       data: { onAdd: onQuestionAdd, onAddCondition: onConditionAdd },
     });
 
-    // Condition nodes
     (form.conditions || []).forEach((cond, i) => {
       const nodeId = `c-${cond.id}`;
       n.push({
@@ -119,8 +115,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     return n;
   }, [form, onQuestionChange, onQuestionDelete, onQuestionAdd, onConditionAdd, onConditionChange, onConditionDelete]);
 
-  // Build initial edges from stored or defaults
-  const initialEdges = useMemo((): Edge[] => {
+  const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {
       return form.flowEdges.map(fe => ({
         id: fe.id,
@@ -147,8 +142,39 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     return e;
   }, [form.flowEdges, form.questions]);
 
-  const [nodes, setNodes, onNodesChangeBase] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChangeBase] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState(buildNodes());
+  const [edges, setEdges, onEdgesChangeBase] = useEdgesState(buildEdges());
+
+  // Sync nodes when form changes (questions added/removed/edited, conditions changed)
+  const prevFormRef = useRef(form);
+  useEffect(() => {
+    const prev = prevFormRef.current;
+    prevFormRef.current = form;
+
+    // Check if structure changed (not just positions)
+    const questionsChanged = prev.questions !== form.questions;
+    const conditionsChanged = prev.conditions !== form.conditions;
+
+    if (questionsChanged || conditionsChanged) {
+      setNodes(currentNodes => {
+        const newNodes = buildNodes();
+        // Preserve positions of existing nodes from current canvas state
+        return newNodes.map(nn => {
+          const existing = currentNodes.find(cn => cn.id === nn.id);
+          if (existing) {
+            return { ...nn, position: existing.position };
+          }
+          return nn;
+        });
+      });
+    }
+
+    // Only rebuild edges if flowEdges or question list changed
+    const edgesChanged = prev.flowEdges !== form.flowEdges;
+    if (edgesChanged || questionsChanged) {
+      setEdges(buildEdges());
+    }
+  }, [form, buildNodes, buildEdges, setNodes, setEdges]);
 
   // Debounced save of positions
   const savePositions = useCallback((changedNodes: Node[]) => {
@@ -159,7 +185,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     }, 500);
   }, [onFormUpdate]);
 
-  // Save edges
   const saveEdges = useCallback((currentEdges: Edge[]) => {
     const flowEdges: FlowEdge[] = currentEdges.map(e => ({
       id: e.id,
@@ -173,10 +198,8 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
 
   const onNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChangeBase(changes);
-    // Save positions on drag
-    const hasDrag = changes.some(c => c.type === 'position' && c.dragging === false);
-    if (hasDrag) {
-      // Get updated nodes after changes
+    const hasDragEnd = changes.some(c => c.type === 'position' && c.dragging === false);
+    if (hasDragEnd) {
       setNodes(prev => {
         savePositions(prev);
         return prev;
@@ -186,7 +209,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
-    // Save after edge removal
     if (changes.some(c => c.type === 'remove')) {
       setEdges(prev => {
         saveEdges(prev);
@@ -233,6 +255,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
         snapToGrid
         snapGrid={[20, 20]}
         deleteKeyCode={['Backspace', 'Delete']}
+        edgesReconnectable
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
