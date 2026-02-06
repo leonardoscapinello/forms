@@ -197,21 +197,55 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
   }, [onEdgesChangeBase, saveEdges, setEdges]);
 
   const onConnect: OnConnect = useCallback((connection: Connection) => {
+    // Check if this is an option-handle connection (per-option routing)
+    const sourceHandle = connection.sourceHandle;
+    if (sourceHandle?.startsWith('option-')) {
+      const optionId = sourceHandle.replace('option-', '');
+      const sourceNodeId = connection.source;
+      const targetNodeId = connection.target;
+      // Find the question and update the option's nextNodeId
+      if (sourceNodeId?.startsWith('q-')) {
+        const qId = sourceNodeId.replace('q-', '');
+        const question = form.questions.find(q => q.id === qId);
+        if (question) {
+          const updatedOptions = (question.options || []).map(o =>
+            o.id === optionId ? { ...o, nextNodeId: targetNodeId || undefined } : o
+          );
+          onQuestionChange(qId, { options: updatedOptions });
+        }
+      }
+    }
+
     setEdges(prev => {
       const updated = addEdge({ ...connection, ...defaultEdgeOptions }, prev);
       saveEdges(updated);
       return updated;
     });
-  }, [setEdges, saveEdges]);
+  }, [setEdges, saveEdges, form.questions, onQuestionChange]);
 
   const onEdgeDelete = useCallback((deletedEdges: Edge[]) => {
+    // Clear option routing for deleted option-handle edges
+    for (const edge of deletedEdges) {
+      if (edge.sourceHandle?.startsWith('option-')) {
+        const optionId = edge.sourceHandle.replace('option-', '');
+        const qId = edge.source.replace('q-', '');
+        const question = form.questions.find(q => q.id === qId);
+        if (question) {
+          const updatedOptions = (question.options || []).map(o =>
+            o.id === optionId ? { ...o, nextNodeId: undefined } : o
+          );
+          onQuestionChange(qId, { options: updatedOptions });
+        }
+      }
+    }
+
     setEdges(prev => {
       const ids = new Set(deletedEdges.map(e => e.id));
       const updated = prev.filter(e => !ids.has(e.id));
       saveEdges(updated);
       return updated;
     });
-  }, [setEdges, saveEdges]);
+  }, [setEdges, saveEdges, form.questions, onQuestionChange]);
 
   // Track connection start
   const onConnectStart = useCallback((_: any, params: { nodeId: string | null; handleId: string | null }) => {
