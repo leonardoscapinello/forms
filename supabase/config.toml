@@ -2,3 +2,9 @@ project_id = "mbryndcvumhfjgmogifs"
 
 [functions.minio-test]
 verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.setup-admin]
+verify_jwt = false
