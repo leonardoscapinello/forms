@@ -197,13 +197,17 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
   }, [onEdgesChangeBase, saveEdges, setEdges]);
 
   const onConnect: OnConnect = useCallback((connection: Connection) => {
-    // Check if this is an option-handle connection (per-option routing)
     const sourceHandle = connection.sourceHandle;
+    const sourceNodeId = connection.source;
+
+    // For option-handle connections, only allow one connection per option handle
     if (sourceHandle?.startsWith('option-')) {
       const optionId = sourceHandle.replace('option-', '');
-      const sourceNodeId = connection.source;
       const targetNodeId = connection.target;
-      // Find the question and update the option's nextNodeId
+
+      // Remove existing edge from this option handle
+      setEdges(prev => prev.filter(e => !(e.source === sourceNodeId && e.sourceHandle === sourceHandle)));
+
       if (sourceNodeId?.startsWith('q-')) {
         const qId = sourceNodeId.replace('q-', '');
         const question = form.questions.find(q => q.id === qId);
@@ -213,6 +217,16 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
           );
           onQuestionChange(qId, { options: updatedOptions });
         }
+      }
+    } else {
+      // For regular source handles: only ONE outgoing connection allowed
+      // (condition nodes and per-option nodes use named handles, so this only affects the default handle)
+      const isConditionNode = sourceNodeId?.startsWith('c-');
+      const isBranchHandle = sourceHandle?.startsWith('branch-');
+
+      if (!isConditionNode && !isBranchHandle) {
+        // Remove any existing edge from this source+handle combo
+        setEdges(prev => prev.filter(e => !(e.source === sourceNodeId && e.sourceHandle === (sourceHandle || undefined) && !e.sourceHandle?.startsWith('option-'))));
       }
     }
 
