@@ -10,6 +10,7 @@ import { resolveConditionNextNode } from '@/lib/conditionEvaluator';
 import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 import AddressFieldPreview from '@/components/preview/AddressFieldPreview';
 import WebsiteFieldPreview from '@/components/preview/WebsiteFieldPreview';
+import FileUploadPreview from '@/components/preview/FileUploadPreview';
 
 /** Typeform-style underline input — large, clean */
 function TypeformInput({
@@ -720,10 +721,12 @@ function FieldRenderer({
   // File upload
   if (q.type === 'file_upload') {
     return (
-      <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/40 transition-colors cursor-pointer">
-        <p className="text-lg text-muted-foreground">Arraste ou clique para enviar arquivo</p>
-        <p className="text-sm text-muted-foreground/60 mt-2">Máx: {q.maxFileSize || 10}MB</p>
-      </div>
+      <FileUploadPreview
+        value={value}
+        onChange={onChange}
+        maxFileSize={q.maxFileSize || 10}
+        allowedFileTypes={q.allowedFileTypes}
+      />
     );
   }
 
