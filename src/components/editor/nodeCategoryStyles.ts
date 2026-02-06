@@ -37,6 +37,16 @@ const CATEGORY_STYLES: Record<QuestionCategory, { bg: string; accent: string; bo
     accent: 'text-node-other-accent',
     border: 'border-node-other-accent/30',
   },
+  ending: {
+    bg: 'bg-node-ending',
+    accent: 'text-node-ending-accent',
+    border: 'border-node-ending-accent/30',
+  },
+  integration: {
+    bg: 'bg-node-integration',
+    accent: 'text-node-integration-accent',
+    border: 'border-node-integration-accent/30',
+  },
 };
 
 export function getNodeCategoryStyle(type: QuestionType) {

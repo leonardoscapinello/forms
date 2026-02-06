@@ -292,6 +292,17 @@ function NodeSummary({ question }: { question: Question }) {
     );
   }
 
+  // Webhook
+  if (q.type === 'webhook') {
+    return (
+      <div className="space-y-0.5">
+        <div className="rounded bg-muted px-2 py-1 truncate">
+          <span className="text-[9px] font-mono text-muted-foreground">{q.webhookMethod || 'POST'} {q.webhookUrl || 'URL...'}</span>
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
 

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { QUESTION_TYPE_LABELS } from '@/types/form';
 
-const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other'] as const;
+const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other', 'ending', 'integration'] as const;
 
 const CATEGORY_STYLES: Record<string, { accent: string; iconBg: string }> = {
   contact_info: { accent: 'text-node-contact-accent', iconBg: 'bg-node-contact-accent/15' },
@@ -18,6 +18,8 @@ const CATEGORY_STYLES: Record<string, { accent: string; iconBg: string }> = {
   choice: { accent: 'text-node-choice-accent', iconBg: 'bg-node-choice-accent/15' },
   rating_ranking: { accent: 'text-node-rating-accent', iconBg: 'bg-node-rating-accent/15' },
   other: { accent: 'text-node-other-accent', iconBg: 'bg-node-other-accent/15' },
+  ending: { accent: 'text-node-ending-accent', iconBg: 'bg-node-ending-accent/15' },
+  integration: { accent: 'text-node-integration-accent', iconBg: 'bg-node-integration-accent/15' },
 };
 
 interface Props {
