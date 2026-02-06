@@ -11,6 +11,8 @@ const COLOR_SCHEMES: { name: string; label: string; colors: string[] }[] = [
   { name: 'cool', label: 'Frio', colors: ['#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7'] },
   { name: 'earth', label: 'Terra', colors: ['#92400e', '#b45309', '#a16207', '#4d7c0f', '#166534', '#1e3a5f'] },
   { name: 'mono', label: 'Monocromático', colors: ['#0f172a', '#334155', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0'] },
+  { name: 'neon', label: 'Neon', colors: ['#f43f5e', '#a855f7', '#06b6d4', '#22c55e', '#facc15', '#fb923c'] },
+  { name: 'ocean', label: 'Oceano', colors: ['#0c4a6e', '#0369a1', '#0284c7', '#0ea5e9', '#38bdf8', '#7dd3fc'] },
 ];
 
 interface Props {
@@ -24,6 +26,7 @@ interface Props {
 export default function ChartStylePanel({ style, chartType, items, onChange, onItemsChange }: Props) {
   const isPie = chartType === 'pie';
   const isGauge = chartType === 'thermometer' || chartType === 'speedometer';
+  const hasGrid = !isGauge && chartType !== 'treemap' && chartType !== 'funnel' && chartType !== 'radialBar';
 
   const applyScheme = (scheme: typeof COLOR_SCHEMES[0]) => {
     const updated = items.map((item, i) => ({
@@ -46,15 +49,15 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => applyScheme(scheme)}
-              className={`flex flex-col gap-1.5 p-2.5 rounded-xl border-2 transition-colors ${
+              className={`flex flex-col gap-1.5 p-2.5 rounded-xl border-2 transition-all ${
                 style.colorScheme === scheme.name
-                  ? 'border-primary bg-primary/5'
+                  ? 'border-primary bg-primary/5 shadow-sm shadow-primary/10'
                   : 'border-border hover:border-primary/30'
               }`}
             >
-              <div className="flex gap-0.5">
+              <div className="flex gap-0.5 h-3.5">
                 {scheme.colors.slice(0, 6).map((c, i) => (
-                  <div key={i} className="flex-1 h-4 rounded-sm first:rounded-l-md last:rounded-r-md" style={{ backgroundColor: c }} />
+                  <div key={i} className="flex-1 rounded-sm first:rounded-l-md last:rounded-r-md" style={{ backgroundColor: c }} />
                 ))}
               </div>
               <span className="text-[10px] font-medium text-foreground">{scheme.label}</span>
@@ -67,49 +70,15 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
       <div className="space-y-3">
         <Label className="text-xs text-muted-foreground font-medium">Aparência</Label>
 
-        {!isGauge && (
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Grade</Label>
-            <Switch
-              checked={style.showGrid !== false}
-              onCheckedChange={v => onChange({ ...style, showGrid: v })}
-            />
-          </div>
+        {hasGrid && (
+          <ToggleRow label="Grade" checked={style.showGrid !== false} onChange={v => onChange({ ...style, showGrid: v })} />
         )}
-
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Labels</Label>
-          <Switch
-            checked={style.showLabels !== false}
-            onCheckedChange={v => onChange({ ...style, showLabels: v })}
-          />
-        </div>
-
-        {!isGauge && (
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Legenda</Label>
-            <Switch
-              checked={style.showLegend === true}
-              onCheckedChange={v => onChange({ ...style, showLegend: v })}
-            />
-          </div>
+        <ToggleRow label="Labels" checked={style.showLabels !== false} onChange={v => onChange({ ...style, showLabels: v })} />
+        {!isGauge && chartType !== 'treemap' && (
+          <ToggleRow label="Legenda" checked={style.showLegend === true} onChange={v => onChange({ ...style, showLegend: v })} />
         )}
-
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Valores</Label>
-          <Switch
-            checked={style.showValues !== false}
-            onCheckedChange={v => onChange({ ...style, showValues: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Animação</Label>
-          <Switch
-            checked={style.animated !== false}
-            onCheckedChange={v => onChange({ ...style, animated: v })}
-          />
-        </div>
+        <ToggleRow label="Valores" checked={style.showValues !== false} onChange={v => onChange({ ...style, showValues: v })} />
+        <ToggleRow label="Animação" checked={style.animated !== false} onChange={v => onChange({ ...style, animated: v })} />
       </div>
 
       {/* Donut inner radius */}
@@ -117,14 +86,14 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-xs text-muted-foreground font-medium">Raio interno (donut)</Label>
-            <span className="text-[10px] text-muted-foreground font-mono">{style.innerRadius ?? 45}%</span>
+            <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+              {style.innerRadius ?? 45}%
+            </span>
           </div>
           <Slider
             value={[style.innerRadius ?? 45]}
             onValueChange={([v]) => onChange({ ...style, innerRadius: v })}
-            min={0}
-            max={80}
-            step={5}
+            min={0} max={80} step={5}
             className="w-full"
           />
           <div className="flex justify-between text-[9px] text-muted-foreground">
@@ -133,6 +102,15 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-xs">{label}</Label>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

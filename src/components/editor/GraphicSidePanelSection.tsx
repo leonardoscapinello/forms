@@ -22,9 +22,15 @@ const VARIANT_OPTIONS: { value: GraphicVariant; label: string; emoji: string }[]
 
 const CHART_TYPE_OPTIONS: { value: ChartType; label: string }[] = [
   { value: 'line', label: 'Linha' },
+  { value: 'area', label: 'Área' },
   { value: 'column', label: 'Colunas' },
-  { value: 'pie', label: 'Pizza' },
   { value: 'bar', label: 'Barras' },
+  { value: 'pie', label: 'Pizza' },
+  { value: 'radar', label: 'Radar' },
+  { value: 'funnel', label: 'Funil' },
+  { value: 'waterfall', label: 'Waterfall' },
+  { value: 'treemap', label: 'Treemap' },
+  { value: 'radialBar', label: 'Radial' },
   { value: 'thermometer', label: 'Termômetro' },
   { value: 'speedometer', label: 'Velocímetro' },
 ];
@@ -90,7 +96,7 @@ export default function GraphicSidePanelSection({ question, onChange }: Props) {
       {variant === 'chart' && (
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Tipo de gráfico</Label>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {CHART_TYPE_OPTIONS.map(ct => (
               <Button
                 key={ct.value}
