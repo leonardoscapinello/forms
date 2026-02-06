@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { Question, FormData, ConditionNodeData, ConditionBranch } from '@/types/form';
+import { Question, FormData, ConditionNodeData, createDefaultConditionGroup } from '@/types/form';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -68,9 +68,7 @@ export default function FormEditor() {
       branches: [{
         id: crypto.randomUUID(),
         label: 'Caminho 1',
-        questionId: form.questions[0]?.id || '',
-        operator: 'equals',
-        value: '',
+        conditionGroup: createDefaultConditionGroup(form.questions[0]?.id || ''),
       }],
     };
     const nodeId = `c-${cond.id}`;

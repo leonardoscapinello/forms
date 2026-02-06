@@ -1,16 +1,10 @@
 import { memo, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GitBranch, Plus, Trash2 } from 'lucide-react';
-import { ConditionBranch, ConditionOperator, Question } from '@/types/form';
+import { ConditionBranch, ConditionGroup, Question, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import ConditionGroupEditor from './ConditionGroupEditor';
 
 interface ConditionNodeDataProps {
   conditionId: string;
@@ -21,17 +15,6 @@ interface ConditionNodeDataProps {
   onDelete: () => void;
 }
 
-const OPERATORS: { value: ConditionOperator; label: string }[] = [
-  { value: 'equals', label: '= Igual a' },
-  { value: 'not_equals', label: '≠ Diferente de' },
-  { value: 'contains', label: '∋ Contém' },
-  { value: 'not_contains', label: '∌ Não contém' },
-  { value: 'greater_than', label: '> Maior que' },
-  { value: 'less_than', label: '< Menor que' },
-  { value: 'is_empty', label: '∅ Está vazio' },
-  { value: 'is_not_empty', label: '✓ Não está vazio' },
-];
-
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
   const { label, branches, questions, onChange, onDelete } = data;
 
@@ -39,9 +22,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
     const newBranch: ConditionBranch = {
       id: crypto.randomUUID(),
       label: `Caminho ${branches.length + 1}`,
-      questionId: questions[0]?.id || '',
-      operator: 'equals',
-      value: '',
+      conditionGroup: createDefaultConditionGroup(questions[0]?.id || ''),
     };
     onChange({ branches: [...branches, newBranch] });
   }, [branches, questions, onChange]);
@@ -89,76 +70,52 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
 
       {/* Branches */}
       <div className="p-3 space-y-3">
-        {branches.map((branch, idx) => (
-          <div key={branch.id} className="relative border border-border rounded-lg p-2.5 space-y-1.5 bg-muted/20">
-            {/* Branch output handle */}
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={`branch-${branch.id}`}
-              className="!w-3 !h-3 !bg-primary !border-2 !border-card"
-              style={{ top: 'auto', right: -6 }}
-            />
+        {branches.map((branch, idx) => {
+          // Migrate old branches that don't have conditionGroup
+          const group: ConditionGroup = branch.conditionGroup || {
+            id: crypto.randomUUID(),
+            logic: 'and',
+            rules: [{
+              id: crypto.randomUUID(),
+              questionId: branch.questionId || questions[0]?.id || '',
+              operator: branch.operator || 'equals',
+              value: branch.value || '',
+            }],
+            groups: [],
+          };
 
-            <div className="flex items-center justify-between">
-              <Input
-                value={branch.label}
-                onChange={e => updateBranch(branch.id, { label: e.target.value })}
-                className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent"
-                placeholder={`Caminho ${idx + 1}`}
+          return (
+            <div key={branch.id} className="relative border border-border rounded-lg p-2.5 space-y-1.5 bg-muted/20">
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`branch-${branch.id}`}
+                className="!w-3 !h-3 !bg-primary !border-2 !border-card"
+                style={{ top: 'auto', right: -6 }}
               />
-              {branches.length > 1 && (
-                <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => removeBranch(branch.id)}>
-                  <Trash2 className="h-2.5 w-2.5" />
-                </Button>
-              )}
+
+              <div className="flex items-center justify-between">
+                <Input
+                  value={branch.label}
+                  onChange={e => updateBranch(branch.id, { label: e.target.value })}
+                  className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent"
+                  placeholder={`Caminho ${idx + 1}`}
+                />
+                {branches.length > 1 && (
+                  <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => removeBranch(branch.id)}>
+                    <Trash2 className="h-2.5 w-2.5" />
+                  </Button>
+                )}
+              </div>
+
+              <ConditionGroupEditor
+                group={group}
+                questions={questions}
+                onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
+              />
             </div>
-
-            {/* Question selector */}
-            <Select
-              value={branch.questionId}
-              onValueChange={v => updateBranch(branch.id, { questionId: v })}
-            >
-              <SelectTrigger className="h-6 text-[11px]">
-                <SelectValue placeholder="Selecione uma pergunta" />
-              </SelectTrigger>
-              <SelectContent className="z-[200] bg-popover">
-                {questions.map(q => (
-                  <SelectItem key={q.id} value={q.id} className="text-xs">
-                    {q.title || `Pergunta sem título`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Operator */}
-            <Select
-              value={branch.operator}
-              onValueChange={v => updateBranch(branch.id, { operator: v as ConditionOperator })}
-            >
-              <SelectTrigger className="h-6 text-[11px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="z-[200] bg-popover">
-                {OPERATORS.map(op => (
-                  <SelectItem key={op.value} value={op.value} className="text-xs">
-                    {op.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Value — hidden for is_empty/is_not_empty */}
-            {branch.operator !== 'is_empty' && branch.operator !== 'is_not_empty' && (
-              <Input
-                value={branch.value}
-                onChange={e => updateBranch(branch.id, { value: e.target.value })}
-                placeholder="Valor esperado"
-                className="text-[11px] h-6"
-              />
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {/* Default/else output */}
         <div className="relative flex items-center gap-2 text-[11px] text-muted-foreground px-2 py-1.5 rounded border border-dashed border-border">
