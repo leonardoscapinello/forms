@@ -127,11 +127,32 @@
 
 /* Blink animation for option selection */
 @keyframes option-blink {
-  0% { background-color: hsl(var(--primary) / 0.15); border-color: hsl(var(--primary)); }
-  50% { background-color: transparent; border-color: hsl(var(--border)); }
-  100% { background-color: hsl(var(--primary) / 0.05); border-color: hsl(var(--primary)); }
+  0% {
+    background-color: hsl(var(--primary) / 0.25);
+    border-color: hsl(var(--primary));
+    transform: scale(1.02);
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.15);
+  }
+  40% {
+    background-color: hsl(var(--primary) / 0.03);
+    border-color: hsl(var(--primary) / 0.5);
+    transform: scale(1);
+    box-shadow: 0 0 0 0px hsl(var(--primary) / 0);
+  }
+  70% {
+    background-color: hsl(var(--primary) / 0.15);
+    border-color: hsl(var(--primary));
+    transform: scale(1.01);
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+  }
+  100% {
+    background-color: hsl(var(--primary) / 0.05);
+    border-color: hsl(var(--primary));
+    transform: scale(1);
+    box-shadow: none;
+  }
 }
 
 .animate-option-blink {
-  animation: option-blink 0.4s ease-in-out;
+  animation: option-blink 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
