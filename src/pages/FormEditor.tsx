@@ -42,14 +42,24 @@ export default function FormEditor() {
 
   const handleAddQuestion = useCallback((question: Question) => {
     if (!form) return;
-    updateForm(form.id, { questions: [...form.questions, question] });
+    const newNodeId = `q-${question.id}`;
+    const sourceId = form.questions.length > 0
+      ? `q-${form.questions[form.questions.length - 1].id}`
+      : 'start';
+    const newEdge = { id: `e-${sourceId}-${newNodeId}`, source: sourceId, target: newNodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    updateForm(form.id, { questions: [...form.questions, question], flowEdges });
   }, [form, updateForm]);
 
   const handleAddQuestionAfter = useCallback((afterIndex: number, question: Question) => {
     if (!form) return;
     const questions = [...form.questions];
     questions.splice(afterIndex + 1, 0, question);
-    updateForm(form.id, { questions });
+    const sourceId = afterIndex >= 0 ? `q-${form.questions[afterIndex].id}` : 'start';
+    const newNodeId = `q-${question.id}`;
+    const newEdge = { id: `e-${sourceId}-${newNodeId}`, source: sourceId, target: newNodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    updateForm(form.id, { questions, flowEdges });
   }, [form, updateForm]);
 
   const handleConditionAdd = useCallback(() => {
