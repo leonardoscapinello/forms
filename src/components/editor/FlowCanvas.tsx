@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -27,6 +27,7 @@ import StartNode from './StartNode';
 import EndNode from './EndNode';
 import ConditionNode from './ConditionNode';
 import ConnectDropMenu from './ConnectDropMenu';
+import DeleteConfirmDialog from './DeleteConfirmDialog';
 
 const NODE_SPACING = 350;
 
@@ -65,7 +66,8 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectStartRef = useRef<{ nodeId: string; handleId?: string | null } | null>(null);
   const [dropMenu, setDropMenu] = useState<{ screenPos: { x: number; y: number }; flowPos: { x: number; y: number }; sourceNodeId: string; sourceHandle?: string } | null>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
+  const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
 
   const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
@@ -181,30 +183,58 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
     onFormUpdate({ flowEdges });
   }, [onFormUpdate]);
 
+  // Intercept node removals → show confirmation dialog
   const onNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
-    // Intercept node removals to actually delete questions/conditions from form data
     const removeChanges = changes.filter(c => c.type === 'remove');
-    if (removeChanges.length > 0) {
-      for (const change of removeChanges) {
-        if (change.type === 'remove') {
-          const nodeId = change.id;
-          if (nodeId.startsWith('q-')) {
-            onQuestionDelete(nodeId.replace('q-', ''));
-          } else if (nodeId.startsWith('c-')) {
-            onConditionDelete(nodeId.replace('c-', ''));
-          }
-        }
+    const otherChanges = changes.filter(c => c.type !== 'remove');
+
+    // Apply non-remove changes immediately
+    if (otherChanges.length > 0) {
+      onNodesChangeBase(otherChanges);
+      const hasDragEnd = otherChanges.some(c => c.type === 'position' && c.dragging === false);
+      if (hasDragEnd) {
+        setNodes(prev => { savePositions(prev); return prev; });
       }
-      // Filter out remove changes for start node (prevent deleting it)
-      changes = changes.filter(c => !(c.type === 'remove' && c.id === 'start'));
     }
 
-    onNodesChangeBase(changes);
-    const hasDragEnd = changes.some(c => c.type === 'position' && c.dragging === false);
-    if (hasDragEnd) {
-      setNodes(prev => { savePositions(prev); return prev; });
+    // If there are removals, show confirmation (skip start node)
+    if (removeChanges.length > 0) {
+      const nodeIds = removeChanges
+        .filter(c => c.type === 'remove' && c.id !== 'start')
+        .map(c => (c as any).id as string);
+      if (nodeIds.length > 0) {
+        setDeleteConfirm({ nodeIds });
+      }
     }
-  }, [onNodesChangeBase, savePositions, setNodes, onQuestionDelete, onConditionDelete]);
+  }, [onNodesChangeBase, savePositions, setNodes]);
+
+  // Execute confirmed deletion: remove node + connected edges
+  const confirmDelete = useCallback(() => {
+    if (!deleteConfirm) return;
+    const { nodeIds } = deleteConfirm;
+
+    // Delete from form data
+    for (const nodeId of nodeIds) {
+      if (nodeId.startsWith('q-')) {
+        onQuestionDelete(nodeId.replace('q-', ''));
+      } else if (nodeId.startsWith('c-')) {
+        onConditionDelete(nodeId.replace('c-', ''));
+      }
+    }
+
+    // Remove connected edges
+    const nodeIdSet = new Set(nodeIds);
+    setEdges(prev => {
+      const updated = prev.filter(e => !nodeIdSet.has(e.source) && !nodeIdSet.has(e.target));
+      saveEdges(updated);
+      return updated;
+    });
+
+    // Remove nodes from React Flow
+    onNodesChangeBase(nodeIds.map(id => ({ type: 'remove' as const, id })));
+
+    setDeleteConfirm(null);
+  }, [deleteConfirm, onQuestionDelete, onConditionDelete, setEdges, saveEdges, onNodesChangeBase]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
@@ -341,7 +371,7 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
         snapToGrid
         snapGrid={[20, 20]}
         deleteKeyCode={['Backspace', 'Delete']}
-        edgesReconnectable
+        nodesDraggable
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
@@ -365,6 +395,12 @@ function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionA
           onClose={() => setDropMenu(null)}
         />
       )}
+
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Question, QUESTION_TYPE_LABELS, InputMask, QuestionType, RoutingMode } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DeleteConfirmDialog from './DeleteConfirmDialog';
 
 interface RoutingTarget {
   id: string;
@@ -54,6 +55,7 @@ const NO_CONTENT_TYPES: QuestionType[] = ['welcome_screen', 'end_screen', 'state
 const CHOICE_TYPES: QuestionType[] = ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'];
 
 export default function QuestionSidePanel({ question, index, onChange, onDelete, onClose, routingTargets }: Props) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const Icon = QUESTION_TYPE_ICONS[question.type];
   const catStyle = getNodeCategoryStyle(question.type);
   const hasMask = SUPPORTS_MASK.includes(question.type);
@@ -98,7 +100,7 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
         </span>
         <span className="text-xs text-muted-foreground/60 ml-1">#{index + 1}</span>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={onClose}>
@@ -407,6 +409,14 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
           )}
         </div>
       </ScrollArea>
+
+      <DeleteConfirmDialog
+        open={showDeleteConfirm}
+        title="Excluir pergunta"
+        description={`Tem certeza que deseja excluir "${question.title || 'Sem título'}"? As conexões associadas também serão removidas.`}
+        onConfirm={() => { setShowDeleteConfirm(false); onDelete(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
