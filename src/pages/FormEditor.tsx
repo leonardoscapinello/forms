@@ -51,18 +51,16 @@ export default function FormEditor() {
     updateForm(form.id, { questions: [...form.questions, question], flowEdges });
   }, [form, updateForm]);
 
-  const handleAddQuestionAfter = useCallback((afterIndex: number, question: Question) => {
+  const handleAddQuestionAtPosition = useCallback((question: Question, position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
-    const questions = [...form.questions];
-    questions.splice(afterIndex + 1, 0, question);
-    const sourceId = afterIndex >= 0 ? `q-${form.questions[afterIndex].id}` : 'start';
     const newNodeId = `q-${question.id}`;
-    const newEdge = { id: `e-${sourceId}-${newNodeId}`, source: sourceId, target: newNodeId };
+    const newEdge = { id: `e-${sourceNodeId}-${newNodeId}`, source: sourceNodeId, sourceHandle, target: newNodeId };
     const flowEdges = [...(form.flowEdges || []), newEdge];
-    updateForm(form.id, { questions, flowEdges });
+    const nodePositions = [...(form.nodePositions || []), { id: newNodeId, x: position.x, y: position.y }];
+    updateForm(form.id, { questions: [...form.questions, question], flowEdges, nodePositions });
   }, [form, updateForm]);
 
-  const handleConditionAdd = useCallback(() => {
+  const handleConditionAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
     const cond: ConditionNodeData = {
       id: crypto.randomUUID(),
@@ -75,7 +73,11 @@ export default function FormEditor() {
         value: '',
       }],
     };
-    updateForm(form.id, { conditions: [...(form.conditions || []), cond] });
+    const nodeId = `c-${cond.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, { conditions: [...(form.conditions || []), cond], flowEdges, nodePositions });
   }, [form, updateForm]);
 
   const handleConditionChange = useCallback((cId: string, patch: Partial<ConditionNodeData>) => {
@@ -145,8 +147,8 @@ export default function FormEditor() {
           onQuestionChange={handleQuestionChange}
           onQuestionDelete={handleDeleteQuestion}
           onQuestionAdd={handleAddQuestion}
-          onQuestionAddAfter={handleAddQuestionAfter}
-          onConditionAdd={handleConditionAdd}
+          onQuestionAddAtPosition={handleAddQuestionAtPosition}
+          onConditionAddAtPosition={handleConditionAddAtPosition}
           onConditionChange={handleConditionChange}
           onConditionDelete={handleConditionDelete}
           onFormUpdate={handleFormUpdate}

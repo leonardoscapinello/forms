@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,6 +11,8 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
@@ -24,6 +26,7 @@ import QuestionNode from './QuestionNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
 import ConditionNode from './ConditionNode';
+import ConnectDropMenu from './ConnectDropMenu';
 
 const NODE_SPACING = 350;
 
@@ -45,8 +48,8 @@ interface Props {
   onQuestionChange: (qId: string, patch: Partial<Question>) => void;
   onQuestionDelete: (qId: string) => void;
   onQuestionAdd: (question: Question) => void;
-  onQuestionAddAfter: (afterIndex: number, question: Question) => void;
-  onConditionAdd: () => void;
+  onQuestionAddAtPosition: (question: Question, position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onConditionAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onConditionChange: (cId: string, patch: Partial<ConditionNodeData>) => void;
   onConditionDelete: (cId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
@@ -57,10 +60,12 @@ function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number
   return stored ? { x: stored.x, y: stored.y } : { x: fallbackX, y: fallbackY };
 }
 
-export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAfter, onConditionAdd, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
+function FlowCanvasInner({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAtPosition, onConditionAddAtPosition, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectStartRef = useRef<{ nodeId: string; handleId?: string | null } | null>(null);
+  const [dropMenu, setDropMenu] = useState<{ screenPos: { x: number; y: number }; flowPos: { x: number; y: number }; sourceNodeId: string; sourceHandle?: string } | null>(null);
+  const { screenToFlowPosition } = useReactFlow();
 
-  // Build nodes from form data
   const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
 
@@ -68,7 +73,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       id: 'start',
       type: 'startNode',
       position: getStoredPosition(form, 'start', 0, 0),
-      data: { onAdd: onQuestionAdd, onAddCondition: onConditionAdd },
+      data: {},
     });
 
     form.questions.forEach((q, i) => {
@@ -82,8 +87,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
           index: i,
           onChange: (patch: Partial<Question>) => onQuestionChange(q.id, patch),
           onDelete: () => onQuestionDelete(q.id),
-          onAddAfter: (newQ: Question) => onQuestionAddAfter(i, newQ),
-          onAddCondition: onConditionAdd,
         },
       });
     });
@@ -108,7 +111,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     });
 
     return n;
-  }, [form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAfter, onConditionAdd, onConditionChange, onConditionDelete]);
+  }, [form, onQuestionChange, onQuestionDelete, onConditionChange, onConditionDelete]);
 
   const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {
@@ -121,7 +124,6 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
         ...defaultEdgeOptions,
       }));
     }
-    // Default: linear chain
     const e: Edge[] = [];
     form.questions.forEach((q, i) => {
       const nodeId = `q-${q.id}`;
@@ -134,38 +136,30 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
   const [nodes, setNodes, onNodesChangeBase] = useNodesState(buildNodes());
   const [edges, setEdges, onEdgesChangeBase] = useEdgesState(buildEdges());
 
-  // Sync nodes when form changes (questions added/removed/edited, conditions changed)
   const prevFormRef = useRef(form);
   useEffect(() => {
     const prev = prevFormRef.current;
     prevFormRef.current = form;
 
-    // Check if structure changed (not just positions)
     const questionsChanged = prev.questions !== form.questions;
     const conditionsChanged = prev.conditions !== form.conditions;
 
     if (questionsChanged || conditionsChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
-        // Preserve positions of existing nodes from current canvas state
         return newNodes.map(nn => {
           const existing = currentNodes.find(cn => cn.id === nn.id);
-          if (existing) {
-            return { ...nn, position: existing.position };
-          }
-          return nn;
+          return existing ? { ...nn, position: existing.position } : nn;
         });
       });
     }
 
-    // Only rebuild edges if flowEdges or question list changed
     const edgesChanged = prev.flowEdges !== form.flowEdges;
     if (edgesChanged || questionsChanged) {
       setEdges(buildEdges());
     }
   }, [form, buildNodes, buildEdges, setNodes, setEdges]);
 
-  // Debounced save of positions
   const savePositions = useCallback((changedNodes: Node[]) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -189,20 +183,14 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     onNodesChangeBase(changes);
     const hasDragEnd = changes.some(c => c.type === 'position' && c.dragging === false);
     if (hasDragEnd) {
-      setNodes(prev => {
-        savePositions(prev);
-        return prev;
-      });
+      setNodes(prev => { savePositions(prev); return prev; });
     }
   }, [onNodesChangeBase, savePositions, setNodes]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
     if (changes.some(c => c.type === 'remove')) {
-      setEdges(prev => {
-        saveEdges(prev);
-        return prev;
-      });
+      setEdges(prev => { saveEdges(prev); return prev; });
     }
   }, [onEdgesChangeBase, saveEdges, setEdges]);
 
@@ -223,14 +211,56 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     });
   }, [setEdges, saveEdges]);
 
+  // Track connection start
+  const onConnectStart = useCallback((_: any, params: { nodeId: string | null; handleId: string | null }) => {
+    connectStartRef.current = params.nodeId ? { nodeId: params.nodeId, handleId: params.handleId } : null;
+  }, []);
+
+  // When connection dropped on empty space, show menu
+  const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
+    if (!connectStartRef.current) return;
+
+    const target = event.target as HTMLElement;
+    // If dropped on a node handle, React Flow handles it via onConnect
+    if (target.closest('.react-flow__handle')) return;
+
+    const clientX = 'changedTouches' in event ? event.changedTouches[0].clientX : (event as MouseEvent).clientX;
+    const clientY = 'changedTouches' in event ? event.changedTouches[0].clientY : (event as MouseEvent).clientY;
+
+    const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
+
+    setDropMenu({
+      screenPos: { x: clientX, y: clientY },
+      flowPos,
+      sourceNodeId: connectStartRef.current.nodeId,
+      sourceHandle: connectStartRef.current.handleId || undefined,
+    });
+
+    connectStartRef.current = null;
+  }, [screenToFlowPosition]);
+
+  const handleDropAdd = useCallback((question: Question) => {
+    if (!dropMenu) return;
+    onQuestionAddAtPosition(question, dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onQuestionAddAtPosition]);
+
+  const handleDropAddCondition = useCallback(() => {
+    if (!dropMenu) return;
+    onConditionAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onConditionAddAtPosition]);
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
         onEdgesDelete={onEdgeDelete}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -259,6 +289,23 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
           zoomable
         />
       </ReactFlow>
+
+      {dropMenu && (
+        <ConnectDropMenu
+          position={dropMenu.screenPos}
+          onAdd={handleDropAdd}
+          onAddCondition={handleDropAddCondition}
+          onClose={() => setDropMenu(null)}
+        />
+      )}
     </div>
+  );
+}
+
+export default function FlowCanvas(props: Props) {
+  return (
+    <ReactFlowProvider>
+      <FlowCanvasInner {...props} />
+    </ReactFlowProvider>
   );
 }
