@@ -47,6 +47,7 @@ interface Props {
   onQuestionChange: (qId: string, patch: Partial<Question>) => void;
   onQuestionDelete: (qId: string) => void;
   onQuestionAdd: (question: Question) => void;
+  onQuestionAddAfter: (afterIndex: number, question: Question) => void;
   onConditionAdd: () => void;
   onConditionChange: (cId: string, patch: Partial<ConditionNodeData>) => void;
   onConditionDelete: (cId: string) => void;
@@ -58,7 +59,7 @@ function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number
   return stored ? { x: stored.x, y: stored.y } : { x: fallbackX, y: fallbackY };
 }
 
-export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onConditionAdd, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
+export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAfter, onConditionAdd, onConditionChange, onConditionDelete, onFormUpdate }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Build nodes from form data
@@ -69,7 +70,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
       id: 'start',
       type: 'startNode',
       position: getStoredPosition(form, 'start', 0, 0),
-      data: {},
+      data: { onAdd: onQuestionAdd, onAddCondition: onConditionAdd },
     });
 
     form.questions.forEach((q, i) => {
@@ -83,6 +84,8 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
           index: i,
           onChange: (patch: Partial<Question>) => onQuestionChange(q.id, patch),
           onDelete: () => onQuestionDelete(q.id),
+          onAddAfter: (newQ: Question) => onQuestionAddAfter(i, newQ),
+          onAddCondition: onConditionAdd,
         },
       });
     });
@@ -113,7 +116,7 @@ export default function FlowCanvas({ form, onQuestionChange, onQuestionDelete, o
     });
 
     return n;
-  }, [form, onQuestionChange, onQuestionDelete, onQuestionAdd, onConditionAdd, onConditionChange, onConditionDelete]);
+  }, [form, onQuestionChange, onQuestionDelete, onQuestionAdd, onQuestionAddAfter, onConditionAdd, onConditionChange, onConditionDelete]);
 
   const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {
