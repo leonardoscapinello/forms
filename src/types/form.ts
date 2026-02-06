@@ -1,16 +1,59 @@
 export type QuestionType =
+  // Contact Info
+  | 'contact_info'
+  | 'email'
+  | 'phone'
+  | 'address'
+  | 'website'
+  // Text & Video
   | 'short_text'
   | 'long_text'
+  // Choice
   | 'multiple_choice'
   | 'single_choice'
+  | 'dropdown'
+  | 'yes_no'
+  | 'legal'
+  | 'checkbox'
+  // Rating & Ranking
+  | 'nps'
+  | 'opinion_scale'
   | 'rating'
-  | 'email'
+  | 'ranking'
+  // Other
   | 'number'
-  | 'date';
+  | 'date'
+  | 'file_upload'
+  | 'statement'
+  | 'welcome_screen'
+  | 'end_screen'
+  | 'redirect_url';
+
+export type QuestionCategory =
+  | 'contact_info'
+  | 'text'
+  | 'choice'
+  | 'rating_ranking'
+  | 'other';
 
 export interface QuestionOption {
   id: string;
   label: string;
+  imageUrl?: string;
+}
+
+export interface InputMask {
+  type: 'none' | 'cpf' | 'cnpj' | 'cep' | 'phone' | 'currency' | 'custom';
+  pattern?: string; // for custom masks
+}
+
+export interface ValidationRule {
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  regex?: string;
+  customError?: string;
 }
 
 export interface Question {
@@ -22,6 +65,21 @@ export interface Question {
   required: boolean;
   options?: QuestionOption[];
   maxRating?: number;
+  // Advanced config
+  mask?: InputMask;
+  validation?: ValidationRule;
+  // For redirect
+  redirectUrl?: string;
+  // For statement / welcome / end
+  buttonText?: string;
+  // For opinion scale / NPS
+  scaleMin?: number;
+  scaleMax?: number;
+  labelMin?: string;
+  labelMax?: string;
+  // For file upload
+  allowedFileTypes?: string[];
+  maxFileSize?: number; // MB
 }
 
 export interface FormStyle {
@@ -47,20 +105,59 @@ export interface FormData {
   completionRate: number;
 }
 
+export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {
+  contact_info: {
+    label: 'Informações de Contato',
+    types: ['contact_info', 'email', 'phone', 'address', 'website'],
+  },
+  text: {
+    label: 'Texto',
+    types: ['short_text', 'long_text'],
+  },
+  choice: {
+    label: 'Escolha',
+    types: ['multiple_choice', 'single_choice', 'dropdown', 'yes_no', 'legal', 'checkbox'],
+  },
+  rating_ranking: {
+    label: 'Avaliação & Ranking',
+    types: ['nps', 'opinion_scale', 'rating', 'ranking'],
+  },
+  other: {
+    label: 'Outros',
+    types: ['number', 'date', 'file_upload', 'statement', 'welcome_screen', 'end_screen', 'redirect_url'],
+  },
+};
+
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+  contact_info: 'Informações de Contato',
+  email: 'Email',
+  phone: 'Telefone',
+  address: 'Endereço',
+  website: 'Website',
   short_text: 'Texto curto',
   long_text: 'Texto longo',
   multiple_choice: 'Múltipla escolha',
   single_choice: 'Seleção única',
+  dropdown: 'Dropdown',
+  yes_no: 'Sim/Não',
+  legal: 'Termos legais',
+  checkbox: 'Checkbox',
+  nps: 'NPS',
+  opinion_scale: 'Escala de opinião',
   rating: 'Avaliação',
-  email: 'Email',
+  ranking: 'Ranking',
   number: 'Número',
   date: 'Data',
+  file_upload: 'Upload de arquivo',
+  statement: 'Statement',
+  welcome_screen: 'Tela de boas-vindas',
+  end_screen: 'Tela final',
+  redirect_url: 'Redirecionar URL',
 };
 
 export const DEFAULT_FORM_STYLE: FormStyle = {
-  primaryColor: '222.2 47.4% 11.2%',
-  backgroundColor: '0 0% 100%',
+  primaryColor: '220 18% 20%',
+  backgroundColor: '30 20% 98%',
   fontFamily: 'Inter',
 };
 
@@ -70,17 +167,47 @@ export function createDefaultQuestion(type: QuestionType): Question {
     type,
     title: '',
     required: false,
+    mask: { type: 'none' },
   };
 
-  if (type === 'multiple_choice' || type === 'single_choice') {
+  if (type === 'multiple_choice' || type === 'single_choice' || type === 'dropdown' || type === 'ranking') {
     base.options = [
       { id: crypto.randomUUID(), label: 'Opção 1' },
       { id: crypto.randomUUID(), label: 'Opção 2' },
     ];
   }
 
-  if (type === 'rating') {
-    base.maxRating = 5;
+  if (type === 'rating') base.maxRating = 5;
+
+  if (type === 'yes_no') {
+    base.options = [
+      { id: crypto.randomUUID(), label: 'Sim' },
+      { id: crypto.randomUUID(), label: 'Não' },
+    ];
+  }
+
+  if (type === 'nps') {
+    base.scaleMin = 0;
+    base.scaleMax = 10;
+    base.labelMin = 'Nada provável';
+    base.labelMax = 'Extremamente provável';
+  }
+
+  if (type === 'opinion_scale') {
+    base.scaleMin = 1;
+    base.scaleMax = 5;
+    base.labelMin = 'Discordo';
+    base.labelMax = 'Concordo';
+  }
+
+  if (type === 'phone') base.mask = { type: 'phone' };
+  if (type === 'welcome_screen') base.buttonText = 'Começar';
+  if (type === 'end_screen') base.buttonText = 'Enviar novamente';
+  if (type === 'statement') base.buttonText = 'Continuar';
+  if (type === 'legal') base.required = true;
+  if (type === 'file_upload') {
+    base.allowedFileTypes = ['image/*', 'application/pdf'];
+    base.maxFileSize = 10;
   }
 
   return base;

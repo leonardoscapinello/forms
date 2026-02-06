@@ -1,26 +1,18 @@
 import { QuestionType, QUESTION_TYPE_LABELS, createDefaultQuestion } from '@/types/form';
-import { Question } from '@/types/form';
+import { Question, QUESTION_CATEGORIES } from '@/types/form';
+import { QUESTION_TYPE_ICONS } from '@/components/editor/questionIcons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Type, AlignLeft, List, CircleDot, Star, Mail, Hash, Calendar } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
-const ICONS: Record<QuestionType, React.ReactNode> = {
-  short_text: <Type className="h-4 w-4" />,
-  long_text: <AlignLeft className="h-4 w-4" />,
-  multiple_choice: <List className="h-4 w-4" />,
-  single_choice: <CircleDot className="h-4 w-4" />,
-  rating: <Star className="h-4 w-4" />,
-  email: <Mail className="h-4 w-4" />,
-  number: <Hash className="h-4 w-4" />,
-  date: <Calendar className="h-4 w-4" />,
-};
-
-const TYPES = Object.keys(QUESTION_TYPE_LABELS) as QuestionType[];
+const CATEGORY_ORDER = ['contact_info', 'text', 'choice', 'rating_ranking', 'other'] as const;
 
 interface Props {
   onAdd: (question: Question) => void;
@@ -35,13 +27,27 @@ export default function AddQuestionMenu({ onAdd }: Props) {
           Adicionar pergunta
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="w-56">
-        {TYPES.map(type => (
-          <DropdownMenuItem key={type} onClick={() => onAdd(createDefaultQuestion(type))}>
-            {ICONS[type]}
-            <span className="ml-2">{QUESTION_TYPE_LABELS[type]}</span>
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="center" className="w-64 max-h-96 overflow-y-auto bg-popover z-50">
+        {CATEGORY_ORDER.map((catKey, catIdx) => {
+          const cat = QUESTION_CATEGORIES[catKey];
+          return (
+            <div key={catKey}>
+              {catIdx > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {cat.label}
+              </DropdownMenuLabel>
+              {cat.types.map(type => {
+                const Icon = QUESTION_TYPE_ICONS[type];
+                return (
+                  <DropdownMenuItem key={type} onClick={() => onAdd(createDefaultQuestion(type))}>
+                    <Icon className="h-4 w-4 mr-2" />
+                    <span>{QUESTION_TYPE_LABELS[type]}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </div>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
