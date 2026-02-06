@@ -40,8 +40,10 @@ serve(async (req) => {
       );
     }
 
+    // Strip protocol if user included it in the endpoint
+    const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
     const protocol = useSSL ? 'https' : 'http';
-    const host = port ? `${endpoint}:${port}` : endpoint;
+    const host = port ? `${cleanEndpoint}:${port}` : cleanEndpoint;
     const url = `${protocol}://${host}/${bucket}/`;
 
     // Build AWS Signature V4
