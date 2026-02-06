@@ -39,7 +39,7 @@ export default function FormEditor() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-10 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex items-center gap-3 py-3 px-6">
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4" />
@@ -47,7 +47,7 @@ export default function FormEditor() {
           <Input
             value={form.title}
             onChange={e => updateForm(form.id, { title: e.target.value })}
-            className="text-lg font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-md"
+            className="text-lg font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-md bg-transparent"
             placeholder="Título do formulário"
           />
           <div className="ml-auto flex items-center gap-2">
@@ -61,6 +61,7 @@ export default function FormEditor() {
             </Button>
             <Button
               size="sm"
+              className="gradient-primary border-0 text-primary-foreground hover:opacity-90"
               onClick={() => updateForm(form.id, { status: form.status === 'published' ? 'draft' : 'published' })}
             >
               {form.status === 'published' ? 'Despublicar' : 'Publicar'}
