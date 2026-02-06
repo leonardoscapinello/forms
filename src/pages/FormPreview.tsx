@@ -41,6 +41,12 @@ export default function FormPreview() {
   const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
+  const [blinkId, setBlinkId] = useState<string | null>(null);
+
+  const triggerBlink = useCallback((optId: string) => {
+    setBlinkId(optId);
+    setTimeout(() => setBlinkId(null), 500);
+  }, []);
 
   const totalSteps = form?.questions.length ?? 0;
   const isWelcome = step === -1;
@@ -95,6 +101,7 @@ export default function FormPreview() {
           const options = currentQuestion.options || [];
           if (letterIndex < options.length) {
             const opt = options[letterIndex];
+            triggerBlink(opt.id);
             if (currentQuestion.type === 'single_choice') {
               setAnswer(opt.id);
             } else if (currentQuestion.type === 'multiple_choice') {
@@ -107,7 +114,7 @@ export default function FormPreview() {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [currentQuestion, goNext, goBack, setAnswer, toggleMulti]);
+  }, [currentQuestion, goNext, goBack, setAnswer, toggleMulti, triggerBlink]);
 
   if (!form) return null;
 
@@ -204,6 +211,8 @@ export default function FormPreview() {
                     onChange={setAnswer}
                     onToggleMulti={toggleMulti}
                     onNext={goNext}
+                    blinkId={blinkId}
+                    triggerBlink={triggerBlink}
                   />
                 </div>
               </div>
@@ -236,22 +245,23 @@ function FieldRenderer({
   onChange,
   onToggleMulti,
   onNext,
+  blinkId,
+  triggerBlink,
 }: {
   question: any;
   value: any;
   onChange: (v: any) => void;
   onToggleMulti: (optionId: string) => void;
   onNext: () => void;
+  blinkId: string | null;
+  triggerBlink: (id: string) => void;
 }) {
   const q = question;
-  // Track which option just blinked
-  const [blinkId, setBlinkId] = useState<string | null>(null);
 
   const handleSelect = useCallback((optId: string, selectFn: () => void) => {
-    setBlinkId(optId);
+    triggerBlink(optId);
     selectFn();
-    setTimeout(() => setBlinkId(null), 400);
-  }, []);
+  }, [triggerBlink]);
 
   // Text-like inputs — large underline style
   if (['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(q.type)) {
