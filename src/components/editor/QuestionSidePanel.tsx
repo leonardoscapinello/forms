@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
 import { Question, QUESTION_TYPE_LABELS, InputMask, QuestionType, RoutingMode } from '@/types/form';
 import GraphicSidePanelSection from './GraphicSidePanelSection';
+import ChartDesigner from './ChartDesigner';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Trash2, Plus, X, ArrowRight, GitBranch } from 'lucide-react';
+import { Trash2, Plus, X, ArrowRight, GitBranch, Palette } from 'lucide-react';
 import { QUESTION_TYPE_ICONS } from '@/components/editor/questionIcons';
 import { getNodeCategoryStyle } from './nodeCategoryStyles';
 import {
@@ -57,6 +58,7 @@ const CHOICE_TYPES: QuestionType[] = ['multiple_choice', 'single_choice', 'dropd
 
 export default function QuestionSidePanel({ question, index, onChange, onDelete, onClose, routingTargets }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showChartDesigner, setShowChartDesigner] = useState(false);
   const Icon = QUESTION_TYPE_ICONS[question.type];
   const catStyle = getNodeCategoryStyle(question.type);
   const hasMask = SUPPORTS_MASK.includes(question.type);
@@ -197,7 +199,17 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
 
           {/* Graphic config */}
           {question.type === 'graphic' && (
-            <GraphicSidePanelSection question={question} onChange={onChange} />
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full gap-2 text-xs h-9 border-dashed hover:border-primary hover:text-primary"
+                onClick={() => setShowChartDesigner(true)}
+              >
+                <Palette className="h-3.5 w-3.5" />
+                Abrir Chart Designer
+              </Button>
+              <GraphicSidePanelSection question={question} onChange={onChange} />
+            </div>
           )}
 
           {/* Options */}
@@ -423,6 +435,14 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
         onConfirm={() => { setShowDeleteConfirm(false); onDelete(); }}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {showChartDesigner && question.type === 'graphic' && (
+        <ChartDesigner
+          question={question}
+          onChange={onChange}
+          onClose={() => setShowChartDesigner(false)}
+        />
+      )}
     </div>
   );
 }
