@@ -61,23 +61,32 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
     const ext = file.name.split('.').pop() || 'bin';
     const path = `uploads/${crypto.randomUUID()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('form-uploads')
-      .upload(path, file, { contentType: file.type });
+    // Upload via MinIO edge function
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
 
-    if (uploadError) {
-      setError(`Erro ao enviar: ${uploadError.message}`);
+    const res = await supabase.functions.invoke('minio-upload', {
+      body: formData,
+    });
+
+    if (res.error) {
+      setError(`Erro ao enviar: ${res.error.message}`);
       return null;
     }
 
-    const { data: urlData } = supabase.storage.from('form-uploads').getPublicUrl(path);
+    const data = res.data as any;
+    if (!data?.success) {
+      setError(data?.message || 'Erro ao enviar arquivo.');
+      return null;
+    }
 
     return {
       name: file.name,
       size: file.size,
       type: file.type,
-      url: urlData.publicUrl,
-      path,
+      url: data.url,
+      path: data.path,
     };
   }, [maxFileSize, allowedFileTypes]);
 
@@ -99,8 +108,10 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
 
   const removeFile = useCallback(async (index: number) => {
     const file = files[index];
-    // Try to delete from storage
-    await supabase.storage.from('form-uploads').remove([file.path]);
+    // Delete from MinIO via edge function
+    await supabase.functions.invoke('minio-delete', {
+      body: { path: file.path },
+    });
     onChange(files.filter((_, i) => i !== index));
   }, [files, onChange]);
 
@@ -148,7 +159,7 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
 
           <div>
             <p className={`text-lg font-medium transition-colors ${dragging ? 'text-primary' : 'text-foreground'}`}>
-              {uploading ? 'Enviando...' : dragging ? 'Solte aqui' : 'Arraste ou clique para enviar'}
+              {uploading ? 'Enviando para MinIO...' : dragging ? 'Solte aqui' : 'Arraste ou clique para enviar'}
             </p>
             <p className="text-sm text-muted-foreground/60 mt-1">
               Máx: {maxFileSize}MB
@@ -178,7 +189,6 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
                 key={i}
                 className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 group hover:border-primary/20 transition-colors"
               >
-                {/* Thumbnail or icon */}
                 {isImage ? (
                   <div className="h-12 w-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                     <img src={file.url} alt={file.name} className="h-full w-full object-cover" />
@@ -189,13 +199,11 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
                   </div>
                 )}
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
                   <p className="text-xs text-muted-foreground">{formatSize(file.size)}</p>
                 </div>
 
-                {/* Status + remove */}
                 <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
                 <Button
                   variant="ghost"

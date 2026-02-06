@@ -3,6 +3,12 @@ project_id = "mbryndcvumhfjgmogifs"
 [functions.minio-test]
 verify_jwt = false
 
+[functions.minio-upload]
+verify_jwt = false
+
+[functions.minio-delete]
+verify_jwt = false
+
 [functions.admin-create-user]
 verify_jwt = false
 
