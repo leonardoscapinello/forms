@@ -249,8 +249,9 @@ export default function FormPreview() {
           if (letterIndex < options.length) {
             const opt = options[letterIndex];
             triggerBlink(opt.id);
-            if (currentQuestion.type === 'single_choice') {
+            if (currentQuestion.type === 'single_choice' || currentQuestion.type === 'yes_no') {
               setAnswer(opt.id);
+              setTimeout(() => goNext(), 500);
             } else if (currentQuestion.type === 'multiple_choice') {
               toggleMulti(opt.id);
             }
@@ -413,10 +414,13 @@ function FieldRenderer({
 }) {
   const q = question;
 
-  const handleSelect = useCallback((optId: string, selectFn: () => void) => {
+  const handleSelect = useCallback((optId: string, selectFn: () => void, autoAdvance = false) => {
     triggerBlink(optId);
     selectFn();
-  }, [triggerBlink]);
+    if (autoAdvance) {
+      setTimeout(() => onNext(), 500); // advance after blink animation completes
+    }
+  }, [triggerBlink, onNext]);
 
   // Text-like inputs — large underline style
   if (['short_text', 'email', 'number', 'phone', 'website', 'address'].includes(q.type)) {
@@ -480,7 +484,7 @@ function FieldRenderer({
         {(q.options || []).map((opt: any, i: number) => (
           <button
             key={opt.id}
-            onClick={() => handleSelect(opt.id, () => onChange(opt.id))}
+            onClick={() => handleSelect(opt.id, () => onChange(opt.id), true)}
             className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
               blinkId === opt.id ? 'animate-option-blink' :
               value === opt.id
@@ -554,7 +558,7 @@ function FieldRenderer({
         {[{ key: 'Sim', letter: 'S' }, { key: 'Não', letter: 'N' }].map(item => (
           <button
             key={item.key}
-            onClick={() => handleSelect(item.key, () => onChange(item.key))}
+            onClick={() => handleSelect(item.key, () => onChange(item.key), true)}
             className={`flex-1 px-5 py-4 rounded-xl border-2 text-lg font-medium transition-all flex items-center justify-center gap-3 ${
               blinkId === item.key ? 'animate-option-blink' :
               value === item.key
