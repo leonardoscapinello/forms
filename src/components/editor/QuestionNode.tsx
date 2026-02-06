@@ -284,12 +284,15 @@ function NodeSummary({ question }: { question: Question }) {
     ) : null;
   }
 
-  // Graphic (display-only info block)
+  // Graphic (display-only visualization block)
   if (q.type === 'graphic') {
+    const variant = q.graphicVariant || 'kpis';
+    const itemCount = q.graphicData?.length || 0;
+    const variantLabels: Record<string, string> = { chart: '📈 Gráfico', timeline: '📅 Timeline', steps: '🔢 Steps', kpis: '📊 KPIs' };
     return (
       <div className="rounded-lg bg-muted/50 border border-border px-2.5 py-2 text-center space-y-0.5">
-        {q.emoji && <span className="text-lg">{q.emoji}</span>}
-        {q.description && <p className="text-[9px] text-muted-foreground truncate">{q.description}</p>}
+        <span className="text-[10px] font-medium text-muted-foreground">{variantLabels[variant]}</span>
+        <p className="text-[9px] text-muted-foreground/60">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</p>
       </div>
     );
   }

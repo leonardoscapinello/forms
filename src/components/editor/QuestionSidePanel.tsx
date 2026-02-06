@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Question, QUESTION_TYPE_LABELS, InputMask, QuestionType, RoutingMode } from '@/types/form';
+import GraphicSidePanelSection from './GraphicSidePanelSection';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -196,28 +197,7 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
 
           {/* Graphic config */}
           {question.type === 'graphic' && (
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Emoji / Ícone</Label>
-                <Input
-                  value={question.emoji || ''}
-                  onChange={e => onChange({ emoji: e.target.value })}
-                  placeholder="📊"
-                  className="text-lg text-center w-20"
-                  maxLength={4}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Descrição</Label>
-                <Textarea
-                  value={question.description || ''}
-                  onChange={e => onChange({ description: e.target.value })}
-                  placeholder="Texto informativo exibido ao respondente..."
-                  className="text-xs"
-                  rows={3}
-                />
-              </div>
-            </div>
+            <GraphicSidePanelSection question={question} onChange={onChange} />
           )}
 
           {/* Options */}

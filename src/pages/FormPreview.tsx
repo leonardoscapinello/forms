@@ -11,6 +11,7 @@ import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 import AddressFieldPreview from '@/components/preview/AddressFieldPreview';
 import WebsiteFieldPreview from '@/components/preview/WebsiteFieldPreview';
 import FileUploadPreview from '@/components/preview/FileUploadPreview';
+import GraphicPreview from '@/components/preview/GraphicPreview';
 
 /** Typeform-style underline input — large, clean */
 function TypeformInput({
@@ -740,17 +741,16 @@ function FieldRenderer({
     );
   }
 
-  // Graphic (display-only informational block)
+  // Graphic (display-only visualization block)
   if (q.type === 'graphic') {
     return (
-      <div className="flex flex-col items-center gap-4 py-6">
-        {q.emoji && <span className="text-5xl">{q.emoji}</span>}
-        {q.description && (
-          <p className="text-base text-muted-foreground text-center max-w-md whitespace-pre-line leading-relaxed">
-            {q.description}
-          </p>
-        )}
-      </div>
+      <GraphicPreview
+        variant={q.graphicVariant || 'kpis'}
+        chartType={q.graphicChartType || 'bar'}
+        items={q.graphicData || []}
+        title={q.title}
+        description={q.description}
+      />
     );
   }
 
