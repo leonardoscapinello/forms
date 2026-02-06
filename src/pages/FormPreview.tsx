@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { resolveConditionNextNode } from '@/lib/conditionEvaluator';
 
 /** Typeform-style underline input — large, clean */
 function TypeformInput({
@@ -109,30 +110,66 @@ export default function FormPreview() {
     setTimeout(() => setShaking(false), 600);
   }, []);
 
+  /**
+   * Follow edges from a given node, recursively resolving condition nodes
+   * until we reach a question node or dead-end.
+   * Prevents infinite loops with a visited set.
+   */
+  const walkGraph = useCallback((fromNodeId: string, visited = new Set<string>()): string | null => {
+    if (!form || visited.has(fromNodeId)) return null;
+    visited.add(fromNodeId);
+
+    let nextNodeId: string | null = null;
+
+    // Per-option routing from question nodes
+    if (fromNodeId.startsWith('q-') && currentQuestion?.routingMode === 'per_option' && currentQuestion.options) {
+      const answer = answers[currentQuestion.id];
+      const selectedOption = currentQuestion.options.find(o => o.id === answer);
+      if (selectedOption?.nextNodeId) {
+        nextNodeId = selectedOption.nextNodeId;
+      } else {
+        const optionEdge = form.flowEdges?.find(e =>
+          e.source === fromNodeId && e.sourceHandle === `option-${answer}`
+        );
+        if (optionEdge) nextNodeId = optionEdge.target;
+      }
+    }
+
+    // Condition nodes: evaluate branches and follow matching branch edge
+    if (fromNodeId.startsWith('c-')) {
+      const condId = fromNodeId.replace('c-', '');
+      const cond = (form.conditions || []).find(c => c.id === condId);
+      if (cond) {
+        nextNodeId = resolveConditionNextNode(fromNodeId, cond, answers, form.flowEdges || []);
+      }
+    }
+
+    // Default edge (if nothing resolved yet)
+    if (!nextNodeId) {
+      const edge = form.flowEdges?.find(e =>
+        e.source === fromNodeId && !e.sourceHandle?.startsWith('option-') && !e.sourceHandle?.startsWith('branch-')
+      );
+      nextNodeId = edge?.target || null;
+    }
+
+    if (!nextNodeId) return null;
+
+    // If we landed on a question node, return it
+    if (nextNodeId.startsWith('q-')) return nextNodeId;
+
+    // If we landed on a condition node, recursively evaluate it
+    if (nextNodeId.startsWith('c-')) return walkGraph(nextNodeId, visited);
+
+    // Unknown node type — dead end
+    return null;
+  }, [form, currentQuestion, answers]);
+
   /** Resolve the next node ID by following edges from the current node */
   const resolveNextNodeId = useCallback((): string | null => {
     if (!form) return null;
     const sourceId = currentNodeId || 'start';
-
-    // Per-option routing: check option handles/edges
-    if (currentQuestion?.routingMode === 'per_option' && currentQuestion.options) {
-      const answer = answers[currentQuestion.id];
-      // Check option's nextNodeId
-      const selectedOption = currentQuestion.options.find(o => o.id === answer);
-      if (selectedOption?.nextNodeId) return selectedOption.nextNodeId;
-      // Check edge from option handle
-      const optionEdge = form.flowEdges?.find(e =>
-        e.source === sourceId && e.sourceHandle === `option-${answer}`
-      );
-      if (optionEdge) return optionEdge.target;
-    }
-
-    // Default: follow the regular edge
-    const edge = form.flowEdges?.find(e =>
-      e.source === sourceId && !e.sourceHandle?.startsWith('option-') && !e.sourceHandle?.startsWith('branch-')
-    );
-    return edge?.target || null;
-  }, [form, currentNodeId, currentQuestion, answers]);
+    return walkGraph(sourceId);
+  }, [form, currentNodeId, walkGraph]);
 
   const goNext = useCallback(() => {
     if (currentQuestion && currentQuestion.required && !isCurrentAnswerValid()) {
