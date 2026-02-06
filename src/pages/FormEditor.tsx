@@ -39,8 +39,8 @@ export default function FormEditor() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex items-center gap-3 py-3 px-6">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="flex items-center gap-3 py-3 px-6">
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -61,7 +61,6 @@ export default function FormEditor() {
             </Button>
             <Button
               size="sm"
-              className="gradient-primary border-0 text-primary-foreground hover:opacity-90"
               onClick={() => updateForm(form.id, { status: form.status === 'published' ? 'draft' : 'published' })}
             >
               {form.status === 'published' ? 'Despublicar' : 'Publicar'}
@@ -70,7 +69,7 @@ export default function FormEditor() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-2xl px-6 py-8">
+      <main className="max-w-2xl mx-auto px-6 py-8">
         <div className="space-y-3 mb-6">
           {form.questions.map((q, i) => (
             <QuestionCard

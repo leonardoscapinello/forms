@@ -2,81 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* FormFlow Design System — Light warm theme inspired by ecosystem reference */
 
 @layer base {
   :root {
-    /* Dark theme as default — matching ecosystem reference */
-    --background: 240 15% 8%;
-    --foreground: 0 0% 95%;
+    --background: 30 20% 98%;
+    --foreground: 220 20% 14%;
 
-    --card: 240 14% 11%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 14%;
 
-    --popover: 240 14% 13%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 14%;
 
-    --primary: 262 80% 60%;
+    --primary: 220 18% 20%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 12% 16%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 30 15% 95%;
+    --secondary-foreground: 220 18% 20%;
 
-    --muted: 240 12% 16%;
-    --muted-foreground: 240 8% 55%;
+    --muted: 30 10% 94%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 262 60% 20%;
-    --accent-foreground: 262 80% 75%;
+    --accent: 30 15% 93%;
+    --accent-foreground: 220 18% 20%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 12% 18%;
-    --input: 240 12% 18%;
-    --ring: 262 80% 60%;
+    --border: 30 12% 90%;
+    --input: 30 12% 90%;
+    --ring: 220 18% 20%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 240 14% 10%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 262 80% 60%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 10% 46%;
+    --sidebar-primary: 220 18% 20%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 262 60% 15%;
-    --sidebar-accent-foreground: 262 80% 75%;
-    --sidebar-border: 240 12% 18%;
-    --sidebar-ring: 262 80% 60%;
+    --sidebar-accent: 30 15% 96%;
+    --sidebar-accent-foreground: 220 18% 20%;
+    --sidebar-border: 30 12% 92%;
+    --sidebar-ring: 220 18% 20%;
+
+    /* Semantic extras */
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 240 15% 8%;
-    --foreground: 0 0% 95%;
-    --card: 240 14% 11%;
-    --card-foreground: 0 0% 95%;
-    --popover: 240 14% 13%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 262 80% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 12% 16%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 240 12% 16%;
-    --muted-foreground: 240 8% 55%;
-    --accent: 262 60% 20%;
-    --accent-foreground: 262 80% 75%;
+    --background: 220 18% 10%;
+    --foreground: 30 10% 94%;
+    --card: 220 16% 13%;
+    --card-foreground: 30 10% 94%;
+    --popover: 220 16% 13%;
+    --popover-foreground: 30 10% 94%;
+    --primary: 30 15% 95%;
+    --primary-foreground: 220 18% 10%;
+    --secondary: 220 14% 18%;
+    --secondary-foreground: 30 10% 94%;
+    --muted: 220 14% 18%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 220 14% 20%;
+    --accent-foreground: 30 10% 94%;
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 12% 18%;
-    --input: 240 12% 18%;
-    --ring: 262 80% 60%;
-    --sidebar-background: 240 14% 10%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 262 80% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 262 60% 15%;
-    --sidebar-accent-foreground: 262 80% 75%;
-    --sidebar-border: 240 12% 18%;
-    --sidebar-ring: 262 80% 60%;
+    --border: 220 14% 20%;
+    --input: 220 14% 20%;
+    --ring: 30 15% 95%;
+    --sidebar-background: 220 16% 11%;
+    --sidebar-foreground: 220 10% 55%;
+    --sidebar-primary: 30 15% 95%;
+    --sidebar-primary-foreground: 220 18% 10%;
+    --sidebar-accent: 220 14% 16%;
+    --sidebar-accent-foreground: 30 10% 94%;
+    --sidebar-border: 220 14% 18%;
+    --sidebar-ring: 30 15% 95%;
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
   }
 }
 
@@ -87,20 +94,6 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-}
-
-@layer utilities {
-  .glow-primary {
-    box-shadow: 0 0 20px hsl(262 80% 60% / 0.15);
-  }
-
-  .gradient-primary {
-    background: linear-gradient(135deg, hsl(262 80% 60%), hsl(280 70% 50%));
-  }
-
-  .border-glow {
-    border-color: hsl(262 80% 60% / 0.3);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
