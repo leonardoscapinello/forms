@@ -124,32 +124,32 @@ function RechartsLine({ items, style }: { items: GraphicDataItem[]; style: Chart
   );
 }
 
-// ─── Area (stacked multi-series) ────────────────────
+// ─── Area (filled, stacked look — visually distinct from line) ────
 function RechartsArea({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
-  const data = items.map(item => ({ name: item.label, value: parseFloat(item.value) || 0 }));
+  const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getColor(item, i) }));
   const dur = style.animated !== false ? 1000 : 0;
+  // Use multiple stacked areas with different colors for each segment
+  const color1 = getColor(items[0], 0);
+  const color2 = items.length > 1 ? getColor(items[Math.floor(items.length / 2)], Math.floor(items.length / 2)) : color1;
   return (
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 20 }}>
         <defs>
-          {items.map((item, i) => {
-            const c = getColor(item, i);
-            return (
-              <linearGradient key={item.id} id={`areaGrad-${item.id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={c} stopOpacity={0.4} />
-                <stop offset="95%" stopColor={c} stopOpacity={0.05} />
-              </linearGradient>
-            );
-          })}
+          <linearGradient id="areaGradFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color1} stopOpacity={0.6} />
+            <stop offset="50%" stopColor={color2} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color1} stopOpacity={0.05} />
+          </linearGradient>
         </defs>
         {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />}
         <XAxis dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
         <YAxis tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
         <Tooltip {...tooltipStyle} />
         {style.showLegend && <Legend />}
-        <Area type="monotone" dataKey="value" stroke={getColor(items[0], 0)} strokeWidth={2.5}
-          fill={`url(#areaGrad-${items[0]?.id})`}
-          dot={{ fill: getColor(items[0], 0), strokeWidth: 2, stroke: 'hsl(var(--card))', r: 4 }}
+        <Area type="natural" dataKey="value" stroke={color1} strokeWidth={2}
+          fill="url(#areaGradFill)" fillOpacity={1}
+          dot={false}
+          activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--card))', fill: color1 }}
           animationDuration={dur} animationEasing="ease-out" />
       </AreaChart>
     </ResponsiveContainer>
@@ -338,7 +338,7 @@ function ThermometerPreview({ items, style }: { items: GraphicDataItem[]; style:
 function SpeedometerPreview({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const animated = style.animated !== false;
   return (
-    <div className={`grid gap-6 w-full min-h-[300px] items-center ${
+    <div className={`grid gap-6 w-full min-h-[300px] items-center justify-items-center ${
       items.length === 1 ? 'grid-cols-1 max-w-[260px] mx-auto' :
       items.length === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'
     }`}>
@@ -347,16 +347,22 @@ function SpeedometerPreview({ items, style }: { items: GraphicDataItem[]; style:
         const max = parseFloat(item.suffix || '100') || 100;
         const pct = Math.min(Math.max(val / max, 0), 1);
         const color = getColor(item, i);
-        const cx = 70, cy = 65, r = 50;
-        const startAngle = Math.PI;
-        const valAngle = startAngle - pct * Math.PI;
-        const bgX1 = cx + r * Math.cos(Math.PI), bgX2 = cx + r * Math.cos(0);
+        const cx = 70, cy = 70, r = 50;
+        // Arc goes from left (180°) to right (0°) — top half
+        const startAngle = Math.PI; // left
+        const valAngle = startAngle - pct * Math.PI; // progress clockwise
+        const bgX1 = cx + r * Math.cos(Math.PI); // left point
+        const bgX2 = cx + r * Math.cos(0); // right point
         const bgD = `M${bgX1},${cy} A${r},${r} 0 0,1 ${bgX2},${cy}`;
-        const valX = cx + r * Math.cos(valAngle), valY = cy + r * Math.sin(valAngle);
+        // Value arc: from left towards right based on pct
+        const valEndX = cx + r * Math.cos(valAngle);
+        const valEndY = cy - r * Math.sin(valAngle); // subtract because SVG y is inverted for upper half
         const largeArc = pct > 0.5 ? 1 : 0;
-        const valD = pct > 0 ? `M${bgX1},${cy} A${r},${r} 0 ${largeArc},1 ${valX},${valY}` : '';
+        const valD = pct > 0 ? `M${bgX1},${cy} A${r},${r} 0 ${largeArc},0 ${valEndX},${valEndY}` : '';
+        // Needle
         const needleLen = r - 10;
-        const nx = cx + needleLen * Math.cos(valAngle), ny = cy + needleLen * Math.sin(valAngle);
+        const needleX = cx + needleLen * Math.cos(valAngle);
+        const needleY = cy - needleLen * Math.sin(valAngle);
 
         return (
           <motion.div key={item.id}
@@ -365,25 +371,28 @@ function SpeedometerPreview({ items, style }: { items: GraphicDataItem[]; style:
             transition={{ delay: i * 0.12, type: 'spring', stiffness: 200 }}
             className="flex flex-col items-center"
           >
-            <svg viewBox="0 0 140 80" className="w-full" style={{ maxWidth: 220 }}>
+            <svg viewBox="0 0 140 90" className="w-full" style={{ maxWidth: 220 }}>
               <defs>
                 <filter id={`glow-${i}`}><feGaussianBlur stdDeviation="2" result="coloredBlur" /><feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
               </defs>
+              {/* Background arc */}
               <path d={bgD} fill="none" stroke="hsl(var(--muted))" strokeWidth="10" strokeLinecap="round" />
+              {/* Value arc */}
               {pct > 0 && (
-                <motion.path d={valD} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" filter={`url(#glow-${i})`}
-                  initial={animated ? { pathLength: 0 } : { pathLength: 1 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 1, ease: 'easeOut', delay: i * 0.1 }} />
+                <path d={valD} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" filter={`url(#glow-${i})`} />
               )}
-              <motion.line x1={cx} y1={cy} x2={nx} y2={ny} stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round"
-                initial={animated ? { x2: cx + needleLen * Math.cos(Math.PI), y2: cy } : { x2: nx, y2: ny }}
-                animate={{ x2: nx, y2: ny }}
+              {/* Needle */}
+              <motion.line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round"
+                initial={animated ? { x2: bgX1, y2: cy } : { x2: needleX, y2: needleY }}
+                animate={{ x2: needleX, y2: needleY }}
                 transition={{ duration: 1.2, ease: [0.34, 1.56, 0.64, 1], delay: i * 0.1 }} />
+              {/* Center dot */}
               <circle cx={cx} cy={cy} r="5" fill="hsl(var(--foreground))" />
+              {/* Value text */}
               {style.showValues !== false && (
-                <text x={cx} y={cy - 14} textAnchor="middle" className="text-[14px] font-bold fill-foreground">{item.value}</text>
+                <text x={cx} y={cy - 16} textAnchor="middle" className="text-[14px] font-bold fill-foreground">{item.value}</text>
               )}
+              {/* Min/max labels */}
               <text x={cx - r + 4} y={cy + 14} className="text-[7px] fill-muted-foreground">0</text>
               <text x={cx + r - 4} y={cy + 14} textAnchor="end" className="text-[7px] fill-muted-foreground">{max}</text>
             </svg>
