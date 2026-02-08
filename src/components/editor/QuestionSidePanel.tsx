@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Question, QUESTION_TYPE_LABELS, InputMask, QuestionType, RoutingMode } from '@/types/form';
-import GraphicSidePanelSection from './GraphicSidePanelSection';
+
 import ChartDesigner from './ChartDesigner';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -197,7 +197,7 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
             </div>
           )}
 
-          {/* Graphic config */}
+          {/* Graphic config — only Chart Designer button, no inline config */}
           {question.type === 'graphic' && (
             <div className="space-y-3">
               <Button
@@ -208,7 +208,9 @@ export default function QuestionSidePanel({ question, index, onChange, onDelete,
                 <Palette className="h-3.5 w-3.5" />
                 Abrir Chart Designer
               </Button>
-              <GraphicSidePanelSection question={question} onChange={onChange} />
+              <p className="text-[10px] text-muted-foreground text-center">
+                Configure todos os dados e estilos no Chart Designer.
+              </p>
             </div>
           )}
 
