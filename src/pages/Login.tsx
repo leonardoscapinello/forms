@@ -16,12 +16,22 @@ export default function Login() {
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [setupName, setSetupName] = useState('');
 
-  // Check if setup is needed (no users exist)
+  // Check if setup is needed by trying setup-admin with a dry-run
   useEffect(() => {
     async function check() {
       try {
-        const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true });
-        setSetupMode(count === 0);
+        // Call setup-admin with no body — it will return 403 if users exist
+        const res = await supabase.functions.invoke('setup-admin', {
+          body: { email: '', password: '' },
+        });
+        const data = res.data as any;
+        // If it says "Setup already completed", we're past setup
+        if (data?.error?.includes('Setup already completed')) {
+          setSetupMode(false);
+        } else {
+          // Either "Email and password required" (no users) or success = setup needed
+          setSetupMode(true);
+        }
       } catch {
         setSetupMode(false);
       }
