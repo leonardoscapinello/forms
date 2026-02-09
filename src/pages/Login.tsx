@@ -20,16 +20,15 @@ export default function Login() {
   useEffect(() => {
     async function check() {
       try {
-        // Call setup-admin with no body — it will return 403 if users exist
         const res = await supabase.functions.invoke('setup-admin', {
           body: { email: '', password: '' },
         });
         const data = res.data as any;
-        // If it says "Setup already completed", we're past setup
-        if (data?.error?.includes('Setup already completed')) {
+        const errorMsg = data?.error || res.error?.message || '';
+        // If users already exist, skip setup
+        if (errorMsg.includes('Setup already completed')) {
           setSetupMode(false);
         } else {
-          // Either "Email and password required" (no users) or success = setup needed
           setSetupMode(true);
         }
       } catch {
