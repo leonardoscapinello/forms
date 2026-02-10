@@ -1075,7 +1075,24 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       {ds.points.map((pt, pi) => (
                         <div key={pt.id} className="space-y-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-muted-foreground w-16 truncate">
+                            <input
+                              type="color"
+                              value={pt.color || '#9ca3af'}
+                              onChange={e => {
+                                const datasets = (element.comparativeDatasets || []).map(d => {
+                                  if (d.id !== ds.id) return d;
+                                  return {
+                                    ...d,
+                                    points: d.points.map((p, j) =>
+                                      j === pi ? { ...p, color: e.target.value } : p
+                                    ),
+                                  };
+                                });
+                                onChange({ comparativeDatasets: datasets });
+                              }}
+                              className="w-5 h-5 rounded border-0 cursor-pointer p-0"
+                            />
+                            <span className="text-[10px] text-muted-foreground w-12 truncate">
                               {(element.comparativeLabels || [])[pi] || `#${pi + 1}`}
                             </span>
                             <Input
@@ -1110,7 +1127,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                               });
                               onChange({ comparativeDatasets: datasets });
                             }}
-                            className="h-6 text-[10px] ml-[70px]"
+                            className="h-6 text-[10px] ml-[74px]"
                             placeholder="Tip (opcional)"
                           />
                         </div>

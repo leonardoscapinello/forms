@@ -148,6 +148,8 @@ export interface ComparativeDataPoint {
   id: string;
   label: string;
   value: string;
+  /** Per-point color for segments (circular chart, etc.) */
+  color?: string;
   /** Tooltip badge text shown above this specific point */
   tooltip?: string;
 }
@@ -453,9 +455,9 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
           name: 'Você',
           color: '#22c55e',
           points: [
-            { id: crypto.randomUUID(), label: 'Ontem', value: '10' },
-            { id: crypto.randomUUID(), label: 'Hoje', value: '40', tooltip: 'Você' },
-            { id: crypto.randomUUID(), label: 'Amanhã', value: '80' },
+            { id: crypto.randomUUID(), label: 'Ontem', value: '10', color: '#ef4444' },
+            { id: crypto.randomUUID(), label: 'Hoje', value: '40', color: '#f59e0b', tooltip: 'Você' },
+            { id: crypto.randomUUID(), label: 'Amanhã', value: '80', color: '#22c55e' },
           ],
         },
         {
@@ -463,9 +465,9 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
           name: 'Concorrente',
           color: '#ef4444',
           points: [
-            { id: crypto.randomUUID(), label: 'Ontem', value: '5' },
-            { id: crypto.randomUUID(), label: 'Hoje', value: '60' },
-            { id: crypto.randomUUID(), label: 'Amanhã', value: '90', tooltip: 'Concorrente' },
+            { id: crypto.randomUUID(), label: 'Ontem', value: '5', color: '#9ca3af' },
+            { id: crypto.randomUUID(), label: 'Hoje', value: '60', color: '#6b7280' },
+            { id: crypto.randomUUID(), label: 'Amanhã', value: '90', color: '#4b5563', tooltip: 'Concorrente' },
           ],
         },
       ];
