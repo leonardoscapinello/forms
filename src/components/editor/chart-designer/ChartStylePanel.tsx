@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 
 const COLOR_SCHEMES: { name: string; label: string; colors: string[] }[] = [
   { name: 'vivid', label: 'Vívido', colors: ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'] },
@@ -108,14 +109,20 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
         <SliderRow label="Margem" value={box.margin ?? 0} min={0} max={48} step={4} suffix="px" onChange={v => updateBox({ margin: v })} />
         <SliderRow label="Borda" value={box.borderWidth ?? 1} min={0} max={6} step={1} suffix="px" onChange={v => updateBox({ borderWidth: v })} />
         <SliderRow label="Arredondamento" value={box.borderRadius ?? 16} min={0} max={32} step={2} suffix="px" onChange={v => updateBox({ borderRadius: v })} />
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Cor da borda</Label>
-          <input type="color" value={box.borderColor || '#e2e8f0'} onChange={e => updateBox({ borderColor: e.target.value })} className="h-7 w-10 rounded border border-border cursor-pointer" />
-        </div>
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Fundo</Label>
-          <input type="color" value={box.backgroundColor || '#ffffff'} onChange={e => updateBox({ backgroundColor: e.target.value })} className="h-7 w-10 rounded border border-border cursor-pointer" />
-        </div>
+        <ColorPickerField
+          label="Cor da borda"
+          value={box.borderColor || ''}
+          onChange={v => updateBox({ borderColor: v || undefined })}
+          defaultColor="#e2e8f0"
+          placeholder="Padrão"
+        />
+        <ColorPickerField
+          label="Fundo"
+          value={box.backgroundColor || ''}
+          onChange={v => updateBox({ backgroundColor: v || undefined })}
+          defaultColor="#ffffff"
+          placeholder="Branco"
+        />
       </div>
     </div>
   );

@@ -842,16 +842,16 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 {(element.chartItems || []).map((item) => (
                   <div key={item.id} className="space-y-1.5 p-2 rounded-lg border border-border">
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
+                      <ColorPickerField
                         value={item.color || '#6366f1'}
-                        onChange={e => {
+                        onChange={v => {
                           const items = (element.chartItems || []).map(d =>
-                            d.id === item.id ? { ...d, color: e.target.value } : d
+                            d.id === item.id ? { ...d, color: v || '#6366f1' } : d
                           );
                           onChange({ chartItems: items });
                         }}
-                        className="h-7 w-7 rounded border border-border cursor-pointer flex-shrink-0"
+                        allowTransparent={false}
+                        defaultColor="#6366f1"
                       />
                       <Input
                         value={item.label}
@@ -1317,70 +1317,52 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     <div key={bar.id} className="space-y-2 p-2.5 rounded-lg border border-border">
                       <p className="text-xs font-medium text-foreground truncate">{bar.label || 'Sem nome'}</p>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="text-center space-y-1">
-                          <span className="text-[10px] text-muted-foreground">Barra</span>
-                          <div className="flex justify-center">
-                            <input
-                              type="color"
-                              value={bar.color}
-                              onChange={e => {
-                                const items = (element.progressBarItems || []).map(b =>
-                                  b.id === bar.id ? { ...b, color: e.target.value } : b
-                                );
-                                onChange({ progressBarItems: items });
-                              }}
-                              className="h-6 w-8 rounded border border-border cursor-pointer"
-                            />
-                          </div>
-                        </div>
-                        <div className="text-center space-y-1">
-                          <span className="text-[10px] text-muted-foreground">Fundo</span>
-                          <div className="flex justify-center">
-                            <input
-                              type="color"
-                              value={bar.barBackground || '#e5e7eb'}
-                              onChange={e => {
-                                const items = (element.progressBarItems || []).map(b =>
-                                  b.id === bar.id ? { ...b, barBackground: e.target.value } : b
-                                );
-                                onChange({ progressBarItems: items });
-                              }}
-                              className="h-6 w-8 rounded border border-border cursor-pointer"
-                            />
-                          </div>
-                        </div>
-                        <div className="text-center space-y-1">
-                          <span className="text-[10px] text-muted-foreground">Valor</span>
-                          <div className="flex justify-center">
-                            <input
-                              type="color"
-                              value={bar.valueColor || bar.color}
-                              onChange={e => {
-                                const items = (element.progressBarItems || []).map(b =>
-                                  b.id === bar.id ? { ...b, valueColor: e.target.value } : b
-                                );
-                                onChange({ progressBarItems: items });
-                              }}
-                              className="h-6 w-8 rounded border border-border cursor-pointer"
-                            />
-                          </div>
-                        </div>
-                        <div className="text-center space-y-1">
-                          <span className="text-[10px] text-muted-foreground">Texto</span>
-                          <div className="flex justify-center">
-                            <input
-                              type="color"
-                              value={bar.labelColor || '#000000'}
-                              onChange={e => {
-                                const items = (element.progressBarItems || []).map(b =>
-                                  b.id === bar.id ? { ...b, labelColor: e.target.value } : b
-                                );
-                                onChange({ progressBarItems: items });
-                              }}
-                              className="h-6 w-8 rounded border border-border cursor-pointer"
-                            />
-                          </div>
-                        </div>
+                        <ColorPickerField
+                          label="Barra"
+                          value={bar.color}
+                          onChange={v => {
+                            const items = (element.progressBarItems || []).map(b =>
+                              b.id === bar.id ? { ...b, color: v || bar.color } : b
+                            );
+                            onChange({ progressBarItems: items });
+                          }}
+                          allowTransparent={false}
+                        />
+                        <ColorPickerField
+                          label="Fundo"
+                          value={bar.barBackground || '#e5e7eb'}
+                          onChange={v => {
+                            const items = (element.progressBarItems || []).map(b =>
+                              b.id === bar.id ? { ...b, barBackground: v || '#e5e7eb' } : b
+                            );
+                            onChange({ progressBarItems: items });
+                          }}
+                          allowTransparent={false}
+                          defaultColor="#e5e7eb"
+                        />
+                        <ColorPickerField
+                          label="Valor"
+                          value={bar.valueColor || bar.color}
+                          onChange={v => {
+                            const items = (element.progressBarItems || []).map(b =>
+                              b.id === bar.id ? { ...b, valueColor: v || bar.color } : b
+                            );
+                            onChange({ progressBarItems: items });
+                          }}
+                          allowTransparent={false}
+                        />
+                        <ColorPickerField
+                          label="Texto"
+                          value={bar.labelColor || '#000000'}
+                          onChange={v => {
+                            const items = (element.progressBarItems || []).map(b =>
+                              b.id === bar.id ? { ...b, labelColor: v || '#000000' } : b
+                            );
+                            onChange({ progressBarItems: items });
+                          }}
+                          allowTransparent={false}
+                          defaultColor="#000000"
+                        />
                       </div>
                     </div>
                   ))}
