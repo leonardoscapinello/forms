@@ -178,39 +178,47 @@ function HorizontalBarChart({ items, style }: { items: GraphicDataItem[]; style:
 // ─── Line chart ─────────────────────────────────────
 function LineChart({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map(item => ({ name: item.label, value: parseFloat(item.value) || 0 }));
-  const color = items[0]?.color || FALLBACK_COLORS[0];
-  const hasGradient = items[0]?.colorMode === 'gradient' && items[0]?.gradientTo;
-  const gradientColor = hasGradient ? items[0].gradientTo! : color;
-  const areaFillId = `lineAreaFill-${color.replace('#', '')}`;
-  const strokeGradId = `lineStrokeGrad-${color.replace('#', '')}`;
   const dur = style.animated !== false ? 400 : 0;
+  const areaFillId = `lineAreaFill-multi`;
+  const strokeGradId = `lineStrokeGrad-multi`;
+
+  // Build gradient stops from each item's color, evenly spaced
+  const colorStops = items.map((item, i) => ({
+    offset: items.length > 1 ? (i / (items.length - 1)) * 100 : 50,
+    color: getColor(item, i),
+  }));
+
+  const firstColor = colorStops[0]?.color || FALLBACK_COLORS[0];
+
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
         <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 20 }}>
           <defs>
-            {/* Area fill: horizontal gradient with vivid colors */}
+            {/* Area fill: horizontal gradient using ALL item colors */}
             <linearGradient id={areaFillId} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={color} stopOpacity={hasGradient ? 0.7 : 0.25} />
-              <stop offset="100%" stopColor={hasGradient ? gradientColor : color} stopOpacity={hasGradient ? 0.7 : 0} />
+              {colorStops.map((stop, i) => (
+                <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} stopOpacity={0.6} />
+              ))}
             </linearGradient>
-            {/* Stroke: horizontal gradient */}
-            {hasGradient && (
-              <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor={color} />
-                <stop offset="100%" stopColor={gradientColor} />
-              </linearGradient>
-            )}
+            {/* Stroke: horizontal gradient using ALL item colors */}
+            <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
+              {colorStops.map((stop, i) => (
+                <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} stopOpacity={1} />
+              ))}
+            </linearGradient>
           </defs>
           {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />}
           <XAxis dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
           <YAxis tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
           <Tooltip {...tooltipStyle} />
           <Area type="monotone" dataKey="value"
-            stroke={hasGradient ? `url(#${strokeGradId})` : color}
+            stroke={items.length > 1 ? `url(#${strokeGradId})` : firstColor}
             strokeWidth={3}
             fill={`url(#${areaFillId})`}
-            dot={{ fill: color, strokeWidth: 3, stroke: 'hsl(var(--card))', r: 5 }}
+            dot={({ cx, cy, index }: any) => (
+              <circle key={index} cx={cx} cy={cy} r={5} fill={getColor(items[index] || items[0], index)} stroke="hsl(var(--card))" strokeWidth={3} />
+            )}
             activeDot={{ r: 8, strokeWidth: 3, className: 'drop-shadow-md' }}
             animationDuration={dur} animationEasing="ease-out" />
         </AreaChart>
