@@ -1,6 +1,7 @@
 import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
 import { ImageIcon, VideoIcon, Star, Check } from 'lucide-react';
+import HeightWeightField from '@/components/preview/HeightWeightField';
 
 interface Props {
   element: PageElement;
@@ -146,14 +147,13 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'input_height':
     case 'input_weight':
       return withFieldHeader(
-        <div className="flex items-end gap-3">
-          <input
-            type="text"
-            readOnly
-            placeholder={element.placeholder || '0'}
-            className="flex-1 bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
+        <div className="pointer-events-none opacity-80">
+          <HeightWeightField
+            type={type === 'input_height' ? 'height' : 'weight'}
+            value={undefined}
+            onChange={() => {}}
+            defaultUnit={element.unit}
           />
-          <span className="text-lg text-muted-foreground font-medium pb-2">{element.unit || (type === 'input_height' ? 'cm' : 'kg')}</span>
         </div>
       );
 

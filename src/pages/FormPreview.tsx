@@ -10,6 +10,7 @@ import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions';
+import HeightWeightField from '@/components/preview/HeightWeightField';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -545,19 +546,12 @@ function InteractiveElement({
     case 'input_height':
     case 'input_weight':
       return withFieldHeader(
-        <div className="flex items-end gap-3">
-          <input
-            type="number"
-            value={value || ''}
-            onChange={e => onChange(e.target.value)}
-            placeholder={element.placeholder || '0'}
-            className="flex-1 bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            autoFocus
-          />
-          <span className="text-base md:text-lg text-muted-foreground font-medium pb-2">
-            {element.unit || (type === 'input_height' ? 'cm' : 'kg')}
-          </span>
-        </div>
+        <HeightWeightField
+          type={type === 'input_height' ? 'height' : 'weight'}
+          value={typeof value === 'number' ? value : undefined}
+          onChange={onChange}
+          defaultUnit={element.unit}
+        />
       );
 
     case 'input_phone':
