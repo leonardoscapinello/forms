@@ -578,11 +578,22 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
               </div>
 
               <div className="space-y-2">
-                <Label>Intervalo ({element.notificationInterval || 4}s)</Label>
+                <Label>Tempo exibido ({element.notificationDuration || 3}s)</Label>
                 <Slider
-                  value={[element.notificationInterval || 4]}
+                  value={[element.notificationDuration || 3]}
+                  onValueChange={([v]) => onChange({ notificationDuration: v })}
+                  min={1}
+                  max={10}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Intervalo entre ({element.notificationInterval || 2}s)</Label>
+                <Slider
+                  value={[element.notificationInterval || 2]}
                   onValueChange={([v]) => onChange({ notificationInterval: v })}
-                  min={2}
+                  min={1}
                   max={15}
                   step={1}
                 />
