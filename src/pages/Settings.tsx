@@ -8,9 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
   HardDrive, Save, TestTube, Loader2, CheckCircle2, XCircle, Eye, EyeOff,
-  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog,
+  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail,
 } from 'lucide-react';
 import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
+import EmailValidationsTab from '@/components/settings/EmailValidationsTab';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'general', label: 'Geral', icon: Settings2 },
   { id: 'users', label: 'Usuários', icon: Users },
   { id: 'integrations', label: 'Integrações', icon: Plug },
+  { id: 'validations', label: 'Validações', icon: Mail },
   { id: 'security', label: 'Segurança', icon: Shield },
 ] as const;
 
@@ -56,6 +58,7 @@ export default function Settings() {
       {tab === 'general' && <GeneralTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'integrations' && <IntegrationsTab />}
+      {tab === 'validations' && <EmailValidationsTab />}
       {tab === 'security' && <SecurityTab />}
     </div>
   );
