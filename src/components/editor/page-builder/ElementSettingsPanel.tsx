@@ -550,6 +550,20 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
           {element.type === 'notification' && (
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label>Posição</Label>
+                <Select
+                  value={element.notificationPosition || 'top'}
+                  onValueChange={v => onChange({ notificationPosition: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="top">Topo</SelectItem>
+                    <SelectItem value="bottom">Rodapé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Modo de exibição</Label>
                 <Select
                   value={element.notificationMode || 'sequential'}

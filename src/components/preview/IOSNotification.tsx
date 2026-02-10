@@ -7,13 +7,14 @@ interface Props {
   items: NotificationItem[];
   mode: 'sequential' | 'random';
   interval: number; // seconds
+  position?: 'top' | 'bottom';
 }
 
 /**
- * iOS-style notification banner that cycles through items
- * with a slide-down + blur animation.
+ * iOS-style notification banner fixed to top/bottom of viewport,
+ * max-width 390px, cycling through items with spring animation.
  */
-export default function IOSNotification({ items, mode, interval }: Props) {
+export default function IOSNotification({ items, mode, interval, position = 'top' }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visible, setVisible] = useState(false);
 
@@ -29,10 +30,7 @@ export default function IOSNotification({ items, mode, interval }: Props) {
 
   useEffect(() => {
     if (items.length === 0) return;
-
-    // Show first notification after a short delay
     const showTimeout = setTimeout(() => setVisible(true), 800);
-
     return () => clearTimeout(showTimeout);
   }, [items.length]);
 
@@ -40,9 +38,7 @@ export default function IOSNotification({ items, mode, interval }: Props) {
     if (items.length === 0 || !visible) return;
 
     const timer = setInterval(() => {
-      // Hide current
       setVisible(false);
-      // After exit animation, show next
       setTimeout(() => {
         setCurrentIndex(getNextIndex());
         setVisible(true);
@@ -55,25 +51,32 @@ export default function IOSNotification({ items, mode, interval }: Props) {
   if (items.length === 0) return null;
 
   const item = items[currentIndex];
+  const isTop = position === 'top';
+
+  const slideOffset = 80;
 
   return (
-    <div className="w-full flex justify-center pointer-events-none" style={{ minHeight: 90 }}>
+    <div
+      className="fixed left-0 right-0 z-50 flex justify-center pointer-events-none px-3"
+      style={{ [isTop ? 'top' : 'bottom']: 12 }}
+    >
       <AnimatePresence mode="wait">
         {visible && (
           <motion.div
             key={item.id}
-            initial={{ y: -60, opacity: 0, scale: 0.92 }}
+            initial={{ y: isTop ? -slideOffset : slideOffset, opacity: 0, scale: 0.92 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: -40, opacity: 0, scale: 0.95 }}
+            exit={{ y: isTop ? -slideOffset : slideOffset, opacity: 0, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-            className="w-full max-w-sm"
+            className="w-full"
+            style={{ maxWidth: 390 }}
           >
             <div
-              className="mx-auto rounded-2xl px-4 py-3 flex items-start gap-3 shadow-lg border border-white/20"
+              className="rounded-2xl px-4 py-3 flex items-start gap-3 shadow-xl border border-white/20"
               style={{
-                background: 'rgba(255,255,255,0.82)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
+                background: 'rgba(255,255,255,0.85)',
+                backdropFilter: 'blur(28px)',
+                WebkitBackdropFilter: 'blur(28px)',
               }}
             >
               {/* Icon */}

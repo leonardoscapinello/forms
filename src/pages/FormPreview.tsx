@@ -535,6 +535,7 @@ function InteractiveElement({
           items={element.notificationItems || []}
           mode={element.notificationMode || 'sequential'}
           interval={element.notificationInterval || 4}
+          position={element.notificationPosition || 'top'}
         />
       );
 
