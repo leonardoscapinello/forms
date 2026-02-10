@@ -19,6 +19,30 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
+  // Build universal inline styles from element.style
+  const universalStyle: React.CSSProperties = {};
+  if (style?.backgroundColor) universalStyle.backgroundColor = style.backgroundColor;
+  if (style?.color) universalStyle.color = style.color;
+  if (style?.borderRadius !== undefined) universalStyle.borderRadius = style.borderRadius;
+  if (style?.borderWidth) {
+    universalStyle.borderWidth = style.borderWidth;
+    universalStyle.borderStyle = style.borderStyle || 'solid';
+    universalStyle.borderColor = style.borderColor || 'currentColor';
+  }
+  if (style?.fontFamily) universalStyle.fontFamily = style.fontFamily;
+  if (style?.fontWeight) universalStyle.fontWeight = style.fontWeight;
+  if (style?.padding !== undefined) universalStyle.padding = style.padding;
+  if (style?.paddingTop !== undefined) universalStyle.paddingTop = style.paddingTop;
+  if (style?.paddingRight !== undefined) universalStyle.paddingRight = style.paddingRight;
+  if (style?.paddingBottom !== undefined) universalStyle.paddingBottom = style.paddingBottom;
+  if (style?.paddingLeft !== undefined) universalStyle.paddingLeft = style.paddingLeft;
+  if (style?.margin !== undefined) universalStyle.margin = style.margin;
+  if (style?.marginTop !== undefined) universalStyle.marginTop = style.marginTop;
+  if (style?.marginRight !== undefined) universalStyle.marginRight = style.marginRight;
+  if (style?.marginBottom !== undefined) universalStyle.marginBottom = style.marginBottom;
+  if (style?.marginLeft !== undefined) universalStyle.marginLeft = style.marginLeft;
+  if (style?.width) universalStyle.width = style.width;
+
   const isFormField = type.startsWith('input_');
 
   /** Typeform-style "N → enunciado" header — mirrors FormPreview exactly */
@@ -47,8 +71,8 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'heading': {
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return (
-        <div className={alignClass}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`}>
+        <div className={alignClass} style={universalStyle}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || 'Título'}
           </div>
         </div>
@@ -57,8 +81,8 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'text':
       return (
-        <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed">
+        <div className={alignClass} style={universalStyle}>
+          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || ''}
           </p>
         </div>
@@ -66,7 +90,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'image':
       return element.src ? (
-        <div className={alignClass}>
+        <div className={alignClass} style={universalStyle}>
           <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ maxHeight: 400 }} />
         </div>
       ) : (
@@ -78,8 +102,20 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'button':
       return (
-        <div className={alignClass}>
-          <Button className="pointer-events-none" style={{ backgroundColor: style?.backgroundColor, borderRadius: style?.borderRadius }}>
+        <div className={alignClass} style={universalStyle}>
+          <Button
+            className="pointer-events-none"
+            style={{
+              backgroundColor: style?.backgroundColor,
+              borderRadius: style?.borderRadius,
+              width: style?.width || 'auto',
+              padding: style?.padding !== undefined ? `${style.padding}px ${style.padding * 1.5}px` : undefined,
+              color: style?.color,
+              fontFamily: style?.fontFamily,
+              fontWeight: style?.fontWeight,
+              fontSize: style?.fontSize ? (style.fontSize === 'base' ? '1rem' : style.fontSize === 'lg' ? '1.125rem' : style.fontSize === 'xl' ? '1.25rem' : style.fontSize === '2xl' ? '1.5rem' : undefined) : undefined,
+            }}
+          >
             {element.content || 'Botão'}
           </Button>
         </div>

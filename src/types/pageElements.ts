@@ -44,11 +44,25 @@ export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
   fontSize?: string;
   fontWeight?: string;
+  fontFamily?: string;
   color?: string;
   backgroundColor?: string;
   padding?: number;
+  paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  margin?: number;
+  marginTop?: number;
+  marginRight?: number;
+  marginBottom?: number;
+  marginLeft?: number;
   borderRadius?: number;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
   maxWidth?: string;
+  width?: string;
 }
 
 export interface SelectOption {
@@ -260,7 +274,7 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'button':
       base.content = 'Continuar';
       base.href = '';
-      base.style = { textAlign: 'center' };
+      base.style = { textAlign: 'center', width: '100%', padding: 16, borderRadius: 8 };
       break;
     case 'divider':
       base.height = 1;

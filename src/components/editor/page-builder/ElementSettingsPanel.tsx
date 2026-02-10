@@ -977,14 +977,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
-          {/* ─── Style Section ─── */}
-          <div className="pt-3 border-t border-border space-y-4">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Estilo</h4>
+          {/* ═══════ UNIVERSAL STYLE SECTION ═══════ */}
+          <div className="border-t border-border pt-4 mt-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Estilo</h4>
 
-            {/* Text align */}
-            {['heading', 'text', 'button'].includes(element.type) && (
-              <div className="space-y-2">
-                <Label>Alinhamento</Label>
+            {/* Text Align */}
+            {!['divider', 'spacer', 'columns'].includes(element.type) && (
+              <div className="space-y-2 mb-4">
+                <Label className="text-xs">Alinhamento</Label>
                 <div className="flex gap-1">
                   {(['left', 'center', 'right'] as const).map(a => (
                     <Button
@@ -1001,38 +1001,179 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
               </div>
             )}
 
-            {/* Background color for button */}
-            {element.type === 'button' && (
-              <div className="space-y-2">
-                <Label>Cor do botão</Label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={element.style?.backgroundColor || '#6366f1'}
-                    onChange={e => updateStyle({ backgroundColor: e.target.value })}
-                    className="h-8 w-8 rounded border border-border cursor-pointer"
-                  />
+            {/* Background Color */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Cor do fundo</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={element.style?.backgroundColor || '#ffffff'}
+                  onChange={e => updateStyle({ backgroundColor: e.target.value })}
+                  className="h-8 w-8 rounded border border-border cursor-pointer flex-shrink-0"
+                />
+                <Input
+                  value={element.style?.backgroundColor || ''}
+                  onChange={e => updateStyle({ backgroundColor: e.target.value || undefined })}
+                  placeholder="Transparente"
+                  className="flex-1 h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Text Color */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Cor do texto</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={element.style?.color || '#000000'}
+                  onChange={e => updateStyle({ color: e.target.value })}
+                  className="h-8 w-8 rounded border border-border cursor-pointer flex-shrink-0"
+                />
+                <Input
+                  value={element.style?.color || ''}
+                  onChange={e => updateStyle({ color: e.target.value || undefined })}
+                  placeholder="Padrão"
+                  className="flex-1 h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Typography */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Tipografia</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Select
+                  value={element.style?.fontFamily || ''}
+                  onValueChange={v => updateStyle({ fontFamily: v || undefined })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Fonte" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Inter">Inter</SelectItem>
+                    <SelectItem value="Arial">Arial</SelectItem>
+                    <SelectItem value="Georgia">Georgia</SelectItem>
+                    <SelectItem value="Helvetica">Helvetica</SelectItem>
+                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                    <SelectItem value="Courier New">Courier New</SelectItem>
+                    <SelectItem value="Verdana">Verdana</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={element.style?.fontWeight || ''}
+                  onValueChange={v => updateStyle({ fontWeight: v || undefined })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Peso" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="500">Médio</SelectItem>
+                    <SelectItem value="600">Semibold</SelectItem>
+                    <SelectItem value="bold">Bold</SelectItem>
+                    <SelectItem value="800">Extra Bold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Border */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Bordas</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground">Largura</span>
                   <Input
-                    value={element.style?.backgroundColor || ''}
-                    onChange={e => updateStyle({ backgroundColor: e.target.value })}
-                    placeholder="#6366f1"
-                    className="flex-1"
+                    type="number"
+                    value={element.style?.borderWidth ?? ''}
+                    onChange={e => updateStyle({ borderWidth: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="0"
+                    className="h-8 text-xs"
+                    min={0}
+                    max={20}
                   />
                 </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground">Estilo</span>
+                  <Select
+                    value={element.style?.borderStyle || 'solid'}
+                    onValueChange={v => updateStyle({ borderStyle: v as any })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">Sólida</SelectItem>
+                      <SelectItem value="dashed">Tracejada</SelectItem>
+                      <SelectItem value="dotted">Pontilhada</SelectItem>
+                      <SelectItem value="none">Nenhuma</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            )}
-
-            {/* Border radius */}
-            {['image', 'button'].includes(element.type) && (
-              <div className="space-y-2">
-                <Label>Borda ({element.style?.borderRadius || 8}px)</Label>
-                <Slider
-                  value={[element.style?.borderRadius || 8]}
-                  onValueChange={([v]) => updateStyle({ borderRadius: v })}
-                  min={0}
-                  max={32}
-                  step={2}
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={element.style?.borderColor || '#e5e7eb'}
+                  onChange={e => updateStyle({ borderColor: e.target.value })}
+                  className="h-8 w-8 rounded border border-border cursor-pointer flex-shrink-0"
                 />
+                <Input
+                  value={element.style?.borderColor || ''}
+                  onChange={e => updateStyle({ borderColor: e.target.value || undefined })}
+                  placeholder="Cor da borda"
+                  className="flex-1 h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Border Radius */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Arredondamento ({element.style?.borderRadius ?? 0}px)</Label>
+              <Slider
+                value={[element.style?.borderRadius ?? 0]}
+                onValueChange={([v]) => updateStyle({ borderRadius: v })}
+                min={0}
+                max={50}
+                step={1}
+              />
+            </div>
+
+            {/* Padding */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Padding ({element.style?.padding ?? 0}px)</Label>
+              <Slider
+                value={[element.style?.padding ?? 0]}
+                onValueChange={([v]) => updateStyle({ padding: v })}
+                min={0}
+                max={80}
+                step={2}
+              />
+            </div>
+
+            {/* Margin */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Margem ({element.style?.margin ?? 0}px)</Label>
+              <Slider
+                value={[element.style?.margin ?? 0]}
+                onValueChange={([v]) => updateStyle({ margin: v })}
+                min={0}
+                max={80}
+                step={2}
+              />
+            </div>
+
+            {/* Width */}
+            {['button', 'image', 'divider'].includes(element.type) && (
+              <div className="space-y-2 mb-4">
+                <Label className="text-xs">Largura</Label>
+                <Select
+                  value={element.style?.width || 'auto'}
+                  onValueChange={v => updateStyle({ width: v === 'auto' ? undefined : v })}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Automático</SelectItem>
+                    <SelectItem value="100%">100%</SelectItem>
+                    <SelectItem value="75%">75%</SelectItem>
+                    <SelectItem value="50%">50%</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
