@@ -69,9 +69,9 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   // No longer need badgeIndex — badges are per-point via point.tooltip
 
   return (
-    <div>
-      <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data} margin={{ top: 40, right: 20, left: 5, bottom: 5 }}>
+    <div className="w-full overflow-hidden">
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={data} margin={{ top: 36, right: 8, left: 0, bottom: 5 }}>
           <defs>
             <filter id="cmpBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
@@ -88,15 +88,15 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
           )}
           <XAxis
             dataKey="name"
-            tick={style?.showLabels !== false ? { fontSize: 12, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 } : false}
+            tick={style?.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 } : false}
             axisLine={{ stroke: 'hsl(var(--border))' }}
             tickLine={false}
           />
           <YAxis
-            tick={style?.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false}
+            tick={style?.showLabels !== false ? { fontSize: 9, fill: 'hsl(var(--muted-foreground))' } : false}
             axisLine={false}
             tickLine={false}
-            width={30}
+            width={24}
             domain={[0, niceMax]}
             ticks={Array.from({ length: 5 }, (_, i) => Math.round((niceMax / 4) * i))}
           />
@@ -117,21 +117,21 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                 const badgeColor = lerpColor(grad[0], grad[1], t);
                 const tipText = point?.tooltip || '';
                 const showBadge = !!tipText;
-                const badgeW = Math.max(tipText.length * 7 + 16, 50);
-                const badgeH = 26;
+                const badgeW = Math.max(tipText.length * 6 + 14, 40);
+                const badgeH = 22;
 
                 return (
                   <g key={`${ds.id}-${index}`}>
                     {/* Outer glow */}
-                    <circle cx={cx} cy={cy} r={8} fill={ds.color} opacity={0.15} />
+                    <circle cx={cx} cy={cy} r={6} fill={ds.color} opacity={0.15} />
                     {/* Dot */}
-                    <circle cx={cx} cy={cy} r={5} fill={ds.color} stroke="white" strokeWidth={3} />
+                    <circle cx={cx} cy={cy} r={4} fill={ds.color} stroke="white" strokeWidth={2} />
                     {/* Floating badge — shown on every point that has a tooltip */}
                     {showBadge && (
                       <g>
                         <rect
                           x={cx - badgeW / 2}
-                          y={cy - badgeH - 14}
+                          y={cy - badgeH - 10}
                           width={badgeW}
                           height={badgeH}
                           rx={badgeH / 2}
@@ -140,10 +140,10 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                         />
                         <text
                           x={cx}
-                          y={cy - badgeH / 2 - 14 + 1}
+                          y={cy - badgeH / 2 - 10 + 1}
                           textAnchor="middle"
                           dominantBaseline="middle"
-                          fontSize={11}
+                          fontSize={9}
                           fontWeight={700}
                           fill="white"
                         >
@@ -154,7 +154,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                   </g>
                 );
               }}
-              activeDot={{ r: 8, strokeWidth: 3, stroke: 'white', fill: ds.color }}
+              activeDot={{ r: 6, strokeWidth: 2, stroke: 'white', fill: ds.color }}
               animationDuration={dur}
               animationEasing="ease-out"
             />
@@ -170,15 +170,15 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   const dur = style?.animated !== false ? 400 : 0;
 
   return (
-    <div>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 30, right: 10, left: -20, bottom: 5 }}>
+    <div className="w-full overflow-hidden">
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={data} margin={{ top: 20, right: 8, left: -24, bottom: 5 }}>
           {style?.showGrid !== false && (
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.5} />
           )}
           <XAxis
             dataKey="name"
-            tick={style?.showLabels !== false ? { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } : false}
+            tick={style?.showLabels !== false ? { fontSize: 9, fill: 'hsl(var(--muted-foreground))' } : false}
             axisLine={false}
             tickLine={false}
           />
@@ -236,12 +236,14 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
     return { ds, data, di };
   });
 
-  const outerBase = 115;
-  const ringWidth = 28;
-  const ringGap = 6;
+  const isSmall = dims.w < 360;
+  const outerBase = isSmall ? 80 : 115;
+  const ringWidth = isSmall ? 20 : 28;
+  const ringGap = isSmall ? 4 : 6;
+  const chartH = isSmall ? 240 : 300;
 
   const cx = dims.w / 2;
-  const cy = 320 / 2;
+  const cy = chartH / 2;
 
   // Pre-compute badge positions for HTML overlay
   const badges = rings.map((ring, ri) => {
@@ -258,7 +260,7 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
     const angleRad = (Math.PI / 2) - fraction * 2 * Math.PI;
 
     const edgePx = { x: cx + outer * Math.cos(angleRad), y: cy - outer * Math.sin(angleRad) };
-    const badgeDist = outer + 32;
+    const badgeDist = outer + (isSmall ? 22 : 32);
     const badgePx = { x: cx + badgeDist * Math.cos(angleRad), y: cy - badgeDist * Math.sin(angleRad) };
 
     return { tipText, edgePx, badgePx, dsId: ring.ds.id };
@@ -266,7 +268,7 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
 
   return (
     <div ref={containerRef} className="relative">
-      <ResponsiveContainer width="100%" height={320}>
+      <ResponsiveContainer width="100%" height={chartH}>
         <PieChart>
           {rings.map((ring, ri) => {
             const outer = outerBase - ri * (ringWidth + ringGap);
@@ -308,7 +310,7 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
             key={`line-${b.dsId}`}
             className="absolute inset-0 pointer-events-none"
             width="100%"
-            height={320}
+            height={chartH}
             style={{ overflow: 'visible' }}
           >
             <line
@@ -336,9 +338,9 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
             <div style={{
               backgroundColor: '#374151',
               color: 'white',
-              fontSize: 11,
+              fontSize: isSmall ? 9 : 11,
               fontWeight: 700,
-              padding: '4px 12px',
+              padding: isSmall ? '3px 8px' : '4px 12px',
               borderRadius: 12,
               whiteSpace: 'nowrap',
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
@@ -350,24 +352,24 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
       })}
 
       {/* Centered legend */}
-      <div className="flex flex-col gap-2 mt-1 px-2 items-center">
+      <div className="flex flex-col gap-1.5 mt-1 px-1 items-center">
         {datasets.map((ds) => (
-          <div key={ds.id} className="flex items-center gap-4 flex-wrap justify-center">
+          <div key={ds.id} className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
             {ds.points.map((pt, pi) => {
               const hasTip = !!pt.tooltip;
               const ptColor = pt.color || FALLBACK_COLORS[pi % FALLBACK_COLORS.length];
               return (
                 <div
                   key={pt.id}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md"
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-md"
                   style={hasTip ? { backgroundColor: `${ptColor}14` } : undefined}
                 >
                   <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: ptColor }}
                   />
-                  <span className="text-xs text-muted-foreground">{labels[pi] || pt.label}</span>
-                  <span className="text-xs font-semibold">{pt.value}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">{labels[pi] || pt.label}</span>
+                  <span className="text-[10px] sm:text-xs font-semibold">{pt.value}</span>
                 </div>
               );
             })}
