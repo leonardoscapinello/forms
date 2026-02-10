@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { FunnelPage, FormData, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
@@ -210,6 +210,11 @@ export default function FormEditor() {
                 elements={editingPage.elements || []}
                 onChange={(elements: PageElement[]) => {
                   handlePageChange(editingPage.id, { elements });
+                }}
+                pageStyle={editingPage.pageStyle}
+                onPageStyleChange={(patch: Partial<FunnelPageStyle>) => {
+                  const current = editingPage.pageStyle || {};
+                  handlePageChange(editingPage.id, { pageStyle: { ...current, ...patch } });
                 }}
               />
             ) : (
