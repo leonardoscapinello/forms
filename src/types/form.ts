@@ -151,6 +151,8 @@ export interface Question {
   // For webhook
   webhookUrl?: string;
   webhookMethod?: 'GET' | 'POST' | 'PUT';
+  // Page builder elements (when using page builder mode)
+  pageElements?: import('./pageElements').PageElement[];
 }
 
 export interface FormStyle {
