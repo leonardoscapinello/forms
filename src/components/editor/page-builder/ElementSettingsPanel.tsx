@@ -1327,12 +1327,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 <Label>Layout</Label>
                 <Select
                   value={String(element.progressBarLayout || 1)}
-                  onValueChange={v => onChange({ progressBarLayout: Number(v) as 1 | 2 })}
+                  onValueChange={v => onChange({ progressBarLayout: Number(v) as 1 | 2 | 3 })}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1">1 coluna</SelectItem>
-                    <SelectItem value="2">Grade de 2 colunas</SelectItem>
+                    <SelectItem value="2">2 colunas</SelectItem>
+                    <SelectItem value="3">3 colunas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

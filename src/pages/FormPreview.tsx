@@ -1178,7 +1178,7 @@ function InteractiveElement({
       const cols = element.progressBarLayout || 1;
       const disposition = element.progressBarDisposition || 'chart_legend';
       return wrapWithStyle(
-        <div className={`grid ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
+        <div className={`grid ${cols === 3 ? 'grid-cols-3' : cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
           {bars.map(bar => {
             const barBg = bar.barBackground || 'rgba(0,0,0,0.08)';
             const valColor = bar.valueColor || bar.color;
