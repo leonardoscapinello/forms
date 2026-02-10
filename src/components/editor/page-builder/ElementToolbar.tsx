@@ -2,7 +2,7 @@ import { PAGE_ELEMENT_LABELS, createDefaultPageElement, PageElement, ELEMENT_CAT
 import {
   Heading, Type, Image, MousePointerClick, Minus, Video, ArrowUpDown,
   Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
-  Hash, AlignLeft, Calendar, Ruler, Weight,
+  Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -27,6 +27,10 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   input_date: Calendar,
   input_height: Ruler,
   input_weight: Weight,
+  input_yes_no: ToggleLeft,
+  input_multi_select: ListChecks,
+  input_quiz_icon: Smile,
+  input_quiz_image: ImagePlus,
 };
 
 interface Props {

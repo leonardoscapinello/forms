@@ -24,12 +24,24 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
 
   const addOption = () => {
     const opts = [...(element.options || [])];
-    opts.push({ id: crypto.randomUUID(), label: `Opção ${opts.length + 1}` });
+    const isIcon = element.type === 'input_quiz_icon';
+    const isImage = element.type === 'input_quiz_image';
+    opts.push({
+      id: crypto.randomUUID(),
+      label: `Opção ${opts.length + 1}`,
+      ...(isIcon ? { emoji: '⭐' } : {}),
+      ...(isImage ? { imageUrl: '' } : {}),
+    });
     onChange({ options: opts });
   };
 
   const updateOption = (id: string, label: string) => {
     const opts = (element.options || []).map(o => o.id === id ? { ...o, label } : o);
+    onChange({ options: opts });
+  };
+
+  const updateOptionField = (id: string, field: string, value: string) => {
+    const opts = (element.options || []).map(o => o.id === id ? { ...o, [field]: value } : o);
     onChange({ options: opts });
   };
 
@@ -257,26 +269,45 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </>
           )}
 
-          {/* ─── Options (select, radio) ─── */}
-          {(element.type === 'input_select' || element.type === 'input_radio') && (
+          {/* ─── Options (select, radio, multi_select, quiz_icon, quiz_image) ─── */}
+          {(['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'] as string[]).includes(element.type) && (
             <div className="space-y-2">
               <Label>Opções</Label>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {(element.options || []).map((opt) => (
-                  <div key={opt.id} className="flex items-center gap-1.5">
-                    <Input
-                      value={opt.label}
-                      onChange={e => updateOption(opt.id, e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeOption(opt.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                  <div key={opt.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                    <div className="flex items-center gap-1.5">
+                      {element.type === 'input_quiz_icon' && (
+                        <Input
+                          value={opt.emoji || ''}
+                          onChange={e => updateOptionField(opt.id, 'emoji', e.target.value)}
+                          className="h-8 w-14 text-center text-lg"
+                          placeholder="🎯"
+                        />
+                      )}
+                      <Input
+                        value={opt.label}
+                        onChange={e => updateOption(opt.id, e.target.value)}
+                        className="h-8 text-sm flex-1"
+                        placeholder="Texto da opção"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeOption(opt.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {element.type === 'input_quiz_image' && (
+                      <Input
+                        value={opt.imageUrl || ''}
+                        onChange={e => updateOptionField(opt.id, 'imageUrl', e.target.value)}
+                        className="h-8 text-xs"
+                        placeholder="URL da imagem..."
+                      />
+                    )}
                   </div>
                 ))}
                 <Button variant="outline" size="sm" className="w-full text-xs" onClick={addOption}>

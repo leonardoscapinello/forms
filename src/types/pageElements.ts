@@ -22,7 +22,12 @@ export type PageElementType =
   | 'input_textarea'
   | 'input_date'
   | 'input_height'
-  | 'input_weight';
+  | 'input_weight'
+  // Quiz elements
+  | 'input_yes_no'
+  | 'input_multi_select'
+  | 'input_quiz_icon'
+  | 'input_quiz_image';
 
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
@@ -38,6 +43,8 @@ export interface PageElementStyle {
 export interface SelectOption {
   id: string;
   label: string;
+  emoji?: string;
+  imageUrl?: string;
 }
 
 export interface PageElement {
@@ -99,6 +106,10 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_date: 'Data',
   input_height: 'Altura',
   input_weight: 'Peso',
+  input_yes_no: 'Sim/Não',
+  input_multi_select: 'Múltipla escolha',
+  input_quiz_icon: 'Quiz com ícone',
+  input_quiz_image: 'Quiz com imagem',
 };
 
 export type ElementCategory = 'visual' | 'fields';
@@ -110,7 +121,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   fields: {
     label: 'Formulário',
-    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating'],
+    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating', 'input_yes_no', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'],
   },
 };
 
@@ -226,6 +237,36 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.min = 20;
       base.max = 250;
       base.defaultValue = 70;
+      base.required = false;
+      break;
+    case 'input_yes_no':
+      base.label = 'Você concorda?';
+      base.required = false;
+      break;
+    case 'input_multi_select':
+      base.label = 'Selecione todas que se aplicam';
+      base.options = [
+        { id: crypto.randomUUID(), label: 'Opção 1' },
+        { id: crypto.randomUUID(), label: 'Opção 2' },
+        { id: crypto.randomUUID(), label: 'Opção 3' },
+      ];
+      base.required = false;
+      break;
+    case 'input_quiz_icon':
+      base.label = 'Qual sua preferência?';
+      base.options = [
+        { id: crypto.randomUUID(), label: 'Opção 1', emoji: '🎯' },
+        { id: crypto.randomUUID(), label: 'Opção 2', emoji: '🚀' },
+        { id: crypto.randomUUID(), label: 'Opção 3', emoji: '💡' },
+      ];
+      base.required = false;
+      break;
+    case 'input_quiz_image':
+      base.label = 'Qual você prefere?';
+      base.options = [
+        { id: crypto.randomUUID(), label: 'Opção 1', imageUrl: '' },
+        { id: crypto.randomUUID(), label: 'Opção 2', imageUrl: '' },
+      ];
       base.required = false;
       break;
   }
