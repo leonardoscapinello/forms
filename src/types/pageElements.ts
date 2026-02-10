@@ -72,6 +72,7 @@ export interface TestimonialItem {
   rating: number;
   text: string;
   photoUrl?: string; // upload or empty for initials
+  verified?: boolean; // show verified badge
 }
 
 export interface FAQItem {
