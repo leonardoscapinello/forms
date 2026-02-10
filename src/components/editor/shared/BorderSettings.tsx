@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ColorPickerField from './ColorPickerField';
 
 interface Props {
   borderWidth?: number;
@@ -45,20 +46,13 @@ export default function BorderSettings({ borderWidth, borderStyle, borderColor, 
             </Select>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={borderColor || '#e5e7eb'}
-            onChange={e => onChange({ borderColor: e.target.value })}
-            className="h-8 w-8 rounded border border-border cursor-pointer flex-shrink-0"
-          />
-          <Input
-            value={borderColor || ''}
-            onChange={e => onChange({ borderColor: e.target.value || undefined })}
-            placeholder="Cor da borda"
-            className="flex-1 h-8 text-xs"
-          />
-        </div>
+        <ColorPickerField
+          label="Cor da borda"
+          value={borderColor || ''}
+          onChange={v => onChange({ borderColor: v || undefined })}
+          placeholder="Padrão"
+          defaultColor="#e5e7eb"
+        />
       </div>
 
       <div className="space-y-2 mb-4">

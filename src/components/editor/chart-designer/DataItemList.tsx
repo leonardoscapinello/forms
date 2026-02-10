@@ -97,12 +97,14 @@ function DataItemRow({ item, index, onUpdate, onRemove }: DataItemProps) {
                       />
                     ))}
                   </div>
-                  <input
-                    type="color"
-                    value={item.color || PRESET_COLORS[index % PRESET_COLORS.length]}
-                    onChange={e => onUpdate(item.id, { color: e.target.value })}
-                    className="w-full h-8 rounded cursor-pointer border border-border"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={item.color || PRESET_COLORS[index % PRESET_COLORS.length]}
+                      onChange={e => onUpdate(item.id, { color: e.target.value })}
+                      className="w-full h-8 rounded cursor-pointer border border-border"
+                    />
+                  </div>
                 </div>
 
                 {colorMode === 'gradient' && (
@@ -120,12 +122,14 @@ function DataItemRow({ item, index, onUpdate, onRemove }: DataItemProps) {
                         />
                       ))}
                     </div>
-                    <input
-                      type="color"
-                      value={item.gradientTo || '#10b981'}
-                      onChange={e => onUpdate(item.id, { gradientTo: e.target.value })}
-                      className="w-full h-8 rounded cursor-pointer border border-border"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={item.gradientTo || '#10b981'}
+                        onChange={e => onUpdate(item.id, { gradientTo: e.target.value })}
+                        className="w-full h-8 rounded cursor-pointer border border-border"
+                      />
+                    </div>
                     {/* Gradient preview */}
                     <div
                       className="w-full h-6 rounded-lg border border-border"

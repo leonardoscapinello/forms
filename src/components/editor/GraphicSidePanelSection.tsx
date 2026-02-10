@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2 } from 'lucide-react';
+import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 import {
   Select,
   SelectContent,
@@ -193,15 +194,13 @@ export default function GraphicSidePanelSection({ question, onChange }: Props) {
             )}
 
             {showColor && (
-              <div className="flex items-center gap-2">
-                <Label className="text-[10px] text-muted-foreground/70">Cor</Label>
-                <input
-                  type="color"
-                  value={item.color || '#6366f1'}
-                  onChange={e => updateItem(item.id, { color: e.target.value })}
-                  className="h-6 w-8 rounded border border-border cursor-pointer"
-                />
-              </div>
+              <ColorPickerField
+                label="Cor"
+                value={item.color || ''}
+                onChange={v => updateItem(item.id, { color: v || '#6366f1' })}
+                defaultColor="#6366f1"
+                allowTransparent={false}
+              />
             )}
           </div>
         ))}
