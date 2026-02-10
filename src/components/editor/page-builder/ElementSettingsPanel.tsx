@@ -106,7 +106,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
               </div>
               <Switch
                 checked={element.smartValidation || false}
-                onCheckedChange={v => onChange({ smartValidation: v })}
+                onCheckedChange={v => onChange({ smartValidation: v, ...(v ? { required: true } : {}) })}
               />
             </div>
           )}
