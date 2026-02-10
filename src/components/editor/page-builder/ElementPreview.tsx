@@ -413,24 +413,29 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const lblColor = element.horizontalBarLabelColor || 'hsl(var(--foreground))';
       const valColor = element.horizontalBarValueColor || barColor;
       const trackH = element.horizontalBarHeight || 12;
-      const totalSegments = 20;
-      const filledSegments = Math.round((Math.min(100, Math.max(0, barVal)) / 100) * totalSegments);
+      const totalSegments = 5;
+      const pct = Math.min(100, Math.max(0, barVal));
+      const filledFull = Math.floor((pct / 100) * totalSegments);
+      const partialFill = ((pct / 100) * totalSegments) - filledFull;
       return (
         <div className="space-y-1.5 w-full">
           <div className="flex justify-between items-baseline">
             <span className="text-sm font-semibold" style={{ color: lblColor }}>{element.horizontalBarLabel || 'Progresso'}</span>
             <span className="text-sm font-extrabold" style={{ color: valColor }}>{barVal}%</span>
           </div>
-          <div className="flex gap-[3px] w-full">
+          <div className="flex gap-1 w-full">
             {Array.from({ length: totalSegments }).map((_, i) => (
               <div
                 key={i}
-                className="flex-1 rounded-full transition-all duration-300"
-                style={{
-                  height: trackH,
-                  backgroundColor: i < filledSegments ? barColor : barBg,
-                }}
-              />
+                className="flex-1 rounded-sm overflow-hidden"
+                style={{ height: trackH, backgroundColor: barBg }}
+              >
+                {i < filledFull ? (
+                  <div className="h-full w-full" style={{ backgroundColor: barColor }} />
+                ) : i === filledFull && partialFill > 0 ? (
+                  <div className="h-full" style={{ width: `${partialFill * 100}%`, backgroundColor: barColor }} />
+                ) : null}
+              </div>
             ))}
           </div>
         </div>
