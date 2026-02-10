@@ -111,8 +111,8 @@ export default function PhoneFieldPreview({ value, onChange }: Props) {
           onClick={() => setOpen(!open)}
           className="flex items-center gap-2 border-0 border-b-2 border-border hover:border-primary py-3 px-1 transition-colors cursor-pointer bg-transparent"
         >
-          <span className="text-2xl leading-none">{selectedCountry.flag}</span>
-          <span className="text-lg text-foreground font-medium">{selectedCountry.ddi}</span>
+          <span className="text-xl md:text-2xl leading-none">{selectedCountry.flag}</span>
+          <span className="text-base md:text-lg text-foreground font-medium">{selectedCountry.ddi}</span>
           <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -159,7 +159,7 @@ export default function PhoneFieldPreview({ value, onChange }: Props) {
         onChange={e => handleInput(e.target.value)}
         placeholder={selectedCountry.mask}
         autoFocus
-        className="flex-1 bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-2xl py-3 text-foreground placeholder:text-muted-foreground/40 transition-colors"
+        className="flex-1 bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-2xl py-2 md:py-3 text-foreground placeholder:text-muted-foreground/40 transition-colors"
       />
     </div>
   );

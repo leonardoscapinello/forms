@@ -108,13 +108,13 @@ export default function FormPreview() {
 
       {/* Progress */}
       {!isWelcome && !isThankYou && (
-        <div className="px-8 pt-6">
+        <div className="px-4 md:px-8 pt-6">
           <Progress value={progress} className="h-1" />
         </div>
       )}
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center px-8">
+      <div className="flex-1 flex items-center justify-center px-4 md:px-8">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
@@ -128,14 +128,14 @@ export default function FormPreview() {
           >
             {/* Welcome */}
             {isWelcome && (
-              <div className="text-center space-y-5">
-                <h1 className="text-4xl font-bold text-foreground">
+              <div className="text-center space-y-4 md:space-y-5">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
                   {form.welcomeTitle || form.title}
                 </h1>
-                <p className="text-lg text-muted-foreground">
+                <p className="text-base md:text-lg text-muted-foreground">
                   {form.welcomeDescription || form.description || 'Clique em começar para iniciar.'}
                 </p>
-                <Button size="lg" onClick={goNext} className="mt-8 text-base px-8 py-3 h-auto">
+                <Button size="lg" onClick={goNext} className="mt-6 md:mt-8 text-base px-6 md:px-8 py-3 h-auto">
                   Começar
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -144,14 +144,14 @@ export default function FormPreview() {
 
             {/* Thank You */}
             {isThankYou && (
-              <div className="text-center space-y-5">
-                <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-                  <Check className="h-10 w-10 text-primary" />
+              <div className="text-center space-y-4 md:space-y-5">
+                <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
+                  <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
                 </div>
-                <h1 className="text-4xl font-bold text-foreground">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
                   {form.thankYouTitle || 'Obrigado!'}
                 </h1>
-                <p className="text-lg text-muted-foreground">
+                <p className="text-base md:text-lg text-muted-foreground">
                   {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
                 </p>
               </div>
@@ -159,7 +159,7 @@ export default function FormPreview() {
 
             {/* Page content */}
             {currentPage && (
-              <div className="space-y-8">
+              <div className="space-y-5 md:space-y-8">
                 {currentPage.elements.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
                 ) : (
@@ -188,7 +188,7 @@ export default function FormPreview() {
 
       {/* Navigation */}
       {!isWelcome && !isThankYou && (
-        <div className="px-8 py-6 flex justify-between items-center">
+        <div className="px-4 md:px-8 py-4 md:py-6 flex justify-between items-center">
           <Button variant="ghost" onClick={goBack} className="text-sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
@@ -286,21 +286,21 @@ function InteractiveElement({
 
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
-    <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <span className="text-2xl font-semibold text-primary mt-0.5">{stepNumber}</span>
-        <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-start gap-2 md:gap-3">
+        <span className="text-lg md:text-xl lg:text-2xl font-semibold text-primary mt-0.5">{stepNumber}</span>
+        <span className="text-lg md:text-xl lg:text-2xl font-semibold text-primary mt-0.5">→</span>
         <div>
-          <h2 className="text-2xl font-semibold text-foreground leading-snug">
+          <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
             {element.label || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-base text-muted-foreground mt-2">{element.description}</p>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{element.description}</p>
           )}
         </div>
       </div>
-      <div className="pl-14">
+      <div className="pl-10 md:pl-12 lg:pl-14">
         {content}
       </div>
     </div>
@@ -366,7 +366,7 @@ function InteractiveElement({
               value={value || ''}
               onChange={e => handleEmailChange(e.target.value)}
               placeholder={element.placeholder || 'seu@email.com'}
-              className={`w-full bg-transparent border-0 border-b-2 outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
+              className={`w-full bg-transparent border-0 border-b-2 outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
                 emailError ? 'border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
               }`}
               autoFocus
@@ -398,7 +398,7 @@ function InteractiveElement({
           value={value || ''}
           onChange={e => onChange(e.target.value)}
           placeholder={element.placeholder || 'Digite aqui...'}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
+          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
           autoFocus
         />
       );
@@ -410,35 +410,35 @@ function InteractiveElement({
 
     case 'input_checkbox':
       return withFieldHeader(
-        <button onClick={() => onChange(!value)} className="flex items-center gap-4 text-left group">
-          <div className={`h-7 w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+        <button onClick={() => onChange(!value)} className="flex items-center gap-3 md:gap-4 text-left group">
+          <div className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
             value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
           }`}>
-            {value && <Check className="h-4 w-4 text-primary-foreground" />}
+            {value && <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />}
           </div>
-          <span className="text-lg text-foreground">Aceitar</span>
+          <span className="text-base md:text-lg text-foreground">Aceitar</span>
         </button>
       );
 
     case 'input_select':
       return withFieldHeader(
-        <div className="space-y-3">
+        <div className="space-y-2 md:space-y-3">
           {(element.options || []).map((opt, i) => (
             <button
               key={opt.id}
               onClick={() => onChange(opt.id)}
-              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+              className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                 value === opt.id
                   ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                   : 'border-border hover:border-primary/40 text-foreground'
               }`}
             >
-              <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+              <span className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
                 value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
               }`}>
                 {String.fromCharCode(65 + i)}
               </span>
-              <span className="text-lg">{opt.label}</span>
+              <span className="text-base md:text-lg">{opt.label}</span>
             </button>
           ))}
         </div>
@@ -446,23 +446,23 @@ function InteractiveElement({
 
     case 'input_radio':
       return withFieldHeader(
-        <div className="space-y-3">
+        <div className="space-y-2 md:space-y-3">
           {(element.options || []).map((opt, i) => (
             <button
               key={opt.id}
               onClick={() => onChange(opt.id)}
-              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+              className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                 value === opt.id
                   ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                   : 'border-border hover:border-primary/40 text-foreground'
               }`}
             >
-              <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+              <span className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
                 value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
               }`}>
                 {String.fromCharCode(65 + i)}
               </span>
-              <span className="text-lg">{opt.label}</span>
+              <span className="text-base md:text-lg">{opt.label}</span>
             </button>
           ))}
         </div>
