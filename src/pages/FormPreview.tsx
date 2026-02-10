@@ -23,7 +23,11 @@ export default function FormPreview() {
   const { getForm } = useFormStore();
   const form = getForm(id!);
 
-  const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null); // null = welcome
+  const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(() => {
+    // Skip welcome screen if disabled
+    if (form && !form.showWelcomeScreen) return 0;
+    return null; // null = welcome
+  });
   const [answers, setAnswers] = useState<Record<string, any>>(() => {
     if (!form) return {};
     const defaults: Record<string, any> = {};
