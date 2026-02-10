@@ -111,6 +111,44 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
+          {/* ─── Phone: default DDI ─── */}
+          {element.type === 'input_phone' && (
+            <div className="space-y-2">
+              <Label>DDI padrão</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                País pré-selecionado ao abrir o campo
+              </p>
+              <Select
+                value={element.defaultCountryCode || 'BR'}
+                onValueChange={v => onChange({ defaultCountryCode: v })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BR">🇧🇷 Brasil (+55)</SelectItem>
+                  <SelectItem value="US">🇺🇸 Estados Unidos (+1)</SelectItem>
+                  <SelectItem value="PT">🇵🇹 Portugal (+351)</SelectItem>
+                  <SelectItem value="AR">🇦🇷 Argentina (+54)</SelectItem>
+                  <SelectItem value="CL">🇨🇱 Chile (+56)</SelectItem>
+                  <SelectItem value="CO">🇨🇴 Colômbia (+57)</SelectItem>
+                  <SelectItem value="MX">🇲🇽 México (+52)</SelectItem>
+                  <SelectItem value="UY">🇺🇾 Uruguai (+598)</SelectItem>
+                  <SelectItem value="PY">🇵🇾 Paraguai (+595)</SelectItem>
+                  <SelectItem value="PE">🇵🇪 Peru (+51)</SelectItem>
+                  <SelectItem value="GB">🇬🇧 Reino Unido (+44)</SelectItem>
+                  <SelectItem value="DE">🇩🇪 Alemanha (+49)</SelectItem>
+                  <SelectItem value="FR">🇫🇷 França (+33)</SelectItem>
+                  <SelectItem value="ES">🇪🇸 Espanha (+34)</SelectItem>
+                  <SelectItem value="IT">🇮🇹 Itália (+39)</SelectItem>
+                  <SelectItem value="JP">🇯🇵 Japão (+81)</SelectItem>
+                  <SelectItem value="CN">🇨🇳 China (+86)</SelectItem>
+                  <SelectItem value="IN">🇮🇳 Índia (+91)</SelectItem>
+                  <SelectItem value="AU">🇦🇺 Austrália (+61)</SelectItem>
+                  <SelectItem value="CA">🇨🇦 Canadá (+1)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* ─── Options (select, radio) ─── */}
           {(element.type === 'input_select' || element.type === 'input_radio') && (
             <div className="space-y-2">

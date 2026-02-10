@@ -53,6 +53,7 @@ export interface PageElement {
   options?: SelectOption[];
   maxRating?: number;
   smartValidation?: boolean;
+  defaultCountryCode?: string;
   style?: PageElementStyle;
 }
 
@@ -143,6 +144,7 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.label = 'Telefone';
       base.placeholder = '(00) 00000-0000';
       base.required = false;
+      base.defaultCountryCode = 'BR';
       break;
     case 'input_address':
       base.label = 'Endereço';

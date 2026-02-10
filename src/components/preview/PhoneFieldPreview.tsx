@@ -52,12 +52,14 @@ export interface PhoneValue {
 interface Props {
   value: PhoneValue | string | undefined;
   onChange: (value: PhoneValue) => void;
+  defaultCountryCode?: string;
 }
 
-export default function PhoneFieldPreview({ value, onChange }: Props) {
+export default function PhoneFieldPreview({ value, onChange, defaultCountryCode = 'BR' }: Props) {
+  const defaultCountry = COUNTRIES.find(c => c.code === defaultCountryCode) || COUNTRIES[0];
   const phoneValue: PhoneValue = typeof value === 'object' && value !== null && 'countryCode' in value
     ? value as PhoneValue
-    : { countryCode: 'BR', ddi: '+55', number: typeof value === 'string' ? value : '' };
+    : { countryCode: defaultCountry.code, ddi: defaultCountry.ddi, number: typeof value === 'string' ? value : '' };
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
