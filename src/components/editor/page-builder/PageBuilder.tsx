@@ -251,7 +251,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         <div
           className="mx-auto w-full"
           style={{
-            maxWidth: 672, /* matches max-w-2xl used in FormPreview */
+            maxWidth: 672 + (effectiveStyle.paddingX || 0) * 2, /* content 672px + padding */
             paddingLeft: effectiveStyle.paddingX,
             paddingRight: effectiveStyle.paddingX,
             paddingTop: effectiveStyle.paddingY,
