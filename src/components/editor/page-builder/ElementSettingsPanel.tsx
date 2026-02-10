@@ -34,7 +34,7 @@ const isFormField = (type: string) => type.startsWith('input_');
 export default function ElementSettingsPanel({ element, onChange, onClose, pages }: Props) {
   const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  // paddingLinked/marginLinked state now managed inside SpacingControl
+  const [activeTab, setActiveTab] = useState<'definitions' | 'appearance' | 'exterior'>('definitions');
 
   const updateStyle = (patch: Record<string, any>) => {
     onChange({ style: { ...element.style, ...patch } });
@@ -68,6 +68,12 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
     onChange({ options: (element.options || []).filter(o => o.id !== id) });
   };
 
+  const TAB_OPTIONS = [
+    { key: 'definitions' as const, label: 'Definições' },
+    { key: 'appearance' as const, label: 'Aparência' },
+    { key: 'exterior' as const, label: 'Exterior' },
+  ];
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-border">
@@ -77,8 +83,27 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
         </Button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b border-border">
+        {TAB_OPTIONS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
+              activeTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-5">
+
+          {activeTab === 'definitions' && (<>
           {/* ─── Form field: label (enunciado) ─── */}
           {isFormField(element.type) && (
             <div className="space-y-2">
@@ -1358,86 +1383,94 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* ═══════ UNIVERSAL STYLE SECTION ═══════ */}
-          <div className="border-t border-border pt-4 mt-2 space-y-4">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Estilo</h4>
+          </>)}
 
-            {!['divider', 'spacer', 'columns'].includes(element.type) && (
-              <AlignmentSelector
-                value={element.style?.textAlign as any}
-                onChange={v => updateStyle({ textAlign: v })}
+          {/* ═══════ APARÊNCIA TAB ═══════ */}
+          {activeTab === 'appearance' && (
+            <div className="space-y-4">
+              {!['divider', 'spacer', 'columns'].includes(element.type) && (
+                <AlignmentSelector
+                  value={element.style?.textAlign as any}
+                  onChange={v => updateStyle({ textAlign: v })}
+                />
+              )}
+
+              <ColorPickerField
+                label="Cor do fundo"
+                value={element.style?.backgroundColor || ''}
+                onChange={v => updateStyle({ backgroundColor: v || undefined })}
+                placeholder="Transparente"
+                defaultColor="#ffffff"
               />
-            )}
 
-            <ColorPickerField
-              label="Cor do fundo"
-              value={element.style?.backgroundColor || ''}
-              onChange={v => updateStyle({ backgroundColor: v || undefined })}
-              placeholder="Transparente"
-              defaultColor="#ffffff"
-            />
-
-            <ColorPickerField
-              label="Cor do texto"
-              value={element.style?.color || ''}
-              onChange={v => updateStyle({ color: v || undefined })}
-              placeholder="Padrão"
-              defaultColor="#000000"
-            />
-
-            <TypographySelector
-              fontFamily={element.style?.fontFamily}
-              fontWeight={element.style?.fontWeight}
-              onFontFamilyChange={v => updateStyle({ fontFamily: v })}
-              onFontWeightChange={v => updateStyle({ fontWeight: v })}
-            />
-
-            <BorderSettings
-              borderWidth={element.style?.borderWidth}
-              borderStyle={element.style?.borderStyle}
-              borderColor={element.style?.borderColor}
-              borderRadius={element.style?.borderRadius}
-              onChange={updateStyle}
-            />
-
-            <ShadowSelector
-              value={element.style?.boxShadow}
-              onChange={v => updateStyle({ boxShadow: v })}
-            />
-
-            <SpacingControl
-              property="padding"
-              label="Padding"
-              value={element.style?.padding}
-              sides={{
-                top: element.style?.paddingTop,
-                right: element.style?.paddingRight,
-                bottom: element.style?.paddingBottom,
-                left: element.style?.paddingLeft,
-              }}
-              onChange={updateStyle}
-            />
-
-            <SpacingControl
-              property="margin"
-              label="Margem"
-              value={element.style?.margin}
-              sides={{
-                top: element.style?.marginTop,
-                right: element.style?.marginRight,
-                bottom: element.style?.marginBottom,
-                left: element.style?.marginLeft,
-              }}
-              onChange={updateStyle}
-            />
-
-            {['button', 'image', 'divider'].includes(element.type) && (
-              <WidthSelector
-                value={element.style?.width}
-                onChange={v => updateStyle({ width: v })}
+              <ColorPickerField
+                label="Cor do texto"
+                value={element.style?.color || ''}
+                onChange={v => updateStyle({ color: v || undefined })}
+                placeholder="Padrão"
+                defaultColor="#000000"
               />
-            )}
-          </div>
+
+              <TypographySelector
+                fontFamily={element.style?.fontFamily}
+                fontWeight={element.style?.fontWeight}
+                onFontFamilyChange={v => updateStyle({ fontFamily: v })}
+                onFontWeightChange={v => updateStyle({ fontWeight: v })}
+              />
+            </div>
+          )}
+
+          {/* ═══════ EXTERIOR TAB ═══════ */}
+          {activeTab === 'exterior' && (
+            <div className="space-y-4">
+              <BorderSettings
+                borderWidth={element.style?.borderWidth}
+                borderStyle={element.style?.borderStyle}
+                borderColor={element.style?.borderColor}
+                borderRadius={element.style?.borderRadius}
+                onChange={updateStyle}
+              />
+
+              <ShadowSelector
+                value={element.style?.boxShadow}
+                onChange={v => updateStyle({ boxShadow: v })}
+              />
+
+              <SpacingControl
+                property="padding"
+                label="Padding"
+                value={element.style?.padding}
+                sides={{
+                  top: element.style?.paddingTop,
+                  right: element.style?.paddingRight,
+                  bottom: element.style?.paddingBottom,
+                  left: element.style?.paddingLeft,
+                }}
+                onChange={updateStyle}
+              />
+
+              <SpacingControl
+                property="margin"
+                label="Margem"
+                value={element.style?.margin}
+                sides={{
+                  top: element.style?.marginTop,
+                  right: element.style?.marginRight,
+                  bottom: element.style?.marginBottom,
+                  left: element.style?.marginLeft,
+                }}
+                onChange={updateStyle}
+              />
+
+              {['button', 'image', 'divider'].includes(element.type) && (
+                <WidthSelector
+                  value={element.style?.width}
+                  onChange={v => updateStyle({ width: v })}
+                />
+              )}
+            </div>
+          )}
+
         </div>
       </ScrollArea>
     </div>
