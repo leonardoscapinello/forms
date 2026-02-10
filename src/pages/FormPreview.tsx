@@ -371,22 +371,48 @@ function InteractiveElement({
               }`}
               autoFocus
             />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2">
-              {emailChecking && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-              {!emailChecking && emailValid && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-              {!emailChecking && emailError && <AlertCircle className="h-5 w-5 text-destructive" />}
-            </div>
+            <AnimatePresence mode="wait">
+              <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                {emailChecking && (
+                  <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </motion.div>
+                )}
+                {!emailChecking && emailValid && (
+                  <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 300 }}>
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  </motion.div>
+                )}
+                {!emailChecking && emailError && (
+                  <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 300 }}>
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                  </motion.div>
+                )}
+              </div>
+            </AnimatePresence>
           </div>
-          {emailError && (
-            <p className="text-sm text-destructive flex items-center gap-1.5">
-              {emailError}
-            </p>
-          )}
-          {emailValid && element.smartValidation && (
-            <p className="text-sm text-green-600 flex items-center gap-1.5">
-              E-mail verificado ✓
-            </p>
-          )}
+          <AnimatePresence>
+            {emailError && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                className="text-sm text-destructive flex items-center gap-1.5"
+              >
+                {emailError}
+              </motion.p>
+            )}
+            {emailValid && element.smartValidation && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                className="text-sm text-green-600 flex items-center gap-1.5"
+              >
+                E-mail verificado ✓
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
       );
 
@@ -410,36 +436,51 @@ function InteractiveElement({
 
     case 'input_checkbox':
       return withFieldHeader(
-        <button onClick={() => onChange(!value)} className="flex items-center gap-3 md:gap-4 text-left group">
-          <div className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-            value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
-          }`}>
+        <motion.button
+          onClick={() => onChange(!value)}
+          className="flex items-center gap-3 md:gap-4 text-left group"
+          whileTap={{ scale: 0.97 }}
+        >
+          <motion.div
+            className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+              value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
+            }`}
+            animate={value ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ duration: 0.25 }}
+          >
             {value && <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />}
-          </div>
+          </motion.div>
           <span className="text-base md:text-lg text-foreground">Aceitar</span>
-        </button>
+        </motion.button>
       );
 
     case 'input_select':
       return withFieldHeader(
         <div className="space-y-2 md:space-y-3">
           {(element.options || []).map((opt, i) => (
-            <button
+            <motion.button
               key={opt.id}
               onClick={() => onChange(opt.id)}
+              whileTap={{ scale: 0.98 }}
+              animate={value === opt.id ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 0.2 }}
               className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                 value === opt.id
                   ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                   : 'border-border hover:border-primary/40 text-foreground'
               }`}
             >
-              <span className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
-              }`}>
+              <motion.span
+                className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                  value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+                }`}
+                animate={value === opt.id ? { scale: [1, 1.25, 1] } : {}}
+                transition={{ duration: 0.25 }}
+              >
                 {String.fromCharCode(65 + i)}
-              </span>
+              </motion.span>
               <span className="text-base md:text-lg">{opt.label}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
       );
@@ -448,22 +489,29 @@ function InteractiveElement({
       return withFieldHeader(
         <div className="space-y-2 md:space-y-3">
           {(element.options || []).map((opt, i) => (
-            <button
+            <motion.button
               key={opt.id}
               onClick={() => onChange(opt.id)}
+              whileTap={{ scale: 0.98 }}
+              animate={value === opt.id ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 0.2 }}
               className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                 value === opt.id
                   ? 'border-primary bg-primary/5 text-foreground shadow-sm'
                   : 'border-border hover:border-primary/40 text-foreground'
               }`}
             >
-              <span className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
-              }`}>
+              <motion.span
+                className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                  value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+                }`}
+                animate={value === opt.id ? { scale: [1, 1.25, 1] } : {}}
+                transition={{ duration: 0.25 }}
+              >
                 {String.fromCharCode(65 + i)}
-              </span>
+              </motion.span>
               <span className="text-base md:text-lg">{opt.label}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
       );
@@ -474,17 +522,20 @@ function InteractiveElement({
       return withFieldHeader(
         <div className="flex gap-2">
           {Array.from({ length: max }).map((_, i) => (
-            <button
+            <motion.button
               key={i}
               onClick={() => onChange(i + 1)}
-              className="transition-transform hover:scale-110"
+              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.15 }}
+              animate={i < current ? { scale: [1, 1.3, 1] } : {}}
+              transition={{ duration: 0.2, delay: i * 0.03 }}
             >
               <Star
-                className={`h-8 w-8 transition-colors ${
+                className={`h-7 w-7 md:h-8 md:w-8 transition-colors ${
                   i < current ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'
                 }`}
               />
-            </button>
+            </motion.button>
           ))}
         </div>
       );
