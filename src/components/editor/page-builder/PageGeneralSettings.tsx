@@ -4,25 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Palette, Type, AlignVerticalSpaceAround, Move } from 'lucide-react';
+import { Palette, AlignVerticalSpaceAround, Move } from 'lucide-react';
+import { TypographySelector } from '@/components/editor/shared';
+import { FONT_OPTIONS } from '@/components/editor/shared/TypographySelector';
 
 interface Props {
   pageStyle: FunnelPageStyle;
   onChange: (patch: Partial<FunnelPageStyle>) => void;
 }
 
-const FONT_OPTIONS = [
-  { value: 'Inter', label: 'Inter' },
-  { value: 'DM Sans', label: 'DM Sans' },
-  { value: 'Poppins', label: 'Poppins' },
-  { value: 'Roboto', label: 'Roboto' },
-  { value: 'Open Sans', label: 'Open Sans' },
-  { value: 'Lato', label: 'Lato' },
-  { value: 'Montserrat', label: 'Montserrat' },
-  { value: 'Source Sans 3', label: 'Source Sans 3' },
-  { value: 'Merriweather', label: 'Merriweather' },
-  { value: 'Playfair Display', label: 'Playfair Display' },
-];
+// FONT_OPTIONS now imported from shared TypographySelector
 
 const BG_PRESETS = [
   { value: '', label: 'Padrão' },
@@ -89,25 +80,13 @@ export default function PageGeneralSettings({ pageStyle, onChange }: Props) {
 
           {/* Typography */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Type className="h-4 w-4 text-muted-foreground" />
-              Tipografia
-            </div>
-            <Select
-              value={pageStyle.fontFamily || 'Inter'}
-              onValueChange={v => onChange({ fontFamily: v })}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FONT_OPTIONS.map(f => (
-                  <SelectItem key={f.value} value={f.value}>
-                    <span style={{ fontFamily: f.value }}>{f.label}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TypographySelector
+              label="Tipografia"
+              fontFamily={pageStyle.fontFamily || 'Inter'}
+              onFontFamilyChange={v => onChange({ fontFamily: v || 'Inter' })}
+              fontWeight={undefined}
+              onFontWeightChange={() => {}}
+            />
             <p className="text-xs text-muted-foreground">
               Fonte aplicada a todas as páginas do formulário
             </p>
