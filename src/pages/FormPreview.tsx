@@ -146,35 +146,20 @@ export default function FormPreview() {
 
             {/* Page content */}
             {currentPage && (
-              <div className="space-y-6">
-                {/* Page title */}
-                {currentPage.title && (
-                  <div className="mb-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl font-semibold text-primary mt-0.5">{(currentPageIndex || 0) + 1}</span>
-                      <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
-                      <h2 className="text-2xl font-semibold text-foreground leading-snug">
-                        {currentPage.title}
-                      </h2>
-                    </div>
-                  </div>
+              <div className="space-y-8">
+                {currentPage.elements.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
+                ) : (
+                  currentPage.elements.map((el, elIdx) => (
+                    <InteractiveElement
+                      key={el.id}
+                      element={el}
+                      value={answers[el.id]}
+                      onChange={v => setAnswer(el.id, v)}
+                      stepNumber={elIdx + 1}
+                    />
+                  ))
                 )}
-
-                {/* Elements */}
-                <div className="pl-14 space-y-4">
-                  {currentPage.elements.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
-                  ) : (
-                    currentPage.elements.map(el => (
-                      <InteractiveElement
-                        key={el.id}
-                        element={el}
-                        value={answers[el.id]}
-                        onChange={v => setAnswer(el.id, v)}
-                      />
-                    ))
-                  )}
-                </div>
               </div>
             )}
           </motion.div>
@@ -203,13 +188,32 @@ function InteractiveElement({
   element,
   value,
   onChange,
+  stepNumber,
 }: {
   element: PageElement;
   value: any;
   onChange: (v: any) => void;
+  stepNumber: number;
 }) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+
+  /** Wraps form fields with the "N → label" Typeform header */
+  const withFieldHeader = (label: string, required: boolean, content: React.ReactNode) => (
+    <div className="space-y-6">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl font-semibold text-primary mt-0.5">{stepNumber}</span>
+        <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
+        <h2 className="text-2xl font-semibold text-foreground leading-snug">
+          {label || 'Sem título'}
+          {required && <span className="text-destructive ml-1">*</span>}
+        </h2>
+      </div>
+      <div className="pl-14">
+        {content}
+      </div>
+    </div>
+  );
 
   switch (type) {
     case 'heading': {
@@ -261,116 +265,92 @@ function InteractiveElement({
     case 'spacer':
       return <div style={{ height: element.height || 40 }} />;
 
-    // ─── Interactive form fields ──────────────────
+    // ─── Interactive form fields (with "N → label" header) ──────────────────
     case 'input_text':
     case 'input_email':
     case 'input_phone':
     case 'input_address':
-      return (
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            {element.label || 'Campo'}
-            {element.required && <span className="text-destructive ml-1">*</span>}
-          </label>
-          <input
-            type={type === 'input_email' ? 'email' : type === 'input_phone' ? 'tel' : 'text'}
-            value={value || ''}
-            onChange={e => onChange(e.target.value)}
-            placeholder={element.placeholder || 'Digite aqui...'}
-            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
-          />
-        </div>
-      );
+      return withFieldHeader(element.label || 'Campo', !!element.required, (
+        <input
+          type={type === 'input_email' ? 'email' : type === 'input_phone' ? 'tel' : 'text'}
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder={element.placeholder || 'Digite aqui...'}
+          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
+          autoFocus
+        />
+      ));
 
     case 'input_checkbox':
-      return (
+      return withFieldHeader(element.label || 'Checkbox', !!element.required, (
         <button onClick={() => onChange(!value)} className="flex items-center gap-4 text-left group">
           <div className={`h-7 w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
             value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
           }`}>
             {value && <Check className="h-4 w-4 text-primary-foreground" />}
           </div>
-          <span className="text-lg text-foreground">
-            {element.label || 'Checkbox'}
-          </span>
+          <span className="text-lg text-foreground">Aceitar</span>
         </button>
-      );
+      ));
 
     case 'input_select':
-      return (
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            {element.label || 'Seleção'}
-            {element.required && <span className="text-destructive ml-1">*</span>}
-          </label>
-          <select
-            value={value || ''}
-            onChange={e => onChange(e.target.value)}
-            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground transition-colors"
-          >
-            <option value="">{element.placeholder || 'Selecione...'}</option>
-            {(element.options || []).map(opt => (
-              <option key={opt.id} value={opt.id}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-      );
+      return withFieldHeader(element.label || 'Seleção', !!element.required, (
+        <select
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground transition-colors"
+        >
+          <option value="">{element.placeholder || 'Selecione...'}</option>
+          {(element.options || []).map(opt => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
+          ))}
+        </select>
+      ));
 
     case 'input_radio':
-      return (
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            {element.label || 'Escolha'}
-            {element.required && <span className="text-destructive ml-1">*</span>}
-          </label>
-          <div className="space-y-3 pt-2">
-            {(element.options || []).map((opt, i) => (
-              <button
-                key={opt.id}
-                onClick={() => onChange(opt.id)}
-                className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
-                  value === opt.id
-                    ? 'border-primary bg-primary/5 text-foreground shadow-sm'
-                    : 'border-border hover:border-primary/40 text-foreground'
-                }`}
-              >
-                <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                  value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
-                }`}>
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <span className="text-lg">{opt.label}</span>
-              </button>
-            ))}
-          </div>
+      return withFieldHeader(element.label || 'Escolha', !!element.required, (
+        <div className="space-y-3">
+          {(element.options || []).map((opt, i) => (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+                value === opt.id
+                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                  : 'border-border hover:border-primary/40 text-foreground'
+              }`}
+            >
+              <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+              }`}>
+                {String.fromCharCode(65 + i)}
+              </span>
+              <span className="text-lg">{opt.label}</span>
+            </button>
+          ))}
         </div>
-      );
+      ));
 
     case 'input_rating': {
       const max = element.maxRating || 5;
       const current = value || 0;
-      return (
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            {element.label || 'Avaliação'}
-          </label>
-          <div className="flex gap-2 pt-2">
-            {Array.from({ length: max }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => onChange(i + 1)}
-                className="transition-transform hover:scale-110"
-              >
-                <Star
-                  className={`h-8 w-8 transition-colors ${
-                    i < current ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
+      return withFieldHeader(element.label || 'Avaliação', !!element.required, (
+        <div className="flex gap-2">
+          {Array.from({ length: max }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => onChange(i + 1)}
+              className="transition-transform hover:scale-110"
+            >
+              <Star
+                className={`h-8 w-8 transition-colors ${
+                  i < current ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'
+                }`}
+              />
+            </button>
+          ))}
         </div>
-      );
+      ));
     }
 
     default:
