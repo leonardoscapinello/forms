@@ -34,10 +34,27 @@ function buildCartesianData(datasets: ComparativeDataset[], labels: string[]) {
   });
 }
 
-/** Badge colors for dataset labels */
-const BADGE_COLORS = [
-  '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#64748b',
+/** Badge gradient palettes per dataset index */
+const BADGE_GRADIENTS = [
+  ['#f59e0b', '#ef4444'],   // amber → red
+  ['#22c55e', '#3b82f6'],   // green → blue
+  ['#a855f7', '#ec4899'],   // purple → pink
+  ['#06b6d4', '#f59e0b'],   // cyan → amber
+  ['#ef4444', '#a855f7'],   // red → purple
 ];
+
+function lerpColor(a: string, b: string, t: number): string {
+  const parse = (hex: string) => [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+  const ca = parse(a), cb = parse(b);
+  const r = Math.round(ca[0] + (cb[0] - ca[0]) * t);
+  const g = Math.round(ca[1] + (cb[1] - ca[1]) * t);
+  const bl = Math.round(ca[2] + (cb[2] - ca[2]) * t);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)}`;
+}
 
 function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   const data = buildCartesianData(datasets, labels);
@@ -94,7 +111,9 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
               dot={(props: any) => {
                 const { cx, cy, index } = props;
                 const point = ds.points[index];
-                const badgeColor = BADGE_COLORS[di % BADGE_COLORS.length];
+                const grad = BADGE_GRADIENTS[di % BADGE_GRADIENTS.length];
+                const t = labels.length > 1 ? index / (labels.length - 1) : 0;
+                const badgeColor = lerpColor(grad[0], grad[1], t);
                 const tipText = point?.tooltip || '';
                 const showBadge = !!tipText;
                 const badgeW = Math.max(tipText.length * 7 + 16, 50);
