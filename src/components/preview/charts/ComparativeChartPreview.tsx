@@ -228,8 +228,13 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
 
   return (
     <div>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={320}>
         <PieChart>
+          <defs>
+            <filter id="circBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.15" />
+            </filter>
+          </defs>
           {rings.map((ring, ri) => {
             const outer = outerBase - ri * (ringWidth + ringGap);
             const inner = outer - ringWidth;
@@ -259,23 +264,87 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
             );
           })}
           <Tooltip {...tooltipStyle} />
+
+          {/* SVG tooltip badges with connecting lines */}
+          {rings.map((ring, ri) => {
+            const outer = outerBase - ri * (ringWidth + ringGap);
+            const tipPointIndex = ring.ds.points.findIndex(p => !!p.tooltip);
+            if (tipPointIndex === -1) return null;
+
+            const tipText = ring.ds.points[tipPointIndex].tooltip || '';
+            const totalVal = ring.data.reduce((s, d) => s + d.value, 0);
+            let accum = 0;
+            for (let i = 0; i < tipPointIndex; i++) accum += ring.data[i].value;
+            accum += ring.data[tipPointIndex].value / 2;
+            const fraction = accum / totalVal;
+            const angleRad = (Math.PI / 2) - fraction * 2 * Math.PI;
+
+            const scale = 0.58;
+            const edgeX = 50 + outer * Math.cos(angleRad) * scale;
+            const edgeY = 50 - outer * Math.sin(angleRad) * scale;
+            const badgeX = 50 + (outer + 28) * Math.cos(angleRad) * scale;
+            const badgeY = 50 - (outer + 28) * Math.sin(angleRad) * scale;
+
+            const badgeW = Math.max(tipText.length * 7.5 + 20, 60);
+
+            return (
+              <g key={`tip-${ring.ds.id}`}>
+                <line
+                  x1={`${edgeX}%`} y1={`${edgeY}%`}
+                  x2={`${badgeX}%`} y2={`${badgeY}%`}
+                  stroke="hsl(var(--foreground))"
+                  strokeWidth={1.5}
+                  opacity={0.5}
+                />
+                <foreignObject
+                  x={`${badgeX - 12}%`}
+                  y={`${badgeY - 4}%`}
+                  width={badgeW + 20}
+                  height={32}
+                  style={{ overflow: 'visible' }}
+                >
+                  <div style={{
+                    backgroundColor: '#374151',
+                    color: 'white',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '4px 12px',
+                    borderRadius: 12,
+                    whiteSpace: 'nowrap',
+                    display: 'inline-block',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  }}>
+                    {tipText}
+                  </div>
+                </foreignObject>
+              </g>
+            );
+          })}
         </PieChart>
       </ResponsiveContainer>
 
-      {/* Custom legend grid */}
-      <div className="flex flex-col gap-2 mt-2 px-2">
+      {/* Centered legend */}
+      <div className="flex flex-col gap-2 mt-1 px-2 items-center">
         {datasets.map((ds) => (
-          <div key={ds.id} className="flex items-center gap-4 flex-wrap">
-            {ds.points.map((pt, pi) => (
-              <div key={pt.id} className="flex items-center gap-1.5">
-                <span
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: pt.color || FALLBACK_COLORS[pi % FALLBACK_COLORS.length] }}
-                />
-                <span className="text-xs text-muted-foreground">{labels[pi] || pt.label}</span>
-                <span className="text-xs font-semibold">{pt.value}</span>
-              </div>
-            ))}
+          <div key={ds.id} className="flex items-center gap-4 flex-wrap justify-center">
+            {ds.points.map((pt, pi) => {
+              const hasTip = !!pt.tooltip;
+              const ptColor = pt.color || FALLBACK_COLORS[pi % FALLBACK_COLORS.length];
+              return (
+                <div
+                  key={pt.id}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md"
+                  style={hasTip ? { backgroundColor: `${ptColor}14` } : undefined}
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: ptColor }}
+                  />
+                  <span className="text-xs text-muted-foreground">{labels[pi] || pt.label}</span>
+                  <span className="text-xs font-semibold">{pt.value}</span>
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
