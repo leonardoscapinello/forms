@@ -20,9 +20,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { forms, createForm, deleteForm } = useFormStore();
 
-  const handleCreate = () => {
-    const form = createForm();
-    navigate(`/editor/${form.id}`);
+  const handleCreate = async () => {
+    const form = await createForm();
+    if (form) navigate(`/editor/${form.id}`);
   };
 
   const totalResponses = forms.reduce((sum, f) => sum + f.responseCount, 0);
