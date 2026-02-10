@@ -1133,15 +1133,15 @@ function InteractiveElement({
                 {bar.label}
               </p>
             );
-            const bw = bar.borderWidth ?? 1;
-            const barBorderStyle: React.CSSProperties = {
+            const bw = element.progressBarColBorderWidth ?? 1;
+            const colBorderStyle: React.CSSProperties = {
               borderWidth: bw,
-              borderStyle: bw > 0 ? (bar.borderStyle || 'solid') : 'none',
-              borderColor: bw > 0 ? (bar.borderColor || 'rgba(0,0,0,0.12)') : undefined,
-              borderRadius: bar.borderRadius ?? 8,
+              borderStyle: bw > 0 ? (element.progressBarColBorderStyle || 'solid') : 'none',
+              borderColor: bw > 0 ? (element.progressBarColBorderColor || 'rgba(0,0,0,0.12)') : undefined,
+              borderRadius: element.progressBarColBorderRadius ?? 8,
             };
             return (
-              <div key={bar.id} className="flex flex-col items-center gap-3 p-3" style={barBorderStyle}>
+              <div key={bar.id} className="flex flex-col items-center gap-3 p-3" style={colBorderStyle}>
                 {disposition === 'chart_legend' ? <>{barContent}{labelContent}</> : <>{labelContent}{barContent}</>}
               </div>
             );
