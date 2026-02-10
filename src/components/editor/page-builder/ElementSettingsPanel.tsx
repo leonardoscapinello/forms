@@ -753,6 +753,138 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Chart settings ─── */}
+          {element.type === 'chart' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tipo de gráfico</Label>
+                <Select
+                  value={element.chartType || 'column'}
+                  onValueChange={v => onChange({ chartType: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="column">Colunas</SelectItem>
+                    <SelectItem value="bar">Barras</SelectItem>
+                    <SelectItem value="line">Linha</SelectItem>
+                    <SelectItem value="pie">Pizza</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Grade</Label>
+                  <Switch
+                    checked={element.chartStyle?.showGrid !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showGrid: v } })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Labels</Label>
+                  <Switch
+                    checked={element.chartStyle?.showLabels !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showLabels: v } })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Legenda</Label>
+                  <Switch
+                    checked={element.chartStyle?.showLegend !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showLegend: v } })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Valores</Label>
+                  <Switch
+                    checked={element.chartStyle?.showValues !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showValues: v } })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Dados ({(element.chartItems || []).length})</Label>
+                {(element.chartItems || []).map((item) => (
+                  <div key={item.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={item.color || '#6366f1'}
+                        onChange={e => {
+                          const items = (element.chartItems || []).map(d =>
+                            d.id === item.id ? { ...d, color: e.target.value } : d
+                          );
+                          onChange({ chartItems: items });
+                        }}
+                        className="h-7 w-7 rounded border border-border cursor-pointer flex-shrink-0"
+                      />
+                      <Input
+                        value={item.label}
+                        onChange={e => {
+                          const items = (element.chartItems || []).map(d =>
+                            d.id === item.id ? { ...d, label: e.target.value } : d
+                          );
+                          onChange({ chartItems: items });
+                        }}
+                        className="h-8 text-sm flex-1"
+                        placeholder="Label"
+                      />
+                      <Input
+                        value={item.value}
+                        onChange={e => {
+                          const items = (element.chartItems || []).map(d =>
+                            d.id === item.id ? { ...d, value: e.target.value } : d
+                          );
+                          onChange({ chartItems: items });
+                        }}
+                        className="h-8 text-sm w-16"
+                        placeholder="0"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => onChange({ chartItems: (element.chartItems || []).filter(d => d.id !== item.id) })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <Input
+                      value={item.tooltip || ''}
+                      onChange={e => {
+                        const items = (element.chartItems || []).map(d =>
+                          d.id === item.id ? { ...d, tooltip: e.target.value } : d
+                        );
+                        onChange({ chartItems: items });
+                      }}
+                      className="h-7 text-xs"
+                      placeholder="Texto da legenda (opcional)"
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    const items = [...(element.chartItems || [])];
+                    const colors = ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#eab308', '#f97316', '#ef4444', '#ec4899'];
+                    items.push({
+                      id: crypto.randomUUID(),
+                      label: `Item ${items.length + 1}`,
+                      value: String(Math.floor(Math.random() * 80) + 20),
+                      color: colors[items.length % colors.length],
+                    });
+                    onChange({ chartItems: items });
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar dado
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* ─── Arguments settings ─── */}
           {element.type === 'arguments' && (
             <div className="space-y-3">

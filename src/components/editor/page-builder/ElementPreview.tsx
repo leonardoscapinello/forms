@@ -5,6 +5,7 @@ import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { Bell } from 'lucide-react';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
+import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 
 interface Props {
   element: PageElement;
@@ -387,6 +388,17 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       return <BeforeAfterPreview element={element} />;
     case 'carousel':
       return <CarouselPreview element={element} />;
+
+    case 'chart':
+      return (
+        <div style={containerStyle}>
+          <ChartLivePreview
+            chartType={element.chartType || 'column'}
+            items={element.chartItems || []}
+            style={element.chartStyle || {}}
+          />
+        </div>
+      );
 
     case 'columns': {
       const colCount = element.columnCount || 2;
