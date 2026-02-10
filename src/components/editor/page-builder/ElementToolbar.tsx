@@ -3,7 +3,7 @@ import {
   Heading, Type, Image, MousePointerClick, Minus, Video, ArrowUpDown,
   Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
-  AlertTriangle, Bell,
+  AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -17,6 +17,12 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   spacer: ArrowUpDown,
   alert: AlertTriangle,
   notification: Bell,
+  arguments: List,
+  testimonials: MessageSquareQuote,
+  faq: HelpCircle,
+  pricing: CreditCard,
+  before_after: Columns,
+  carousel: GalleryHorizontal,
   input_text: TextCursorInput,
   input_email: Mail,
   input_phone: Phone,

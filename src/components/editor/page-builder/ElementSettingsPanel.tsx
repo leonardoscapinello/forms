@@ -1,4 +1,4 @@
-import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage } from '@/types/pageElements';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { X, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Loader2, Star } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useRef } from 'react';
@@ -672,6 +672,234 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ─── Arguments settings ─── */}
+          {element.type === 'arguments' && (
+            <div className="space-y-3">
+              <Label>Argumentos ({(element.argumentItems || []).length})</Label>
+              {(element.argumentItems || []).map((item) => (
+                <div key={item.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                  <div className="flex items-center gap-1.5">
+                    <Input value={item.emoji} onChange={e => { const items = (element.argumentItems || []).map(a => a.id === item.id ? { ...a, emoji: e.target.value } : a); onChange({ argumentItems: items }); }} className="h-8 w-14 text-center text-lg" placeholder="🎯" />
+                    <Input value={item.title} onChange={e => { const items = (element.argumentItems || []).map(a => a.id === item.id ? { ...a, title: e.target.value } : a); onChange({ argumentItems: items }); }} className="h-8 text-sm flex-1" placeholder="Título" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange({ argumentItems: (element.argumentItems || []).filter(a => a.id !== item.id) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                  <Textarea value={item.description} onChange={e => { const items = (element.argumentItems || []).map(a => a.id === item.id ? { ...a, description: e.target.value } : a); onChange({ argumentItems: items }); }} className="text-xs" rows={2} placeholder="Descrição..." />
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                const items = [...(element.argumentItems || [])];
+                items.push({ id: crypto.randomUUID(), emoji: '✨', title: `Benefício ${items.length + 1}`, description: '' });
+                onChange({ argumentItems: items });
+              }}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar argumento</Button>
+            </div>
+          )}
+
+          {/* ─── Testimonials settings ─── */}
+          {element.type === 'testimonials' && (
+            <div className="space-y-3">
+              <Label>Depoimentos ({(element.testimonialItems || []).length})</Label>
+              {(element.testimonialItems || []).map((item) => (
+                <div key={item.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                  <div className="flex items-center gap-1.5">
+                    <Input value={item.name} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, name: e.target.value } : t); onChange({ testimonialItems: items }); }} className="h-8 text-sm flex-1" placeholder="Nome" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange({ testimonialItems: (element.testimonialItems || []).filter(t => t.id !== item.id) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                  <Input value={item.socialProfile || ''} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, socialProfile: e.target.value } : t); onChange({ testimonialItems: items }); }} className="h-8 text-xs" placeholder="@perfil ou link (opcional)" />
+                  <div className="flex items-center gap-1">
+                    <Label className="text-xs text-muted-foreground">Estrelas</Label>
+                    <div className="flex gap-0.5 ml-1">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <button key={n} onClick={(e) => { e.stopPropagation(); const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, rating: n } : t); onChange({ testimonialItems: items }); }} className="p-0">
+                          <Star className={`h-4 w-4 ${n <= item.rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/20'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Textarea value={item.text} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, text: e.target.value } : t); onChange({ testimonialItems: items }); }} className="text-xs" rows={2} placeholder="Depoimento..." />
+                  <div className="flex items-center gap-1.5">
+                    <Input value={item.photoUrl || ''} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, photoUrl: e.target.value } : t); onChange({ testimonialItems: items }); }} className="h-8 text-xs flex-1" placeholder="URL da foto (opcional)" />
+                    <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`testimonial-${item.id}`] = el; }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingOptionId(`testimonial-${item.id}`);
+                        try {
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          formData.append('path', `testimonials/${crypto.randomUUID()}-${file.name}`);
+                          const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+                          if (error) throw error;
+                          if (data?.url) { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, photoUrl: data.url } : t); onChange({ testimonialItems: items }); }
+                        } catch (err) { console.error('Upload failed:', err); }
+                        finally { setUploadingOptionId(null); e.target.value = ''; }
+                      }}
+                    />
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" disabled={uploadingOptionId === `testimonial-${item.id}`} onClick={() => fileInputRefs.current[`testimonial-${item.id}`]?.click()}>
+                      {uploadingOptionId === `testimonial-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                const items = [...(element.testimonialItems || [])];
+                items.push({ id: crypto.randomUUID(), name: '', rating: 5, text: '', photoUrl: '' });
+                onChange({ testimonialItems: items });
+              }}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar depoimento</Button>
+            </div>
+          )}
+
+          {/* ─── FAQ settings ─── */}
+          {element.type === 'faq' && (
+            <div className="space-y-3">
+              <Label>Perguntas ({(element.faqItems || []).length})</Label>
+              {(element.faqItems || []).map((item) => (
+                <div key={item.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                  <div className="flex items-center gap-1.5">
+                    <Input value={item.question} onChange={e => { const items = (element.faqItems || []).map(f => f.id === item.id ? { ...f, question: e.target.value } : f); onChange({ faqItems: items }); }} className="h-8 text-sm flex-1" placeholder="Pergunta" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange({ faqItems: (element.faqItems || []).filter(f => f.id !== item.id) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                  <Textarea value={item.answer} onChange={e => { const items = (element.faqItems || []).map(f => f.id === item.id ? { ...f, answer: e.target.value } : f); onChange({ faqItems: items }); }} className="text-xs" rows={2} placeholder="Resposta..." />
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                const items = [...(element.faqItems || [])];
+                items.push({ id: crypto.randomUUID(), question: '', answer: '' });
+                onChange({ faqItems: items });
+              }}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar pergunta</Button>
+            </div>
+          )}
+
+          {/* ─── Pricing settings ─── */}
+          {element.type === 'pricing' && (
+            <div className="space-y-3">
+              <Label>Planos ({(element.pricingPlans || []).length})</Label>
+              {(element.pricingPlans || []).map((plan) => (
+                <div key={plan.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                  <div className="flex items-center gap-1.5">
+                    <Input value={plan.name} onChange={e => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, name: e.target.value } : p); onChange({ pricingPlans: plans }); }} className="h-8 text-sm flex-1" placeholder="Nome do plano" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange({ pricingPlans: (element.pricingPlans || []).filter(p => p.id !== plan.id) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Input value={plan.price} onChange={e => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, price: e.target.value } : p); onChange({ pricingPlans: plans }); }} className="h-8 text-sm flex-1" placeholder="R$ 99" />
+                    <Input value={plan.period || ''} onChange={e => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, period: e.target.value } : p); onChange({ pricingPlans: plans }); }} className="h-8 text-xs w-20" placeholder="/mês" />
+                  </div>
+                  <Textarea value={plan.description || ''} onChange={e => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, description: e.target.value } : p); onChange({ pricingPlans: plans }); }} className="text-xs" rows={1} placeholder="Descrição (opcional)" />
+                  <Input value={plan.ctaLabel} onChange={e => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, ctaLabel: e.target.value } : p); onChange({ pricingPlans: plans }); }} className="h-8 text-xs" placeholder="Texto do botão" />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Destaque</Label>
+                    <Switch checked={plan.highlighted || false} onCheckedChange={v => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, highlighted: v } : p); onChange({ pricingPlans: plans }); }} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Recursos</Label>
+                    {plan.features.map(f => (
+                      <div key={f.id} className="flex items-center gap-1">
+                        <Switch checked={f.included} onCheckedChange={v => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, features: p.features.map(ff => ff.id === f.id ? { ...ff, included: v } : ff) } : p); onChange({ pricingPlans: plans }); }} />
+                        <Input value={f.text} onChange={e => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, features: p.features.map(ff => ff.id === f.id ? { ...ff, text: e.target.value } : ff) } : p); onChange({ pricingPlans: plans }); }} className="h-7 text-xs flex-1" />
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, features: p.features.filter(ff => ff.id !== f.id) } : p); onChange({ pricingPlans: plans }); }}><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    ))}
+                    <Button variant="ghost" size="sm" className="w-full text-xs h-7" onClick={() => { const plans = (element.pricingPlans || []).map(p => p.id === plan.id ? { ...p, features: [...p.features, { id: crypto.randomUUID(), text: 'Novo recurso', included: true }] } : p); onChange({ pricingPlans: plans }); }}><Plus className="h-3 w-3 mr-1" /> Recurso</Button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                const plans = [...(element.pricingPlans || [])];
+                plans.push({ id: crypto.randomUUID(), name: `Plano ${plans.length + 1}`, price: 'R$ 0', features: [], ctaLabel: 'Escolher' });
+                onChange({ pricingPlans: plans });
+              }}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar plano</Button>
+            </div>
+          )}
+
+          {/* ─── Before/After settings ─── */}
+          {element.type === 'before_after' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Modo</Label>
+                <Select value={element.beforeAfterMode || 'slider'} onValueChange={v => onChange({ beforeAfterMode: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="slider">Slider deslizante</SelectItem>
+                    <SelectItem value="side_by_side">Lado a lado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {(['before', 'after'] as const).map(side => {
+                const key = side === 'before' ? 'beforeImage' : 'afterImage';
+                const label = side === 'before' ? 'Antes' : 'Depois';
+                const val = side === 'before' ? element.beforeImage : element.afterImage;
+                return (
+                  <div key={side} className="space-y-1.5">
+                    <Label>{label}</Label>
+                    {val && <img src={val} alt={label} className="w-full h-20 object-cover rounded" />}
+                    <div className="flex items-center gap-1.5">
+                      <Input value={val || ''} onChange={e => onChange({ [key]: e.target.value })} className="h-8 text-xs flex-1" placeholder="URL da imagem..." />
+                      <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`ba-${side}`] = el; }}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingOptionId(`ba-${side}`);
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('path', `before-after/${crypto.randomUUID()}-${file.name}`);
+                            const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+                            if (error) throw error;
+                            if (data?.url) onChange({ [key]: data.url });
+                          } catch (err) { console.error('Upload failed:', err); }
+                          finally { setUploadingOptionId(null); e.target.value = ''; }
+                        }}
+                      />
+                      <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" disabled={uploadingOptionId === `ba-${side}`} onClick={() => fileInputRefs.current[`ba-${side}`]?.click()}>
+                        {uploadingOptionId === `ba-${side}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ─── Carousel settings ─── */}
+          {element.type === 'carousel' && (
+            <div className="space-y-3">
+              <Label>Imagens ({(element.carouselImages || []).length})</Label>
+              {(element.carouselImages || []).map((img) => (
+                <div key={img.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                  {img.src && <img src={img.src} alt={img.alt || ''} className="w-full h-16 object-cover rounded" />}
+                  <div className="flex items-center gap-1.5">
+                    <Input value={img.src} onChange={e => { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, src: e.target.value } : i); onChange({ carouselImages: images }); }} className="h-8 text-xs flex-1" placeholder="URL da imagem..." />
+                    <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`carousel-${img.id}`] = el; }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingOptionId(`carousel-${img.id}`);
+                        try {
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          formData.append('path', `carousel/${crypto.randomUUID()}-${file.name}`);
+                          const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+                          if (error) throw error;
+                          if (data?.url) { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, src: data.url } : i); onChange({ carouselImages: images }); }
+                        } catch (err) { console.error('Upload failed:', err); }
+                        finally { setUploadingOptionId(null); e.target.value = ''; }
+                      }}
+                    />
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" disabled={uploadingOptionId === `carousel-${img.id}`} onClick={() => fileInputRefs.current[`carousel-${img.id}`]?.click()}>
+                      {uploadingOptionId === `carousel-${img.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange({ carouselImages: (element.carouselImages || []).filter(i => i.id !== img.id) })}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                  <Input value={img.alt || ''} onChange={e => { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, alt: e.target.value } : i); onChange({ carouselImages: images }); }} className="h-7 text-xs" placeholder="Alt text (opcional)" />
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                const images = [...(element.carouselImages || [])];
+                images.push({ id: crypto.randomUUID(), src: '' });
+                onChange({ carouselImages: images });
+              }}><Plus className="h-3.5 w-3.5 mr-1" /> Adicionar imagem</Button>
             </div>
           )}
 

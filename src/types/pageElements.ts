@@ -11,6 +11,13 @@ export type PageElementType =
   | 'spacer'
   | 'alert'
   | 'notification'
+  // Section elements
+  | 'arguments'
+  | 'testimonials'
+  | 'faq'
+  | 'pricing'
+  | 'before_after'
+  | 'carousel'
   // Form input elements
   | 'input_text'
   | 'input_email'
@@ -51,6 +58,51 @@ export interface SelectOption {
   score?: number;
 }
 
+export interface ArgumentItem {
+  id: string;
+  emoji: string;
+  title: string;
+  description: string;
+}
+
+export interface TestimonialItem {
+  id: string;
+  name: string;
+  socialProfile?: string;
+  rating: number;
+  text: string;
+  photoUrl?: string; // upload or empty for initials
+}
+
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface PricingFeature {
+  id: string;
+  text: string;
+  included: boolean;
+}
+
+export interface PricingPlan {
+  id: string;
+  name: string;
+  price: string;
+  period?: string;
+  description?: string;
+  features: PricingFeature[];
+  ctaLabel: string;
+  highlighted?: boolean;
+}
+
+export interface CarouselImage {
+  id: string;
+  src: string;
+  alt?: string;
+}
+
 export interface NotificationItem {
   id: string;
   title: string;
@@ -77,6 +129,15 @@ export interface PageElement {
   notificationInterval?: number; // seconds between notifications
   notificationDuration?: number; // seconds each notification stays visible
   notificationPosition?: 'top' | 'bottom';
+  // Section elements
+  argumentItems?: ArgumentItem[];
+  testimonialItems?: TestimonialItem[];
+  faqItems?: FAQItem[];
+  pricingPlans?: PricingPlan[];
+  beforeImage?: string;
+  afterImage?: string;
+  beforeAfterMode?: 'slider' | 'side_by_side';
+  carouselImages?: CarouselImage[];
   // Form field properties
   label?: string;
   placeholder?: string;
@@ -117,6 +178,12 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   spacer: 'Espaço',
   alert: 'Atenção',
   notification: 'Notificação',
+  arguments: 'Argumentos',
+  testimonials: 'Depoimentos',
+  faq: 'FAQ',
+  pricing: 'Preços',
+  before_after: 'Antes e Depois',
+  carousel: 'Carrossel',
   input_text: 'Campo',
   input_email: 'E-mail',
   input_phone: 'Telefone',
@@ -136,12 +203,16 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_quiz_image: 'Quiz com imagem',
 };
 
-export type ElementCategory = 'visual' | 'fields';
+export type ElementCategory = 'visual' | 'sections' | 'fields';
 
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
     types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification'],
+  },
+  sections: {
+    label: 'Seções',
+    types: ['arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel'],
   },
   fields: {
     label: 'Formulário',
@@ -196,6 +267,55 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       ];
       base.notificationMode = 'sequential';
       base.notificationInterval = 4;
+      break;
+    case 'arguments':
+      base.argumentItems = [
+        { id: crypto.randomUUID(), emoji: '🎯', title: 'Benefício 1', description: 'Descreva o primeiro benefício aqui.' },
+        { id: crypto.randomUUID(), emoji: '🚀', title: 'Benefício 2', description: 'Descreva o segundo benefício aqui.' },
+        { id: crypto.randomUUID(), emoji: '💡', title: 'Benefício 3', description: 'Descreva o terceiro benefício aqui.' },
+      ];
+      break;
+    case 'testimonials':
+      base.testimonialItems = [
+        { id: crypto.randomUUID(), name: 'Maria Silva', rating: 5, text: 'Excelente produto! Recomendo a todos.', photoUrl: '' },
+        { id: crypto.randomUUID(), name: 'João Santos', rating: 5, text: 'Mudou minha vida. Resultados incríveis!', photoUrl: '' },
+      ];
+      break;
+    case 'faq':
+      base.faqItems = [
+        { id: crypto.randomUUID(), question: 'Como funciona?', answer: 'É simples e fácil de usar.' },
+        { id: crypto.randomUUID(), question: 'Tem garantia?', answer: 'Sim, 30 dias de garantia incondicional.' },
+      ];
+      break;
+    case 'pricing':
+      base.pricingPlans = [
+        {
+          id: crypto.randomUUID(), name: 'Básico', price: 'R$ 49', period: '/mês',
+          features: [
+            { id: crypto.randomUUID(), text: 'Recurso 1', included: true },
+            { id: crypto.randomUUID(), text: 'Recurso 2', included: true },
+            { id: crypto.randomUUID(), text: 'Recurso 3', included: false },
+          ],
+          ctaLabel: 'Escolher', highlighted: false,
+        },
+        {
+          id: crypto.randomUUID(), name: 'Pro', price: 'R$ 99', period: '/mês',
+          features: [
+            { id: crypto.randomUUID(), text: 'Recurso 1', included: true },
+            { id: crypto.randomUUID(), text: 'Recurso 2', included: true },
+            { id: crypto.randomUUID(), text: 'Recurso 3', included: true },
+          ],
+          ctaLabel: 'Escolher', highlighted: true,
+        },
+      ];
+      break;
+    case 'before_after':
+      base.beforeImage = '';
+      base.afterImage = '';
+      base.beforeAfterMode = 'slider';
+      break;
+    case 'carousel':
+      base.carouselImages = [];
       break;
     case 'input_text':
       base.label = 'Nome';
