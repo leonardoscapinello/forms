@@ -74,7 +74,7 @@ export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainS
         initial={{ opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}
-        className="mt-1 rounded-lg border border-border bg-background shadow-md overflow-hidden"
+        className="mt-1 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden z-50 relative"
         role="listbox"
       >
         {suggestions.map((domain, i) => (
