@@ -67,14 +67,46 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
-    if (over && active.id !== over.id) {
+    if (!over) return;
+
+    const overId = String(over.id);
+
+    // Check if dropped on a column droppable (id format: col-drop:{columnsElementId}:{colIdx})
+    if (overId.startsWith('col-drop:')) {
+      const parts = overId.split(':');
+      const columnsElementId = parts[1];
+      const colIdx = parseInt(parts[2]);
+      const draggedElement = elements.find(e => e.id === active.id);
+
+      if (draggedElement && draggedElement.type !== 'columns') {
+        // Remove from main list and add to column
+        const remaining = elements.filter(e => e.id !== active.id);
+        const updated = remaining.map(item => {
+          if (item.id === columnsElementId && item.columnData) {
+            return {
+              ...item,
+              columnData: item.columnData.map((col, i) =>
+                i === colIdx ? { ...col, elements: [...col.elements, draggedElement] } : col
+              ),
+            };
+          }
+          return item;
+        });
+        onChange(updated);
+        if (selectedId === active.id) setSelectedId(null);
+        return;
+      }
+    }
+
+    // Normal reorder
+    if (active.id !== over.id) {
       const oldIndex = elements.findIndex(e => e.id === active.id);
       const newIndex = elements.findIndex(e => e.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1) {
         onChange(arrayMove(elements, oldIndex, newIndex));
       }
     }
-  }, [elements, onChange]);
+  }, [elements, onChange, selectedId]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
