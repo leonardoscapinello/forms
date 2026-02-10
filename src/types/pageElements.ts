@@ -45,6 +45,8 @@ export interface SelectOption {
   label: string;
   emoji?: string;
   imageUrl?: string;
+  /** Score added when this option is selected */
+  score?: number;
 }
 
 export interface PageElement {
@@ -75,6 +77,9 @@ export interface PageElement {
   /** Min/max for number/height/weight fields */
   min?: number;
   max?: number;
+  /** Score for yes/no element */
+  yesScore?: number;
+  noScore?: number;
   style?: PageElementStyle;
 }
 

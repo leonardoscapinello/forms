@@ -39,6 +39,32 @@ export default function FormPreview() {
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
 
+  /** Compute total score from all selection/quiz answers */
+  const totalScore = useMemo(() => {
+    if (!form) return 0;
+    let score = 0;
+    for (const page of form.pages || []) {
+      for (const el of page.elements || []) {
+        const val = answers[el.id];
+        if (val === undefined || val === null) continue;
+
+        if (el.type === 'input_yes_no') {
+          if (val === 'yes' && el.yesScore) score += el.yesScore;
+          if (val === 'no' && el.noScore) score += el.noScore;
+        } else if (['input_select', 'input_radio', 'input_quiz_icon', 'input_quiz_image'].includes(el.type)) {
+          const opt = (el.options || []).find(o => o.id === val);
+          if (opt?.score) score += opt.score;
+        } else if (el.type === 'input_multi_select' && Array.isArray(val)) {
+          for (const optId of val) {
+            const opt = (el.options || []).find(o => o.id === optId);
+            if (opt?.score) score += opt.score;
+          }
+        }
+      }
+    }
+    return score;
+  }, [form, answers]);
+
   const isWelcome = currentPageIndex === null && !finished;
   const isThankYou = finished;
   const totalSteps = pages.length;
@@ -215,6 +241,12 @@ export default function FormPreview() {
                 <p className="text-base md:text-lg text-muted-foreground">
                   {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
                 </p>
+                {totalScore > 0 && (
+                  <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
+                    <p className="text-sm text-muted-foreground">Sua pontuação</p>
+                    <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
+                  </div>
+                )}
               </div>
             )}
 

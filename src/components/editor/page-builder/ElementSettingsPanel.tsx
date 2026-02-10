@@ -41,7 +41,8 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
   };
 
   const updateOptionField = (id: string, field: string, value: string) => {
-    const opts = (element.options || []).map(o => o.id === id ? { ...o, [field]: value } : o);
+    const parsed = field === 'score' ? (value === '' ? undefined : Number(value)) : value;
+    const opts = (element.options || []).map(o => o.id === id ? { ...o, [field]: parsed } : o);
     onChange({ options: opts });
   };
 
@@ -308,11 +309,50 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                         placeholder="URL da imagem..."
                       />
                     )}
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Pontos</Label>
+                      <Input
+                        type="number"
+                        value={opt.score ?? ''}
+                        onChange={e => updateOptionField(opt.id, 'score', e.target.value ? String(Number(e.target.value)) : '')}
+                        className="h-7 text-xs w-20"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 ))}
                 <Button variant="outline" size="sm" className="w-full text-xs" onClick={addOption}>
                   <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar opção
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Yes/No score ─── */}
+          {element.type === 'input_yes_no' && (
+            <div className="space-y-2">
+              <Label>Pontuação</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Sim</Label>
+                  <Input
+                    type="number"
+                    value={element.yesScore ?? ''}
+                    onChange={e => onChange({ yesScore: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="0"
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Não</Label>
+                  <Input
+                    type="number"
+                    value={element.noScore ?? ''}
+                    onChange={e => onChange({ noScore: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="0"
+                    className="h-8"
+                  />
+                </div>
               </div>
             </div>
           )}
