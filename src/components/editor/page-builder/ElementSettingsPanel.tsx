@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useRef } from 'react';
 
 interface Props {
   element: PageElement;
@@ -18,6 +20,9 @@ interface Props {
 const isFormField = (type: string) => type.startsWith('input_');
 
 export default function ElementSettingsPanel({ element, onChange, onClose }: Props) {
+  const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
   const updateStyle = (patch: Record<string, any>) => {
     onChange({ style: { ...element.style, ...patch } });
   };
@@ -302,12 +307,61 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                       </Button>
                     </div>
                     {element.type === 'input_quiz_image' && (
-                      <Input
-                        value={opt.imageUrl || ''}
-                        onChange={e => updateOptionField(opt.id, 'imageUrl', e.target.value)}
-                        className="h-8 text-xs"
-                        placeholder="URL da imagem..."
-                      />
+                      <div className="space-y-1.5">
+                        {opt.imageUrl && (
+                          <img src={opt.imageUrl} alt={opt.label} className="w-full h-20 object-cover rounded" />
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            value={opt.imageUrl || ''}
+                            onChange={e => updateOptionField(opt.id, 'imageUrl', e.target.value)}
+                            className="h-8 text-xs flex-1"
+                            placeholder="URL da imagem..."
+                          />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            ref={el => { fileInputRefs.current[opt.id] = el; }}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingOptionId(opt.id);
+                              try {
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                const path = `quiz-images/${crypto.randomUUID()}-${file.name}`;
+                                formData.append('path', path);
+                                const { data, error } = await supabase.functions.invoke('minio-upload', {
+                                  body: formData,
+                                });
+                                if (error) throw error;
+                                if (data?.url) {
+                                  updateOptionField(opt.id, 'imageUrl', data.url);
+                                }
+                              } catch (err) {
+                                console.error('Upload failed:', err);
+                              } finally {
+                                setUploadingOptionId(null);
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 flex-shrink-0"
+                            disabled={uploadingOptionId === opt.id}
+                            onClick={() => fileInputRefs.current[opt.id]?.click()}
+                          >
+                            {uploadingOptionId === opt.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
                     )}
                     <div className="flex items-center gap-1.5">
                       <Label className="text-xs text-muted-foreground whitespace-nowrap">Pontos</Label>
