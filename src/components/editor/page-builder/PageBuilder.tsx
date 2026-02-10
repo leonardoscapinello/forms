@@ -7,6 +7,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -14,11 +16,11 @@ import {
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-// modifiers removed — not installed
 import { PageElement, createDefaultPageElement, PageElementType } from '@/types/pageElements';
 import SortableElement from './SortableElement';
 import ElementToolbar from './ElementToolbar';
 import ElementSettingsPanel from './ElementSettingsPanel';
+import ElementPreview from './ElementPreview';
 import { LayoutTemplate } from 'lucide-react';
 
 interface Props {
@@ -28,15 +30,22 @@ interface Props {
 
 export default function PageBuilder({ elements, onChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const selectedElement = elements.find(e => e.id === selectedId) || null;
+  const activeElement = elements.find(e => e.id === activeId) || null;
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = elements.findIndex(e => e.id === active.id);
@@ -46,6 +55,10 @@ export default function PageBuilder({ elements, onChange }: Props) {
       }
     }
   }, [elements, onChange]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+  }, []);
 
   const handleAdd = useCallback((element: PageElement) => {
     onChange([...elements, element]);
@@ -88,10 +101,12 @@ export default function PageBuilder({ elements, onChange }: Props) {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
             >
               <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-8 min-h-[200px]">
+                <div className="space-y-3 min-h-[200px]">
                   {elements.length === 0 ? (
                     <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
                       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
@@ -111,6 +126,7 @@ export default function PageBuilder({ elements, onChange }: Props) {
                           key={el.id}
                           element={el}
                           isSelected={selectedId === el.id}
+                          isDragActive={activeId !== null}
                           onSelect={() => setSelectedId(el.id)}
                           onDelete={() => handleDelete(el.id)}
                           stepNumber={isField ? formFieldIndex : undefined}
@@ -120,6 +136,25 @@ export default function PageBuilder({ elements, onChange }: Props) {
                   )}
                 </div>
               </SortableContext>
+
+              {/* Drag overlay — floating ghost that follows cursor */}
+              <DragOverlay dropAnimation={{
+                duration: 200,
+                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+              }}>
+                {activeElement ? (
+                  <div className="rounded-xl bg-card/95 shadow-xl ring-2 ring-primary/40 p-4 max-w-2xl opacity-90 backdrop-blur-sm">
+                    <ElementPreview
+                      element={activeElement}
+                      stepNumber={
+                        activeElement.type.startsWith('input_')
+                          ? elements.slice(0, elements.indexOf(activeElement) + 1).filter(e => e.type.startsWith('input_')).length
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
             </DndContext>
         </div>
       </div>
