@@ -923,6 +923,22 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           {element.type === 'progress_bar' && (
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label>Direção</Label>
+                <Select
+                  value={element.progressBarDirection || 'vertical'}
+                  onValueChange={v => onChange({ progressBarDirection: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vertical">Vertical</SelectItem>
+                    <SelectItem value="horizontal">Horizontal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {element.progressBarDirection !== 'horizontal' && (
+              <>
+              <div className="space-y-2">
                 <Label>Layout</Label>
                 <Select
                   value={String(element.progressBarLayout || 1)}
@@ -949,6 +965,8 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   </SelectContent>
                 </Select>
               </div>
+              </>
+              )}
 
               <div className="space-y-2">
                 <Label>Barras ({(element.progressBarItems || []).length})</Label>
