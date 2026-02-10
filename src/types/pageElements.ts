@@ -16,6 +16,7 @@ export type PageElementType =
   | 'progress_bar'
   | 'horizontal_bar'
   | 'timer'
+  | 'circular_progress'
   // Layout elements
   | 'columns'
   // Section elements
@@ -224,6 +225,16 @@ export interface PageElement {
   horizontalBarLabelColor?: string;
   horizontalBarValueColor?: string;
   horizontalBarHeight?: number; // track height in px
+  // Circular progress element
+  circularProgressValue?: number; // 0-100
+  circularProgressLabelBefore?: string;
+  circularProgressLabelAfter?: string;
+  circularProgressColor?: string;
+  circularProgressTrackColor?: string;
+  circularProgressTextColor?: string;
+  circularProgressLabelColor?: string;
+  circularProgressSize?: number; // diameter in px
+  circularProgressStroke?: number; // stroke width
   // Timer / Countdown element
   timerMode?: 'text' | 'time' | 'datetime'; // 3 modes
   timerDurationMinutes?: number; // for 'text' and 'time' modes
@@ -285,6 +296,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   progress_bar: 'Barra de progresso',
   horizontal_bar: 'Barra horizontal',
   timer: 'Timer',
+  circular_progress: 'Progresso circular',
   columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
@@ -320,7 +332,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados',
-    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'timer'],
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'timer', 'circular_progress'],
   },
   sections: {
     label: 'Seções',
@@ -491,6 +503,17 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.horizontalBarColor = '#6366f1';
       base.horizontalBarBackground = '#e5e7eb';
       base.horizontalBarHeight = 12;
+      break;
+    case 'circular_progress':
+      base.circularProgressValue = 72;
+      base.circularProgressLabelBefore = 'Seu progresso';
+      base.circularProgressLabelAfter = 'concluído';
+      base.circularProgressColor = '#22c55e';
+      base.circularProgressTrackColor = '#e5e7eb';
+      base.circularProgressTextColor = '#1a1a1a';
+      base.circularProgressLabelColor = '#6b7280';
+      base.circularProgressSize = 160;
+      base.circularProgressStroke = 14;
       break;
     case 'timer':
       base.timerMode = 'time';
