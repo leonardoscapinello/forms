@@ -262,7 +262,14 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
 
         const edgePx = { x: cx + outer * Math.cos(angleRad), y: cy - outer * Math.sin(angleRad) };
         const badgeDist = outer + (isSmall ? 22 : 32);
-        const badgePx = { x: cx + badgeDist * Math.cos(angleRad), y: cy - badgeDist * Math.sin(angleRad) };
+        const rawBadgeX = cx + badgeDist * Math.cos(angleRad);
+        const rawBadgeY = cy - badgeDist * Math.sin(angleRad);
+        // Clamp badge within container bounds with padding
+        const pad = 50;
+        const badgePx = {
+          x: Math.max(pad, Math.min(dims.w - pad, rawBadgeX)),
+          y: Math.max(16, Math.min(chartH - 16, rawBadgeY)),
+        };
 
         return { tipText, edgePx, badgePx, key: `${ring.ds.id}-${pi}` };
       })
