@@ -382,8 +382,8 @@ export default function FormPreview() {
                   </div>
                 </div>
 
-                {/* Field area */}
-                <div className="pl-14">
+                {/* Field area — graphic blocks render full-width, others get left padding */}
+                <div className={currentQuestion.type === 'graphic' ? '' : 'pl-14'}>
                   <FieldRenderer
                     question={currentQuestion}
                     value={answers[currentQuestion.id]}
