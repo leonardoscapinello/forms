@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -16,14 +16,14 @@ import {
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
-import { PageElement, createDefaultPageElement, PageElementType } from '@/types/pageElements';
+import { PageElement, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS } from '@/types/pageElements';
 import { FunnelPageStyle } from '@/types/form';
 import SortableElement from './SortableElement';
 import ElementToolbar from './ElementToolbar';
 import ElementSettingsPanel from './ElementSettingsPanel';
 import PageGeneralSettings from './PageGeneralSettings';
 import ElementPreview from './ElementPreview';
-import { LayoutTemplate } from 'lucide-react';
+import { LayoutTemplate, Plus } from 'lucide-react';
 
 interface Props {
   elements: PageElement[];
@@ -35,6 +35,9 @@ interface Props {
 export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isExternalDragOver, setIsExternalDragOver] = useState(false);
+  const [externalDragType, setExternalDragType] = useState<string>('');
+  const dragCounterRef = useRef(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -89,6 +92,9 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsExternalDragOver(false);
+    setExternalDragType('');
     const type = e.dataTransfer.getData('element-type') as PageElementType;
     if (type) {
       const el = createDefaultPageElement(type);
@@ -97,6 +103,34 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     }
   }, [elements, onChange]);
 
+  const handleCanvasDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (dragCounterRef.current === 1) {
+      setIsExternalDragOver(true);
+      // Try to read type from dataTransfer types
+      const types = Array.from(e.dataTransfer.types);
+      if (types.includes('element-type')) {
+        setExternalDragType('element');
+      }
+    }
+  }, []);
+
+  const handleCanvasDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsExternalDragOver(false);
+      setExternalDragType('');
+    }
+  }, []);
+
+  const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
   return (
     <div className="flex h-full w-full">
       {/* Left — Element toolbar */}
@@ -104,12 +138,16 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
       {/* Center — Preview canvas */}
       <div
-        className="flex-1 overflow-auto bg-muted/30"
+        className={`flex-1 overflow-auto transition-colors duration-200 ${
+          isExternalDragOver ? 'bg-primary/5' : 'bg-muted/30'
+        }`}
         onClick={() => setSelectedId(null)}
-        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDragOver={handleCanvasDragOver}
+        onDragEnter={handleCanvasDragEnter}
+        onDragLeave={handleCanvasDragLeave}
         onDrop={handleCanvasDrop}
         style={{
-          backgroundColor: effectiveStyle.backgroundColor || undefined,
+          backgroundColor: isExternalDragOver ? undefined : (effectiveStyle.backgroundColor || undefined),
           fontFamily: effectiveStyle.fontFamily || undefined,
         }}
       >
@@ -131,7 +169,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             >
               <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
                 <div className="min-h-[200px]" style={{ display: 'flex', flexDirection: 'column', gap: effectiveStyle.gap }}>
-                  {elements.length === 0 ? (
+                  {elements.length === 0 && !isExternalDragOver ? (
                     <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
                       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
                         <LayoutTemplate className="h-6 w-6" />
@@ -157,6 +195,16 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                         />
                       );
                     })
+                  )}
+
+                  {/* Drop zone indicator — visible when dragging from toolbar */}
+                  {isExternalDragOver && (
+                    <div className="border-2 border-dashed border-primary/40 rounded-xl bg-primary/5 py-8 flex flex-col items-center gap-2 transition-all duration-200 animate-fade-in pointer-events-none">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Plus className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium text-primary/70">Solte aqui para adicionar</p>
+                    </div>
                   )}
                 </div>
               </SortableContext>
