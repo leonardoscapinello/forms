@@ -57,9 +57,11 @@ interface Props {
   onChange: (patch: Partial<PageElement>) => void;
   onRemoveFromMain?: (elementId: string) => void;
   onMoveToMain?: (element: PageElement, sourceColumnsId: string, colIdx: number) => void;
+  selectedId?: string | null;
+  onSelectElement?: (id: string) => void;
 }
 
-export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain }: Props) {
+export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement }: Props) {
   const columnCount = element.columnCount || 2;
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
@@ -201,10 +203,13 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
               onDragOver={(e) => handleInternalDragOver(e, colIdx, elIdx)}
               onDrop={(e) => handleInternalDrop(e)}
               onDragEnd={handleInternalDragEnd}
-              className={`relative group rounded-lg transition-all ${
+              onClick={(e) => { e.stopPropagation(); onSelectElement?.(el.id); }}
+              className={`relative group rounded-lg transition-all cursor-pointer ${
                 dropTarget?.colIdx === colIdx && dropTarget?.elIdx === elIdx
                   ? 'border-t-2 border-primary'
-                  : ''
+                  : selectedId === el.id
+                    ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
+                    : 'hover:ring-1 hover:ring-border'
               }`}
             >
               <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab z-10">

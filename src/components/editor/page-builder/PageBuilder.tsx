@@ -60,7 +60,23 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     return closestCenter(args);
   }, []);
 
-  const selectedElement = elements.find(e => e.id === selectedId) || null;
+  // Find selected element — search top-level and inside columns
+  const findElementById = useCallback((id: string | null): PageElement | null => {
+    if (!id) return null;
+    const topLevel = elements.find(e => e.id === id);
+    if (topLevel) return topLevel;
+    for (const el of elements) {
+      if (el.type === 'columns' && el.columnData) {
+        for (const col of el.columnData) {
+          const found = col.elements.find(e => e.id === id);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  }, [elements]);
+
+  const selectedElement = findElementById(selectedId);
   const activeElement = elements.find(e => e.id === activeId) || null;
 
   const effectiveStyle: FunnelPageStyle = {
@@ -159,7 +175,27 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   }, [elements, onChange, selectedId]);
 
   const handleElementChange = useCallback((id: string, patch: Partial<PageElement>) => {
-    onChange(elements.map(e => e.id === id ? { ...e, ...patch } : e));
+    // Check if top-level
+    if (elements.some(e => e.id === id)) {
+      onChange(elements.map(e => e.id === id ? { ...e, ...patch } : e));
+      return;
+    }
+    // Search inside columns
+    onChange(elements.map(el => {
+      if (el.type === 'columns' && el.columnData) {
+        const hasIt = el.columnData.some(col => col.elements.some(e => e.id === id));
+        if (hasIt) {
+          return {
+            ...el,
+            columnData: el.columnData.map(col => ({
+              ...col,
+              elements: col.elements.map(e => e.id === id ? { ...e, ...patch } : e),
+            })),
+          };
+        }
+      }
+      return el;
+    }));
   }, [elements, onChange]);
 
   // --- Native drag handlers (toolbar → canvas with positional insert) ---
@@ -297,6 +333,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             if (selectedId === elementId) setSelectedId(null);
           }}
           onMoveToMain={handleMoveToMain}
+          selectedId={selectedId}
+          onSelectElement={(id) => setSelectedId(id)}
           stepNumber={isField ? formFieldIndex : undefined}
         />
       );
