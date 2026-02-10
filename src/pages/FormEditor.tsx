@@ -8,10 +8,10 @@ import FormResponses from '@/components/editor/FormResponses';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Layout } from 'lucide-react';
+import { ArrowLeft, Eye, ChevronRight } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
 
-type EditorTab = 'workflow' | 'page' | 'responses';
+type EditorView = 'workflow' | 'page-builder' | 'responses';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
@@ -19,7 +19,9 @@ export default function FormEditor() {
   const { getForm, updateForm } = useFormStore();
   const form = getForm(id!);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<EditorTab>('workflow');
+  const [editorView, setEditorView] = useState<EditorView>('workflow');
+  /** The question whose page is being edited in the page builder */
+  const [editingPageQuestionId, setEditingPageQuestionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
@@ -27,6 +29,20 @@ export default function FormEditor() {
 
   const selectedQuestion = form?.questions.find(q => q.id === selectedQuestionId) || null;
   const selectedIndex = form?.questions.findIndex(q => q.id === selectedQuestionId) ?? -1;
+  const editingPageQuestion = form?.questions.find(q => q.id === editingPageQuestionId) || null;
+  const editingPageIndex = form?.questions.findIndex(q => q.id === editingPageQuestionId) ?? -1;
+
+  /** Double-click on a node opens the page builder for it */
+  const handleQuestionSelect = useCallback((qId: string) => {
+    setEditingPageQuestionId(qId);
+    setEditorView('page-builder');
+    setSelectedQuestionId(qId);
+  }, []);
+
+  const handleBackToWorkflow = useCallback(() => {
+    setEditorView('workflow');
+    setEditingPageQuestionId(null);
+  }, []);
 
   const handleQuestionChange = useCallback((qId: string, patch: Partial<Question>) => {
     if (!form) return;
@@ -39,6 +55,10 @@ export default function FormEditor() {
   const handleDeleteQuestion = useCallback((qId: string) => {
     if (!form) return;
     if (selectedQuestionId === qId) setSelectedQuestionId(null);
+    if (editingPageQuestionId === qId) {
+      setEditingPageQuestionId(null);
+      setEditorView('workflow');
+    }
     const nodeId = `q-${qId}`;
     const flowEdges = (form.flowEdges || []).filter(
       e => e.source !== nodeId && e.target !== nodeId
@@ -49,7 +69,7 @@ export default function FormEditor() {
       flowEdges,
       nodePositions,
     });
-  }, [form, updateForm, selectedQuestionId]);
+  }, [form, updateForm, selectedQuestionId, editingPageQuestionId]);
 
   const handleAddQuestion = useCallback((question: Question) => {
     if (!form) return;
@@ -122,31 +142,67 @@ export default function FormEditor() {
     <div className="h-screen flex flex-col bg-background">
       <header className="flex-shrink-0 border-b border-border bg-card">
         <div className="flex items-center gap-3 py-3 px-5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+            if (editorView === 'page-builder') {
+              handleBackToWorkflow();
+            } else {
+              navigate('/');
+            }
+          }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Input
-            value={form.title}
-            onChange={e => updateForm(form.id, { title: e.target.value })}
-            className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-sm bg-transparent"
-            placeholder="Título do formulário"
-          />
 
-          {/* Tabs */}
+          {/* Breadcrumb navigation */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <button
+              onClick={handleBackToWorkflow}
+              className={`text-sm font-medium transition-colors truncate ${
+                editorView === 'workflow'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground cursor-pointer'
+              }`}
+            >
+              <Input
+                value={form.title}
+                onChange={e => updateForm(form.id, { title: e.target.value })}
+                className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-[200px] bg-transparent"
+                placeholder="Título do formulário"
+                onClick={e => e.stopPropagation()}
+              />
+            </button>
+
+            {editorView === 'page-builder' && editingPageQuestion && (
+              <>
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm font-semibold text-foreground truncate">
+                  Página #{editingPageIndex + 1}: {editingPageQuestion.title || 'Sem título'}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* View switcher */}
           <div className="flex items-center gap-1 ml-6">
-            {(['workflow', 'page', 'responses'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === tab
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {tab === 'workflow' ? 'Workflow' : tab === 'page' ? 'Página' : 'Respostas'}
-              </button>
-            ))}
+            <button
+              onClick={handleBackToWorkflow}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                editorView === 'workflow' || editorView === 'page-builder'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              Workflow
+            </button>
+            <button
+              onClick={() => setEditorView('responses')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                editorView === 'responses'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              Respostas
+            </button>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
@@ -169,7 +225,8 @@ export default function FormEditor() {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {activeTab === 'workflow' && (
+        {/* Workflow view */}
+        {editorView === 'workflow' && (
           <>
             <div className="flex-1 overflow-hidden">
               <FlowCanvas
@@ -182,11 +239,11 @@ export default function FormEditor() {
                 onConditionChange={handleConditionChange}
                 onConditionDelete={handleConditionDelete}
                 onFormUpdate={handleFormUpdate}
-                onQuestionSelect={setSelectedQuestionId}
+                onQuestionSelect={handleQuestionSelect}
               />
             </div>
 
-            {/* Side panel */}
+            {/* Side panel (quick edit) */}
             {selectedQuestion && (
               <QuestionSidePanel
                 key={selectedQuestion.id}
@@ -208,18 +265,18 @@ export default function FormEditor() {
           </>
         )}
 
-        {activeTab === 'page' && (
+        {/* Page builder view — opened via double-click on a workflow node */}
+        {editorView === 'page-builder' && editingPageQuestion && (
           <PageBuilder
-            elements={selectedQuestion?.pageElements || []}
+            elements={editingPageQuestion.pageElements || []}
             onChange={(elements: PageElement[]) => {
-              if (selectedQuestion) {
-                handleQuestionChange(selectedQuestion.id, { pageElements: elements });
-              }
+              handleQuestionChange(editingPageQuestion.id, { pageElements: elements });
             }}
           />
         )}
 
-        {activeTab === 'responses' && (
+        {/* Responses view */}
+        {editorView === 'responses' && (
           <FormResponses form={form} />
         )}
       </div>
