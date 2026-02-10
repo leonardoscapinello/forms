@@ -49,17 +49,34 @@ export default function FormPreview() {
     }
   }, []);
 
+  /** Check that all required fields on the current page have a non-empty value */
+  const areRequiredFieldsFilled = useCallback(() => {
+    if (!currentPage) return true;
+    for (const el of currentPage.elements) {
+      if (el.required && el.type.startsWith('input_')) {
+        const val = answers[el.id];
+        if (val === undefined || val === null || val === '' || val === false) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }, [currentPage, answers]);
+
   const goNext = useCallback(async () => {
     if (isPageBlocked) return;
 
-    // Run all validators for current page elements
+    // Validate required fields
+    if (!areRequiredFieldsFilled()) return;
+
+    // Run all async validators for current page elements
     if (currentPage) {
       const validators = currentPage.elements
         .map(el => validatorsRef.current[el.id])
         .filter(Boolean);
       if (validators.length > 0) {
         const results = await Promise.all(validators.map(v => v()));
-        if (results.some(r => !r)) return; // some validation failed
+        if (results.some(r => !r)) return;
       }
     }
 
@@ -77,7 +94,7 @@ export default function FormPreview() {
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages.length, isPageBlocked, currentPage]);
+  }, [currentPageIndex, pages.length, isPageBlocked, currentPage, areRequiredFieldsFilled]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
@@ -96,20 +113,26 @@ export default function FormPreview() {
     setAnswers(prev => ({ ...prev, [elementId]: value }));
   }, []);
 
-  // Keyboard navigation
+  // Keyboard navigation: Enter/ArrowDown = next, ArrowUp = back
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const isTextarea = tag === 'TEXTAREA';
 
-      if (e.key === 'Enter' && !isInput) {
+      if (e.key === 'Enter' && !isTextarea) {
         e.preventDefault();
         goNext();
+      } else if (e.key === 'ArrowDown' && tag !== 'SELECT') {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === 'ArrowUp' && tag !== 'SELECT') {
+        e.preventDefault();
+        goBack();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [goNext]);
+  }, [goNext, goBack]);
 
   if (!form) return null;
 
