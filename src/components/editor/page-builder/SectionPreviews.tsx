@@ -83,44 +83,60 @@ export function FAQPreview({ element }: { element: PageElement }) {
 /** Pricing */
 export function PricingPreview({ element }: { element: PageElement }) {
   const plans = element.pricingPlans || [];
-  return (
-    <div className={`grid gap-4 ${plans.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : plans.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-      {plans.map(plan => (
-        <div
-          key={plan.id}
-          className={`rounded-xl border-2 p-5 space-y-4 ${
-            plan.highlighted ? 'border-primary bg-primary/5' : 'border-border bg-card'
-          }`}
-        >
-          <div>
-            <h4 className="font-semibold text-foreground">{plan.name}</h4>
-            {plan.description && <p className="text-xs text-muted-foreground mt-1">{plan.description}</p>}
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-foreground">{plan.price}</span>
-            {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
-          </div>
-          <ul className="space-y-2">
-            {plan.features.map(f => (
-              <li key={f.id} className="flex items-center gap-2 text-sm">
-                {f.included ? (
-                  <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                ) : (
-                  <X className="h-4 w-4 text-muted-foreground/30 flex-shrink-0" />
-                )}
-                <span className={f.included ? 'text-foreground' : 'text-muted-foreground/50 line-through'}>{f.text}</span>
-              </li>
-            ))}
-          </ul>
-          <Button
-            className="w-full pointer-events-none"
-            variant={plan.highlighted ? 'default' : 'outline'}
-            size="sm"
-          >
-            {plan.ctaLabel}
-          </Button>
+  const useScroll = plans.length > 2;
+
+  const cardClass = (plan: typeof plans[0]) =>
+    `rounded-xl border-2 p-5 space-y-4 ${plan.highlighted ? 'border-primary bg-primary/5' : 'border-border bg-card'}`;
+
+  const renderCard = (plan: typeof plans[0]) => (
+    <div key={plan.id} className={cardClass(plan)}>
+      <div>
+        <h4 className="font-semibold text-foreground">{plan.name}</h4>
+        {plan.description && <p className="text-xs text-muted-foreground mt-1">{plan.description}</p>}
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-bold text-foreground">{plan.price}</span>
+        {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
+      </div>
+      <ul className="space-y-2">
+        {plan.features.map(f => (
+          <li key={f.id} className="flex items-center gap-2 text-sm">
+            {f.included ? (
+              <Check className="h-4 w-4 text-primary flex-shrink-0" />
+            ) : (
+              <X className="h-4 w-4 text-muted-foreground/30 flex-shrink-0" />
+            )}
+            <span className={f.included ? 'text-foreground' : 'text-muted-foreground/50 line-through'}>{f.text}</span>
+          </li>
+        ))}
+      </ul>
+      <Button
+        className="w-full pointer-events-none"
+        variant={plan.highlighted ? 'default' : 'outline'}
+        size="sm"
+      >
+        {plan.ctaLabel}
+      </Button>
+    </div>
+  );
+
+  if (useScroll) {
+    return (
+      <div className="relative -mx-2">
+        <div className="flex gap-4 overflow-x-auto pb-3 px-2 snap-x snap-mandatory scrollbar-thin">
+          {plans.map(plan => (
+            <div key={plan.id} className="flex-shrink-0 w-64 snap-start">
+              {renderCard(plan)}
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid gap-4 ${plans.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'}`}>
+      {plans.map(plan => renderCard(plan))}
     </div>
   );
 }
