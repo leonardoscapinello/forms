@@ -408,6 +408,34 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'progress_bar': {
       const bars = element.progressBarItems || [];
+      const direction = element.progressBarDirection || 'vertical';
+
+      if (direction === 'horizontal') {
+        return (
+          <div className="space-y-4 w-full">
+            {bars.map(bar => {
+              const barBg = bar.barBackground || 'rgba(0,0,0,0.08)';
+              const valColor = bar.valueColor || bar.color;
+              const lblColor = bar.labelColor || 'hsl(var(--foreground))';
+              return (
+                <div key={bar.id} className="space-y-1.5">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm font-semibold" style={{ color: lblColor }}>{bar.label}</span>
+                    <span className="text-sm font-extrabold" style={{ color: valColor }}>{bar.value}%</span>
+                  </div>
+                  <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: barBg }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
       const cols = element.progressBarLayout || 1;
       const disposition = element.progressBarDisposition || 'chart_legend';
       return (

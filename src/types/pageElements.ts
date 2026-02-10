@@ -171,6 +171,7 @@ export interface PageElement {
   // Progress bar element
   progressBarItems?: ProgressBarItem[];
   progressBarLayout?: 1 | 2; // 1 or 2 columns
+  progressBarDirection?: 'vertical' | 'horizontal'; // bar direction
   progressBarDisposition?: 'chart_legend' | 'legend_chart'; // order
   // Progress bar column border (shared across all bars)
   progressBarColBorderWidth?: number;
