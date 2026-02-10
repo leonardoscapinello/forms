@@ -330,7 +330,7 @@ export default function FormPreview() {
             animate="center"
             exit="exit"
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="w-full max-w-2xl"
+            className={`w-full mx-auto ${currentQuestion?.type === 'graphic' ? 'max-w-4xl' : 'max-w-2xl'}`}
           >
             {isWelcome && (
               <div className="text-center space-y-5">
