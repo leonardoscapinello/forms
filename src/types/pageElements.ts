@@ -18,6 +18,7 @@ export type PageElementType =
   | 'horizontal_bar'
   | 'timer'
   | 'circular_progress'
+  | 'loading'
   // Layout elements
   | 'columns'
   // Section elements
@@ -49,6 +50,7 @@ export type PageElementType =
   | 'input_quiz_image';
 
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
+export type LoadingStyle = 'bar' | 'circular' | 'infinite';
 
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
@@ -296,6 +298,18 @@ export interface PageElement {
   ratingInactiveColor?: string;
   npsLowLabel?: string;
   npsHighLabel?: string;
+  // Loading element properties
+  loadingStyle?: LoadingStyle;
+  loadingDuration?: number;
+  loadingTargetPercent?: number;
+  loadingAction?: 'none' | 'next' | 'specific' | 'finish';
+  loadingTargetPageId?: string;
+  loadingLabel?: string;
+  loadingColor?: string;
+  loadingTrackColor?: string;
+  loadingTextColor?: string;
+  loadingSize?: number;
+  loadingStroke?: number;
   style?: PageElementStyle;
 }
 
@@ -323,6 +337,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   horizontal_bar: 'Barra horizontal',
   timer: 'Timer',
   circular_progress: 'Progresso circular',
+  loading: 'Loading',
   columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
@@ -359,7 +374,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados',
-    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'timer', 'circular_progress'],
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'timer', 'circular_progress', 'loading'],
   },
   sections: {
     label: 'Seções',
@@ -568,6 +583,18 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.timerSeparatorColor = '#1a1a1a';
       base.timerBoxBackground = '#EF4444';
       base.timerBoxBorderRadius = 8;
+      break;
+    case 'loading':
+      base.loadingStyle = 'bar';
+      base.loadingDuration = 5;
+      base.loadingTargetPercent = 100;
+      base.loadingAction = 'next';
+      base.loadingLabel = 'Carregando...';
+      base.loadingColor = '#6366f1';
+      base.loadingTrackColor = '#e5e7eb';
+      base.loadingTextColor = '#1a1a1a';
+      base.loadingSize = 120;
+      base.loadingStroke = 10;
       break;
     case 'input_text':
       base.label = 'Nome';

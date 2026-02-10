@@ -10,6 +10,7 @@ import ComparativeChartPreview from '@/components/preview/charts/ComparativeChar
 import TimerPreview from '@/components/preview/TimerPreview';
 import CircularProgressPreview from '@/components/preview/CircularProgressPreview';
 import ListPreview from '@/components/preview/ListPreview';
+import LoadingPreview from '@/components/preview/LoadingPreview';
 
 interface Props {
   element: PageElement;
@@ -591,6 +592,24 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             labelColor={element.circularProgressLabelColor}
             size={element.circularProgressSize}
             strokeWidth={element.circularProgressStroke}
+          />
+        </div>
+      );
+
+    case 'loading':
+      return (
+        <div className={alignClass}>
+          <LoadingPreview
+            style={element.loadingStyle}
+            duration={element.loadingDuration}
+            targetPercent={element.loadingTargetPercent}
+            label={element.loadingLabel}
+            color={element.loadingColor}
+            trackColor={element.loadingTrackColor}
+            textColor={element.loadingTextColor}
+            size={element.loadingSize}
+            stroke={element.loadingStroke}
+            interactive={false}
           />
         </div>
       );
