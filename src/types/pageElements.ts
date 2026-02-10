@@ -233,12 +233,16 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_quiz_image: 'Quiz com imagem',
 };
 
-export type ElementCategory = 'visual' | 'sections' | 'fields';
+export type ElementCategory = 'visual' | 'data' | 'sections' | 'fields';
 
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification', 'chart', 'columns'],
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification', 'columns'],
+  },
+  data: {
+    label: 'Dados',
+    types: ['chart'],
   },
   sections: {
     label: 'Seções',
