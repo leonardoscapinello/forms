@@ -23,12 +23,25 @@ export default function Login() {
         const res = await supabase.functions.invoke('setup-admin', {
           body: { email: '', password: '' },
         });
+        // When function returns 403, supabase puts it in res.error
+        // res.data may contain the JSON body, or it may be null
         const data = res.data as any;
-        const errorMsg = data?.error || res.error?.message || '';
-        // If users already exist, skip setup
-        if (errorMsg.includes('Setup already completed')) {
+        const dataError = typeof data?.error === 'string' ? data.error : '';
+        
+        if (dataError.includes('Setup already completed') || dataError.includes('Users exist')) {
           setSetupMode(false);
+        } else if (res.error) {
+          // Non-2xx response: try to read the error context
+          // FunctionsHttpError stores the response, check if it's a 403 (setup done)
+          const ctx = (res.error as any)?.context;
+          if (ctx?.status === 403) {
+            setSetupMode(false);
+          } else {
+            // Other error (e.g. 400 "Email and password required") means no users yet
+            setSetupMode(true);
+          }
         } else {
+          // 200 success means setup just happened or is possible
           setSetupMode(true);
         }
       } catch {
