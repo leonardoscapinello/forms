@@ -32,7 +32,7 @@ const tooltipStyle = {
 // ─── Bar (horizontal) ───────────────────────────────
 function RechartsBarH({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getColor(item, i) }));
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
@@ -53,7 +53,7 @@ function RechartsBarH({ items, style }: { items: GraphicDataItem[]; style: Chart
 // ─── Column (vertical) ──────────────────────────────
 function RechartsColumn({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getColor(item, i) }));
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 20 }}>
@@ -74,7 +74,7 @@ function RechartsColumn({ items, style }: { items: GraphicDataItem[]; style: Cha
 // ─── Pie / Donut ────────────────────────────────────
 function RechartsPie({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getColor(item, i) }));
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   const ir = style.innerRadius ?? 45;
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -99,7 +99,7 @@ function RechartsPie({ items, style }: { items: GraphicDataItem[]; style: ChartS
 function RechartsLine({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map(item => ({ name: item.label, value: parseFloat(item.value) || 0 }));
   const color = items[0]?.color || FALLBACK_COLORS[0];
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   const gradId = `lineGrad-${color.replace('#', '')}`;
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -127,7 +127,7 @@ function RechartsLine({ items, style }: { items: GraphicDataItem[]; style: Chart
 // ─── Area (filled, stacked look — visually distinct from line) ────
 function RechartsArea({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getColor(item, i) }));
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   // Use multiple stacked areas with different colors for each segment
   const color1 = getColor(items[0], 0);
   const color2 = items.length > 1 ? getColor(items[Math.floor(items.length / 2)], Math.floor(items.length / 2)) : color1;
@@ -160,7 +160,7 @@ function RechartsArea({ items, style }: { items: GraphicDataItem[]; style: Chart
 function RechartsRadarChart({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map(item => ({ subject: item.label, value: parseFloat(item.value) || 0 }));
   const color = items[0]?.color || FALLBACK_COLORS[0];
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   return (
     <ResponsiveContainer width="100%" height={320}>
       <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
@@ -184,7 +184,7 @@ function RechartsFunnel({ items, style }: { items: GraphicDataItem[]; style: Cha
     value: parseFloat(item.value) || 0,
     fill: getColor(item, i),
   }));
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   return (
     <ResponsiveContainer width="100%" height={300}>
       <FunnelChart>
@@ -200,7 +200,7 @@ function RechartsFunnel({ items, style }: { items: GraphicDataItem[]; style: Cha
 
 // ─── Waterfall ──────────────────────────────────────
 function WaterfallChart({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
   let cumulative = 0;
   const data = items.map((item, i) => {
     const val = parseFloat(item.value) || 0;
@@ -241,7 +241,7 @@ function TreemapChart({ items, style }: { items: GraphicDataItem[]; style: Chart
     size: parseFloat(item.value) || 0,
     fill: getColor(item, i),
   }));
-  const dur = style.animated !== false ? 800 : 0;
+  const dur = style.animated !== false ? 300 : 0;
 
   const CustomContent = (props: any) => {
     const { x, y, width, height, name, fill } = props;
@@ -279,7 +279,7 @@ function RadialBarPreview({ items, style }: { items: GraphicDataItem[]; style: C
     value: parseFloat(item.value) || 0,
     fill: getColor(item, i),
   })).reverse();
-  const dur = style.animated !== false ? 1000 : 0;
+  const dur = style.animated !== false ? 400 : 0;
 
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -307,9 +307,9 @@ function ThermometerPreview({ items, style }: { items: GraphicDataItem[]; style:
         const color = getColor(item, i);
         return (
           <motion.div key={item.id}
-            initial={animated ? { opacity: 0, y: 20 } : false}
+            initial={animated ? { opacity: 0, y: 8 } : false}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
+            transition={{ delay: i * 0.05, duration: 0.2 }}
             className="flex flex-col items-center gap-2"
           >
             {style.showValues !== false && (
@@ -320,7 +320,7 @@ function ThermometerPreview({ items, style }: { items: GraphicDataItem[]; style:
               <motion.div className="absolute bottom-0 left-0 right-0 rounded-t-full" style={{ backgroundColor: color }}
                 initial={animated ? { height: 0 } : { height: `${pct}%` }}
                 animate={{ height: `${pct}%` }}
-                transition={{ duration: 1, ease: [0.34, 1.56, 0.64, 1], delay: i * 0.1 }} />
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: i * 0.05 }} />
               <div className="absolute inset-y-0 left-0.5 w-1.5 bg-white/20 rounded-full" />
             </div>
             <div className="w-12 h-12 rounded-full -mt-3 border-4 border-card shadow-lg" style={{ backgroundColor: color }} />
@@ -366,9 +366,9 @@ function SpeedometerPreview({ items, style }: { items: GraphicDataItem[]; style:
 
         return (
           <motion.div key={item.id}
-            initial={animated ? { opacity: 0, scale: 0.8 } : false}
+            initial={animated ? { opacity: 0, scale: 0.95 } : false}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.12, type: 'spring', stiffness: 200 }}
+            transition={{ delay: i * 0.06, duration: 0.2 }}
             className="flex flex-col items-center"
           >
             <svg viewBox="0 0 140 90" className="w-full" style={{ maxWidth: 220 }}>
@@ -385,7 +385,7 @@ function SpeedometerPreview({ items, style }: { items: GraphicDataItem[]; style:
               <motion.line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round"
                 initial={animated ? { x2: bgX1, y2: cy } : { x2: needleX, y2: needleY }}
                 animate={{ x2: needleX, y2: needleY }}
-                transition={{ duration: 1.2, ease: [0.34, 1.56, 0.64, 1], delay: i * 0.1 }} />
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: i * 0.06 }} />
               {/* Center dot */}
               <circle cx={cx} cy={cy} r="5" fill="hsl(var(--foreground))" />
               {/* Value text */}
@@ -416,15 +416,9 @@ interface Props {
 export default function ChartLivePreview({ chartType, items, style = {} }: Props) {
   if (!items?.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground py-12">
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center text-2xl"
-        >
-          📊
-        </motion.div>
-        <p className="text-sm">Adicione dados para ver o gráfico</p>
+      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground py-10">
+        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-xl">📊</div>
+        <p className="text-xs">Adicione dados para ver o gráfico</p>
       </div>
     );
   }
@@ -450,10 +444,10 @@ export default function ChartLivePreview({ chartType, items, style = {} }: Props
     <AnimatePresence mode="wait">
       <motion.div
         key={`${chartType}-${items.length}`}
-        initial={{ opacity: 0, scale: 0.95, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: -8 }}
-        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         className="w-full"
       >
         <Renderer items={items} style={style} />

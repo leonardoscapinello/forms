@@ -187,6 +187,7 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
       className="fixed inset-0 z-50 flex"
     >
       {/* Backdrop */}
@@ -194,16 +195,17 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Designer panel */}
       <motion.div
-        initial={{ y: '100%', opacity: 0 }}
+        initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: '100%', opacity: 0 }}
-        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         className="relative mt-10 mx-auto w-full max-w-6xl bg-card rounded-t-2xl border border-border border-b-0 shadow-2xl flex flex-col overflow-hidden"
         style={{ maxHeight: 'calc(100vh - 40px)' }}
       >
