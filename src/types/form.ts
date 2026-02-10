@@ -223,6 +223,21 @@ export interface FlowEdge {
   label?: string;
 }
 
+/** A funnel page — the primary building block. Each page contains elements (layout + fields). */
+export interface FunnelPage {
+  id: string;
+  title: string;
+  elements: import('./pageElements').PageElement[];
+}
+
+export function createDefaultFunnelPage(title?: string): FunnelPage {
+  return {
+    id: crypto.randomUUID(),
+    title: title || 'Nova página',
+    elements: [],
+  };
+}
+
 export interface FormData {
   id: string;
   title: string;
@@ -231,7 +246,10 @@ export interface FormData {
   welcomeDescription?: string;
   thankYouTitle?: string;
   thankYouDescription?: string;
+  /** @deprecated — use pages instead */
   questions: Question[];
+  /** Funnel pages — the primary workflow unit */
+  pages: FunnelPage[];
   conditions?: ConditionNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];

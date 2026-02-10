@@ -1,95 +1,97 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { Question, FormData, ConditionNodeData, createDefaultConditionGroup } from '@/types/form';
+import { FunnelPage, FormData, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
-import QuestionSidePanel from '@/components/editor/QuestionSidePanel';
-import FormResponses from '@/components/editor/FormResponses';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
+import PageListPanel from '@/components/editor/PageListPanel';
+import FormResponses from '@/components/editor/FormResponses';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, ChevronRight } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
 
-type EditorView = 'workflow' | 'page-builder' | 'responses';
+type EditorView = 'pages' | 'workflow' | 'responses';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getForm, updateForm } = useFormStore();
   const form = getForm(id!);
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
-  const [editorView, setEditorView] = useState<EditorView>('workflow');
-  /** The question whose page is being edited in the page builder */
-  const [editingPageQuestionId, setEditingPageQuestionId] = useState<string | null>(null);
+  const [editorView, setEditorView] = useState<EditorView>('pages');
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
   }, [form, navigate]);
 
-  const selectedQuestion = form?.questions.find(q => q.id === selectedQuestionId) || null;
-  const selectedIndex = form?.questions.findIndex(q => q.id === selectedQuestionId) ?? -1;
-  const editingPageQuestion = form?.questions.find(q => q.id === editingPageQuestionId) || null;
-  const editingPageIndex = form?.questions.findIndex(q => q.id === editingPageQuestionId) ?? -1;
+  // Auto-select first page when switching to pages tab
+  useEffect(() => {
+    if (editorView === 'pages' && !editingPageId && form?.pages?.length) {
+      setEditingPageId(form.pages[0].id);
+    }
+  }, [editorView, editingPageId, form?.pages]);
 
-  /** Double-click on a node opens the page builder for it */
-  const handleQuestionSelect = useCallback((qId: string) => {
-    setEditingPageQuestionId(qId);
-    setEditorView('page-builder');
-    setSelectedQuestionId(qId);
-  }, []);
+  const editingPage = form?.pages?.find(p => p.id === editingPageId) || null;
+  const editingPageIndex = form?.pages?.findIndex(p => p.id === editingPageId) ?? -1;
 
-  const handleBackToWorkflow = useCallback(() => {
-    setEditorView('workflow');
-    setEditingPageQuestionId(null);
-  }, []);
+  // ---- Page CRUD ----
 
-  const handleQuestionChange = useCallback((qId: string, patch: Partial<Question>) => {
+  const handleAddPage = useCallback(() => {
     if (!form) return;
-    const questions = form.questions.map(q =>
-      q.id === qId ? { ...q, ...patch } : q
-    );
-    updateForm(form.id, { questions });
+    const page = createDefaultFunnelPage(`Página ${(form.pages?.length || 0) + 1}`);
+    const pages = [...(form.pages || []), page];
+    updateForm(form.id, { pages });
+    setEditingPageId(page.id);
   }, [form, updateForm]);
 
-  const handleDeleteQuestion = useCallback((qId: string) => {
+  const handleDeletePage = useCallback((pageId: string) => {
     if (!form) return;
-    if (selectedQuestionId === qId) setSelectedQuestionId(null);
-    if (editingPageQuestionId === qId) {
-      setEditingPageQuestionId(null);
-      setEditorView('workflow');
+    if (editingPageId === pageId) {
+      const remaining = (form.pages || []).filter(p => p.id !== pageId);
+      setEditingPageId(remaining[0]?.id || null);
     }
-    const nodeId = `q-${qId}`;
-    const flowEdges = (form.flowEdges || []).filter(
-      e => e.source !== nodeId && e.target !== nodeId
-    );
+    const nodeId = `p-${pageId}`;
+    const flowEdges = (form.flowEdges || []).filter(e => e.source !== nodeId && e.target !== nodeId);
     const nodePositions = (form.nodePositions || []).filter(p => p.id !== nodeId);
     updateForm(form.id, {
-      questions: form.questions.filter(q => q.id !== qId),
+      pages: (form.pages || []).filter(p => p.id !== pageId),
       flowEdges,
       nodePositions,
     });
-  }, [form, updateForm, selectedQuestionId, editingPageQuestionId]);
+  }, [form, updateForm, editingPageId]);
 
-  const handleAddQuestion = useCallback((question: Question) => {
+  const handlePageChange = useCallback((pageId: string, patch: Partial<FunnelPage>) => {
     if (!form) return;
-    const newNodeId = `q-${question.id}`;
-    const sourceId = form.questions.length > 0
-      ? `q-${form.questions[form.questions.length - 1].id}`
-      : 'start';
-    const newEdge = { id: `e-${sourceId}-${newNodeId}`, source: sourceId, target: newNodeId };
-    const flowEdges = [...(form.flowEdges || []), newEdge];
-    updateForm(form.id, { questions: [...form.questions, question], flowEdges });
+    const pages = (form.pages || []).map(p =>
+      p.id === pageId ? { ...p, ...patch } : p
+    );
+    updateForm(form.id, { pages });
   }, [form, updateForm]);
 
-  const handleAddQuestionAtPosition = useCallback((question: Question, position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+  const handleRenamePage = useCallback((pageId: string, title: string) => {
+    handlePageChange(pageId, { title });
+  }, [handlePageChange]);
+
+  // ---- Workflow: page select (double-click opens page builder) ----
+
+  const handlePageSelectFromWorkflow = useCallback((pageId: string) => {
+    setEditingPageId(pageId);
+    setEditorView('pages');
+  }, []);
+
+  // ---- Workflow: add page at position ----
+
+  const handlePageAddAtPosition = useCallback((page: FunnelPage, position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
-    const newNodeId = `q-${question.id}`;
+    const newNodeId = `p-${page.id}`;
     const newEdge = { id: `e-${sourceNodeId}-${newNodeId}`, source: sourceNodeId, sourceHandle, target: newNodeId };
     const flowEdges = [...(form.flowEdges || []), newEdge];
     const nodePositions = [...(form.nodePositions || []), { id: newNodeId, x: position.x, y: position.y }];
-    updateForm(form.id, { questions: [...form.questions, question], flowEdges, nodePositions });
+    updateForm(form.id, { pages: [...(form.pages || []), page], flowEdges, nodePositions });
   }, [form, updateForm]);
+
+  // ---- Conditions ----
 
   const handleConditionAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
@@ -99,7 +101,7 @@ export default function FormEditor() {
       branches: [{
         id: crypto.randomUUID(),
         label: 'Caminho 1',
-        conditionGroup: createDefaultConditionGroup(form.questions[0]?.id || ''),
+        conditionGroup: createDefaultConditionGroup(form.questions?.[0]?.id || ''),
       }],
     };
     const nodeId = `c-${cond.id}`;
@@ -142,67 +144,34 @@ export default function FormEditor() {
     <div className="h-screen flex flex-col bg-background">
       <header className="flex-shrink-0 border-b border-border bg-card">
         <div className="flex items-center gap-3 py-3 px-5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-            if (editorView === 'page-builder') {
-              handleBackToWorkflow();
-            } else {
-              navigate('/');
-            }
-          }}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          {/* Breadcrumb navigation */}
           <div className="flex items-center gap-1.5 min-w-0">
-            <button
-              onClick={handleBackToWorkflow}
-              className={`text-sm font-medium transition-colors truncate ${
-                editorView === 'workflow'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground cursor-pointer'
-              }`}
-            >
-              <Input
-                value={form.title}
-                onChange={e => updateForm(form.id, { title: e.target.value })}
-                className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-[200px] bg-transparent"
-                placeholder="Título do formulário"
-                onClick={e => e.stopPropagation()}
-              />
-            </button>
-
-            {editorView === 'page-builder' && editingPageQuestion && (
-              <>
-                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-sm font-semibold text-foreground truncate">
-                  Página #{editingPageIndex + 1}: {editingPageQuestion.title || 'Sem título'}
-                </span>
-              </>
-            )}
+            <Input
+              value={form.title}
+              onChange={e => updateForm(form.id, { title: e.target.value })}
+              className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-[200px] bg-transparent"
+              placeholder="Título do formulário"
+            />
           </div>
 
           {/* View switcher */}
           <div className="flex items-center gap-1 ml-6">
-            <button
-              onClick={handleBackToWorkflow}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                editorView === 'workflow' || editorView === 'page-builder'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              Workflow
-            </button>
-            <button
-              onClick={() => setEditorView('responses')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                editorView === 'responses'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              Respostas
-            </button>
+            {(['pages', 'workflow', 'responses'] as const).map(view => (
+              <button
+                key={view}
+                onClick={() => setEditorView(view)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  editorView === view
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                {view === 'pages' ? 'Páginas' : view === 'workflow' ? 'Workflow' : 'Respostas'}
+              </button>
+            ))}
           </div>
 
           <div className="ml-auto flex items-center gap-2">
@@ -225,54 +194,47 @@ export default function FormEditor() {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Workflow view */}
-        {editorView === 'workflow' && (
+        {/* Pages view: list + page builder */}
+        {editorView === 'pages' && (
           <>
-            <div className="flex-1 overflow-hidden">
-              <FlowCanvas
-                form={form}
-                onQuestionChange={handleQuestionChange}
-                onQuestionDelete={handleDeleteQuestion}
-                onQuestionAdd={handleAddQuestion}
-                onQuestionAddAtPosition={handleAddQuestionAtPosition}
-                onConditionAddAtPosition={handleConditionAddAtPosition}
-                onConditionChange={handleConditionChange}
-                onConditionDelete={handleConditionDelete}
-                onFormUpdate={handleFormUpdate}
-                onQuestionSelect={handleQuestionSelect}
+            <PageListPanel
+              pages={form.pages || []}
+              selectedPageId={editingPageId}
+              onSelectPage={setEditingPageId}
+              onAddPage={handleAddPage}
+              onDeletePage={handleDeletePage}
+              onRenamePage={handleRenamePage}
+            />
+            {editingPage ? (
+              <PageBuilder
+                elements={editingPage.elements || []}
+                onChange={(elements: PageElement[]) => {
+                  handlePageChange(editingPage.id, { elements });
+                }}
               />
-            </div>
-
-            {/* Side panel (quick edit) */}
-            {selectedQuestion && (
-              <QuestionSidePanel
-                key={selectedQuestion.id}
-                question={selectedQuestion}
-                index={selectedIndex}
-                onChange={patch => handleQuestionChange(selectedQuestion.id, patch)}
-                onDelete={() => handleDeleteQuestion(selectedQuestion.id)}
-                onClose={() => setSelectedQuestionId(null)}
-                routingTargets={
-                  form.questions
-                    .filter(q => q.id !== selectedQuestion.id)
-                    .map((q, i) => ({ id: `q-${q.id}`, label: `#${i + 1} ${q.title || 'Sem título'}` }))
-                    .concat(
-                      (form.conditions || []).map(c => ({ id: `c-${c.id}`, label: `⑃ ${c.label}` }))
-                    )
-                }
-              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <p>Selecione uma página para editar</p>
+              </div>
             )}
           </>
         )}
 
-        {/* Page builder view — opened via double-click on a workflow node */}
-        {editorView === 'page-builder' && editingPageQuestion && (
-          <PageBuilder
-            elements={editingPageQuestion.pageElements || []}
-            onChange={(elements: PageElement[]) => {
-              handleQuestionChange(editingPageQuestion.id, { pageElements: elements });
-            }}
-          />
+        {/* Workflow view */}
+        {editorView === 'workflow' && (
+          <div className="flex-1 overflow-hidden">
+            <FlowCanvas
+              form={form}
+              onPageChange={handlePageChange}
+              onPageDelete={handleDeletePage}
+              onPageAddAtPosition={handlePageAddAtPosition}
+              onConditionAddAtPosition={handleConditionAddAtPosition}
+              onConditionChange={handleConditionChange}
+              onConditionDelete={handleConditionDelete}
+              onFormUpdate={handleFormUpdate}
+              onPageSelect={handlePageSelectFromWorkflow}
+            />
+          </div>
         )}
 
         {/* Responses view */}

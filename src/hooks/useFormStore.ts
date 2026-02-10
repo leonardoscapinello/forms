@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { FormData, Question, DEFAULT_FORM_STYLE } from '@/types/form';
+import { FormData, Question, DEFAULT_FORM_STYLE, createDefaultFunnelPage } from '@/types/form';
 
 const STORAGE_KEY = 'formflow_forms';
 
@@ -30,6 +30,7 @@ export function useFormStore() {
       id: crypto.randomUUID(),
       title: 'Formulário sem título',
       questions: [],
+      pages: [createDefaultFunnelPage('Página 1')],
       style: { ...DEFAULT_FORM_STYLE },
       status: 'draft',
       createdAt: now,
