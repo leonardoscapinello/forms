@@ -8,9 +8,9 @@ import { useState } from 'react';
 export function ArgumentsPreview({ element }: { element: PageElement }) {
   const items = element.argumentItems || [];
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="flex flex-wrap gap-4">
       {items.map(item => (
-        <div key={item.id} className="p-4 rounded-xl border border-border bg-card space-y-2 text-center">
+        <div key={item.id} className="flex-1 min-w-[200px] max-w-full basis-full sm:basis-[calc(50%-0.5rem)] lg:basis-[calc(33.333%-0.67rem)] p-4 rounded-xl border border-border bg-card space-y-2 text-center">
           <Twemoji className="text-3xl">{item.emoji}</Twemoji>
           <h4 className="font-semibold text-foreground">{item.title}</h4>
           <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
