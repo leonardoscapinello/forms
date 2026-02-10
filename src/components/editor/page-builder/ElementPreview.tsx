@@ -413,36 +413,25 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const lblColor = element.horizontalBarLabelColor || 'hsl(var(--foreground))';
       const valColor = element.horizontalBarValueColor || barColor;
       const trackH = element.horizontalBarHeight || 12;
-      const dotSize = trackH + 10;
-      const pct = Math.min(100, Math.max(0, barVal));
+      const totalSegments = 20;
+      const filledSegments = Math.round((Math.min(100, Math.max(0, barVal)) / 100) * totalSegments);
       return (
         <div className="space-y-1.5 w-full">
           <div className="flex justify-between items-baseline">
             <span className="text-sm font-semibold" style={{ color: lblColor }}>{element.horizontalBarLabel || 'Progresso'}</span>
             <span className="text-sm font-extrabold" style={{ color: valColor }}>{barVal}%</span>
           </div>
-          <div className="relative w-full" style={{ height: dotSize }}>
-            {/* Track background */}
-            <div
-              className="absolute rounded-full left-0 right-0"
-              style={{ backgroundColor: barBg, height: trackH, top: (dotSize - trackH) / 2 }}
-            />
-            {/* Filled portion */}
-            <div
-              className="absolute rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, backgroundColor: barColor, height: trackH, top: (dotSize - trackH) / 2 }}
-            />
-            {/* Dot indicator */}
-            <div
-              className="absolute rounded-full shadow-md border-2 border-white transition-all duration-500"
-              style={{
-                width: dotSize,
-                height: dotSize,
-                backgroundColor: barColor,
-                left: `calc(${pct}% - ${dotSize / 2}px)`,
-                top: 0,
-              }}
-            />
+          <div className="flex gap-[3px] w-full">
+            {Array.from({ length: totalSegments }).map((_, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-full transition-all duration-300"
+                style={{
+                  height: trackH,
+                  backgroundColor: i < filledSegments ? barColor : barBg,
+                }}
+              />
+            ))}
           </div>
         </div>
       );
