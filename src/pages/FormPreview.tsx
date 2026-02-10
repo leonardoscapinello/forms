@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
-import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
+import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
+import BeforeAfterSlider from '@/components/preview/BeforeAfterSlider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
@@ -550,7 +551,13 @@ function InteractiveElement({
     case 'pricing':
       return <PricingPreview element={element} />;
     case 'before_after':
-      return <BeforeAfterPreview element={element} />;
+      return (
+        <BeforeAfterSlider
+          beforeImage={element.beforeImage || ''}
+          afterImage={element.afterImage || ''}
+          mode={element.beforeAfterMode || 'slider'}
+        />
+      );
     case 'carousel':
       return <CarouselPreview element={element} />;
 
