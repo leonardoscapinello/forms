@@ -149,30 +149,76 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
-          {/* ─── Height/Weight: unit ─── */}
+          {/* ─── Height/Weight settings ─── */}
           {(element.type === 'input_height' || element.type === 'input_weight') && (
-            <div className="space-y-2">
-              <Label>Unidade de medida</Label>
-              <Select
-                value={element.unit || (element.type === 'input_height' ? 'cm' : 'kg')}
-                onValueChange={v => onChange({ unit: v })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {element.type === 'input_height' ? (
-                    <>
-                      <SelectItem value="cm">Centímetros (cm)</SelectItem>
-                      <SelectItem value="m">Metros (m)</SelectItem>
-                    </>
-                  ) : (
-                    <>
-                      <SelectItem value="kg">Quilogramas (kg)</SelectItem>
-                      <SelectItem value="lb">Libras (lb)</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Unidade padrão</Label>
+                <Select
+                  value={element.unit || (element.type === 'input_height' ? 'cm' : 'kg')}
+                  onValueChange={v => onChange({ unit: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {element.type === 'input_height' ? (
+                      <>
+                        <SelectItem value="cm">Centímetros (cm)</SelectItem>
+                        <SelectItem value="pol">Polegadas (pol)</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="kg">Quilogramas (kg)</SelectItem>
+                        <SelectItem value="lb">Libras (lb)</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Permitir trocar unidade</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {element.type === 'input_height' ? 'Usuário pode alternar entre cm e pol' : 'Usuário pode alternar entre kg e lb'}
+                  </p>
+                </div>
+                <Switch
+                  checked={element.allowUnitToggle !== false}
+                  onCheckedChange={v => onChange({ allowUnitToggle: v })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Valor padrão</Label>
+                <Input
+                  type="number"
+                  value={element.defaultValue ?? ''}
+                  onChange={e => onChange({ defaultValue: e.target.value ? Number(e.target.value) : undefined })}
+                  placeholder={element.type === 'input_height' ? '170' : '70'}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Mínimo</Label>
+                  <Input
+                    type="number"
+                    value={element.min ?? ''}
+                    onChange={e => onChange({ min: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder={element.type === 'input_height' ? '100' : '20'}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Máximo</Label>
+                  <Input
+                    type="number"
+                    value={element.max ?? ''}
+                    onChange={e => onChange({ max: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder={element.type === 'input_height' ? '250' : '250'}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {/* ─── Options (select, radio) ─── */}
