@@ -680,26 +680,143 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* Image / Video URL */}
-          {(element.type === 'image' || element.type === 'video') && (
+          {/* Image settings */}
+          {element.type === 'image' && (
+            <>
+              {/* Upload */}
+              <div className="space-y-2">
+                <Label>Imagem</Label>
+                {element.src ? (
+                  <div className="space-y-2">
+                    <div className="relative group rounded-lg overflow-hidden border border-border" style={{ maxHeight: 200 }}>
+                      <img src={element.src} alt={element.alt || ''} className="w-full object-cover" style={{ maxHeight: 200 }} />
+                      <button
+                        className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => onChange({ src: '' })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file) return;
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('path', `images/${crypto.randomUUID()}-${file.name}`);
+                        try {
+                          const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+                          if (error) throw error;
+                          if (data?.url) onChange({ src: data.url });
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1" /> Upload
+                  </Button>
+                </div>
+                <Input
+                  value={element.src || ''}
+                  onChange={e => onChange({ src: e.target.value })}
+                  placeholder="ou cole uma URL..."
+                  className="text-xs"
+                />
+              </div>
+
+              {/* Alt text */}
+              <div className="space-y-2">
+                <Label>Texto alternativo</Label>
+                <Input
+                  value={element.alt || ''}
+                  onChange={e => onChange({ alt: e.target.value })}
+                  placeholder="Descrição da imagem"
+                />
+              </div>
+
+              {/* Object fit */}
+              <div className="space-y-2">
+                <Label>Ajuste</Label>
+                <Select value={element.imageObjectFit || 'cover'} onValueChange={v => onChange({ imageObjectFit: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cover">Cobrir (crop)</SelectItem>
+                    <SelectItem value="contain">Conter (sem corte)</SelectItem>
+                    <SelectItem value="fill">Esticar</SelectItem>
+                    <SelectItem value="none">Original</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Max height */}
+              <div className="space-y-2">
+                <Label>Altura máxima ({element.imageMaxHeight || 400}px)</Label>
+                <Slider
+                  value={[element.imageMaxHeight || 400]}
+                  onValueChange={([v]) => onChange({ imageMaxHeight: v })}
+                  min={100}
+                  max={800}
+                  step={20}
+                />
+              </div>
+
+              {/* Focal point */}
+              {element.src && (element.imageObjectFit === 'cover' || !element.imageObjectFit) && (
+                <div className="space-y-2">
+                  <Label>Ponto focal</Label>
+                  <p className="text-xs text-muted-foreground">Clique na imagem para definir o ponto de interesse</p>
+                  <div
+                    className="relative rounded-lg overflow-hidden border border-border cursor-crosshair"
+                    style={{ height: 160 }}
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                      const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                      onChange({ imageFocalX: x, imageFocalY: y });
+                    }}
+                  >
+                    <img
+                      src={element.src}
+                      alt=""
+                      className="w-full h-full"
+                      style={{ objectFit: 'cover', objectPosition: `${element.imageFocalX ?? 50}% ${element.imageFocalY ?? 50}%` }}
+                    />
+                    <div
+                      className="absolute w-5 h-5 rounded-full border-2 border-white shadow-lg bg-primary/60 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{
+                        left: `${element.imageFocalX ?? 50}%`,
+                        top: `${element.imageFocalY ?? 50}%`,
+                      }}
+                    />
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-xs w-full" onClick={() => onChange({ imageFocalX: 50, imageFocalY: 50 })}>
+                    Centralizar ponto focal
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Video URL */}
+          {element.type === 'video' && (
             <div className="space-y-2">
-              <Label>{element.type === 'image' ? 'URL da imagem' : 'URL do vídeo'}</Label>
+              <Label>URL do vídeo</Label>
               <Input
                 value={element.src || ''}
                 onChange={e => onChange({ src: e.target.value })}
-                placeholder={element.type === 'image' ? 'https://...' : 'https://youtube.com/...'}
-              />
-            </div>
-          )}
-
-          {/* Image alt */}
-          {element.type === 'image' && (
-            <div className="space-y-2">
-              <Label>Texto alternativo</Label>
-              <Input
-                value={element.alt || ''}
-                onChange={e => onChange({ alt: e.target.value })}
-                placeholder="Descrição da imagem"
+                placeholder="https://youtube.com/..."
               />
             </div>
           )}
