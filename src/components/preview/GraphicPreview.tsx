@@ -1,4 +1,4 @@
-import { GraphicVariant, ChartType, GraphicDataItem, ChartStyle, ChartBoxStyle, ChartPanel, GridColumns } from '@/types/form';
+import { GraphicVariant, ChartType, GraphicDataItem, ChartStyle, ChartBoxStyle } from '@/types/form';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 
 interface Props {
@@ -8,9 +8,6 @@ interface Props {
   title?: string;
   description?: string;
   chartStyle?: ChartStyle;
-  /** Multi-chart grid support */
-  chartPanels?: ChartPanel[];
-  gridColumns?: GridColumns;
 }
 
 /** Timeline */
@@ -80,33 +77,15 @@ function getBoxStyle(box: ChartBoxStyle = {}): React.CSSProperties {
   };
 }
 
-/** Single chart panel with its own box */
-function ChartPanelBox({ panel }: { panel: ChartPanel }) {
-  const boxStyle = getBoxStyle(panel.style.box);
-  return (
-    <div className="w-full min-w-0" style={boxStyle}>
-      {panel.label && (
-        <p className="text-sm font-semibold text-foreground mb-2">{panel.label}</p>
-      )}
-      <ChartLivePreview chartType={panel.chartType} items={panel.items} style={panel.style} />
-    </div>
-  );
-}
-
 export default function GraphicPreview({
   variant,
-  chartType = 'bar',
+  chartType = 'column',
   items,
   title,
   description,
   chartStyle = {},
-  chartPanels,
-  gridColumns = 1,
 }: Props) {
-  // Multi-chart grid mode
-  const hasMultiplePanels = chartPanels && chartPanels.length > 0;
-
-  if (!hasMultiplePanels && !items?.length) {
+  if (!items?.length) {
     return (
       <div className="text-center py-8 text-muted-foreground text-sm">
         Nenhum dado configurado
@@ -114,25 +93,11 @@ export default function GraphicPreview({
     );
   }
 
-  const gridClass = gridColumns === 3
-    ? 'grid-cols-1 sm:grid-cols-3'
-    : gridColumns === 2
-      ? 'grid-cols-1 sm:grid-cols-2'
-      : 'grid-cols-1';
-
   return (
     <div className="w-full" style={{ minWidth: 0 }}>
       {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
 
-      {variant === 'chart' && hasMultiplePanels && (
-        <div className={`grid gap-4 w-full ${gridClass}`}>
-          {chartPanels.map(panel => (
-            <ChartPanelBox key={panel.id} panel={panel} />
-          ))}
-        </div>
-      )}
-
-      {variant === 'chart' && !hasMultiplePanels && (
+      {variant === 'chart' && (
         <div className="w-full" style={getBoxStyle(chartStyle.box)}>
           <ChartLivePreview chartType={chartType} items={items} style={chartStyle} />
         </div>

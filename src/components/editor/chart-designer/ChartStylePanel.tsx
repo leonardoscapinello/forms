@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
 
 const COLOR_SCHEMES: { name: string; label: string; colors: string[] }[] = [
   { name: 'vivid', label: 'Vívido', colors: ['#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'] },
@@ -26,8 +25,6 @@ interface Props {
 
 export default function ChartStylePanel({ style, chartType, items, onChange, onItemsChange }: Props) {
   const isPie = chartType === 'pie';
-  const isGauge = chartType === 'thermometer' || chartType === 'speedometer';
-  const hasGrid = !isGauge && chartType !== 'treemap' && chartType !== 'funnel' && chartType !== 'radialBar';
 
   const box = style.box || {};
   const updateBox = (patch: Partial<ChartBoxStyle>) => {
@@ -75,14 +72,9 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
       {/* Toggle options */}
       <div className="space-y-3">
         <Label className="text-xs text-muted-foreground font-medium">Aparência</Label>
-
-        {hasGrid && (
-          <ToggleRow label="Grade" checked={style.showGrid !== false} onChange={v => onChange({ ...style, showGrid: v })} />
-        )}
+        <ToggleRow label="Grade" checked={style.showGrid !== false} onChange={v => onChange({ ...style, showGrid: v })} />
         <ToggleRow label="Labels" checked={style.showLabels !== false} onChange={v => onChange({ ...style, showLabels: v })} />
-        {!isGauge && chartType !== 'treemap' && (
-          <ToggleRow label="Legenda" checked={style.showLegend === true} onChange={v => onChange({ ...style, showLegend: v })} />
-        )}
+        <ToggleRow label="Legenda" checked={style.showLegend === true} onChange={v => onChange({ ...style, showLegend: v })} />
         <ToggleRow label="Valores" checked={style.showValues !== false} onChange={v => onChange({ ...style, showValues: v })} />
         <ToggleRow label="Animação" checked={style.animated !== false} onChange={v => onChange({ ...style, animated: v })} />
       </div>
@@ -111,28 +103,18 @@ export default function ChartStylePanel({ style, chartType, items, onChange, onI
 
       {/* Box / Container */}
       <div className="space-y-3">
-        <Label className="text-xs text-muted-foreground font-medium">Container (Box)</Label>
-
-        <SliderRow label="Padding" value={box.padding ?? 24} min={0} max={64} step={4} suffix="px"
-          onChange={v => updateBox({ padding: v })} />
-        <SliderRow label="Margem" value={box.margin ?? 0} min={0} max={48} step={4} suffix="px"
-          onChange={v => updateBox({ margin: v })} />
-        <SliderRow label="Borda" value={box.borderWidth ?? 1} min={0} max={6} step={1} suffix="px"
-          onChange={v => updateBox({ borderWidth: v })} />
-        <SliderRow label="Arredondamento" value={box.borderRadius ?? 16} min={0} max={32} step={2} suffix="px"
-          onChange={v => updateBox({ borderRadius: v })} />
-
+        <Label className="text-xs text-muted-foreground font-medium">Container</Label>
+        <SliderRow label="Padding" value={box.padding ?? 24} min={0} max={64} step={4} suffix="px" onChange={v => updateBox({ padding: v })} />
+        <SliderRow label="Margem" value={box.margin ?? 0} min={0} max={48} step={4} suffix="px" onChange={v => updateBox({ margin: v })} />
+        <SliderRow label="Borda" value={box.borderWidth ?? 1} min={0} max={6} step={1} suffix="px" onChange={v => updateBox({ borderWidth: v })} />
+        <SliderRow label="Arredondamento" value={box.borderRadius ?? 16} min={0} max={32} step={2} suffix="px" onChange={v => updateBox({ borderRadius: v })} />
         <div className="flex items-center justify-between">
           <Label className="text-xs">Cor da borda</Label>
-          <input type="color" value={box.borderColor || '#e2e8f0'}
-            onChange={e => updateBox({ borderColor: e.target.value })}
-            className="h-7 w-10 rounded border border-border cursor-pointer" />
+          <input type="color" value={box.borderColor || '#e2e8f0'} onChange={e => updateBox({ borderColor: e.target.value })} className="h-7 w-10 rounded border border-border cursor-pointer" />
         </div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Fundo</Label>
-          <input type="color" value={box.backgroundColor || '#ffffff'}
-            onChange={e => updateBox({ backgroundColor: e.target.value })}
-            className="h-7 w-10 rounded border border-border cursor-pointer" />
+          <input type="color" value={box.backgroundColor || '#ffffff'} onChange={e => updateBox({ backgroundColor: e.target.value })} className="h-7 w-10 rounded border border-border cursor-pointer" />
         </div>
       </div>
     </div>
@@ -156,9 +138,7 @@ function SliderRow({ label, value, min, max, step, suffix, onChange }: {
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <Label className="text-xs">{label}</Label>
-        <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
-          {value}{suffix}
-        </span>
+        <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{value}{suffix}</span>
       </div>
       <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} className="w-full" />
     </div>
