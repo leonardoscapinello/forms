@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import ElementPreview from './ElementPreview';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ArrowUpFromLine } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,9 +56,10 @@ interface Props {
   element: PageElement;
   onChange: (patch: Partial<PageElement>) => void;
   onRemoveFromMain?: (elementId: string) => void;
+  onMoveToMain?: (element: PageElement, sourceColumnsId: string, colIdx: number) => void;
 }
 
-export default function ColumnsEditor({ element, onChange, onRemoveFromMain }: Props) {
+export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain }: Props) {
   const columnCount = element.columnCount || 2;
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
@@ -209,7 +210,16 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain }: P
               <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab z-10">
                 <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
-              <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-0.5">
+                {onMoveToMain && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onMoveToMain(el, element.id, colIdx); }}
+                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                    title="Mover para fora da coluna"
+                  >
+                    <ArrowUpFromLine className="h-3 w-3" />
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteElement(colIdx, el.id); }}
                   className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { FunnelPage } from '@/types/form';
 import {
   DndContext,
+  pointerWithin,
   closestCenter,
   PointerSensor,
   KeyboardSensor,
@@ -10,6 +11,8 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
+  CollisionDetection,
+  rectIntersection,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -46,6 +49,16 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Custom collision: prioritize column droppables (pointer must be inside them), fall back to sortable reorder
+  const customCollision: CollisionDetection = useCallback((args) => {
+    // First check if pointer is within a column droppable
+    const pointerCollisions = pointerWithin(args);
+    const columnHit = pointerCollisions.find(c => String(c.id).startsWith('col-drop:'));
+    if (columnHit) return [columnHit];
+    // Otherwise use closestCenter for sortable reorder
+    return closestCenter(args);
+  }, []);
 
   const selectedElement = elements.find(e => e.id === selectedId) || null;
   const activeElement = elements.find(e => e.id === activeId) || null;
@@ -111,6 +124,29 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
   }, []);
+
+  // Move element from a column back to the main canvas
+  const handleMoveToMain = useCallback((el: PageElement, sourceColumnsId: string, colIdx: number) => {
+    // Find the columns element position to insert after it
+    const columnsIdx = elements.findIndex(e => e.id === sourceColumnsId);
+    const insertAt = columnsIdx !== -1 ? columnsIdx + 1 : elements.length;
+
+    // Remove from column and insert into main list
+    const updated = elements.map(item => {
+      if (item.id === sourceColumnsId && item.columnData) {
+        return {
+          ...item,
+          columnData: item.columnData.map((col, i) =>
+            i === colIdx ? { ...col, elements: col.elements.filter(e => e.id !== el.id) } : col
+          ),
+        };
+      }
+      return item;
+    });
+    updated.splice(insertAt, 0, el);
+    onChange(updated);
+    setSelectedId(el.id);
+  }, [elements, onChange]);
 
   const handleAdd = useCallback((element: PageElement) => {
     onChange([...elements, element]);
@@ -260,6 +296,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             onChange(elements.filter(e => e.id !== elementId));
             if (selectedId === elementId) setSelectedId(null);
           }}
+          onMoveToMain={handleMoveToMain}
           stepNumber={isField ? formFieldIndex : undefined}
         />
       );
@@ -338,7 +375,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         >
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={customCollision}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
