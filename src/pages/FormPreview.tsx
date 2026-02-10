@@ -14,6 +14,8 @@ import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
+import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
+import CircularProgressPreview from '@/components/preview/CircularProgressPreview';
 import Twemoji from '@/components/Twemoji';
 import IOSNotification from '@/components/preview/IOSNotification';
 import DateFieldPreview from '@/components/preview/DateFieldPreview';
@@ -1182,6 +1184,35 @@ function InteractiveElement({
             chartType={element.chartType || 'column'}
             items={element.chartItems || []}
             style={element.chartStyle || {}}
+          />
+        </div>
+      );
+
+    case 'comparative_chart':
+      return wrapWithStyle(
+        <div className={alignClass}>
+          <ComparativeChartPreview
+            datasets={element.comparativeDatasets || []}
+            labels={element.comparativeLabels || []}
+            mode={element.comparativeMode || 'cartesian'}
+            style={element.chartStyle}
+          />
+        </div>
+      );
+
+    case 'circular_progress':
+      return wrapWithStyle(
+        <div className={alignClass}>
+          <CircularProgressPreview
+            value={element.circularProgressValue ?? 72}
+            labelBefore={element.circularProgressLabelBefore}
+            labelAfter={element.circularProgressLabelAfter}
+            color={element.circularProgressColor}
+            trackColor={element.circularProgressTrackColor}
+            textColor={element.circularProgressTextColor}
+            labelColor={element.circularProgressLabelColor}
+            size={element.circularProgressSize}
+            strokeWidth={element.circularProgressStroke}
           />
         </div>
       );
