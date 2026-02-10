@@ -3,10 +3,11 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Check, X, Star, CheckSquare } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -204,6 +205,53 @@ function InteractiveElement({
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
+  // Email validation state
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const handleEmailChange = useCallback((val: string) => {
+    onChange(val);
+    setEmailValid(null);
+    setEmailError(null);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!val) return;
+
+    // Basic mask validation
+    if (!emailRegex.test(val)) {
+      setEmailError('E-mail inválido');
+      return;
+    }
+
+    // Smart validation via Reoon (if enabled)
+    if (element.smartValidation) {
+      debounceRef.current = setTimeout(async () => {
+        setEmailChecking(true);
+        try {
+          const res = await supabase.functions.invoke('verify-email', { body: { email: val } });
+          const data = res.data as any;
+          if (data?.is_safe_to_send === false) {
+            setEmailError(data?.is_disposable ? 'E-mail descartável' : 'Este e-mail não é válido para receber mensagens');
+            setEmailValid(false);
+          } else if (data?.is_safe_to_send === true) {
+            setEmailValid(true);
+            setEmailError(null);
+          }
+          // if null (not configured), just pass silently
+        } catch {
+          // Don't block the user on API errors
+        } finally {
+          setEmailChecking(false);
+        }
+      }, 800);
+    }
+  }, [onChange, element.smartValidation]);
+
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
     <div className="space-y-6">
@@ -277,13 +325,45 @@ function InteractiveElement({
       return <div style={{ height: element.height || 40 }} />;
 
     // ─── Interactive form fields (with "N → label" header) ──────────────────
-    case 'input_text':
     case 'input_email':
+      return withFieldHeader(
+        <div className="space-y-2">
+          <div className="relative">
+            <input
+              type="email"
+              value={value || ''}
+              onChange={e => handleEmailChange(e.target.value)}
+              placeholder={element.placeholder || 'seu@email.com'}
+              className={`w-full bg-transparent border-0 border-b-2 outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
+                emailError ? 'border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
+              }`}
+              autoFocus
+            />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
+              {emailChecking && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+              {!emailChecking && emailValid && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+              {!emailChecking && emailError && <AlertCircle className="h-5 w-5 text-destructive" />}
+            </div>
+          </div>
+          {emailError && (
+            <p className="text-sm text-destructive flex items-center gap-1.5">
+              {emailError}
+            </p>
+          )}
+          {emailValid && element.smartValidation && (
+            <p className="text-sm text-green-600 flex items-center gap-1.5">
+              E-mail verificado ✓
+            </p>
+          )}
+        </div>
+      );
+
+    case 'input_text':
     case 'input_phone':
     case 'input_address':
       return withFieldHeader(
         <input
-          type={type === 'input_email' ? 'email' : type === 'input_phone' ? 'tel' : 'text'}
+          type={type === 'input_phone' ? 'tel' : 'text'}
           value={value || ''}
           onChange={e => onChange(e.target.value)}
           placeholder={element.placeholder || 'Digite aqui...'}

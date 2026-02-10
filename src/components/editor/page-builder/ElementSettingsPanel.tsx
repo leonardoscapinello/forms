@@ -95,6 +95,22 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
+          {/* ─── Email: smart validation ─── */}
+          {element.type === 'input_email' && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Validação inteligente</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Verifica se o e-mail existe via Reoon
+                </p>
+              </div>
+              <Switch
+                checked={element.smartValidation || false}
+                onCheckedChange={v => onChange({ smartValidation: v })}
+              />
+            </div>
+          )}
+
           {/* ─── Options (select, radio) ─── */}
           {(element.type === 'input_select' || element.type === 'input_radio') && (
             <div className="space-y-2">
