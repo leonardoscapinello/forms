@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { FormStoreProvider } from "@/hooks/useFormStore";
 import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import FormEditor from "./pages/FormEditor";
@@ -40,25 +41,22 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-
-            {/* Protected pages with sidebar */}
-            <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
-
-            {/* Protected full-screen pages */}
-            <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
-            <Route path="/preview/:id" element={<ProtectedRoute><FormPreview /></ProtectedRoute>} />
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <FormStoreProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+              <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+              <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
+              <Route path="/preview/:id" element={<ProtectedRoute><FormPreview /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </FormStoreProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
