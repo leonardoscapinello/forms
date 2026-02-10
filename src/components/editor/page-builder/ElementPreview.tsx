@@ -1,20 +1,49 @@
 import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
-import { ImageIcon, VideoIcon, Star, CheckSquare, Circle } from 'lucide-react';
+import { ImageIcon, VideoIcon, Star, Check } from 'lucide-react';
 
 interface Props {
   element: PageElement;
+  stepNumber?: number;
 }
 
-export default function ElementPreview({ element }: Props) {
+/**
+ * Renders a page element in the editor canvas with the SAME visual style
+ * used in FormPreview, ensuring WYSIWYG parity.
+ */
+export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+
+  const isFormField = type.startsWith('input_');
+
+  /** Typeform-style "N → enunciado" header — mirrors FormPreview exactly */
+  const withFieldHeader = (content: React.ReactNode) => (
+    <div className="space-y-6">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl font-semibold text-primary mt-0.5">{stepNumber ?? '?'}</span>
+        <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
+        <div>
+          <h2 className="text-2xl font-semibold text-foreground leading-snug">
+            {element.label || 'Sem título'}
+            {element.required && <span className="text-destructive ml-1">*</span>}
+          </h2>
+          {element.description && (
+            <p className="text-base text-muted-foreground mt-2">{element.description}</p>
+          )}
+        </div>
+      </div>
+      <div className="pl-14">
+        {content}
+      </div>
+    </div>
+  );
 
   switch (type) {
     case 'heading': {
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return (
-        <div className={`p-3 ${alignClass}`}>
+        <div className={alignClass}>
           <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`}>
             {element.content || 'Título'}
           </div>
@@ -24,22 +53,17 @@ export default function ElementPreview({ element }: Props) {
 
     case 'text':
       return (
-        <div className={`p-3 ${alignClass}`}>
+        <div className={alignClass}>
           <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed">
-            {element.content || 'Texto aqui...'}
+            {element.content || ''}
           </p>
         </div>
       );
 
     case 'image':
       return element.src ? (
-        <div className={`p-3 ${alignClass}`}>
-          <img
-            src={element.src}
-            alt={element.alt || ''}
-            className="max-w-full rounded-lg mx-auto"
-            style={{ maxHeight: 300, borderRadius: style?.borderRadius }}
-          />
+        <div className={alignClass}>
+          <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ maxHeight: 400 }} />
         </div>
       ) : (
         <div className="p-6 border-2 border-dashed border-border rounded-lg flex flex-col items-center gap-2 text-muted-foreground">
@@ -50,32 +74,20 @@ export default function ElementPreview({ element }: Props) {
 
     case 'button':
       return (
-        <div className={`p-3 ${alignClass}`}>
-          <Button
-            className="pointer-events-none"
-            style={{
-              backgroundColor: style?.backgroundColor,
-              borderRadius: style?.borderRadius,
-            }}
-          >
+        <div className={alignClass}>
+          <Button className="pointer-events-none" style={{ backgroundColor: style?.backgroundColor, borderRadius: style?.borderRadius }}>
             {element.content || 'Botão'}
           </Button>
         </div>
       );
 
     case 'divider':
-      return (
-        <div className="py-3">
-          <hr className="border-border" style={{ borderWidth: element.height || 1 }} />
-        </div>
-      );
+      return <hr className="border-border" style={{ borderWidth: element.height || 1 }} />;
 
     case 'video':
       return element.src ? (
-        <div className="p-3">
-          <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-            <iframe src={element.src} className="w-full h-full" allowFullScreen title="Video" />
-          </div>
+        <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+          <iframe src={element.src} className="w-full h-full" allowFullScreen title="Video" />
         </div>
       ) : (
         <div className="p-6 border-2 border-dashed border-border rounded-lg flex flex-col items-center gap-2 text-muted-foreground">
@@ -96,96 +108,65 @@ export default function ElementPreview({ element }: Props) {
         </div>
       );
 
-    // ─── Form Fields ──────────────────────────────
+    // ─── Form fields — same visual as FormPreview ──────────────────
     case 'input_text':
     case 'input_email':
     case 'input_phone':
     case 'input_address':
-      return (
-        <div className="p-3 space-y-1.5">
-          <label className="text-sm font-medium text-foreground flex items-center gap-1">
-            {element.label || 'Campo'}
-            {element.required && <span className="text-destructive">*</span>}
-          </label>
-          <div className="w-full h-10 rounded-md border border-border bg-background px-3 flex items-center">
-            <span className="text-sm text-muted-foreground/50">{element.placeholder || ''}</span>
-          </div>
-        </div>
+      return withFieldHeader(
+        <input
+          type="text"
+          readOnly
+          placeholder={element.placeholder || 'Digite aqui...'}
+          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
+        />
       );
 
     case 'input_checkbox':
-      return (
-        <div className="p-3">
-          <label className="flex items-center gap-2.5 cursor-default">
-            <div className="h-4 w-4 rounded border border-border bg-background flex items-center justify-center">
-              <CheckSquare className="h-3 w-3 text-transparent" />
-            </div>
-            <span className="text-sm text-foreground">
-              {element.label || 'Checkbox'}
-              {element.required && <span className="text-destructive ml-1">*</span>}
-            </span>
-          </label>
+      return withFieldHeader(
+        <div className="flex items-center gap-4">
+          <div className="h-7 w-7 rounded-lg border-2 border-border flex items-center justify-center flex-shrink-0" />
+          <span className="text-lg text-foreground">Aceitar</span>
         </div>
       );
 
     case 'input_select':
-      return (
-        <div className="p-3 space-y-1.5">
-          <label className="text-sm font-medium text-foreground flex items-center gap-1">
-            {element.label || 'Seleção'}
-            {element.required && <span className="text-destructive">*</span>}
-          </label>
-          <div className="w-full h-10 rounded-md border border-border bg-background px-3 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground/50">{element.placeholder || 'Escolha...'}</span>
-            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-          {element.options && element.options.length > 0 && (
-            <div className="text-xs text-muted-foreground pl-1">
-              {element.options.map(o => o.label).join(' · ')}
-            </div>
-          )}
-        </div>
+      return withFieldHeader(
+        <select
+          disabled
+          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground"
+        >
+          <option>{element.placeholder || 'Selecione...'}</option>
+        </select>
       );
 
     case 'input_radio':
-      return (
-        <div className="p-3 space-y-1.5">
-          <label className="text-sm font-medium text-foreground flex items-center gap-1">
-            {element.label || 'Radio'}
-            {element.required && <span className="text-destructive">*</span>}
-          </label>
-          <div className="space-y-2 pt-1">
-            {(element.options || []).map((opt, i) => (
-              <label key={opt.id} className="flex items-center gap-2.5 cursor-default">
-                <div className="h-4 w-4 rounded-full border-2 border-border bg-background flex items-center justify-center">
-                  {i === 0 && <div className="h-2 w-2 rounded-full bg-primary" />}
-                </div>
-                <span className="text-sm text-foreground">{opt.label}</span>
-              </label>
-            ))}
-          </div>
+      return withFieldHeader(
+        <div className="space-y-3">
+          {(element.options || []).map((opt, i) => (
+            <div
+              key={opt.id}
+              className="w-full text-left px-5 py-4 rounded-xl border-2 border-border flex items-center gap-4"
+            >
+              <span className="h-7 w-7 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-center flex-shrink-0 text-muted-foreground">
+                {String.fromCharCode(65 + i)}
+              </span>
+              <span className="text-lg">{opt.label}</span>
+            </div>
+          ))}
         </div>
       );
 
-    case 'input_rating':
-      return (
-        <div className="p-3 space-y-1.5">
-          <label className="text-sm font-medium text-foreground flex items-center gap-1">
-            {element.label || 'Avaliação'}
-            {element.required && <span className="text-destructive">*</span>}
-          </label>
-          <div className="flex gap-1 pt-1">
-            {Array.from({ length: element.maxRating || 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={`h-6 w-6 ${i < 3 ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
-              />
-            ))}
-          </div>
+    case 'input_rating': {
+      const max = element.maxRating || 5;
+      return withFieldHeader(
+        <div className="flex gap-2">
+          {Array.from({ length: max }).map((_, i) => (
+            <Star key={i} className="h-8 w-8 text-muted-foreground/30" />
+          ))}
         </div>
       );
+    }
 
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;

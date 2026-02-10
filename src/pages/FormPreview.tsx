@@ -150,15 +150,21 @@ export default function FormPreview() {
                 {currentPage.elements.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
                 ) : (
-                  currentPage.elements.map((el, elIdx) => (
-                    <InteractiveElement
-                      key={el.id}
-                      element={el}
-                      value={answers[el.id]}
-                      onChange={v => setAnswer(el.id, v)}
-                      stepNumber={elIdx + 1}
-                    />
-                  ))
+                  currentPage.elements.map((el, elIdx) => {
+                    const isField = el.type.startsWith('input_');
+                    const fieldIndex = isField
+                      ? currentPage.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                      : elIdx + 1;
+                    return (
+                      <InteractiveElement
+                        key={el.id}
+                        element={el}
+                        value={answers[el.id]}
+                        onChange={v => setAnswer(el.id, v)}
+                        stepNumber={fieldIndex}
+                      />
+                    );
+                  })
                 )}
               </div>
             )}
