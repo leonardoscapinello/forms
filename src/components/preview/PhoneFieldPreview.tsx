@@ -23,7 +23,27 @@ const COUNTRIES = [
   { code: 'CA', ddi: '+1', flag: '🇨🇦', name: 'Canadá', mask: '(000) 000-0000' },
 ];
 
-interface PhoneValue {
+/** Apply mask: '0' = digit slot, other chars are literal */
+function applyMask(raw: string, mask: string): string {
+  const digits = raw.replace(/\D/g, '');
+  let result = '';
+  let di = 0;
+  for (let i = 0; i < mask.length && di < digits.length; i++) {
+    if (mask[i] === '0') {
+      result += digits[di++];
+    } else {
+      result += mask[i];
+    }
+  }
+  return result;
+}
+
+/** Strip mask chars, return only digits */
+function stripMask(val: string): string {
+  return val.replace(/\D/g, '');
+}
+
+export interface PhoneValue {
   countryCode: string;
   ddi: string;
   number: string;
@@ -35,7 +55,6 @@ interface Props {
 }
 
 export default function PhoneFieldPreview({ value, onChange }: Props) {
-  // Normalize value
   const phoneValue: PhoneValue = typeof value === 'object' && value !== null && 'countryCode' in value
     ? value as PhoneValue
     : { countryCode: 'BR', ddi: '+55', number: typeof value === 'string' ? value : '' };
@@ -56,11 +75,19 @@ export default function PhoneFieldPreview({ value, onChange }: Props) {
     : COUNTRIES;
 
   const selectCountry = useCallback((country: typeof COUNTRIES[0]) => {
-    onChange({ ...phoneValue, countryCode: country.code, ddi: country.ddi });
+    // Re-apply new country mask to existing digits
+    const digits = stripMask(phoneValue.number);
+    const masked = applyMask(digits, country.mask);
+    onChange({ countryCode: country.code, ddi: country.ddi, number: masked });
     setOpen(false);
     setSearch('');
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [phoneValue, onChange]);
+
+  const handleInput = useCallback((raw: string) => {
+    const masked = applyMask(raw, selectedCountry.mask);
+    onChange({ ...phoneValue, number: masked });
+  }, [phoneValue, selectedCountry, onChange]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -124,12 +151,12 @@ export default function PhoneFieldPreview({ value, onChange }: Props) {
         )}
       </div>
 
-      {/* Phone input */}
+      {/* Phone input with mask */}
       <input
         ref={inputRef}
         type="tel"
         value={phoneValue.number}
-        onChange={e => onChange({ ...phoneValue, number: e.target.value })}
+        onChange={e => handleInput(e.target.value)}
         placeholder={selectedCountry.mask}
         autoFocus
         className="flex-1 bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-2xl py-3 text-foreground placeholder:text-muted-foreground/40 transition-colors"
