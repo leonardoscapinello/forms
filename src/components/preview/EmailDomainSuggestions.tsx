@@ -63,17 +63,24 @@ export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainS
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        e.stopPropagation();
         setActiveIndex(i => (i + 1) % suggestions.length);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        e.stopPropagation();
         setActiveIndex(i => (i - 1 + suggestions.length) % suggestions.length);
       } else if (e.key === 'Tab' && !e.shiftKey) {
         e.preventDefault();
+        e.stopPropagation();
+        selectCurrent();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
         selectCurrent();
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handler, true); // capture phase
+    return () => window.removeEventListener('keydown', handler, true);
   }, [suggestions, selectCurrent]);
 
   if (suggestions.length === 0) return null;
