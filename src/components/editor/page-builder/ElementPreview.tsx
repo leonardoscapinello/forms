@@ -9,6 +9,7 @@ import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePrevie
 import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
 import CircularProgressPreview from '@/components/preview/CircularProgressPreview';
+import ListPreview from '@/components/preview/ListPreview';
 
 interface Props {
   element: PageElement;
@@ -559,6 +560,20 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             labelColor={element.circularProgressLabelColor}
             size={element.circularProgressSize}
             strokeWidth={element.circularProgressStroke}
+          />
+        </div>
+      );
+
+    case 'list':
+      return (
+        <div className={alignClass}>
+          <ListPreview
+            items={element.listItems || []}
+            listStyle={element.listStyleType}
+            iconColor={element.listIconColor}
+            textColor={element.listTextColor}
+            gap={element.listGap}
+            fontSize={element.style?.fontSize}
           />
         </div>
       );

@@ -9,6 +9,7 @@ export type PageElementType =
   | 'divider'
   | 'video'
   | 'spacer'
+  | 'list'
   | 'alert'
   | 'notification'
   | 'chart'
@@ -79,6 +80,14 @@ export interface SelectOption {
   imageUrl?: string;
   /** Score added when this option is selected */
   score?: number;
+}
+
+export type ListStyleType = 'bullet' | 'numbered' | 'check' | 'emoji';
+
+export interface ListItem {
+  id: string;
+  text: string;
+  emoji?: string; // used when style is 'emoji'
 }
 
 export interface ArgumentItem {
@@ -250,6 +259,12 @@ export interface PageElement {
   timerSeparatorColor?: string;
   timerBoxBackground?: string;
   timerBoxBorderRadius?: number;
+  // List element
+  listItems?: ListItem[];
+  listStyleType?: ListStyleType;
+  listIconColor?: string;
+  listTextColor?: string;
+  listGap?: number; // gap between items in px
   // Form field properties
   label?: string;
   placeholder?: string;
@@ -289,6 +304,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   divider: 'Divisor',
   video: 'Vídeo',
   spacer: 'Espaço',
+  list: 'Lista',
   alert: 'Atenção',
   notification: 'Notificação',
   chart: 'Gráfico',
@@ -328,7 +344,7 @@ export type ElementCategory = 'visual' | 'data' | 'sections' | 'fields';
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification', 'columns'],
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'list', 'alert', 'notification', 'columns'],
   },
   data: {
     label: 'Dados',
@@ -378,6 +394,18 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'spacer':
       base.height = 40;
+      break;
+    case 'list':
+      base.listStyleType = 'bullet';
+      base.listItems = [
+        { id: crypto.randomUUID(), text: 'Primeiro item da lista' },
+        { id: crypto.randomUUID(), text: 'Segundo item da lista' },
+        { id: crypto.randomUUID(), text: 'Terceiro item da lista' },
+      ];
+      base.listIconColor = '#22c55e';
+      base.listTextColor = '#1a1a1a';
+      base.listGap = 8;
+      base.style = { fontSize: 'base' };
       break;
     case 'alert':
       base.content = 'Esta é uma mensagem importante.';

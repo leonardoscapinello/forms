@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -1321,6 +1321,90 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {element.type === 'list' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Estilo</Label>
+                <Select
+                  value={element.listStyleType || 'bullet'}
+                  onValueChange={v => onChange({ listStyleType: v as ListStyleType })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bullet">● Bullet</SelectItem>
+                    <SelectItem value="numbered">1. Numerada</SelectItem>
+                    <SelectItem value="check">✓ Check</SelectItem>
+                    <SelectItem value="emoji">😀 Emoji</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Espaçamento ({element.listGap ?? 8}px)</Label>
+                <Slider
+                  value={[element.listGap ?? 8]}
+                  onValueChange={([v]) => onChange({ listGap: v })}
+                  min={0}
+                  max={32}
+                  step={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Itens ({(element.listItems || []).length})</Label>
+                {(element.listItems || []).map((item, idx) => (
+                  <div key={item.id} className="flex items-center gap-1.5">
+                    {element.listStyleType === 'emoji' && (
+                      <Input
+                        value={item.emoji || '✅'}
+                        onChange={e => {
+                          const items = (element.listItems || []).map(li =>
+                            li.id === item.id ? { ...li, emoji: e.target.value } : li
+                          );
+                          onChange({ listItems: items });
+                        }}
+                        className="h-8 w-10 text-center text-sm p-0"
+                      />
+                    )}
+                    <Input
+                      value={item.text}
+                      onChange={e => {
+                        const items = (element.listItems || []).map(li =>
+                          li.id === item.id ? { ...li, text: e.target.value } : li
+                        );
+                        onChange({ listItems: items });
+                      }}
+                      className="h-8 text-sm flex-1"
+                      placeholder={`Item ${idx + 1}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 flex-shrink-0"
+                      onClick={() => {
+                        const items = (element.listItems || []).filter(li => li.id !== item.id);
+                        onChange({ listItems: items });
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    const items = [...(element.listItems || []), { id: crypto.randomUUID(), text: 'Novo item', emoji: '✅' }];
+                    onChange({ listItems: items });
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar item
+                </Button>
+              </div>
+            </div>
+          )}
+
           {element.type === 'progress_bar' && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1776,6 +1860,27 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       onChange={v => onChange({ timerSeparatorColor: v || '#1a1a1a' })}
                       allowTransparent={false}
                       defaultColor="#1a1a1a"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* List appearance */}
+              {element.type === 'list' && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Cores</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ColorPickerField
+                      label="Ícone / Marcador"
+                      value={element.listIconColor || '#22c55e'}
+                      onChange={v => onChange({ listIconColor: v || '#22c55e' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Texto"
+                      value={element.listTextColor || '#1a1a1a'}
+                      onChange={v => onChange({ listTextColor: v || '#1a1a1a' })}
+                      allowTransparent={false}
                     />
                   </div>
                 </div>
