@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_validations: {
+        Row: {
+          can_connect_smtp: boolean | null
+          created_at: string
+          domain: string | null
+          email: string
+          has_inbox_full: boolean | null
+          id: string
+          is_catch_all: boolean | null
+          is_deliverable: boolean | null
+          is_disabled: boolean | null
+          is_disposable: boolean | null
+          is_free_email: boolean | null
+          is_role_account: boolean | null
+          is_safe_to_send: boolean | null
+          is_spamtrap: boolean | null
+          is_valid_syntax: boolean | null
+          mx_accepts_mail: boolean | null
+          mx_records: Json | null
+          overall_score: number
+          raw_response: Json | null
+          status: string
+          updated_at: string
+          username: string | null
+          verification_mode: string | null
+        }
+        Insert: {
+          can_connect_smtp?: boolean | null
+          created_at?: string
+          domain?: string | null
+          email: string
+          has_inbox_full?: boolean | null
+          id?: string
+          is_catch_all?: boolean | null
+          is_deliverable?: boolean | null
+          is_disabled?: boolean | null
+          is_disposable?: boolean | null
+          is_free_email?: boolean | null
+          is_role_account?: boolean | null
+          is_safe_to_send?: boolean | null
+          is_spamtrap?: boolean | null
+          is_valid_syntax?: boolean | null
+          mx_accepts_mail?: boolean | null
+          mx_records?: Json | null
+          overall_score?: number
+          raw_response?: Json | null
+          status: string
+          updated_at?: string
+          username?: string | null
+          verification_mode?: string | null
+        }
+        Update: {
+          can_connect_smtp?: boolean | null
+          created_at?: string
+          domain?: string | null
+          email?: string
+          has_inbox_full?: boolean | null
+          id?: string
+          is_catch_all?: boolean | null
+          is_deliverable?: boolean | null
+          is_disabled?: boolean | null
+          is_disposable?: boolean | null
+          is_free_email?: boolean | null
+          is_role_account?: boolean | null
+          is_safe_to_send?: boolean | null
+          is_spamtrap?: boolean | null
+          is_valid_syntax?: boolean | null
+          mx_accepts_mail?: boolean | null
+          mx_records?: Json | null
+          overall_score?: number
+          raw_response?: Json | null
+          status?: string
+          updated_at?: string
+          username?: string | null
+          verification_mode?: string | null
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           config: Json
