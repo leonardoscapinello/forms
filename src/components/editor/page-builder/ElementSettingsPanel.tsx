@@ -48,13 +48,27 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-5">
-          {/* ─── Form field: label ─── */}
+          {/* ─── Form field: label (enunciado) ─── */}
           {isFormField(element.type) && (
             <div className="space-y-2">
-              <Label>Label</Label>
+              <Label>Enunciado</Label>
               <Input
                 value={element.label || ''}
                 onChange={e => onChange({ label: e.target.value })}
+                placeholder="Pergunta ou instrução"
+              />
+            </div>
+          )}
+
+          {/* ─── Form field: description ─── */}
+          {isFormField(element.type) && (
+            <div className="space-y-2">
+              <Label>Descrição (opcional)</Label>
+              <Textarea
+                value={element.description || ''}
+                onChange={e => onChange({ description: e.target.value })}
+                placeholder="Texto de apoio..."
+                rows={2}
               />
             </div>
           )}

@@ -198,16 +198,21 @@ function InteractiveElement({
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
-  /** Wraps form fields with the "N → label" Typeform header */
-  const withFieldHeader = (label: string, required: boolean, content: React.ReactNode) => (
+  /** Wraps form fields with the "N → enunciado" Typeform header + description */
+  const withFieldHeader = (content: React.ReactNode) => (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
         <span className="text-2xl font-semibold text-primary mt-0.5">{stepNumber}</span>
         <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
-        <h2 className="text-2xl font-semibold text-foreground leading-snug">
-          {label || 'Sem título'}
-          {required && <span className="text-destructive ml-1">*</span>}
-        </h2>
+        <div>
+          <h2 className="text-2xl font-semibold text-foreground leading-snug">
+            {element.label || 'Sem título'}
+            {element.required && <span className="text-destructive ml-1">*</span>}
+          </h2>
+          {element.description && (
+            <p className="text-base text-muted-foreground mt-2">{element.description}</p>
+          )}
+        </div>
       </div>
       <div className="pl-14">
         {content}
@@ -270,7 +275,7 @@ function InteractiveElement({
     case 'input_email':
     case 'input_phone':
     case 'input_address':
-      return withFieldHeader(element.label || 'Campo', !!element.required, (
+      return withFieldHeader(
         <input
           type={type === 'input_email' ? 'email' : type === 'input_phone' ? 'tel' : 'text'}
           value={value || ''}
@@ -279,10 +284,10 @@ function InteractiveElement({
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
           autoFocus
         />
-      ));
+      );
 
     case 'input_checkbox':
-      return withFieldHeader(element.label || 'Checkbox', !!element.required, (
+      return withFieldHeader(
         <button onClick={() => onChange(!value)} className="flex items-center gap-4 text-left group">
           <div className={`h-7 w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
             value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
@@ -291,10 +296,10 @@ function InteractiveElement({
           </div>
           <span className="text-lg text-foreground">Aceitar</span>
         </button>
-      ));
+      );
 
     case 'input_select':
-      return withFieldHeader(element.label || 'Seleção', !!element.required, (
+      return withFieldHeader(
         <select
           value={value || ''}
           onChange={e => onChange(e.target.value)}
@@ -305,10 +310,10 @@ function InteractiveElement({
             <option key={opt.id} value={opt.id}>{opt.label}</option>
           ))}
         </select>
-      ));
+      );
 
     case 'input_radio':
-      return withFieldHeader(element.label || 'Escolha', !!element.required, (
+      return withFieldHeader(
         <div className="space-y-3">
           {(element.options || []).map((opt, i) => (
             <button
@@ -329,12 +334,12 @@ function InteractiveElement({
             </button>
           ))}
         </div>
-      ));
+      );
 
     case 'input_rating': {
       const max = element.maxRating || 5;
       const current = value || 0;
-      return withFieldHeader(element.label || 'Avaliação', !!element.required, (
+      return withFieldHeader(
         <div className="flex gap-2">
           {Array.from({ length: max }).map((_, i) => (
             <button
@@ -350,7 +355,7 @@ function InteractiveElement({
             </button>
           ))}
         </div>
-      ));
+      );
     }
 
     default:

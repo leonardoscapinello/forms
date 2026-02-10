@@ -40,6 +40,7 @@ export interface PageElement {
   type: PageElementType;
   // Content fields
   content?: string;
+  description?: string;
   src?: string;
   alt?: string;
   href?: string;
