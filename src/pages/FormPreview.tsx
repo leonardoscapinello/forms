@@ -18,6 +18,7 @@ import Twemoji from '@/components/Twemoji';
 import IOSNotification from '@/components/preview/IOSNotification';
 import DateFieldPreview from '@/components/preview/DateFieldPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
+import ListPreview from '@/components/preview/ListPreview';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -1223,6 +1224,18 @@ function InteractiveElement({
         </div>
       );
     }
+
+    case 'list':
+      return wrapWithStyle(
+        <ListPreview
+          items={element.listItems || []}
+          listStyle={element.listStyleType}
+          iconColor={element.listIconColor}
+          textColor={element.listTextColor}
+          gap={element.listGap}
+          fontSize={element.style?.fontSize}
+        />
+      );
 
     default:
       return null;
