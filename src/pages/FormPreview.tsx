@@ -895,52 +895,71 @@ function InteractiveElement({
     case 'input_quiz_icon':
       return withFieldHeader(
         <div className="grid grid-cols-2 gap-3">
-          {(element.options || []).map((opt) => (
-            <motion.button
-              key={opt.id}
-              onClick={() => onChange(opt.id)}
-              whileTap={{ scale: 0.95 }}
-              animate={value === opt.id ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.2 }}
-              className={`px-4 py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
-                value === opt.id
-                  ? 'border-primary bg-primary/5 shadow-sm'
-                  : 'border-border hover:border-primary/40'
-              }`}
-            >
-              <Twemoji className="text-3xl">{opt.emoji || '⭐'}</Twemoji>
-              <span className="text-sm font-medium">{opt.label}</span>
-            </motion.button>
-          ))}
+          {(element.options || []).map((opt) => {
+            const selected = value === opt.id;
+            return (
+              <motion.button
+                key={opt.id}
+                onClick={() => onChange(opt.id)}
+                whileTap={{ scale: 0.95 }}
+                animate={selected ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.2 }}
+                className={`relative px-4 py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
+                  selected
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border hover:border-primary/40'
+                }`}
+              >
+                {selected && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                )}
+                <Twemoji className="text-3xl">{opt.emoji || '⭐'}</Twemoji>
+                <span className="text-sm font-medium">{opt.label}</span>
+              </motion.button>
+            );
+          })}
         </div>
       );
 
     case 'input_quiz_image':
       return withFieldHeader(
         <div className="grid grid-cols-2 gap-3">
-          {(element.options || []).map((opt) => (
-            <motion.button
-              key={opt.id}
-              onClick={() => onChange(opt.id)}
-              whileTap={{ scale: 0.95 }}
-              animate={value === opt.id ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.2 }}
-              className={`rounded-xl border-2 overflow-hidden transition-all ${
-                value === opt.id
-                  ? 'border-primary bg-primary/5 shadow-sm'
-                  : 'border-border hover:border-primary/40'
-              }`}
-            >
-              {opt.imageUrl ? (
-                <img src={opt.imageUrl} alt={opt.label} className="w-full h-28 md:h-36 object-cover" />
-              ) : (
-                <div className="w-full h-28 md:h-36 bg-muted flex items-center justify-center text-muted-foreground">
-                  <span className="text-sm">Sem imagem</span>
+          {(element.options || []).map((opt) => {
+            const selected = value === opt.id;
+            return (
+              <motion.button
+                key={opt.id}
+                onClick={() => onChange(opt.id)}
+                whileTap={{ scale: 0.95 }}
+                animate={selected ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.2 }}
+                className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                  selected
+                    ? 'border-primary shadow-sm'
+                    : 'border-border hover:border-primary/40'
+                }`}
+              >
+                {selected && (
+                  <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+                    <Check className="h-3.5 w-3.5 text-primary-foreground" />
+                  </div>
+                )}
+                <div className="relative">
+                  {opt.imageUrl ? (
+                    <img src={opt.imageUrl} alt={opt.label} className={`w-full h-28 md:h-36 object-cover transition-opacity ${selected ? 'opacity-90' : ''}`} />
+                  ) : (
+                    <div className="w-full h-28 md:h-36 bg-muted flex items-center justify-center text-muted-foreground">
+                      <span className="text-sm">Sem imagem</span>
+                    </div>
+                  )}
+                  {selected && <div className="absolute inset-0 bg-primary/10" />}
                 </div>
-              )}
-              <div className="px-3 py-2 text-sm font-medium text-center">{opt.label}</div>
-            </motion.button>
-          ))}
+                <div className={`px-3 py-2 text-sm font-medium text-center ${selected ? 'bg-primary/5' : ''}`}>{opt.label}</div>
+              </motion.button>
+            );
+          })}
         </div>
       );
 
