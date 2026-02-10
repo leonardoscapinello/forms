@@ -1802,6 +1802,18 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     </div>
                   ))}
 
+                  {/* Bar width control */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Largura das barras ({element.progressBarBarWidth || 120}px)</Label>
+                    <Slider
+                      value={[element.progressBarBarWidth || 120]}
+                      onValueChange={([v]) => onChange({ progressBarBarWidth: v })}
+                      min={40}
+                      max={200}
+                      step={4}
+                    />
+                  </div>
+
                   {/* Column border settings (shared) */}
                   <Label className="text-xs font-medium text-muted-foreground mt-4">Bordas das colunas</Label>
                   <div className="space-y-2 p-2.5 rounded-lg border border-border">
