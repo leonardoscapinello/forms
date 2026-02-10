@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions';
 import HeightWeightField from '@/components/preview/HeightWeightField';
+import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 import Twemoji from '@/components/Twemoji';
 import IOSNotification from '@/components/preview/IOSNotification';
 import DateFieldPreview from '@/components/preview/DateFieldPreview';
@@ -1053,6 +1054,17 @@ function InteractiveElement({
               </motion.button>
             );
           })}
+        </div>
+      );
+
+    case 'chart':
+      return (
+        <div className={alignClass}>
+          <ChartLivePreview
+            chartType={element.chartType || 'column'}
+            items={element.chartItems || []}
+            style={element.chartStyle || {}}
+          />
         </div>
       );
 
