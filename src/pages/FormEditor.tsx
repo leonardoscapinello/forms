@@ -1,5 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { FunnelPage, FunnelPageStyle, FormData, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
@@ -8,7 +10,7 @@ import PageListPanel from '@/components/editor/PageListPanel';
 import FormResponses from '@/components/editor/FormResponses';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Eye, ChevronRight, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
 
 type EditorView = 'pages' | 'workflow' | 'responses';
@@ -16,8 +18,10 @@ type EditorView = 'pages' | 'workflow' | 'responses';
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getForm, updateForm } = useFormStore();
+  const { getForm, updateForm, getSaveStatus, getLastSavedAt } = useFormStore();
   const form = getForm(id!);
+  const saveStatus = getSaveStatus(id!);
+  const lastSavedAt = getLastSavedAt(id!);
   const [editorView, setEditorView] = useState<EditorView>('pages');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingWelcome, setEditingWelcome] = useState(false);
@@ -183,7 +187,29 @@ export default function FormEditor() {
             ))}
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
+            {/* Save status indicator */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {saveStatus === 'saving' ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Salvando...</span>
+                </>
+              ) : saveStatus === 'saved' ? (
+                <>
+                  <Cloud className="h-3 w-3 text-primary" />
+                  <span>
+                    Salvo {lastSavedAt && formatDistanceToNow(new Date(lastSavedAt), { addSuffix: true, locale: ptBR })}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="h-3 w-3" />
+                  <span>Salvo</span>
+                </>
+              )}
+            </div>
+
             <Button
               variant="outline"
               size="sm"

@@ -46,6 +46,8 @@ interface FormStoreContextType {
   updateForm: (id: string, patch: Partial<FormData>) => void;
   deleteForm: (id: string) => Promise<void>;
   getForm: (id: string) => FormData | undefined;
+  getSaveStatus: (id: string) => 'saved' | 'saving' | 'idle';
+  getLastSavedAt: (id: string) => string | null;
 }
 
 const FormStoreContext = createContext<FormStoreContextType | null>(null);
@@ -56,6 +58,8 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const pendingUpdates = useRef<Map<string, Partial<FormData>>>(new Map());
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const [saveStatuses, setSaveStatuses] = useState<Map<string, 'saved' | 'saving' | 'idle'>>(new Map());
+  const [lastSavedTimes, setLastSavedTimes] = useState<Map<string, string>>(new Map());
   // Keep a ref to latest forms for debounce callbacks
   const formsRef = useRef<FormData[]>(forms);
   formsRef.current = forms;
@@ -85,6 +89,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   // Flush pending update to DB
   const flushUpdate = useCallback(async (id: string) => {
     if (!user) return;
+    setSaveStatuses(prev => new Map(prev).set(id, 'saving'));
     const form = formsRef.current.find(f => f.id === id);
     if (!form) return;
     const row = formToDb(form, user.id);
@@ -93,6 +98,9 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       status: row.status,
       data: row.data,
     }).eq('id', id);
+    const now = new Date().toISOString();
+    setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
+    setLastSavedTimes(prev => new Map(prev).set(id, now));
   }, [user]);
 
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {
@@ -163,7 +171,15 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return forms.find(f => f.id === id);
   }, [forms]);
 
-  const value = { forms, loaded, createForm, updateForm, deleteForm, getForm };
+  const getSaveStatus = useCallback((id: string): 'saved' | 'saving' | 'idle' => {
+    return saveStatuses.get(id) || 'idle';
+  }, [saveStatuses]);
+
+  const getLastSavedAt = useCallback((id: string): string | null => {
+    return lastSavedTimes.get(id) || null;
+  }, [lastSavedTimes]);
+
+  const value = { forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt };
 
   return React.createElement(FormStoreContext.Provider, { value }, children);
 }
