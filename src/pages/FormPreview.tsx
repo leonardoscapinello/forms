@@ -19,6 +19,7 @@ import IOSNotification from '@/components/preview/IOSNotification';
 import DateFieldPreview from '@/components/preview/DateFieldPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
+import LoadingPreview from '@/components/preview/LoadingPreview';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -1293,6 +1294,30 @@ function InteractiveElement({
         </div>
       );
     }
+
+    case 'loading':
+      return wrapWithStyle(
+        <div className={alignClass}>
+          <LoadingPreview
+            style={element.loadingStyle}
+            duration={element.loadingDuration}
+            targetPercent={element.loadingTargetPercent}
+            label={element.loadingLabel}
+            color={element.loadingColor}
+            trackColor={element.loadingTrackColor}
+            textColor={element.loadingTextColor}
+            size={element.loadingSize}
+            stroke={element.loadingStroke}
+            interactive={true}
+            onComplete={() => {
+              const action = element.loadingAction || 'none';
+              if (action !== 'none' && onNavigate) {
+                onNavigate(action as any, element.loadingTargetPageId);
+              }
+            }}
+          />
+        </div>
+      );
 
     case 'list':
       return wrapWithStyle(

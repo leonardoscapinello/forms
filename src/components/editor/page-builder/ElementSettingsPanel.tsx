@@ -543,6 +543,86 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </>
           )}
 
+          {/* ─── Loading element ─── */}
+          {element.type === 'loading' && (
+            <>
+              <div className="space-y-2">
+                <Label>Estilo</Label>
+                <Select value={element.loadingStyle || 'bar'} onValueChange={v => onChange({ loadingStyle: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bar">Barra de progresso</SelectItem>
+                    <SelectItem value="circular">Circular</SelectItem>
+                    <SelectItem value="infinite">Infinito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Duração ({element.loadingDuration || 5}s)</Label>
+                <Slider
+                  value={[element.loadingDuration || 5]}
+                  onValueChange={([v]) => onChange({ loadingDuration: v })}
+                  min={1}
+                  max={30}
+                  step={1}
+                />
+              </div>
+              {element.loadingStyle !== 'infinite' && (
+                <div className="space-y-2">
+                  <Label>Meta ({element.loadingTargetPercent || 100}%)</Label>
+                  <Slider
+                    value={[element.loadingTargetPercent || 100]}
+                    onValueChange={([v]) => onChange({ loadingTargetPercent: v })}
+                    min={10}
+                    max={100}
+                    step={5}
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Texto</Label>
+                <Input value={element.loadingLabel || ''} onChange={e => onChange({ loadingLabel: e.target.value })} placeholder="Carregando..." />
+              </div>
+              <div className="space-y-2">
+                <Label>Ação ao completar</Label>
+                <Select value={element.loadingAction || 'none'} onValueChange={v => onChange({ loadingAction: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    <SelectItem value="next">Próxima página</SelectItem>
+                    <SelectItem value="specific">Página específica</SelectItem>
+                    <SelectItem value="finish">Concluir / Enviar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {element.loadingAction === 'specific' && pages && pages.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Página destino</Label>
+                  <Select value={element.loadingTargetPageId || ''} onValueChange={v => onChange({ loadingTargetPageId: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {pages.map((p, i) => (
+                        <SelectItem key={p.id} value={p.id}>{p.title || `Página ${i + 1}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {element.loadingStyle === 'circular' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Tamanho ({element.loadingSize || 120}px)</Label>
+                    <Slider value={[element.loadingSize || 120]} onValueChange={([v]) => onChange({ loadingSize: v })} min={60} max={200} step={4} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Espessura ({element.loadingStroke || 10}px)</Label>
+                    <Slider value={[element.loadingStroke || 10]} onValueChange={([v]) => onChange({ loadingStroke: v })} min={4} max={20} step={1} />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
           {/* ─── Visual element: content ─── */}
           {(element.type === 'heading' || element.type === 'text' || element.type === 'button' || element.type === 'alert') && (
             <div className="space-y-2">
@@ -1856,6 +1936,34 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       onChange={v => onChange({ ratingInactiveColor: v })}
                       allowTransparent={false}
                       defaultColor="#d1d5db"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Loading colors */}
+              {element.type === 'loading' && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Cores do loading</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ColorPickerField
+                      label="Preenchimento"
+                      value={element.loadingColor || '#6366f1'}
+                      onChange={v => onChange({ loadingColor: v })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Trilho"
+                      value={element.loadingTrackColor || '#e5e7eb'}
+                      onChange={v => onChange({ loadingTrackColor: v })}
+                      allowTransparent={false}
+                      defaultColor="#e5e7eb"
+                    />
+                    <ColorPickerField
+                      label="Texto"
+                      value={element.loadingTextColor || '#1a1a1a'}
+                      onChange={v => onChange({ loadingTextColor: v })}
+                      allowTransparent={false}
                     />
                   </div>
                 </div>
