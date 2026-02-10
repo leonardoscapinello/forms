@@ -236,7 +236,29 @@ export default function FormPreview() {
             className="w-full max-w-2xl mx-auto"
           >
             {/* Welcome */}
-            {isWelcome && (
+            {isWelcome && form.showWelcomeScreen && form.welcomePage?.elements?.length ? (
+              <div className="space-y-5 md:space-y-8">
+                {form.welcomePage.elements.map((el, elIdx) => {
+                  const isField = el.type.startsWith('input_');
+                  const fieldIndex = isField
+                    ? form.welcomePage!.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                    : elIdx + 1;
+                  return (
+                    <InteractiveElement
+                      key={el.id}
+                      element={el}
+                      value={answers[el.id]}
+                      onChange={v => setAnswer(el.id, v)}
+                      stepNumber={fieldIndex}
+                      letterOffset={0}
+                      onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
+                      registerValidator={validator => registerValidator(el.id, validator)}
+                      onNavigate={handleButtonNavigate}
+                    />
+                  );
+                })}
+              </div>
+            ) : isWelcome ? (
               <div className="text-center space-y-4 md:space-y-5">
                 <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
                   {form.welcomeTitle || form.title}
@@ -249,7 +271,7 @@ export default function FormPreview() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </div>
-            )}
+            ) : null}
 
             {/* Thank You */}
             {isThankYou && (

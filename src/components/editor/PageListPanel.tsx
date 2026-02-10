@@ -1,6 +1,7 @@
 import { FunnelPage, createDefaultFunnelPage } from '@/types/form';
-import { Plus, FileText, Trash2, GripVertical } from 'lucide-react';
+import { Plus, FileText, Trash2, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 
 interface Props {
   pages: FunnelPage[];
@@ -9,9 +10,16 @@ interface Props {
   onAddPage: () => void;
   onDeletePage: (pageId: string) => void;
   onRenamePage: (pageId: string, title: string) => void;
+  showWelcomeScreen?: boolean;
+  onToggleWelcomeScreen?: (enabled: boolean) => void;
+  isWelcomeSelected?: boolean;
+  onSelectWelcome?: () => void;
 }
 
-export default function PageListPanel({ pages, selectedPageId, onSelectPage, onAddPage, onDeletePage, onRenamePage }: Props) {
+export default function PageListPanel({
+  pages, selectedPageId, onSelectPage, onAddPage, onDeletePage, onRenamePage,
+  showWelcomeScreen, onToggleWelcomeScreen, isWelcomeSelected, onSelectWelcome,
+}: Props) {
   return (
     <div className="w-72 border-r border-border bg-card flex flex-col h-full">
       {/* Header */}
@@ -24,6 +32,34 @@ export default function PageListPanel({ pages, selectedPageId, onSelectPage, onA
 
       {/* Page list */}
       <div className="flex-1 overflow-auto p-2 space-y-1">
+        {/* Welcome screen toggle */}
+        <div className="px-3 py-2 rounded-lg border border-border/50 mb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Home className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Tela de início</span>
+            </div>
+            <Switch
+              checked={!!showWelcomeScreen}
+              onCheckedChange={(checked) => onToggleWelcomeScreen?.(checked)}
+              className="scale-75"
+            />
+          </div>
+          {showWelcomeScreen && (
+            <button
+              className={`mt-2 w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                isWelcomeSelected
+                  ? 'bg-primary/10 text-primary'
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => onSelectWelcome?.()}
+            >
+              <Home className="h-3 w-3" />
+              <span className="font-medium">Editar tela de início</span>
+            </button>
+          )}
+        </div>
+
         {pages.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />

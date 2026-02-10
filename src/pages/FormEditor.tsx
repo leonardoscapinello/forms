@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { FunnelPage, FunnelPageStyle, FormData, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
-import { PageElement } from '@/types/pageElements';
+import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import PageListPanel from '@/components/editor/PageListPanel';
@@ -20,6 +20,7 @@ export default function FormEditor() {
   const form = getForm(id!);
   const [editorView, setEditorView] = useState<EditorView>('pages');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editingWelcome, setEditingWelcome] = useState(false);
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
@@ -27,13 +28,21 @@ export default function FormEditor() {
 
   // Auto-select first page when switching to pages tab
   useEffect(() => {
-    if (editorView === 'pages' && !editingPageId && form?.pages?.length) {
+    if (editorView === 'pages' && !editingPageId && !editingWelcome && form?.pages?.length) {
       setEditingPageId(form.pages[0].id);
     }
-  }, [editorView, editingPageId, form?.pages]);
+  }, [editorView, editingPageId, editingWelcome, form?.pages]);
 
-  const editingPage = form?.pages?.find(p => p.id === editingPageId) || null;
+  const editingPage = editingWelcome ? null : (form?.pages?.find(p => p.id === editingPageId) || null);
   const editingPageIndex = form?.pages?.findIndex(p => p.id === editingPageId) ?? -1;
+
+  // Welcome page data
+  const welcomePage = form?.welcomePage || {
+    id: 'welcome',
+    title: 'Tela de início',
+    elements: [],
+    pageStyle: form?.globalPageStyle,
+  };
 
   // ---- Page CRUD ----
 
@@ -199,13 +208,49 @@ export default function FormEditor() {
           <>
             <PageListPanel
               pages={form.pages || []}
-              selectedPageId={editingPageId}
-              onSelectPage={setEditingPageId}
+              selectedPageId={editingWelcome ? null : editingPageId}
+              onSelectPage={(id) => { setEditingWelcome(false); setEditingPageId(id); }}
               onAddPage={handleAddPage}
               onDeletePage={handleDeletePage}
               onRenamePage={handleRenamePage}
+              showWelcomeScreen={form.showWelcomeScreen}
+              onToggleWelcomeScreen={(enabled) => {
+                const patch: Partial<FormData> = { showWelcomeScreen: enabled };
+                if (enabled && !form.welcomePage) {
+                  // Create default welcome page with heading + button
+                  const heading = createDefaultPageElement('heading');
+                  heading.content = form.welcomeTitle || form.title || 'Bem-vindo!';
+                  const text = createDefaultPageElement('text');
+                  text.content = form.welcomeDescription || 'Clique em começar para iniciar.';
+                  const btn = createDefaultPageElement('button');
+                  btn.content = 'Começar';
+                  btn.buttonAction = 'next';
+                  patch.welcomePage = {
+                    id: 'welcome',
+                    title: 'Tela de início',
+                    elements: [heading, text, btn],
+                    pageStyle: form.globalPageStyle,
+                  };
+                }
+                updateForm(form.id, patch);
+              }}
+              isWelcomeSelected={editingWelcome}
+              onSelectWelcome={() => { setEditingWelcome(true); setEditingPageId(null); }}
             />
-            {editingPage ? (
+            {editingWelcome ? (
+              <PageBuilder
+                elements={welcomePage.elements || []}
+                onChange={(elements: PageElement[]) => {
+                  updateForm(form.id, { welcomePage: { ...welcomePage, elements } });
+                }}
+                pageStyle={form.globalPageStyle}
+                onPageStyleChange={(patch: Partial<FunnelPageStyle>) => {
+                  const current = form.globalPageStyle || {};
+                  updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
+                }}
+                pages={form.pages || []}
+              />
+            ) : editingPage ? (
               <PageBuilder
                 elements={editingPage.elements || []}
                 onChange={(elements: PageElement[]) => {
