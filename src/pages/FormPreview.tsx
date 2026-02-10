@@ -446,6 +446,61 @@ function InteractiveElement({
         />
       );
 
+    case 'input_number':
+      return withFieldHeader(
+        <input
+          type="number"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder={element.placeholder || '0'}
+          min={element.min}
+          max={element.max}
+          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          autoFocus
+        />
+      );
+
+    case 'input_textarea':
+      return withFieldHeader(
+        <textarea
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder={element.placeholder || 'Digite sua mensagem...'}
+          rows={3}
+          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
+          autoFocus
+        />
+      );
+
+    case 'input_date':
+      return withFieldHeader(
+        <input
+          type="date"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
+          autoFocus
+        />
+      );
+
+    case 'input_height':
+    case 'input_weight':
+      return withFieldHeader(
+        <div className="flex items-end gap-3">
+          <input
+            type="number"
+            value={value || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={element.placeholder || '0'}
+            className="flex-1 bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            autoFocus
+          />
+          <span className="text-base md:text-lg text-muted-foreground font-medium pb-2">
+            {element.unit || (type === 'input_height' ? 'cm' : 'kg')}
+          </span>
+        </div>
+      );
+
     case 'input_phone':
       return withFieldHeader(
         <PhoneFieldPreview value={value} onChange={onChange} defaultCountryCode={element.defaultCountryCode} />

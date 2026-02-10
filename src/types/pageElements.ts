@@ -17,7 +17,12 @@ export type PageElementType =
   | 'input_checkbox'
   | 'input_select'
   | 'input_radio'
-  | 'input_rating';
+  | 'input_rating'
+  | 'input_number'
+  | 'input_textarea'
+  | 'input_date'
+  | 'input_height'
+  | 'input_weight';
 
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
@@ -54,6 +59,11 @@ export interface PageElement {
   maxRating?: number;
   smartValidation?: boolean;
   defaultCountryCode?: string;
+  /** Unit for height/weight fields */
+  unit?: string;
+  /** Min/max for number fields */
+  min?: number;
+  max?: number;
   style?: PageElementStyle;
 }
 
@@ -72,14 +82,19 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   divider: 'Divisor',
   video: 'Vídeo',
   spacer: 'Espaço',
-  input_text: 'Campo Texto',
-  input_email: 'Campo Email',
-  input_phone: 'Campo Telefone',
-  input_address: 'Campo Endereço',
+  input_text: 'Campo',
+  input_email: 'E-mail',
+  input_phone: 'Telefone',
+  input_address: 'Endereço',
   input_checkbox: 'Checkbox',
   input_select: 'Seleção',
   input_radio: 'Radio',
   input_rating: 'Avaliação',
+  input_number: 'Número',
+  input_textarea: 'Textarea',
+  input_date: 'Data',
+  input_height: 'Altura',
+  input_weight: 'Peso',
 };
 
 export type ElementCategory = 'visual' | 'fields';
@@ -90,8 +105,8 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
     types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer'],
   },
   fields: {
-    label: 'Campos',
-    types: ['input_text', 'input_email', 'input_phone', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating'],
+    label: 'Formulário',
+    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating'],
   },
 };
 
@@ -175,6 +190,33 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'input_rating':
       base.label = 'Avaliação';
       base.maxRating = 5;
+      break;
+    case 'input_number':
+      base.label = 'Número';
+      base.placeholder = '0';
+      base.required = false;
+      break;
+    case 'input_textarea':
+      base.label = 'Mensagem';
+      base.placeholder = 'Digite sua mensagem...';
+      base.required = false;
+      break;
+    case 'input_date':
+      base.label = 'Data';
+      base.placeholder = 'dd/mm/aaaa';
+      base.required = false;
+      break;
+    case 'input_height':
+      base.label = 'Qual sua altura?';
+      base.placeholder = '170';
+      base.unit = 'cm';
+      base.required = false;
+      break;
+    case 'input_weight':
+      base.label = 'Qual seu peso?';
+      base.placeholder = '70';
+      base.unit = 'kg';
+      base.required = false;
       break;
   }
 

@@ -74,7 +74,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
           )}
 
           {/* ─── Form field: placeholder ─── */}
-          {['input_text', 'input_email', 'input_phone', 'input_address', 'input_select'].includes(element.type) && (
+          {['input_text', 'input_email', 'input_phone', 'input_address', 'input_select', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight'].includes(element.type) && (
             <div className="space-y-2">
               <Label>Placeholder</Label>
               <Input
@@ -144,6 +144,32 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                   <SelectItem value="IN">🇮🇳 Índia (+91)</SelectItem>
                   <SelectItem value="AU">🇦🇺 Austrália (+61)</SelectItem>
                   <SelectItem value="CA">🇨🇦 Canadá (+1)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* ─── Height/Weight: unit ─── */}
+          {(element.type === 'input_height' || element.type === 'input_weight') && (
+            <div className="space-y-2">
+              <Label>Unidade de medida</Label>
+              <Select
+                value={element.unit || (element.type === 'input_height' ? 'cm' : 'kg')}
+                onValueChange={v => onChange({ unit: v })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {element.type === 'input_height' ? (
+                    <>
+                      <SelectItem value="cm">Centímetros (cm)</SelectItem>
+                      <SelectItem value="m">Metros (m)</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="kg">Quilogramas (kg)</SelectItem>
+                      <SelectItem value="lb">Libras (lb)</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

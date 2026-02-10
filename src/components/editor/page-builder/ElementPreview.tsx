@@ -113,6 +113,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'input_email':
     case 'input_phone':
     case 'input_address':
+    case 'input_number':
       return withFieldHeader(
         <input
           type="text"
@@ -120,6 +121,40 @@ export default function ElementPreview({ element, stepNumber }: Props) {
           placeholder={element.placeholder || 'Digite aqui...'}
           className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
         />
+      );
+
+    case 'input_textarea':
+      return withFieldHeader(
+        <textarea
+          readOnly
+          placeholder={element.placeholder || 'Digite sua mensagem...'}
+          rows={3}
+          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 resize-none"
+        />
+      );
+
+    case 'input_date':
+      return withFieldHeader(
+        <input
+          type="text"
+          readOnly
+          placeholder={element.placeholder || 'dd/mm/aaaa'}
+          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
+        />
+      );
+
+    case 'input_height':
+    case 'input_weight':
+      return withFieldHeader(
+        <div className="flex items-end gap-3">
+          <input
+            type="text"
+            readOnly
+            placeholder={element.placeholder || '0'}
+            className="flex-1 bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
+          />
+          <span className="text-lg text-muted-foreground font-medium pb-2">{element.unit || (type === 'input_height' ? 'cm' : 'kg')}</span>
+        </div>
       );
 
     case 'input_checkbox':
