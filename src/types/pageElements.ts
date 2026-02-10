@@ -201,6 +201,7 @@ export interface PageElement {
   progressBarItems?: ProgressBarItem[];
   progressBarLayout?: 1 | 2; // 1 or 2 columns
   progressBarDisposition?: 'chart_legend' | 'legend_chart'; // order
+  progressBarBarWidth?: number; // max width of each vertical bar in px (default 120)
   // Progress bar column border (shared across all bars)
   progressBarColBorderWidth?: number;
   progressBarColBorderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';

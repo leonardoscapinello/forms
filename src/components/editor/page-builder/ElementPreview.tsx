@@ -505,7 +505,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             const valColor = bar.valueColor || bar.color;
             const lblColor = bar.labelColor || 'hsl(var(--foreground))';
             const barContent = (
-              <div className="w-full max-w-[120px] h-48 rounded-xl overflow-hidden relative" style={{ backgroundColor: barBg }}>
+              <div className="w-full h-48 rounded-xl overflow-hidden relative" style={{ backgroundColor: barBg, maxWidth: element.progressBarBarWidth || 120 }}>
                 <div
                   className="absolute bottom-0 left-0 right-0 transition-all duration-500 rounded-xl"
                   style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
