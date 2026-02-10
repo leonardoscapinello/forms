@@ -31,6 +31,13 @@ export function useFormStore() {
       title: 'Formulário sem título',
       questions: [],
       pages: [createDefaultFunnelPage('Página 1')],
+      globalPageStyle: {
+        backgroundColor: '',
+        fontFamily: 'Inter',
+        gap: 32,
+        paddingX: 24,
+        paddingY: 32,
+      },
       style: { ...DEFAULT_FORM_STYLE },
       status: 'draft',
       createdAt: now,

@@ -211,10 +211,10 @@ export default function FormEditor() {
                 onChange={(elements: PageElement[]) => {
                   handlePageChange(editingPage.id, { elements });
                 }}
-                pageStyle={editingPage.pageStyle}
+                pageStyle={form.globalPageStyle}
                 onPageStyleChange={(patch: Partial<FunnelPageStyle>) => {
-                  const current = editingPage.pageStyle || {};
-                  handlePageChange(editingPage.id, { pageStyle: { ...current, ...patch } });
+                  const current = form.globalPageStyle || {};
+                  updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
               />
             ) : (

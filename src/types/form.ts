@@ -267,6 +267,8 @@ export interface FormData {
   questions: Question[];
   /** Funnel pages — the primary workflow unit */
   pages: FunnelPage[];
+  /** Global page style — shared by all pages */
+  globalPageStyle?: FunnelPageStyle;
   conditions?: ConditionNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
