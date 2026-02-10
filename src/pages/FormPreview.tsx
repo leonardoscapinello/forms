@@ -534,7 +534,8 @@ function InteractiveElement({
         <IOSNotification
           items={element.notificationItems || []}
           mode={element.notificationMode || 'sequential'}
-          interval={element.notificationInterval || 4}
+          duration={element.notificationDuration || 3}
+          interval={element.notificationInterval || 2}
           position={element.notificationPosition || 'top'}
         />
       );

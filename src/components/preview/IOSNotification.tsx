@@ -6,7 +6,8 @@ import Twemoji from '@/components/Twemoji';
 interface Props {
   items: NotificationItem[];
   mode: 'sequential' | 'random';
-  interval: number; // seconds
+  duration: number;  // seconds each notification stays visible
+  interval: number;  // seconds gap between notifications
   position?: 'top' | 'bottom';
 }
 
@@ -14,7 +15,7 @@ interface Props {
  * iOS-style notification banner fixed to top/bottom of viewport,
  * max-width 390px, cycling through items with spring animation.
  */
-export default function IOSNotification({ items, mode, interval, position = 'top' }: Props) {
+export default function IOSNotification({ items, mode, duration, interval, position = 'top' }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visible, setVisible] = useState(false);
 
@@ -37,15 +38,24 @@ export default function IOSNotification({ items, mode, interval, position = 'top
   useEffect(() => {
     if (items.length === 0 || !visible) return;
 
-    const timer = setInterval(() => {
+    // Hide after duration
+    const hideTimer = setTimeout(() => {
       setVisible(false);
-      setTimeout(() => {
-        setCurrentIndex(getNextIndex());
-        setVisible(true);
-      }, 500);
+    }, duration * 1000);
+
+    return () => clearTimeout(hideTimer);
+  }, [visible, duration, currentIndex]);
+
+  useEffect(() => {
+    if (items.length === 0 || visible) return;
+
+    // Wait interval then show next
+    const showTimer = setTimeout(() => {
+      setCurrentIndex(getNextIndex());
+      setVisible(true);
     }, interval * 1000);
 
-    return () => clearInterval(timer);
+    return () => clearTimeout(showTimer);
   }, [visible, interval, getNextIndex, items.length]);
 
   if (items.length === 0) return null;
