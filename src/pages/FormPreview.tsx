@@ -380,6 +380,32 @@ function InteractiveElement({
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
+  // Universal style wrappers matching ElementPreview
+  const containerStyle: React.CSSProperties = {};
+  if (style?.margin !== undefined) containerStyle.margin = style.margin;
+  if (style?.marginTop !== undefined) containerStyle.marginTop = style.marginTop;
+  if (style?.marginRight !== undefined) containerStyle.marginRight = style.marginRight;
+  if (style?.marginBottom !== undefined) containerStyle.marginBottom = style.marginBottom;
+  if (style?.marginLeft !== undefined) containerStyle.marginLeft = style.marginLeft;
+
+  const boxStyle: React.CSSProperties = {};
+  if (style?.backgroundColor) boxStyle.backgroundColor = style.backgroundColor;
+  if (style?.borderRadius !== undefined) boxStyle.borderRadius = style.borderRadius;
+  if (style?.borderWidth) {
+    boxStyle.borderWidth = style.borderWidth;
+    boxStyle.borderStyle = style.borderStyle || 'solid';
+    boxStyle.borderColor = style.borderColor || 'currentColor';
+  }
+  if (style?.padding !== undefined) boxStyle.padding = style.padding;
+  if (style?.paddingTop !== undefined) boxStyle.paddingTop = style.paddingTop;
+  if (style?.paddingRight !== undefined) boxStyle.paddingRight = style.paddingRight;
+  if (style?.paddingBottom !== undefined) boxStyle.paddingBottom = style.paddingBottom;
+  if (style?.paddingLeft !== undefined) boxStyle.paddingLeft = style.paddingLeft;
+  if (style?.width) boxStyle.width = style.width;
+  if (style?.boxShadow) boxStyle.boxShadow = style.boxShadow;
+
+  const hasWrapperStyle = Object.keys(containerStyle).length > 0 || Object.keys(boxStyle).length > 0;
+
   // Keyboard shortcut: press letter key to select option
   const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
   useEffect(() => {
@@ -510,12 +536,17 @@ function InteractiveElement({
     </div>
   );
 
+  const wrapWithStyle = (content: React.ReactNode) => {
+    if (!hasWrapperStyle) return content;
+    return <div style={{ ...containerStyle, ...boxStyle }}>{content}</div>;
+  };
+
   switch (type) {
     case 'heading': {
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
-      return (
+      return wrapWithStyle(
         <div className={alignClass}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || 'Título'}
           </div>
         </div>
@@ -523,16 +554,16 @@ function InteractiveElement({
     }
 
     case 'text':
-      return (
+      return wrapWithStyle(
         <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed">
+          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || ''}
           </p>
         </div>
       );
 
     case 'image':
-      return element.src ? (
+      return element.src ? wrapWithStyle(
         <div className={alignClass}>
           <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ maxHeight: 400 }} />
         </div>
@@ -590,7 +621,7 @@ function InteractiveElement({
         error:   { icon: XCircle,        bg: 'bg-red-50',     border: 'border-red-200',     iconColor: 'text-red-500',     textColor: 'text-red-800' },
       }[v];
       const AlertIconComp = alertConfig.icon;
-      return (
+      return wrapWithStyle(
         <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${alertConfig.bg} ${alertConfig.border}`}>
           <AlertIconComp className={`h-5 w-5 mt-0.5 flex-shrink-0 ${alertConfig.iconColor}`} />
           <p className={`text-sm md:text-base leading-relaxed ${alertConfig.textColor}`}>
@@ -612,15 +643,15 @@ function InteractiveElement({
       );
 
     case 'arguments':
-      return <ArgumentsPreview element={element} />;
+      return wrapWithStyle(<ArgumentsPreview element={element} />);
     case 'testimonials':
-      return <TestimonialsPreview element={element} />;
+      return wrapWithStyle(<TestimonialsPreview element={element} />);
     case 'faq':
-      return <FAQPreview element={element} />;
+      return wrapWithStyle(<FAQPreview element={element} />);
     case 'pricing':
-      return <PricingPreview element={element} />;
+      return wrapWithStyle(<PricingPreview element={element} />);
     case 'before_after':
-      return (
+      return wrapWithStyle(
         <BeforeAfterSlider
           beforeImage={element.beforeImage || ''}
           afterImage={element.afterImage || ''}
@@ -628,7 +659,7 @@ function InteractiveElement({
         />
       );
     case 'carousel':
-      return <CarouselPreview element={element} />;
+      return wrapWithStyle(<CarouselPreview element={element} />);
 
     case 'columns': {
       const colCount = element.columnCount || 2;
@@ -1058,7 +1089,7 @@ function InteractiveElement({
       );
 
     case 'chart':
-      return (
+      return wrapWithStyle(
         <div className={alignClass}>
           <ChartLivePreview
             chartType={element.chartType || 'column'}
@@ -1067,6 +1098,50 @@ function InteractiveElement({
           />
         </div>
       );
+
+    case 'progress_bar': {
+      const bars = element.progressBarItems || [];
+      const cols = element.progressBarLayout || 1;
+      const disposition = element.progressBarDisposition || 'chart_legend';
+      return wrapWithStyle(
+        <div className={`grid ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
+          {bars.map(bar => {
+            const barBg = bar.barBackground || 'rgba(0,0,0,0.08)';
+            const valColor = bar.valueColor || bar.color;
+            const lblColor = bar.labelColor || 'hsl(var(--foreground))';
+            const barContent = (
+              <div className="w-full max-w-[120px] h-48 rounded-xl overflow-hidden relative" style={{ backgroundColor: barBg }}>
+                <div
+                  className="absolute bottom-0 left-0 right-0 transition-all duration-500 rounded-xl"
+                  style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
+                />
+                <div className="absolute inset-0 flex items-start justify-center pt-3">
+                  <span
+                    className="text-base font-extrabold drop-shadow-sm"
+                    style={{ color: valColor }}
+                  >
+                    {bar.value}%
+                  </span>
+                </div>
+              </div>
+            );
+            const labelContent = (
+              <p
+                className="text-sm font-semibold text-center leading-snug"
+                style={{ color: lblColor }}
+              >
+                {bar.label}
+              </p>
+            );
+            return (
+              <div key={bar.id} className="flex flex-col items-center gap-3 rounded-lg p-3">
+                {disposition === 'chart_legend' ? <>{barContent}{labelContent}</> : <>{labelContent}{barContent}</>}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
 
     default:
       return null;
