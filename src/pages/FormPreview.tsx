@@ -256,23 +256,32 @@ export default function FormPreview() {
                 {currentPage.elements.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
                 ) : (
-                  currentPage.elements.map((el, elIdx) => {
-                    const isField = el.type.startsWith('input_');
-                    const fieldIndex = isField
-                      ? currentPage.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
-                      : elIdx + 1;
-                    return (
-                      <InteractiveElement
-                        key={el.id}
-                        element={el}
-                        value={answers[el.id]}
-                        onChange={v => setAnswer(el.id, v)}
-                        stepNumber={fieldIndex}
-                        onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
-                        registerValidator={validator => registerValidator(el.id, validator)}
-                      />
-                    );
-                  })
+                  (() => {
+                    const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
+                    let cumulativeLetterOffset = 0;
+                    return currentPage.elements.map((el, elIdx) => {
+                      const isField = el.type.startsWith('input_');
+                      const fieldIndex = isField
+                        ? currentPage.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                        : elIdx + 1;
+                      const letterOffset = SELECTION_TYPES.includes(el.type) ? cumulativeLetterOffset : 0;
+                      if (SELECTION_TYPES.includes(el.type)) {
+                        cumulativeLetterOffset += (el.options || []).length;
+                      }
+                      return (
+                        <InteractiveElement
+                          key={el.id}
+                          element={el}
+                          value={answers[el.id]}
+                          onChange={v => setAnswer(el.id, v)}
+                          stepNumber={fieldIndex}
+                          letterOffset={letterOffset}
+                          onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
+                          registerValidator={validator => registerValidator(el.id, validator)}
+                        />
+                      );
+                    });
+                  })()
                 )}
               </div>
             )}
@@ -304,6 +313,7 @@ function InteractiveElement({
   value,
   onChange,
   stepNumber,
+  letterOffset = 0,
   onBlockedChange,
   registerValidator,
 }: {
@@ -311,11 +321,45 @@ function InteractiveElement({
   value: any;
   onChange: (v: any) => void;
   stepNumber: number;
+  letterOffset?: number;
   onBlockedChange: (blocked: boolean) => void;
   registerValidator: (validator: (() => Promise<boolean>) | null) => void;
 }) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+
+  // Keyboard shortcut: press letter key to select option
+  const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
+  useEffect(() => {
+    if (!SELECTION_TYPES.includes(type)) return;
+    const opts = element.options || [];
+    if (opts.length === 0) return;
+
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const key = e.key.toUpperCase();
+      const code = key.charCodeAt(0) - 65; // A=0, B=1, ...
+      const localIndex = code - letterOffset;
+      if (localIndex < 0 || localIndex >= opts.length) return;
+
+      e.preventDefault();
+      const opt = opts[localIndex];
+      if (type === 'input_multi_select') {
+        const selected: string[] = Array.isArray(value) ? value : [];
+        if (selected.includes(opt.id)) {
+          onChange(selected.filter(id => id !== opt.id));
+        } else {
+          onChange([...selected, opt.id]);
+        }
+      } else {
+        onChange(opt.id);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [type, element.options, letterOffset, value, onChange]);
 
   // Email validation state
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -653,7 +697,7 @@ function InteractiveElement({
                 animate={value === opt.id ? { scale: [1, 1.25, 1] } : {}}
                 transition={{ duration: 0.25 }}
               >
-                {String.fromCharCode(65 + i)}
+                {String.fromCharCode(65 + letterOffset + i)}
               </motion.span>
               <span className="text-base md:text-lg">{opt.label}</span>
             </motion.button>
@@ -684,7 +728,7 @@ function InteractiveElement({
                 animate={value === opt.id ? { scale: [1, 1.25, 1] } : {}}
                 transition={{ duration: 0.25 }}
               >
-                {String.fromCharCode(65 + i)}
+                {String.fromCharCode(65 + letterOffset + i)}
               </motion.span>
               <span className="text-base md:text-lg">{opt.label}</span>
             </motion.button>
@@ -776,7 +820,7 @@ function InteractiveElement({
                   animate={isSelected ? { scale: [1, 1.25, 1] } : {}}
                   transition={{ duration: 0.25 }}
                 >
-                  {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
+                  {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
                 <span className="text-base md:text-lg flex-1">{opt.label}</span>
                 <motion.div
