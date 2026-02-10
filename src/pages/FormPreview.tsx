@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
+import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -359,17 +360,21 @@ function InteractiveElement({
       );
 
     case 'input_text':
-    case 'input_phone':
     case 'input_address':
       return withFieldHeader(
         <input
-          type={type === 'input_phone' ? 'tel' : 'text'}
+          type="text"
           value={value || ''}
           onChange={e => onChange(e.target.value)}
           placeholder={element.placeholder || 'Digite aqui...'}
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
           autoFocus
         />
+      );
+
+    case 'input_phone':
+      return withFieldHeader(
+        <PhoneFieldPreview value={value} onChange={onChange} />
       );
 
     case 'input_checkbox':
