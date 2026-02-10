@@ -9,6 +9,7 @@ import { FunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
+import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -391,6 +392,7 @@ function InteractiveElement({
               </div>
             </AnimatePresence>
           </div>
+          <EmailDomainSuggestions value={value || ''} onSelect={handleEmailChange} />
           <AnimatePresence>
             {emailError && (
               <motion.p
