@@ -8,6 +8,7 @@ import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, Befo
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
+import CircularProgressPreview from '@/components/preview/CircularProgressPreview';
 
 interface Props {
   element: PageElement;
@@ -544,6 +545,23 @@ export default function ElementPreview({ element, stepNumber }: Props) {
         </div>
       );
     }
+
+    case 'circular_progress':
+      return (
+        <div className={alignClass}>
+          <CircularProgressPreview
+            value={element.circularProgressValue ?? 72}
+            labelBefore={element.circularProgressLabelBefore}
+            labelAfter={element.circularProgressLabelAfter}
+            color={element.circularProgressColor}
+            trackColor={element.circularProgressTrackColor}
+            textColor={element.circularProgressTextColor}
+            labelColor={element.circularProgressLabelColor}
+            size={element.circularProgressSize}
+            strokeWidth={element.circularProgressStroke}
+          />
+        </div>
+      );
 
     case 'columns': {
       const colCount = element.columnCount || 2;

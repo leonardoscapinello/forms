@@ -4,7 +4,7 @@ import {
   Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
   AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
-  LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows,
+  LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows, CircleDot as CircleProgress,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -23,6 +23,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   progress_bar: Activity,
   horizontal_bar: Percent,
   timer: Timer,
+  circular_progress: CircleProgress,
   columns: LayoutGrid,
   arguments: List,
   testimonials: MessageSquareQuote,

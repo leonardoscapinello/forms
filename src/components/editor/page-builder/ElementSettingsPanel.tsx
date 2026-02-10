@@ -1285,6 +1285,42 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {element.type === 'circular_progress' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Valor (%)</Label>
+                <div className="flex items-center gap-2">
+                  <Slider
+                    value={[element.circularProgressValue ?? 72]}
+                    onValueChange={([v]) => onChange({ circularProgressValue: v })}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                  <span className="text-xs font-mono w-8 text-right">{element.circularProgressValue ?? 72}%</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Label antes</Label>
+                <Input
+                  value={element.circularProgressLabelBefore || ''}
+                  onChange={e => onChange({ circularProgressLabelBefore: e.target.value })}
+                  placeholder="Ex: Seu progresso"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Label depois</Label>
+                <Input
+                  value={element.circularProgressLabelAfter || ''}
+                  onChange={e => onChange({ circularProgressLabelAfter: e.target.value })}
+                  placeholder="Ex: concluído"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          )}
+
           {element.type === 'progress_bar' && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1739,6 +1775,59 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       onChange={v => onChange({ timerSeparatorColor: v || '#1a1a1a' })}
                       allowTransparent={false}
                       defaultColor="#1a1a1a"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Circular Progress appearance */}
+              {element.type === 'circular_progress' && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Cores</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ColorPickerField
+                      label="Progresso"
+                      value={element.circularProgressColor || '#22c55e'}
+                      onChange={v => onChange({ circularProgressColor: v || '#22c55e' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Trilho"
+                      value={element.circularProgressTrackColor || '#e5e7eb'}
+                      onChange={v => onChange({ circularProgressTrackColor: v || '#e5e7eb' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Percentual"
+                      value={element.circularProgressTextColor || '#1a1a1a'}
+                      onChange={v => onChange({ circularProgressTextColor: v || '#1a1a1a' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Labels"
+                      value={element.circularProgressLabelColor || '#6b7280'}
+                      onChange={v => onChange({ circularProgressLabelColor: v || '#6b7280' })}
+                      allowTransparent={false}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Tamanho ({element.circularProgressSize || 160}px)</Label>
+                    <Slider
+                      value={[element.circularProgressSize || 160]}
+                      onValueChange={([v]) => onChange({ circularProgressSize: v })}
+                      min={80}
+                      max={240}
+                      step={4}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Espessura ({element.circularProgressStroke || 14}px)</Label>
+                    <Slider
+                      value={[element.circularProgressStroke || 14]}
+                      onValueChange={([v]) => onChange({ circularProgressStroke: v })}
+                      min={4}
+                      max={30}
+                      step={1}
                     />
                   </div>
                 </div>
