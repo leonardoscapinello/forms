@@ -103,10 +103,25 @@ export default function ElementPreview({ element, stepNumber }: Props) {
         </div>
       );
 
-    case 'image':
+    case 'image': {
+      const maxH = element.imageMaxHeight || 400;
+      const objectFit = element.imageObjectFit || 'cover';
+      const focalX = element.imageFocalX ?? 50;
+      const focalY = element.imageFocalY ?? 50;
       return element.src ? (
         <div className={alignClass}>
-          <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ ...elementStyle, maxHeight: 400 }} />
+          <img
+            src={element.src}
+            alt={element.alt || ''}
+            className="max-w-full rounded-lg mx-auto"
+            style={{
+              ...elementStyle,
+              maxHeight: maxH,
+              width: '100%',
+              objectFit: objectFit as any,
+              objectPosition: objectFit === 'cover' ? `${focalX}% ${focalY}%` : undefined,
+            }}
+          />
         </div>
       ) : (
         <div className="p-6 border-2 border-dashed border-border rounded-lg flex flex-col items-center gap-2 text-muted-foreground">
@@ -114,6 +129,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
           <span className="text-sm">Clique para adicionar uma imagem</span>
         </div>
       );
+    }
 
     case 'button':
       return (

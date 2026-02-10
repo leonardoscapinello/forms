@@ -196,6 +196,11 @@ export interface PageElement {
   href?: string;
   level?: 1 | 2 | 3 | 4;
   height?: number;
+  // Image properties
+  imageObjectFit?: 'cover' | 'contain' | 'fill' | 'none';
+  imageFocalX?: number; // 0-100 percentage
+  imageFocalY?: number; // 0-100 percentage
+  imageMaxHeight?: number; // in px
   // Alert variant
   alertVariant?: 'info' | 'success' | 'warning' | 'error';
   // Notification
