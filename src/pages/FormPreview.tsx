@@ -562,6 +562,30 @@ function InteractiveElement({
     case 'carousel':
       return <CarouselPreview element={element} />;
 
+    case 'columns': {
+      const colCount = element.columnCount || 2;
+      const cols = element.columnData || [];
+      return (
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}>
+          {cols.slice(0, colCount).map(col => (
+            <div key={col.id} className="space-y-4">
+              {col.elements.map((childEl) => (
+                <InteractiveElement
+                  key={childEl.id}
+                  element={childEl}
+                  value={undefined}
+                  onChange={() => {}}
+                  stepNumber={0}
+                  onBlockedChange={() => {}}
+                  registerValidator={() => {}}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     // ─── Interactive form fields (with "N → label" header) ──────────────────
     case 'input_email':
       return withFieldHeader(

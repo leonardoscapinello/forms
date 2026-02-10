@@ -182,6 +182,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
           isDragActive={activeId !== null}
           onSelect={() => setSelectedId(el.id)}
           onDelete={() => handleDelete(el.id)}
+          onElementChange={(patch) => handleElementChange(el.id, patch)}
           stepNumber={isField ? formFieldIndex : undefined}
         />
       );

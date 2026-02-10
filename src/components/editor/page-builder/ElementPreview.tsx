@@ -349,6 +349,28 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'carousel':
       return <CarouselPreview element={element} />;
 
+    case 'columns': {
+      const colCount = element.columnCount || 2;
+      const cols = element.columnData || [];
+      return (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}>
+          {cols.slice(0, colCount).map(col => (
+            <div key={col.id} className="min-h-[60px] rounded-lg border border-dashed border-border/40 p-2 space-y-2">
+              {col.elements.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground/40">Coluna vazia</div>
+              ) : (
+                col.elements.map(el => (
+                  <div key={el.id} className="text-sm [&_*]:!text-sm [&_h2]:!text-base">
+                    <ElementPreview element={el} />
+                  </div>
+                ))
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;
   }

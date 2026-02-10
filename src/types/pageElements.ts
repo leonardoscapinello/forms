@@ -11,6 +11,8 @@ export type PageElementType =
   | 'spacer'
   | 'alert'
   | 'notification'
+  // Layout elements
+  | 'columns'
   // Section elements
   | 'arguments'
   | 'testimonials'
@@ -111,6 +113,11 @@ export interface NotificationItem {
   icon?: string; // emoji
 }
 
+export interface ColumnData {
+  id: string;
+  elements: PageElement[];
+}
+
 export interface PageElement {
   id: string;
   type: PageElementType;
@@ -160,6 +167,9 @@ export interface PageElement {
   dateMode?: 'date' | 'time' | 'datetime';
   /** Date display format */
   dateFormat?: string;
+  /** Columns layout */
+  columnCount?: number;
+  columnData?: ColumnData[];
   /** Score for yes/no element */
   yesScore?: number;
   noScore?: number;
@@ -183,6 +193,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   spacer: 'Espaço',
   alert: 'Atenção',
   notification: 'Notificação',
+  columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
   faq: 'FAQ',
@@ -213,7 +224,7 @@ export type ElementCategory = 'visual' | 'sections' | 'fields';
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification'],
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification', 'columns'],
   },
   sections: {
     label: 'Seções',
@@ -321,6 +332,13 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'carousel':
       base.carouselImages = [];
+      break;
+    case 'columns':
+      base.columnCount = 2;
+      base.columnData = [
+        { id: crypto.randomUUID(), elements: [] },
+        { id: crypto.randomUUID(), elements: [] },
+      ];
       break;
     case 'input_text':
       base.label = 'Nome';

@@ -853,6 +853,40 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
+          {/* ─── Columns settings ─── */}
+          {element.type === 'columns' && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Número de colunas</Label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => {
+                        const current = element.columnData || [];
+                        let updated = [...current];
+                        while (updated.length < n) {
+                          updated.push({ id: crypto.randomUUID(), elements: [] });
+                        }
+                        onChange({ columnCount: n, columnData: updated });
+                      }}
+                      className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        (element.columnCount || 2) === n
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Arraste elementos da barra lateral para dentro de cada coluna, ou use o botão "Adicionar" dentro de cada coluna.
+              </p>
+            </div>
+          )}
+
           {/* ─── Before/After settings ─── */}
           {element.type === 'before_after' && (
             <div className="space-y-4">

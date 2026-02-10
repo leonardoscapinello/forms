@@ -1,0 +1,184 @@
+import { useCallback, useRef, useState } from 'react';
+import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
+import ElementPreview from './ElementPreview';
+import { Plus, Trash2, GripVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu';
+
+interface Props {
+  element: PageElement;
+  onChange: (patch: Partial<PageElement>) => void;
+}
+
+export default function ColumnsEditor({ element, onChange }: Props) {
+  const columnCount = element.columnCount || 2;
+  const columns = element.columnData || [];
+  const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ colIdx: number; elIdx: number } | null>(null);
+
+  const updateColumn = useCallback((colIdx: number, elements: PageElement[]) => {
+    const updated = columns.map((col, i) => i === colIdx ? { ...col, elements } : col);
+    onChange({ columnData: updated });
+  }, [columns, onChange]);
+
+  const addElement = useCallback((colIdx: number, type: PageElementType) => {
+    const el = createDefaultPageElement(type);
+    const updated = [...(columns[colIdx]?.elements || []), el];
+    updateColumn(colIdx, updated);
+  }, [columns, updateColumn]);
+
+  const deleteElement = useCallback((colIdx: number, elId: string) => {
+    const updated = (columns[colIdx]?.elements || []).filter(e => e.id !== elId);
+    updateColumn(colIdx, updated);
+  }, [columns, updateColumn]);
+
+  // External drag (from toolbar) into column
+  const handleColDragOver = useCallback((e: React.DragEvent, colIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleColDrop = useCallback((e: React.DragEvent, colIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const type = e.dataTransfer.getData('element-type') as PageElementType;
+    if (type && type !== 'columns') {
+      addElement(colIdx, type);
+    }
+  }, [addElement]);
+
+  // Internal reorder via native drag
+  const handleInternalDragStart = useCallback((colIdx: number, elIdx: number) => {
+    setDragState({ colIdx, elIdx });
+  }, []);
+
+  const handleInternalDragOver = useCallback((e: React.DragEvent, colIdx: number, elIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget({ colIdx, elIdx });
+  }, []);
+
+  const handleInternalDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!dragState || !dropTarget) {
+      setDragState(null);
+      setDropTarget(null);
+      return;
+    }
+
+    const srcCol = columns[dragState.colIdx];
+    const el = srcCol?.elements[dragState.elIdx];
+    if (!el) {
+      setDragState(null);
+      setDropTarget(null);
+      return;
+    }
+
+    const newColumns = columns.map(c => ({ ...c, elements: [...c.elements] }));
+    // Remove from source
+    newColumns[dragState.colIdx].elements.splice(dragState.elIdx, 1);
+    // Insert at target
+    newColumns[dropTarget.colIdx].elements.splice(dropTarget.elIdx, 0, el);
+
+    onChange({ columnData: newColumns });
+    setDragState(null);
+    setDropTarget(null);
+  }, [dragState, dropTarget, columns, onChange]);
+
+  // Types allowed inside columns (no nested columns)
+  const allowedCategories = (Object.entries(ELEMENT_CATEGORIES) as [ElementCategory, typeof ELEMENT_CATEGORIES[ElementCategory]][])
+    .map(([key, cat]) => ({
+      key,
+      label: cat.label,
+      types: cat.types.filter(t => t !== 'columns' && t !== 'notification'),
+    }))
+    .filter(c => c.types.length > 0);
+
+  return (
+    <div
+      className="grid gap-3"
+      style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
+    >
+      {columns.slice(0, columnCount).map((col, colIdx) => (
+        <div
+          key={col.id}
+          className="min-h-[80px] rounded-xl border-2 border-dashed border-border/60 p-2 space-y-2 transition-colors hover:border-primary/30"
+          onDragOver={(e) => {
+            handleColDragOver(e, colIdx);
+            if (dragState) handleInternalDragOver(e, colIdx, col.elements.length);
+          }}
+          onDrop={(e) => {
+            if (dragState) {
+              handleInternalDrop(e);
+            } else {
+              handleColDrop(e, colIdx);
+            }
+          }}
+        >
+          {col.elements.map((el, elIdx) => (
+            <div
+              key={el.id}
+              draggable
+              onDragStart={() => handleInternalDragStart(colIdx, elIdx)}
+              onDragOver={(e) => handleInternalDragOver(e, colIdx, elIdx)}
+              onDrop={(e) => handleInternalDrop(e)}
+              className={`relative group rounded-lg transition-all ${
+                dropTarget?.colIdx === colIdx && dropTarget?.elIdx === elIdx
+                  ? 'border-t-2 border-primary'
+                  : ''
+              }`}
+            >
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab z-10">
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteElement(colIdx, el.id); }}
+                  className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="pointer-events-none text-sm [&_*]:!text-sm [&_h2]:!text-base [&_input]:!text-sm [&_textarea]:!text-sm">
+                <ElementPreview element={el} />
+              </div>
+            </div>
+          ))}
+
+          {/* Add element button */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full py-2 rounded-lg border border-dashed border-border/50 text-muted-foreground/50 hover:border-primary/40 hover:text-primary/60 transition-colors flex items-center justify-center gap-1.5 text-xs">
+                <Plus className="h-3 w-3" />
+                Adicionar
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-48">
+              {allowedCategories.map(cat => (
+                <DropdownMenuSub key={cat.key}>
+                  <DropdownMenuSubTrigger className="text-xs">{cat.label}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-40">
+                    {cat.types.map(t => (
+                      <DropdownMenuItem key={t} className="text-xs" onClick={() => addElement(colIdx, t)}>
+                        {PAGE_ELEMENT_LABELS[t]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ))}
+    </div>
+  );
+}
