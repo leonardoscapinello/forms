@@ -189,10 +189,10 @@ function LineChart({ items, style }: { items: GraphicDataItem[]; style: ChartSty
       <ResponsiveContainer width="100%" height={300}>
         <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 20 }}>
           <defs>
-            {/* Area fill: horizontal gradient with visible colors */}
+            {/* Area fill: horizontal gradient with vivid colors */}
             <linearGradient id={areaFillId} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={color} stopOpacity={hasGradient ? 0.35 : 0.25} />
-              <stop offset="100%" stopColor={hasGradient ? gradientColor : color} stopOpacity={hasGradient ? 0.35 : 0} />
+              <stop offset="0%" stopColor={color} stopOpacity={hasGradient ? 0.7 : 0.25} />
+              <stop offset="100%" stopColor={hasGradient ? gradientColor : color} stopOpacity={hasGradient ? 0.7 : 0} />
             </linearGradient>
             {/* Stroke: horizontal gradient */}
             {hasGradient && (
