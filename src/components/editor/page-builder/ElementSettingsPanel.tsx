@@ -102,7 +102,43 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
-          {/* ─── Form field: required ─── */}
+          {/* ─── Date field settings ─── */}
+          {element.type === 'input_date' && (
+            <>
+              <div className="space-y-2">
+                <Label>Modo</Label>
+                <Select
+                  value={element.dateMode || 'date'}
+                  onValueChange={v => onChange({ dateMode: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Apenas data</SelectItem>
+                    <SelectItem value="time">Apenas hora</SelectItem>
+                    <SelectItem value="datetime">Data e hora</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {(element.dateMode || 'date') !== 'time' && (
+                <div className="space-y-2">
+                  <Label>Formato da data</Label>
+                  <Select
+                    value={element.dateFormat || 'dd/MM/yyyy'}
+                    onValueChange={v => onChange({ dateFormat: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dd/MM/yyyy">DD/MM/AAAA</SelectItem>
+                      <SelectItem value="MM/dd/yyyy">MM/DD/AAAA</SelectItem>
+                      <SelectItem value="yyyy-MM-dd">AAAA-MM-DD</SelectItem>
+                      <SelectItem value="dd 'de' MMMM 'de' yyyy">Extenso (01 de Janeiro de 2025)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
+
           {isFormField(element.type) && (
             <div className="flex items-center justify-between">
               <Label>Obrigatório</Label>

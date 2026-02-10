@@ -156,6 +156,10 @@ export interface PageElement {
   /** Min/max for number/height/weight fields */
   min?: number;
   max?: number;
+  /** Date field mode */
+  dateMode?: 'date' | 'time' | 'datetime';
+  /** Date display format */
+  dateFormat?: string;
   /** Score for yes/no element */
   yesScore?: number;
   noScore?: number;
@@ -378,6 +382,8 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.label = 'Data';
       base.placeholder = 'dd/mm/aaaa';
       base.required = false;
+      base.dateMode = 'date';
+      base.dateFormat = 'dd/MM/yyyy';
       break;
     case 'input_height':
       base.label = 'Qual sua altura?';

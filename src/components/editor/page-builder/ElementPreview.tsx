@@ -1,6 +1,6 @@
 import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
-import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { Bell } from 'lucide-react';
@@ -194,12 +194,10 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'input_date':
       return withFieldHeader(
-        <input
-          type="text"
-          readOnly
-          placeholder={element.placeholder || 'dd/mm/aaaa'}
-          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
-        />
+        <div className="flex items-center gap-3 border-0 border-b-2 border-border py-2 text-muted-foreground/40">
+          <CalendarIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <span className="text-xl">{element.placeholder || 'Selecione a data'}</span>
+        </div>
       );
 
     case 'input_height':
