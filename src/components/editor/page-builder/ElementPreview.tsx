@@ -413,7 +413,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       return (
         <div className={`grid ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
           {bars.map(bar => {
-            const barBg = bar.barBackground || 'hsl(var(--muted) / 0.3)';
+            const barBg = bar.barBackground || 'rgba(0,0,0,0.08)';
             const valColor = bar.valueColor || bar.color;
             const lblColor = bar.labelColor || 'hsl(var(--foreground))';
             const barContent = (
