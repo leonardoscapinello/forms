@@ -39,7 +39,7 @@ export default function PageGeneralSettings({ pageStyle, onChange }: Props) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <h3 className="text-sm font-semibold">Configurações da Página</h3>
+        <h3 className="text-sm font-semibold">Estilo Global</h3>
       </div>
 
       <ScrollArea className="flex-1">
@@ -109,7 +109,7 @@ export default function PageGeneralSettings({ pageStyle, onChange }: Props) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Fonte aplicada a todos os elementos desta página
+              Fonte aplicada a todas as páginas do formulário
             </p>
           </div>
 
