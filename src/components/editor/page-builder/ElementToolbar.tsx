@@ -1,5 +1,9 @@
-import { PageElementType, PAGE_ELEMENT_LABELS, createDefaultPageElement, PageElement } from '@/types/pageElements';
-import { Heading, Type, Image, MousePointerClick, Minus, Video, ArrowUpDown, FormInput } from 'lucide-react';
+import { PAGE_ELEMENT_LABELS, createDefaultPageElement, PageElement, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
+import {
+  Heading, Type, Image, MousePointerClick, Minus, Video, ArrowUpDown,
+  Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
+} from 'lucide-react';
+import type { PageElementType } from '@/types/pageElements';
 
 const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   heading: Heading,
@@ -9,12 +13,15 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   divider: Minus,
   video: Video,
   spacer: ArrowUpDown,
-  form_field: FormInput,
+  input_text: TextCursorInput,
+  input_email: Mail,
+  input_phone: Phone,
+  input_address: MapPin,
+  input_checkbox: CheckSquare,
+  input_select: ListFilter,
+  input_radio: CircleDot,
+  input_rating: Star,
 };
-
-const ELEMENT_TYPES: PageElementType[] = [
-  'heading', 'text', 'image', 'button', 'divider', 'video', 'spacer',
-];
 
 interface Props {
   onAdd: (element: PageElement) => void;
@@ -22,32 +29,40 @@ interface Props {
 
 export default function ElementToolbar({ onAdd }: Props) {
   return (
-    <div className="w-56 border-r border-border bg-card flex flex-col h-full">
-      <div className="p-4 border-b border-border">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Elementos</h3>
-      </div>
-      <div className="p-3 flex flex-col gap-1 overflow-auto flex-1">
-        {ELEMENT_TYPES.map(type => {
-          const Icon = ELEMENT_ICONS[type];
-          return (
-            <button
-              key={type}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-left group"
-              onClick={() => onAdd(createDefaultPageElement(type))}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('element-type', type);
-                e.dataTransfer.effectAllowed = 'copy';
-              }}
-            >
-              <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                <Icon className="h-4 w-4" />
-              </div>
-              <span className="font-medium">{PAGE_ELEMENT_LABELS[type]}</span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="w-56 border-r border-border bg-card flex flex-col h-full overflow-auto">
+      {(Object.entries(ELEMENT_CATEGORIES) as [ElementCategory, typeof ELEMENT_CATEGORIES[ElementCategory]][]).map(
+        ([catKey, cat]) => (
+          <div key={catKey}>
+            <div className="px-4 pt-4 pb-2">
+              <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {cat.label}
+              </h3>
+            </div>
+            <div className="px-2 pb-2 flex flex-col gap-0.5">
+              {cat.types.map(type => {
+                const Icon = ELEMENT_ICONS[type];
+                return (
+                  <button
+                    key={type}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-left group"
+                    onClick={() => onAdd(createDefaultPageElement(type))}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('element-type', type);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                  >
+                    <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors flex-shrink-0">
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-[13px] font-medium">{PAGE_ELEMENT_LABELS[type]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )
+      )}
     </div>
   );
 }

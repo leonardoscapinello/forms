@@ -1,6 +1,7 @@
 /** Page Element types for the drag-and-drop page builder */
 
 export type PageElementType =
+  // Visual elements
   | 'heading'
   | 'text'
   | 'image'
@@ -8,30 +9,48 @@ export type PageElementType =
   | 'divider'
   | 'video'
   | 'spacer'
-  | 'form_field'; // embeds an existing question
+  // Form input elements
+  | 'input_text'
+  | 'input_email'
+  | 'input_phone'
+  | 'input_address'
+  | 'input_checkbox'
+  | 'input_select'
+  | 'input_radio'
+  | 'input_rating';
 
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
-  fontSize?: string;       // e.g. '2xl', 'lg', 'base', 'sm'
-  fontWeight?: string;      // e.g. 'bold', 'semibold', 'normal'
-  color?: string;           // hex color
+  fontSize?: string;
+  fontWeight?: string;
+  color?: string;
   backgroundColor?: string;
-  padding?: number;         // px
-  borderRadius?: number;    // px
-  maxWidth?: string;        // e.g. '100%', '600px'
+  padding?: number;
+  borderRadius?: number;
+  maxWidth?: string;
+}
+
+export interface SelectOption {
+  id: string;
+  label: string;
 }
 
 export interface PageElement {
   id: string;
   type: PageElementType;
-  // Content fields (used depending on type)
-  content?: string;         // text content for heading, text, button
-  src?: string;             // image/video URL
-  alt?: string;             // image alt text
-  href?: string;            // button link
-  level?: 1 | 2 | 3 | 4;   // heading level
-  height?: number;          // spacer height, divider thickness
-  questionId?: string;      // for form_field type — references a Question
+  // Content fields
+  content?: string;
+  src?: string;
+  alt?: string;
+  href?: string;
+  level?: 1 | 2 | 3 | 4;
+  height?: number;
+  // Form field properties
+  label?: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: SelectOption[];
+  maxRating?: number;
   style?: PageElementStyle;
 }
 
@@ -39,7 +58,7 @@ export interface PageConfig {
   elements: PageElement[];
   backgroundColor?: string;
   backgroundImage?: string;
-  maxWidth?: string;        // layout max width
+  maxWidth?: string;
 }
 
 export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
@@ -50,7 +69,27 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   divider: 'Divisor',
   video: 'Vídeo',
   spacer: 'Espaço',
-  form_field: 'Campo de Formulário',
+  input_text: 'Campo Texto',
+  input_email: 'Campo Email',
+  input_phone: 'Campo Telefone',
+  input_address: 'Campo Endereço',
+  input_checkbox: 'Checkbox',
+  input_select: 'Seleção',
+  input_radio: 'Radio',
+  input_rating: 'Avaliação',
+};
+
+export type ElementCategory = 'visual' | 'fields';
+
+export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
+  visual: {
+    label: 'Layout',
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer'],
+  },
+  fields: {
+    label: 'Campos',
+    types: ['input_text', 'input_email', 'input_phone', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating'],
+  },
 };
 
 export function createDefaultPageElement(type: PageElementType): PageElement {
@@ -88,8 +127,50 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'spacer':
       base.height = 40;
       break;
-    case 'form_field':
-      base.questionId = '';
+    case 'input_text':
+      base.label = 'Nome';
+      base.placeholder = 'Digite seu nome';
+      base.required = false;
+      break;
+    case 'input_email':
+      base.label = 'Email';
+      base.placeholder = 'seu@email.com';
+      base.required = false;
+      break;
+    case 'input_phone':
+      base.label = 'Telefone';
+      base.placeholder = '(00) 00000-0000';
+      base.required = false;
+      break;
+    case 'input_address':
+      base.label = 'Endereço';
+      base.placeholder = 'Rua, número, cidade...';
+      base.required = false;
+      break;
+    case 'input_checkbox':
+      base.label = 'Aceito os termos';
+      base.required = false;
+      break;
+    case 'input_select':
+      base.label = 'Selecione uma opção';
+      base.placeholder = 'Escolha...';
+      base.options = [
+        { id: crypto.randomUUID(), label: 'Opção 1' },
+        { id: crypto.randomUUID(), label: 'Opção 2' },
+        { id: crypto.randomUUID(), label: 'Opção 3' },
+      ];
+      break;
+    case 'input_radio':
+      base.label = 'Escolha uma opção';
+      base.options = [
+        { id: crypto.randomUUID(), label: 'Opção A' },
+        { id: crypto.randomUUID(), label: 'Opção B' },
+        { id: crypto.randomUUID(), label: 'Opção C' },
+      ];
+      break;
+    case 'input_rating':
+      base.label = 'Avaliação';
+      base.maxRating = 5;
       break;
   }
 

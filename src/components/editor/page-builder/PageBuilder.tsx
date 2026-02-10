@@ -3,6 +3,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -11,7 +12,9 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+// modifiers removed — not installed
 import { PageElement, createDefaultPageElement, PageElementType } from '@/types/pageElements';
 import SortableElement from './SortableElement';
 import ElementToolbar from './ElementToolbar';
@@ -27,7 +30,8 @@ export default function PageBuilder({ elements, onChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const selectedElement = elements.find(e => e.id === selectedId) || null;
@@ -37,7 +41,9 @@ export default function PageBuilder({ elements, onChange }: Props) {
     if (over && active.id !== over.id) {
       const oldIndex = elements.findIndex(e => e.id === active.id);
       const newIndex = elements.findIndex(e => e.id === over.id);
-      onChange(arrayMove(elements, oldIndex, newIndex));
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onChange(arrayMove(elements, oldIndex, newIndex));
+      }
     }
   }, [elements, onChange]);
 
@@ -55,7 +61,7 @@ export default function PageBuilder({ elements, onChange }: Props) {
     onChange(elements.map(e => e.id === id ? { ...e, ...patch } : e));
   }, [elements, onChange]);
 
-  // Handle drop from sidebar
+  // Handle drop from sidebar (native HTML drag)
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('element-type') as PageElementType;
@@ -79,11 +85,15 @@ export default function PageBuilder({ elements, onChange }: Props) {
         onDrop={handleCanvasDrop}
       >
         <div className="max-w-2xl mx-auto py-8 px-6">
-          {/* Phone-like frame */}
+          {/* Card frame */}
           <div className="bg-card rounded-2xl border border-border shadow-sm min-h-[500px] p-6">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
               <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-1 pl-10">
+                <div className="space-y-1 min-h-[200px]">
                   {elements.length === 0 ? (
                     <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
                       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
