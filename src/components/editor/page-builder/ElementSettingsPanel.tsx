@@ -919,200 +919,100 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* ─── Progress Bar settings ─── */}
+          {/* ─── Progress Bar settings (definitions only) ─── */}
           {element.type === 'progress_bar' && (() => {
-            const [pbTab, setPbTab] = React.useState<'definitions' | 'appearance'>('definitions');
             const bars = element.progressBarItems || [];
             return (
               <div className="space-y-4">
-                <div className="flex border-b border-border">
-                  <button
-                    onClick={() => setPbTab('definitions')}
-                    className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
-                      pbTab === 'definitions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
+                <div className="space-y-2">
+                  <Label>Layout</Label>
+                  <Select
+                    value={String(element.progressBarLayout || 1)}
+                    onValueChange={v => onChange({ progressBarLayout: Number(v) as 1 | 2 })}
                   >
-                    Definições
-                  </button>
-                  <button
-                    onClick={() => setPbTab('appearance')}
-                    className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
-                      pbTab === 'appearance' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Aparência
-                  </button>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 coluna</SelectItem>
+                      <SelectItem value="2">Grade de 2 colunas</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {pbTab === 'definitions' && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Layout</Label>
-                      <Select
-                        value={String(element.progressBarLayout || 1)}
-                        onValueChange={v => onChange({ progressBarLayout: Number(v) as 1 | 2 })}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 coluna</SelectItem>
-                          <SelectItem value="2">Grade de 2 colunas</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="space-y-2">
+                  <Label>Disposição</Label>
+                  <Select
+                    value={element.progressBarDisposition || 'chart_legend'}
+                    onValueChange={v => onChange({ progressBarDisposition: v as any })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="chart_legend">gráfico | legenda</SelectItem>
+                      <SelectItem value="legend_chart">legenda | gráfico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label>Disposição</Label>
-                      <Select
-                        value={element.progressBarDisposition || 'chart_legend'}
-                        onValueChange={v => onChange({ progressBarDisposition: v as any })}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="chart_legend">gráfico | legenda</SelectItem>
-                          <SelectItem value="legend_chart">legenda | gráfico</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Barras ({bars.length})</Label>
-                      {bars.map((bar) => (
-                        <div key={bar.id} className="space-y-1.5 p-2.5 rounded-lg border border-border">
-                          <Input
-                            value={bar.label}
-                            onChange={e => {
-                              const items = bars.map(b =>
-                                b.id === bar.id ? { ...b, label: e.target.value } : b
-                              );
-                              onChange({ progressBarItems: items });
-                            }}
-                            className="h-8 text-sm font-semibold text-center"
-                            placeholder="Legenda"
-                          />
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground w-12">Valor</span>
-                            <Input
-                              type="number"
-                              value={bar.value}
-                              onChange={e => {
-                                const items = bars.map(b =>
-                                  b.id === bar.id ? { ...b, value: Number(e.target.value) || 0 } : b
-                                );
-                                onChange({ progressBarItems: items });
-                              }}
-                              className="h-6 text-xs text-center flex-1"
-                              min={0}
-                              max={100}
-                            />
-                            <span className="text-[10px] text-muted-foreground">%</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={() => onChange({ progressBarItems: bars.filter(b => b.id !== bar.id) })}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs"
-                        onClick={() => {
-                          const items = [...bars];
-                          const colors = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6'];
-                          items.push({
-                            id: crypto.randomUUID(),
-                            label: `Item ${items.length + 1}`,
-                            value: 50,
-                            color: colors[items.length % colors.length],
-                          });
+                <div className="space-y-2">
+                  <Label>Barras ({bars.length})</Label>
+                  {bars.map((bar) => (
+                    <div key={bar.id} className="space-y-1.5 p-2.5 rounded-lg border border-border">
+                      <Input
+                        value={bar.label}
+                        onChange={e => {
+                          const items = bars.map(b =>
+                            b.id === bar.id ? { ...b, label: e.target.value } : b
+                          );
                           onChange({ progressBarItems: items });
                         }}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1" /> adicionar barra
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {pbTab === 'appearance' && (
-                  <div className="space-y-3">
-                    {bars.map((bar) => (
-                      <div key={bar.id} className="space-y-2 p-2.5 rounded-lg border border-border">
-                        <p className="text-xs font-medium text-foreground truncate">{bar.label || 'Sem nome'}</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="text-center space-y-1">
-                            <span className="text-[10px] text-muted-foreground">Barra</span>
-                            <div className="flex justify-center">
-                              <input
-                                type="color"
-                                value={bar.color}
-                                onChange={e => {
-                                  const items = bars.map(b =>
-                                    b.id === bar.id ? { ...b, color: e.target.value } : b
-                                  );
-                                  onChange({ progressBarItems: items });
-                                }}
-                                className="h-6 w-8 rounded border border-border cursor-pointer"
-                              />
-                            </div>
-                          </div>
-                          <div className="text-center space-y-1">
-                            <span className="text-[10px] text-muted-foreground">Fundo</span>
-                            <div className="flex justify-center">
-                              <input
-                                type="color"
-                                value={bar.barBackground || '#e5e7eb'}
-                                onChange={e => {
-                                  const items = bars.map(b =>
-                                    b.id === bar.id ? { ...b, barBackground: e.target.value } : b
-                                  );
-                                  onChange({ progressBarItems: items });
-                                }}
-                                className="h-6 w-8 rounded border border-border cursor-pointer"
-                              />
-                            </div>
-                          </div>
-                          <div className="text-center space-y-1">
-                            <span className="text-[10px] text-muted-foreground">Valor</span>
-                            <div className="flex justify-center">
-                              <input
-                                type="color"
-                                value={bar.valueColor || bar.color}
-                                onChange={e => {
-                                  const items = bars.map(b =>
-                                    b.id === bar.id ? { ...b, valueColor: e.target.value } : b
-                                  );
-                                  onChange({ progressBarItems: items });
-                                }}
-                                className="h-6 w-8 rounded border border-border cursor-pointer"
-                              />
-                            </div>
-                          </div>
-                          <div className="text-center space-y-1">
-                            <span className="text-[10px] text-muted-foreground">Texto</span>
-                            <div className="flex justify-center">
-                              <input
-                                type="color"
-                                value={bar.labelColor || '#000000'}
-                                onChange={e => {
-                                  const items = bars.map(b =>
-                                    b.id === bar.id ? { ...b, labelColor: e.target.value } : b
-                                  );
-                                  onChange({ progressBarItems: items });
-                                }}
-                                className="h-6 w-8 rounded border border-border cursor-pointer"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                        className="h-8 text-sm font-semibold text-center"
+                        placeholder="Legenda"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-12">Valor</span>
+                        <Input
+                          type="number"
+                          value={bar.value}
+                          onChange={e => {
+                            const items = bars.map(b =>
+                              b.id === bar.id ? { ...b, value: Number(e.target.value) || 0 } : b
+                            );
+                            onChange({ progressBarItems: items });
+                          }}
+                          className="h-6 text-xs text-center flex-1"
+                          min={0}
+                          max={100}
+                        />
+                        <span className="text-[10px] text-muted-foreground">%</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => onChange({ progressBarItems: bars.filter(b => b.id !== bar.id) })}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => {
+                      const items = [...bars];
+                      const colors = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6'];
+                      items.push({
+                        id: crypto.randomUUID(),
+                        label: `Item ${items.length + 1}`,
+                        value: 50,
+                        color: colors[items.length % colors.length],
+                      });
+                      onChange({ progressBarItems: items });
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> adicionar barra
+                  </Button>
+                </div>
               </div>
             );
           })()}
@@ -1417,6 +1317,87 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 onFontFamilyChange={v => updateStyle({ fontFamily: v })}
                 onFontWeightChange={v => updateStyle({ fontWeight: v })}
               />
+
+              {/* Progress Bar specific colors */}
+              {element.type === 'progress_bar' && (() => {
+                const bars = element.progressBarItems || [];
+                return bars.length > 0 ? (
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium text-muted-foreground">Cores das barras</Label>
+                    {bars.map((bar) => (
+                      <div key={bar.id} className="space-y-2 p-2.5 rounded-lg border border-border">
+                        <p className="text-xs font-medium text-foreground truncate">{bar.label || 'Sem nome'}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="text-center space-y-1">
+                            <span className="text-[10px] text-muted-foreground">Barra</span>
+                            <div className="flex justify-center">
+                              <input
+                                type="color"
+                                value={bar.color}
+                                onChange={e => {
+                                  const items = bars.map(b =>
+                                    b.id === bar.id ? { ...b, color: e.target.value } : b
+                                  );
+                                  onChange({ progressBarItems: items });
+                                }}
+                                className="h-6 w-8 rounded border border-border cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                          <div className="text-center space-y-1">
+                            <span className="text-[10px] text-muted-foreground">Fundo</span>
+                            <div className="flex justify-center">
+                              <input
+                                type="color"
+                                value={bar.barBackground || '#e5e7eb'}
+                                onChange={e => {
+                                  const items = bars.map(b =>
+                                    b.id === bar.id ? { ...b, barBackground: e.target.value } : b
+                                  );
+                                  onChange({ progressBarItems: items });
+                                }}
+                                className="h-6 w-8 rounded border border-border cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                          <div className="text-center space-y-1">
+                            <span className="text-[10px] text-muted-foreground">Valor</span>
+                            <div className="flex justify-center">
+                              <input
+                                type="color"
+                                value={bar.valueColor || bar.color}
+                                onChange={e => {
+                                  const items = bars.map(b =>
+                                    b.id === bar.id ? { ...b, valueColor: e.target.value } : b
+                                  );
+                                  onChange({ progressBarItems: items });
+                                }}
+                                className="h-6 w-8 rounded border border-border cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                          <div className="text-center space-y-1">
+                            <span className="text-[10px] text-muted-foreground">Texto</span>
+                            <div className="flex justify-center">
+                              <input
+                                type="color"
+                                value={bar.labelColor || '#000000'}
+                                onChange={e => {
+                                  const items = bars.map(b =>
+                                    b.id === bar.id ? { ...b, labelColor: e.target.value } : b
+                                  );
+                                  onChange({ progressBarItems: items });
+                                }}
+                                className="h-6 w-8 rounded border border-border cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
             </div>
           )}
 
