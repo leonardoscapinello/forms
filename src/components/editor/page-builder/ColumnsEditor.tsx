@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import ElementPreview from './ElementPreview';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
@@ -11,6 +12,45 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+
+// Wrapper that registers each column as a dnd-kit droppable
+function ColumnDropZone({ columnsElementId, colIdx, col, dragState, handleColDragOver, handleInternalDragOver, handleInternalDrop, handleColDrop, children }: {
+  columnsElementId: string;
+  colIdx: number;
+  col: { id: string; elements: PageElement[] };
+  dragState: { colIdx: number; elIdx: number } | null;
+  handleColDragOver: (e: React.DragEvent, colIdx: number) => void;
+  handleInternalDragOver: (e: React.DragEvent, colIdx: number, elIdx: number) => void;
+  handleInternalDrop: (e: React.DragEvent) => void;
+  handleColDrop: (e: React.DragEvent, colIdx: number) => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `col-drop:${columnsElementId}:${colIdx}`,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[80px] rounded-xl border-2 border-dashed p-2 space-y-2 transition-colors ${
+        isOver ? 'border-primary/60 bg-primary/5' : 'border-border/60 hover:border-primary/30'
+      }`}
+      onDragOver={(e) => {
+        handleColDragOver(e, colIdx);
+        if (dragState) handleInternalDragOver(e, colIdx, col.elements.length);
+      }}
+      onDrop={(e) => {
+        if (dragState) {
+          handleInternalDrop(e);
+        } else {
+          handleColDrop(e, colIdx);
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface Props {
   element: PageElement;
@@ -141,20 +181,16 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain }: P
       style={{ gridTemplateColumns: `repeat(${columnCount}, 1fr)` }}
     >
       {columns.slice(0, columnCount).map((col, colIdx) => (
-        <div
+        <ColumnDropZone
           key={col.id}
-          className="min-h-[80px] rounded-xl border-2 border-dashed border-border/60 p-2 space-y-2 transition-colors hover:border-primary/30"
-          onDragOver={(e) => {
-            handleColDragOver(e, colIdx);
-            if (dragState) handleInternalDragOver(e, colIdx, col.elements.length);
-          }}
-          onDrop={(e) => {
-            if (dragState) {
-              handleInternalDrop(e);
-            } else {
-              handleColDrop(e, colIdx);
-            }
-          }}
+          columnsElementId={element.id}
+          colIdx={colIdx}
+          col={col}
+          dragState={dragState}
+          handleColDragOver={handleColDragOver}
+          handleInternalDragOver={handleInternalDragOver}
+          handleInternalDrop={handleInternalDrop}
+          handleColDrop={handleColDrop}
         >
           {col.elements.map((el, elIdx) => (
             <div
@@ -210,7 +246,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain }: P
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </ColumnDropZone>
       ))}
     </div>
   );
