@@ -187,6 +187,10 @@ export interface PageElement {
   /** Score for yes/no element */
   yesScore?: number;
   noScore?: number;
+  /** Button action */
+  buttonAction?: 'none' | 'next' | 'previous' | 'specific' | 'finish';
+  /** Target page ID when buttonAction is 'specific' */
+  buttonTargetPageId?: string;
   style?: PageElementStyle;
 }
 

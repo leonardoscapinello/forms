@@ -1,4 +1,5 @@
 import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage } from '@/types/pageElements';
+import { FunnelPage } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -15,11 +16,12 @@ interface Props {
   element: PageElement;
   onChange: (patch: Partial<PageElement>) => void;
   onClose: () => void;
+  pages?: FunnelPage[];
 }
 
 const isFormField = (type: string) => type.startsWith('input_');
 
-export default function ElementSettingsPanel({ element, onChange, onClose }: Props) {
+export default function ElementSettingsPanel({ element, onChange, onClose, pages }: Props) {
   const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -542,16 +544,54 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
-          {/* Button link */}
+          {/* Button action */}
           {element.type === 'button' && (
-            <div className="space-y-2">
-              <Label>Link (opcional)</Label>
-              <Input
-                value={element.href || ''}
-                onChange={e => onChange({ href: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Ação do botão</Label>
+                <Select
+                  value={element.buttonAction || 'none'}
+                  onValueChange={v => onChange({ buttonAction: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    <SelectItem value="next">Próxima página</SelectItem>
+                    <SelectItem value="previous">Página anterior</SelectItem>
+                    <SelectItem value="specific">Página específica</SelectItem>
+                    <SelectItem value="finish">Concluir / Enviar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {element.buttonAction === 'specific' && pages && pages.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Página destino</Label>
+                  <Select
+                    value={element.buttonTargetPageId || ''}
+                    onValueChange={v => onChange({ buttonTargetPageId: v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {pages.map((p, i) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.title || `Página ${i + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Link externo (opcional)</Label>
+                <Input
+                  value={element.href || ''}
+                  onChange={e => onChange({ href: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+            </>
           )}
 
           {/* Spacer height */}
