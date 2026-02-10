@@ -33,6 +33,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
     <div
       ref={setNodeRef}
       style={style}
+      data-sortable-id={element.id}
       className={`group relative rounded-xl transition-all duration-200 ${
         isDragging
           ? 'opacity-30 scale-[0.98] bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl'
