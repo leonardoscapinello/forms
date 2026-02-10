@@ -86,6 +86,44 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [user]);
 
+  // Realtime sync: listen for changes from other users
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('forms-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'forms' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            const row = payload.new as unknown as DbForm;
+            // Only apply if from another session (check updated_at diff)
+            setForms(prev => {
+              const existing = prev.find(f => f.id === row.id);
+              if (!existing) return prev;
+              // Skip if we have a pending debounce (we're the one editing)
+              if (debounceTimers.current.has(row.id)) return prev;
+              const updated = dbToForm(row);
+              return prev.map(f => f.id === row.id ? updated : f);
+            });
+          } else if (payload.eventType === 'INSERT') {
+            const row = payload.new as unknown as DbForm;
+            setForms(prev => {
+              if (prev.some(f => f.id === row.id)) return prev;
+              return [...prev, dbToForm(row)];
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const oldRow = payload.old as { id?: string };
+            if (oldRow.id) {
+              setForms(prev => prev.filter(f => f.id !== oldRow.id));
+            }
+          }
+        }
+      )
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [user]);
+
   // Flush pending update to DB
   const flushUpdate = useCallback(async (id: string) => {
     if (!user) return;
