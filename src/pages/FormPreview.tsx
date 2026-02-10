@@ -306,16 +306,26 @@ function InteractiveElement({
 
     case 'input_select':
       return withFieldHeader(
-        <select
-          value={value || ''}
-          onChange={e => onChange(e.target.value)}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground transition-colors"
-        >
-          <option value="">{element.placeholder || 'Selecione...'}</option>
-          {(element.options || []).map(opt => (
-            <option key={opt.id} value={opt.id}>{opt.label}</option>
+        <div className="space-y-3">
+          {(element.options || []).map((opt, i) => (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+                value === opt.id
+                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                  : 'border-border hover:border-primary/40 text-foreground'
+              }`}
+            >
+              <span className={`h-7 w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+              }`}>
+                {String.fromCharCode(65 + i)}
+              </span>
+              <span className="text-lg">{opt.label}</span>
+            </button>
           ))}
-        </select>
+        </div>
       );
 
     case 'input_radio':
