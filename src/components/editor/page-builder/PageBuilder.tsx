@@ -140,6 +140,45 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     setIsExternalDragOver(false);
     const insertAt = dropIndex >= 0 ? dropIndex : elements.length;
     setDropIndex(-1);
+
+    // Check for element move from column → main canvas
+    const moveJson = e.dataTransfer.getData('element-move-json');
+    const moveSource = e.dataTransfer.getData('element-move-source');
+
+    if (moveJson && moveSource?.startsWith('column:')) {
+      try {
+        const el = JSON.parse(moveJson) as PageElement;
+        const parts = moveSource.split(':');
+        const columnsElementId = parts[1];
+        const colIdx = parseInt(parts[2]);
+
+        // Build updated list with element inserted at position
+        const updated = [...elements];
+        updated.splice(insertAt, 0, el);
+
+        // Remove the element from the source column
+        const finalUpdated = updated.map(item => {
+          if (item.id === columnsElementId && item.columnData) {
+            return {
+              ...item,
+              columnData: item.columnData.map((col, i) =>
+                i === colIdx ? { ...col, elements: col.elements.filter(e => e.id !== el.id) } : col
+              ),
+            };
+          }
+          return item;
+        });
+
+        onChange(finalUpdated);
+        setSelectedId(el.id);
+        return;
+      } catch { /* ignore */ }
+    }
+
+    // Check for element move from main → main (ignore, handled by dnd-kit)
+    if (moveJson && moveSource === 'main') return;
+
+    // New element from toolbar
     const type = e.dataTransfer.getData('element-type') as PageElementType;
     if (type) {
       const el = createDefaultPageElement(type);
@@ -183,6 +222,10 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
           onSelect={() => setSelectedId(el.id)}
           onDelete={() => handleDelete(el.id)}
           onElementChange={(patch) => handleElementChange(el.id, patch)}
+          onRemoveFromMain={(elementId) => {
+            onChange(elements.filter(e => e.id !== elementId));
+            if (selectedId === elementId) setSelectedId(null);
+          }}
           stepNumber={isField ? formFieldIndex : undefined}
         />
       );
