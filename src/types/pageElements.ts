@@ -12,6 +12,7 @@ export type PageElementType =
   | 'alert'
   | 'notification'
   | 'chart'
+  | 'comparative_chart'
   | 'progress_bar'
   | 'horizontal_bar'
   | 'timer'
@@ -142,6 +143,24 @@ export interface ProgressBarItem {
   barBackground?: string;
 }
 
+/** A single data point inside a comparative dataset */
+export interface ComparativeDataPoint {
+  id: string;
+  label: string;
+  value: string;
+}
+
+/** A dataset (series) in a comparative chart */
+export interface ComparativeDataset {
+  id: string;
+  name: string;
+  color: string;
+  tooltip?: string;
+  points: ComparativeDataPoint[];
+}
+
+export type ComparativeChartMode = 'cartesian' | 'bar' | 'circular';
+
 export interface ColumnData {
   id: string;
   elements: PageElement[];
@@ -170,6 +189,10 @@ export interface PageElement {
   chartType?: import('@/types/form').ChartType;
   chartItems?: import('@/types/form').GraphicDataItem[];
   chartStyle?: import('@/types/form').ChartStyle;
+  // Comparative chart element
+  comparativeDatasets?: ComparativeDataset[];
+  comparativeMode?: ComparativeChartMode;
+  comparativeLabels?: string[]; // X-axis labels shared across datasets
   // Progress bar element
   progressBarItems?: ProgressBarItem[];
   progressBarLayout?: 1 | 2; // 1 or 2 columns
@@ -253,6 +276,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   alert: 'Atenção',
   notification: 'Notificação',
   chart: 'Gráfico',
+  comparative_chart: 'Gráfico comparativo',
   progress_bar: 'Barra de progresso',
   horizontal_bar: 'Barra horizontal',
   timer: 'Timer',
@@ -291,7 +315,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados',
-    types: ['chart', 'progress_bar', 'horizontal_bar', 'timer'],
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'timer'],
   },
   sections: {
     label: 'Seções',
@@ -417,6 +441,29 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       ];
       base.chartStyle = { showGrid: true, showLabels: true, showLegend: true, showValues: true, animated: true };
       break;
+    case 'comparative_chart': {
+      const labels = ['Ontem', 'Hoje', 'Amanhã'];
+      base.comparativeMode = 'cartesian';
+      base.comparativeLabels = labels;
+      base.comparativeDatasets = [
+        {
+          id: crypto.randomUUID(),
+          name: 'Você',
+          color: '#22c55e',
+          tooltip: 'Você',
+          points: labels.map((l, i) => ({ id: crypto.randomUUID(), label: l, value: String([10, 40, 80][i]) })),
+        },
+        {
+          id: crypto.randomUUID(),
+          name: 'Concorrente',
+          color: '#ef4444',
+          tooltip: 'Concorrente',
+          points: labels.map((l, i) => ({ id: crypto.randomUUID(), label: l, value: String([5, 60, 90][i]) })),
+        },
+      ];
+      base.chartStyle = { showGrid: true, showLabels: true, showLegend: true, showValues: true, animated: true };
+      break;
+    }
     case 'progress_bar':
       base.progressBarItems = [
         { id: crypto.randomUUID(), label: 'Onde você está hoje.', value: 10, color: '#EF4444', barBackground: '#fecaca', valueColor: '#991b1b', labelColor: '#1a1a1a' },
