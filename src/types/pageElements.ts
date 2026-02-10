@@ -75,6 +75,7 @@ export interface PageElement {
   notificationItems?: NotificationItem[];
   notificationMode?: 'sequential' | 'random';
   notificationInterval?: number; // seconds
+  notificationPosition?: 'top' | 'bottom';
   // Form field properties
   label?: string;
   placeholder?: string;
