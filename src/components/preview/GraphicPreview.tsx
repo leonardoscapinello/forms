@@ -1,4 +1,4 @@
-import { GraphicVariant, ChartType, GraphicDataItem, ChartStyle } from '@/types/form';
+import { GraphicVariant, ChartType, GraphicDataItem, ChartStyle, ChartBoxStyle } from '@/types/form';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 
 interface Props {
@@ -74,11 +74,23 @@ export default function GraphicPreview({ variant, chartType = 'bar', items, titl
     );
   }
 
+  const box = chartStyle.box || {};
+
+  const boxStyle: React.CSSProperties = variant === 'chart' ? {
+    padding: box.padding ?? 24,
+    margin: box.margin ?? 0,
+    borderWidth: box.borderWidth ?? 1,
+    borderStyle: 'solid',
+    borderColor: box.borderColor || 'hsl(var(--border))',
+    borderRadius: box.borderRadius ?? 16,
+    backgroundColor: box.backgroundColor || 'hsl(var(--card))',
+  } : {};
+
   return (
     <div className="space-y-4 w-full" style={{ minWidth: 0 }}>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
       {variant === 'chart' && (
-        <div className="w-full overflow-hidden" style={{ height: 350 }}>
+        <div className="w-full overflow-hidden" style={{ ...boxStyle, minHeight: 320 }}>
           <ChartLivePreview chartType={chartType} items={items} style={chartStyle} />
         </div>
       )}
