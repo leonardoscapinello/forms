@@ -148,6 +148,8 @@ export interface ComparativeDataPoint {
   id: string;
   label: string;
   value: string;
+  /** Tooltip badge text shown above this specific point */
+  tooltip?: string;
 }
 
 /** A dataset (series) in a comparative chart */
@@ -450,15 +452,21 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
           id: crypto.randomUUID(),
           name: 'Você',
           color: '#22c55e',
-          tooltip: 'Você',
-          points: labels.map((l, i) => ({ id: crypto.randomUUID(), label: l, value: String([10, 40, 80][i]) })),
+          points: [
+            { id: crypto.randomUUID(), label: 'Ontem', value: '10' },
+            { id: crypto.randomUUID(), label: 'Hoje', value: '40', tooltip: 'Você' },
+            { id: crypto.randomUUID(), label: 'Amanhã', value: '80' },
+          ],
         },
         {
           id: crypto.randomUUID(),
           name: 'Concorrente',
           color: '#ef4444',
-          tooltip: 'Concorrente',
-          points: labels.map((l, i) => ({ id: crypto.randomUUID(), label: l, value: String([5, 60, 90][i]) })),
+          points: [
+            { id: crypto.randomUUID(), label: 'Ontem', value: '5' },
+            { id: crypto.randomUUID(), label: 'Hoje', value: '60' },
+            { id: crypto.randomUUID(), label: 'Amanhã', value: '90', tooltip: 'Concorrente' },
+          ],
         },
       ];
       base.chartStyle = { showGrid: true, showLabels: true, showLegend: true, showValues: true, animated: true };

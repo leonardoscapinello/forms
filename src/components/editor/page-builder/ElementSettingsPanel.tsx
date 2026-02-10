@@ -1073,26 +1073,45 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     <div className="space-y-1">
                       <span className="text-[10px] text-muted-foreground font-medium">Valores</span>
                       {ds.points.map((pt, pi) => (
-                        <div key={pt.id} className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground w-16 truncate">
-                            {(element.comparativeLabels || [])[pi] || `#${pi + 1}`}
-                          </span>
+                        <div key={pt.id} className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground w-16 truncate">
+                              {(element.comparativeLabels || [])[pi] || `#${pi + 1}`}
+                            </span>
+                            <Input
+                              value={pt.value}
+                              onChange={e => {
+                                const datasets = (element.comparativeDatasets || []).map(d => {
+                                  if (d.id !== ds.id) return d;
+                                  return {
+                                    ...d,
+                                    points: d.points.map((p, j) =>
+                                      j === pi ? { ...p, value: e.target.value } : p
+                                    ),
+                                  };
+                                });
+                                onChange({ comparativeDatasets: datasets });
+                              }}
+                              className="h-7 text-xs w-20 font-mono"
+                              placeholder="0"
+                            />
+                          </div>
                           <Input
-                            value={pt.value}
+                            value={pt.tooltip || ''}
                             onChange={e => {
                               const datasets = (element.comparativeDatasets || []).map(d => {
                                 if (d.id !== ds.id) return d;
                                 return {
                                   ...d,
                                   points: d.points.map((p, j) =>
-                                    j === pi ? { ...p, value: e.target.value } : p
+                                    j === pi ? { ...p, tooltip: e.target.value || undefined } : p
                                   ),
                                 };
                               });
                               onChange({ comparativeDatasets: datasets });
                             }}
-                            className="h-7 text-xs w-20 font-mono"
-                            placeholder="0"
+                            className="h-6 text-[10px] ml-[70px]"
+                            placeholder="Tip (opcional)"
                           />
                         </div>
                       ))}
