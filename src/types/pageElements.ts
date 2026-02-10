@@ -315,6 +315,8 @@ export interface PageElement {
   loadingTextColor?: string;
   loadingSize?: number;
   loadingStroke?: number;
+  /** Variable ID that this field's answer should be stored into */
+  variableId?: string;
   style?: PageElementStyle;
 }
 

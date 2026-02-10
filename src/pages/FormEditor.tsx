@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FunnelPage, FunnelPageStyle, FormData, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
@@ -165,6 +165,32 @@ export default function FormEditor() {
     updateForm(form.id, patch);
   }, [form, updateForm]);
 
+  // ---- Variables CRUD ----
+
+  const handleAddVariable = useCallback(() => {
+    if (!form) return;
+    const newVar: FormVariable = {
+      id: crypto.randomUUID(),
+      name: `variavel_${(form.variables?.length || 0) + 1}`,
+      type: 'text',
+      defaultValue: '',
+    };
+    updateForm(form.id, { variables: [...(form.variables || []), newVar] });
+  }, [form, updateForm]);
+
+  const handleUpdateVariable = useCallback((varId: string, patch: Partial<FormVariable>) => {
+    if (!form) return;
+    const variables = (form.variables || []).map(v =>
+      v.id === varId ? { ...v, ...patch } : v
+    );
+    updateForm(form.id, { variables });
+  }, [form, updateForm]);
+
+  const handleDeleteVariable = useCallback((varId: string) => {
+    if (!form) return;
+    updateForm(form.id, { variables: (form.variables || []).filter(v => v.id !== varId) });
+  }, [form, updateForm]);
+
   if (!form) return null;
 
   return (
@@ -282,6 +308,10 @@ export default function FormEditor() {
               }}
               isWelcomeSelected={editingWelcome}
               onSelectWelcome={() => { setEditingWelcome(true); setEditingPageId(null); }}
+              variables={form.variables || []}
+              onAddVariable={handleAddVariable}
+              onUpdateVariable={handleUpdateVariable}
+              onDeleteVariable={handleDeleteVariable}
             />
             {editingWelcome ? (
               <PageBuilder
@@ -295,6 +325,7 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                variables={form.variables || []}
                 lockElement={lockElement}
                 unlockElement={unlockElement}
                 isLockedByOther={isLockedByOther}
@@ -311,6 +342,7 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                variables={form.variables || []}
                 lockElement={lockElement}
                 unlockElement={unlockElement}
                 isLockedByOther={isLockedByOther}

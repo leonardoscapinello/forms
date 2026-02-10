@@ -261,6 +261,20 @@ export function createDefaultFunnelPage(title?: string): FunnelPage {
   };
 }
 
+/** Variable type for the form variables system */
+export type FormVariableType = 'text' | 'number' | 'boolean' | 'response';
+
+export interface FormVariable {
+  id: string;
+  name: string;
+  type: FormVariableType;
+  defaultValue?: string;
+  /** For 'response' type: the element ID whose answer populates this variable */
+  sourceElementId?: string;
+  /** For 'response' type: the page ID containing the source element */
+  sourcePageId?: string;
+}
+
 export interface FormData {
   id: string;
   title: string;
@@ -282,6 +296,8 @@ export interface FormData {
   conditions?: ConditionNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
+  /** Form variables for dynamic content and logic */
+  variables?: FormVariable[];
   style: FormStyle;
   status: 'draft' | 'published' | 'archived';
   createdAt: string;

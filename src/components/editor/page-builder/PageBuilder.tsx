@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { FunnelPage } from '@/types/form';
+import { FunnelPage, FormVariable } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
 import {
   DndContext,
@@ -36,12 +36,13 @@ interface Props {
   pageStyle?: FunnelPageStyle;
   onPageStyleChange?: (patch: Partial<FunnelPageStyle>) => void;
   pages?: FunnelPage[];
+  variables?: FormVariable[];
   lockElement?: (elementId: string) => void;
   unlockElement?: () => void;
   isLockedByOther?: (elementId: string) => CollaboratorPresence | null;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, lockElement, unlockElement, isLockedByOther }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, variables, lockElement, unlockElement, isLockedByOther }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -507,6 +508,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             onChange={patch => handleElementChange(selectedElement.id, patch)}
             onClose={() => setSelectedId(null)}
             pages={pages}
+            variables={variables}
           />
         ) : (
           <PageGeneralSettings
