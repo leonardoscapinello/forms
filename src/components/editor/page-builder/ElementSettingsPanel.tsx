@@ -1032,7 +1032,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   className="w-full text-xs"
                   onClick={() => {
                     const items = [...(element.progressBarItems || [])];
-                    const colors = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6'];
+                    const colors = ['#EF4444', '#23C55E', '#FACC16', '#3b82f6', '#8b5cf6'];
                     items.push({
                       id: crypto.randomUUID(),
                       label: `Item ${items.length + 1}`,

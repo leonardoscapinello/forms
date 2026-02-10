@@ -402,8 +402,9 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'progress_bar':
       base.progressBarItems = [
-        { id: crypto.randomUUID(), label: 'Onde você está hoje.', value: 10, color: '#ef4444', barBackground: '#fecaca', valueColor: '#991b1b', labelColor: '#1a1a1a' },
-        { id: crypto.randomUUID(), label: 'Onde Você Vai Estar em 30 Dias:', value: 100, color: '#22c55e', barBackground: '#bbf7d0', valueColor: '#14532d', labelColor: '#1a1a1a' },
+        { id: crypto.randomUUID(), label: 'Onde você está hoje.', value: 10, color: '#EF4444', barBackground: '#fecaca', valueColor: '#991b1b', labelColor: '#1a1a1a' },
+        { id: crypto.randomUUID(), label: 'Onde Você Vai Estar em 30 Dias:', value: 100, color: '#23C55E', barBackground: '#bbf7d0', valueColor: '#14532d', labelColor: '#1a1a1a' },
+        { id: crypto.randomUUID(), label: 'Resultado Esperado:', value: 75, color: '#FACC16', barBackground: '#fef9c3', valueColor: '#854d0e', labelColor: '#1a1a1a' },
       ];
       base.progressBarLayout = 2;
       base.progressBarDisposition = 'chart_legend';
