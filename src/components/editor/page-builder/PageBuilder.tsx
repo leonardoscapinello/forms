@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { FunnelPage } from '@/types/form';
 import {
   DndContext,
   closestCenter,
@@ -30,9 +31,10 @@ interface Props {
   onChange: (elements: PageElement[]) => void;
   pageStyle?: FunnelPageStyle;
   onPageStyleChange?: (patch: Partial<FunnelPageStyle>) => void;
+  pages?: FunnelPage[];
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -368,6 +370,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             element={selectedElement}
             onChange={patch => handleElementChange(selectedElement.id, patch)}
             onClose={() => setSelectedId(null)}
+            pages={pages}
           />
         ) : (
           <PageGeneralSettings

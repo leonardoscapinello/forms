@@ -160,6 +160,23 @@ export default function FormPreview() {
     setAnswers(prev => ({ ...prev, [elementId]: value }));
   }, []);
 
+  const handleButtonNavigate = useCallback((action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => {
+    if (action === 'next') {
+      goNext();
+    } else if (action === 'previous') {
+      goBack();
+    } else if (action === 'finish') {
+      setDirection(1);
+      setFinished(true);
+    } else if (action === 'specific' && targetPageId) {
+      const targetIndex = pages.findIndex(p => p.id === targetPageId);
+      if (targetIndex !== -1) {
+        setDirection(targetIndex > (currentPageIndex ?? -1) ? 1 : -1);
+        setCurrentPageIndex(targetIndex);
+      }
+    }
+  }, [goNext, goBack, pages, currentPageIndex]);
+
   // Keyboard navigation: Enter/ArrowDown = next, ArrowUp = back
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -283,6 +300,7 @@ export default function FormPreview() {
                           letterOffset={letterOffset}
                           onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
                           registerValidator={validator => registerValidator(el.id, validator)}
+                          onNavigate={handleButtonNavigate}
                         />
                       );
                     });
@@ -321,6 +339,7 @@ function InteractiveElement({
   letterOffset = 0,
   onBlockedChange,
   registerValidator,
+  onNavigate,
 }: {
   element: PageElement;
   value: any;
@@ -329,6 +348,7 @@ function InteractiveElement({
   letterOffset?: number;
   onBlockedChange: (blocked: boolean) => void;
   registerValidator: (validator: (() => Promise<boolean>) | null) => void;
+  onNavigate?: (action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => void;
 }) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
@@ -491,14 +511,35 @@ function InteractiveElement({
         </div>
       ) : null;
 
-    case 'button':
+    case 'button': {
+      const handleButtonClick = () => {
+        if (element.href) {
+          window.open(element.href, '_blank');
+          return;
+        }
+        if (element.buttonAction && element.buttonAction !== 'none' && onNavigate) {
+          onNavigate(element.buttonAction, element.buttonTargetPageId);
+        }
+      };
       return (
         <div className={alignClass}>
-          <Button style={{ backgroundColor: style?.backgroundColor, borderRadius: style?.borderRadius }}>
+          <Button
+            onClick={handleButtonClick}
+            style={{
+              backgroundColor: style?.backgroundColor,
+              borderRadius: style?.borderRadius,
+              width: style?.width || 'auto',
+              padding: style?.padding !== undefined ? `${style.padding}px ${style.padding * 1.5}px` : undefined,
+              color: style?.color,
+              fontFamily: style?.fontFamily,
+              fontWeight: style?.fontWeight,
+            }}
+          >
             {element.content || 'Botão'}
           </Button>
         </div>
       );
+    }
 
     case 'divider':
       return <hr className="border-border" style={{ borderWidth: element.height || 1 }} />;
@@ -578,6 +619,7 @@ function InteractiveElement({
                   stepNumber={0}
                   onBlockedChange={() => {}}
                   registerValidator={() => {}}
+                  onNavigate={onNavigate}
                 />
               ))}
             </div>

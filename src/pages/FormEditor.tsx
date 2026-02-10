@@ -216,6 +216,7 @@ export default function FormEditor() {
                   const current = form.globalPageStyle || {};
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
+                pages={form.pages || []}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
