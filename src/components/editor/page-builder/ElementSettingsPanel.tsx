@@ -1,6 +1,6 @@
 import React from 'react';
 import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType } from '@/types/pageElements';
-import { FunnelPage } from '@/types/form';
+import { FunnelPage, FormVariable } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -27,11 +27,12 @@ interface Props {
   onChange: (patch: Partial<PageElement>) => void;
   onClose: () => void;
   pages?: FunnelPage[];
+  variables?: FormVariable[];
 }
 
 const isFormField = (type: string) => type.startsWith('input_');
 
-export default function ElementSettingsPanel({ element, onChange, onClose, pages }: Props) {
+export default function ElementSettingsPanel({ element, onChange, onClose, pages, variables = [] }: Props) {
   const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [activeTab, setActiveTab] = useState<'definitions' | 'appearance' | 'exterior'>('definitions');
@@ -184,6 +185,30 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 checked={element.required || false}
                 onCheckedChange={v => onChange({ required: v })}
               />
+            </div>
+          )}
+
+          {/* ─── Form field: variable binding ─── */}
+          {isFormField(element.type) && variables.length > 0 && (
+            <div className="space-y-2">
+              <Label>Salvar em variável</Label>
+              <Select
+                value={element.variableId || '_none_'}
+                onValueChange={v => onChange({ variableId: v === '_none_' ? undefined : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Nenhuma" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none_">Nenhuma</SelectItem>
+                  {variables.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                A resposta deste campo será armazenada na variável selecionada
+              </p>
             </div>
           )}
 
