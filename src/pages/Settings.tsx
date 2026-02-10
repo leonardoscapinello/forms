@@ -31,35 +31,49 @@ export default function Settings() {
   const [tab, setTab] = useState<TabId>('general');
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Configurações</h1>
-        <p className="text-sm text-muted-foreground mt-1">Painel administrativo do sistema.</p>
-      </div>
-
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border mb-6">
+    <div className="flex min-h-[calc(100vh-4rem)]">
+      {/* Sidebar */}
+      <aside className="w-56 shrink-0 border-r border-border bg-muted/30 py-6 px-3 space-y-1">
+        <h1 className="text-sm font-semibold text-foreground tracking-tight px-3 mb-4">Configurações</h1>
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               tab === t.id
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
             <t.icon className="h-4 w-4" />
             {t.label}
           </button>
         ))}
-      </div>
+      </aside>
 
-      {tab === 'general' && <GeneralTab />}
-      {tab === 'users' && <UsersTab />}
-      {tab === 'integrations' && <IntegrationsTab />}
-      {tab === 'validations' && <EmailValidationsTab />}
-      {tab === 'security' && <SecurityTab />}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto py-8 px-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">
+              {TABS.find(t => t.id === tab)?.label}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {tab === 'general' && 'Informações gerais do sistema.'}
+              {tab === 'users' && 'Gerencie usuários e permissões.'}
+              {tab === 'integrations' && 'Configure integrações externas.'}
+              {tab === 'validations' && 'Consulte e gerencie validações de e-mail.'}
+              {tab === 'security' && 'Políticas de segurança e sessões.'}
+            </p>
+          </div>
+
+          {tab === 'general' && <GeneralTab />}
+          {tab === 'users' && <UsersTab />}
+          {tab === 'integrations' && <IntegrationsTab />}
+          {tab === 'validations' && <EmailValidationsTab />}
+          {tab === 'security' && <SecurityTab />}
+        </div>
+      </div>
     </div>
   );
 }
