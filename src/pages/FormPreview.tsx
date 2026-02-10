@@ -15,6 +15,7 @@ import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions'
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import IOSNotification from '@/components/preview/IOSNotification';
+import DateFieldPreview from '@/components/preview/DateFieldPreview';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -678,12 +679,12 @@ function InteractiveElement({
 
     case 'input_date':
       return withFieldHeader(
-        <input
-          type="date"
-          value={value || ''}
-          onChange={e => onChange(e.target.value)}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
-          autoFocus
+        <DateFieldPreview
+          value={value}
+          onChange={onChange}
+          dateMode={element.dateMode}
+          dateFormat={element.dateFormat}
+          placeholder={element.placeholder}
         />
       );
 
