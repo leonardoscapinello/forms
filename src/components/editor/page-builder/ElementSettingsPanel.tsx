@@ -1,11 +1,12 @@
-import { PageElement, PAGE_ELEMENT_LABELS } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption } from '@/types/pageElements';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Props {
@@ -14,9 +15,26 @@ interface Props {
   onClose: () => void;
 }
 
+const isFormField = (type: string) => type.startsWith('input_');
+
 export default function ElementSettingsPanel({ element, onChange, onClose }: Props) {
   const updateStyle = (patch: Record<string, any>) => {
     onChange({ style: { ...element.style, ...patch } });
+  };
+
+  const addOption = () => {
+    const opts = [...(element.options || [])];
+    opts.push({ id: crypto.randomUUID(), label: `Opção ${opts.length + 1}` });
+    onChange({ options: opts });
+  };
+
+  const updateOption = (id: string, label: string) => {
+    const opts = (element.options || []).map(o => o.id === id ? { ...o, label } : o);
+    onChange({ options: opts });
+  };
+
+  const removeOption = (id: string) => {
+    onChange({ options: (element.options || []).filter(o => o.id !== id) });
   };
 
   return (
@@ -30,7 +48,83 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-5">
-          {/* Content */}
+          {/* ─── Form field: label ─── */}
+          {isFormField(element.type) && (
+            <div className="space-y-2">
+              <Label>Label</Label>
+              <Input
+                value={element.label || ''}
+                onChange={e => onChange({ label: e.target.value })}
+              />
+            </div>
+          )}
+
+          {/* ─── Form field: placeholder ─── */}
+          {['input_text', 'input_email', 'input_phone', 'input_address', 'input_select'].includes(element.type) && (
+            <div className="space-y-2">
+              <Label>Placeholder</Label>
+              <Input
+                value={element.placeholder || ''}
+                onChange={e => onChange({ placeholder: e.target.value })}
+              />
+            </div>
+          )}
+
+          {/* ─── Form field: required ─── */}
+          {isFormField(element.type) && (
+            <div className="flex items-center justify-between">
+              <Label>Obrigatório</Label>
+              <Switch
+                checked={element.required || false}
+                onCheckedChange={v => onChange({ required: v })}
+              />
+            </div>
+          )}
+
+          {/* ─── Options (select, radio) ─── */}
+          {(element.type === 'input_select' || element.type === 'input_radio') && (
+            <div className="space-y-2">
+              <Label>Opções</Label>
+              <div className="space-y-1.5">
+                {(element.options || []).map((opt) => (
+                  <div key={opt.id} className="flex items-center gap-1.5">
+                    <Input
+                      value={opt.label}
+                      onChange={e => updateOption(opt.id, e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeOption(opt.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="w-full text-xs" onClick={addOption}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar opção
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Rating count ─── */}
+          {element.type === 'input_rating' && (
+            <div className="space-y-2">
+              <Label>Estrelas ({element.maxRating || 5})</Label>
+              <Slider
+                value={[element.maxRating || 5]}
+                onValueChange={([v]) => onChange({ maxRating: v })}
+                min={3}
+                max={10}
+                step={1}
+              />
+            </div>
+          )}
+
+          {/* ─── Visual element: content ─── */}
           {(element.type === 'heading' || element.type === 'text' || element.type === 'button') && (
             <div className="space-y-2">
               <Label>Conteúdo</Label>
@@ -132,7 +226,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
-          {/* --- Style Section --- */}
+          {/* ─── Style Section ─── */}
           <div className="pt-3 border-t border-border space-y-4">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Estilo</h4>
 
@@ -180,7 +274,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             {/* Border radius */}
             {['image', 'button'].includes(element.type) && (
               <div className="space-y-2">
-                <Label>Borda arredondada ({element.style?.borderRadius || 8}px)</Label>
+                <Label>Borda ({element.style?.borderRadius || 8}px)</Label>
                 <Slider
                   value={[element.style?.borderRadius || 8]}
                   onValueChange={([v]) => updateStyle({ borderRadius: v })}
