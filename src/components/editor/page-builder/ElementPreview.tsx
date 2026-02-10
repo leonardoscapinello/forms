@@ -19,29 +19,32 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
-  // Build universal inline styles from element.style
-  const universalStyle: React.CSSProperties = {};
-  if (style?.backgroundColor) universalStyle.backgroundColor = style.backgroundColor;
-  if (style?.color) universalStyle.color = style.color;
-  if (style?.borderRadius !== undefined) universalStyle.borderRadius = style.borderRadius;
+  // Container styles (margin only)
+  const containerStyle: React.CSSProperties = {};
+  if (style?.margin !== undefined) containerStyle.margin = style.margin;
+  if (style?.marginTop !== undefined) containerStyle.marginTop = style.marginTop;
+  if (style?.marginRight !== undefined) containerStyle.marginRight = style.marginRight;
+  if (style?.marginBottom !== undefined) containerStyle.marginBottom = style.marginBottom;
+  if (style?.marginLeft !== undefined) containerStyle.marginLeft = style.marginLeft;
+
+  // Element styles (padding, colors, borders, typography, width)
+  const elementStyle: React.CSSProperties = {};
+  if (style?.backgroundColor) elementStyle.backgroundColor = style.backgroundColor;
+  if (style?.color) elementStyle.color = style.color;
+  if (style?.borderRadius !== undefined) elementStyle.borderRadius = style.borderRadius;
   if (style?.borderWidth) {
-    universalStyle.borderWidth = style.borderWidth;
-    universalStyle.borderStyle = style.borderStyle || 'solid';
-    universalStyle.borderColor = style.borderColor || 'currentColor';
+    elementStyle.borderWidth = style.borderWidth;
+    elementStyle.borderStyle = style.borderStyle || 'solid';
+    elementStyle.borderColor = style.borderColor || 'currentColor';
   }
-  if (style?.fontFamily) universalStyle.fontFamily = style.fontFamily;
-  if (style?.fontWeight) universalStyle.fontWeight = style.fontWeight;
-  if (style?.padding !== undefined) universalStyle.padding = style.padding;
-  if (style?.paddingTop !== undefined) universalStyle.paddingTop = style.paddingTop;
-  if (style?.paddingRight !== undefined) universalStyle.paddingRight = style.paddingRight;
-  if (style?.paddingBottom !== undefined) universalStyle.paddingBottom = style.paddingBottom;
-  if (style?.paddingLeft !== undefined) universalStyle.paddingLeft = style.paddingLeft;
-  if (style?.margin !== undefined) universalStyle.margin = style.margin;
-  if (style?.marginTop !== undefined) universalStyle.marginTop = style.marginTop;
-  if (style?.marginRight !== undefined) universalStyle.marginRight = style.marginRight;
-  if (style?.marginBottom !== undefined) universalStyle.marginBottom = style.marginBottom;
-  if (style?.marginLeft !== undefined) universalStyle.marginLeft = style.marginLeft;
-  if (style?.width) universalStyle.width = style.width;
+  if (style?.fontFamily) elementStyle.fontFamily = style.fontFamily;
+  if (style?.fontWeight) elementStyle.fontWeight = style.fontWeight;
+  if (style?.padding !== undefined) elementStyle.padding = style.padding;
+  if (style?.paddingTop !== undefined) elementStyle.paddingTop = style.paddingTop;
+  if (style?.paddingRight !== undefined) elementStyle.paddingRight = style.paddingRight;
+  if (style?.paddingBottom !== undefined) elementStyle.paddingBottom = style.paddingBottom;
+  if (style?.paddingLeft !== undefined) elementStyle.paddingLeft = style.paddingLeft;
+  if (style?.width) elementStyle.width = style.width;
 
   const isFormField = type.startsWith('input_');
 
@@ -71,8 +74,8 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'heading': {
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return (
-        <div className={alignClass} style={universalStyle}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
+        <div className={alignClass} style={containerStyle}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || 'Título'}
           </div>
         </div>
@@ -81,8 +84,8 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'text':
       return (
-        <div className={alignClass} style={universalStyle}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
+        <div className={alignClass} style={containerStyle}>
+          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || ''}
           </p>
         </div>
@@ -90,8 +93,8 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'image':
       return element.src ? (
-        <div className={alignClass} style={universalStyle}>
-          <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ maxHeight: 400 }} />
+        <div className={alignClass} style={containerStyle}>
+          <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ ...elementStyle, maxHeight: 400 }} />
         </div>
       ) : (
         <div className="p-6 border-2 border-dashed border-border rounded-lg flex flex-col items-center gap-2 text-muted-foreground">
@@ -102,7 +105,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'button':
       return (
-        <div className={alignClass} style={universalStyle}>
+        <div className={alignClass} style={containerStyle}>
           <Button
             className="pointer-events-none"
             style={{
