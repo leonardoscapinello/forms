@@ -132,12 +132,19 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'input_select':
       return withFieldHeader(
-        <select
-          disabled
-          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground"
-        >
-          <option>{element.placeholder || 'Selecione...'}</option>
-        </select>
+        <div className="space-y-3">
+          {(element.options || []).map((opt, i) => (
+            <div
+              key={opt.id}
+              className="w-full text-left px-5 py-4 rounded-xl border-2 border-border flex items-center gap-4"
+            >
+              <span className="h-7 w-7 rounded-lg border-2 border-border text-xs font-bold flex items-center justify-center flex-shrink-0 text-muted-foreground">
+                {String.fromCharCode(65 + i)}
+              </span>
+              <span className="text-lg">{opt.label}</span>
+            </div>
+          ))}
+        </div>
       );
 
     case 'input_radio':
