@@ -181,23 +181,35 @@ function LineChart({ items, style }: { items: GraphicDataItem[]; style: ChartSty
   const color = items[0]?.color || FALLBACK_COLORS[0];
   const hasGradient = items[0]?.colorMode === 'gradient' && items[0]?.gradientTo;
   const gradientColor = hasGradient ? items[0].gradientTo! : color;
-  const areaGradId = `lineAreaGrad-${color.replace('#', '')}`;
+  const areaFillId = `lineAreaFill-${color.replace('#', '')}`;
+  const strokeGradId = `lineStrokeGrad-${color.replace('#', '')}`;
   const dur = style.animated !== false ? 400 : 0;
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
         <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 20 }}>
           <defs>
-            <linearGradient id={areaGradId} x1="0" y1="0" x2="0" y2="1">
+            {/* Area fill: vertical fade */}
+            <linearGradient id={areaFillId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={color} stopOpacity={0.25} />
               <stop offset="95%" stopColor={hasGradient ? gradientColor : color} stopOpacity={0} />
             </linearGradient>
+            {/* Stroke: horizontal gradient */}
+            {hasGradient && (
+              <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={color} />
+                <stop offset="100%" stopColor={gradientColor} />
+              </linearGradient>
+            )}
           </defs>
           {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />}
           <XAxis dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
           <YAxis tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
           <Tooltip {...tooltipStyle} />
-          <Area type="monotone" dataKey="value" stroke={color} strokeWidth={3} fill={`url(#${areaGradId})`}
+          <Area type="monotone" dataKey="value"
+            stroke={hasGradient ? `url(#${strokeGradId})` : color}
+            strokeWidth={3}
+            fill={`url(#${areaFillId})`}
             dot={{ fill: color, strokeWidth: 3, stroke: 'hsl(var(--card))', r: 5 }}
             activeDot={{ r: 8, strokeWidth: 3, className: 'drop-shadow-md' }}
             animationDuration={dur} animationEasing="ease-out" />
