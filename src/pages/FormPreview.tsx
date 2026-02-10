@@ -17,6 +17,7 @@ import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePrevie
 import Twemoji from '@/components/Twemoji';
 import IOSNotification from '@/components/preview/IOSNotification';
 import DateFieldPreview from '@/components/preview/DateFieldPreview';
+import TimerPreview from '@/components/preview/TimerPreview';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -1095,6 +1096,28 @@ function InteractiveElement({
             chartType={element.chartType || 'column'}
             items={element.chartItems || []}
             style={element.chartStyle || {}}
+          />
+        </div>
+      );
+
+    case 'timer':
+      return wrapWithStyle(
+        <div className={alignClass}>
+          <TimerPreview
+            mode={element.timerMode || 'time'}
+            durationMinutes={element.timerDurationMinutes}
+            targetDate={element.timerTargetDate}
+            label={element.timerLabel}
+            finishedLabel={element.timerFinishedLabel}
+            showDays={element.timerShowDays}
+            showHours={element.timerShowHours}
+            showMinutes={element.timerShowMinutes}
+            showSeconds={element.timerShowSeconds}
+            digitColor={element.timerDigitColor}
+            labelColor={element.timerLabelColor}
+            separatorColor={element.timerSeparatorColor}
+            boxBackground={element.timerBoxBackground}
+            boxBorderRadius={element.timerBoxBorderRadius}
           />
         </div>
       );

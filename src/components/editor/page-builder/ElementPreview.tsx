@@ -6,6 +6,7 @@ import Twemoji from '@/components/Twemoji';
 import { Bell } from 'lucide-react';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
+import TimerPreview from '@/components/preview/TimerPreview';
 
 interface Props {
   element: PageElement;
@@ -402,6 +403,29 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             chartType={element.chartType || 'column'}
             items={element.chartItems || []}
             style={element.chartStyle || {}}
+          />
+        </div>
+      );
+
+    case 'timer':
+      return (
+        <div className={alignClass}>
+          <TimerPreview
+            mode={element.timerMode || 'time'}
+            durationMinutes={element.timerDurationMinutes}
+            targetDate={element.timerTargetDate}
+            label={element.timerLabel}
+            finishedLabel={element.timerFinishedLabel}
+            showDays={element.timerShowDays}
+            showHours={element.timerShowHours}
+            showMinutes={element.timerShowMinutes}
+            showSeconds={element.timerShowSeconds}
+            digitColor={element.timerDigitColor}
+            labelColor={element.timerLabelColor}
+            separatorColor={element.timerSeparatorColor}
+            boxBackground={element.timerBoxBackground}
+            boxBorderRadius={element.timerBoxBorderRadius}
+            static
           />
         </div>
       );
