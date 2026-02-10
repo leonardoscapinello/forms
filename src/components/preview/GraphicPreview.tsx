@@ -66,7 +66,7 @@ function KpiCards({ items }: { items: GraphicDataItem[] }) {
 }
 
 function getBoxStyle(box: ChartBoxStyle = {}): React.CSSProperties {
-  const bw = box.borderWidth ?? 1;
+  const bw = box.borderWidth ?? 0;
   const hasColor = !!box.borderColor;
   return {
     padding: box.padding ?? 24,
