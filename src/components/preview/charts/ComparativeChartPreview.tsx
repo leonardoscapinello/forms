@@ -34,34 +34,62 @@ function buildCartesianData(datasets: ComparativeDataset[], labels: string[]) {
   });
 }
 
+/** Badge colors for dataset labels */
+const BADGE_COLORS = [
+  '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#64748b',
+];
+
 function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   const data = buildCartesianData(datasets, labels);
   const dur = style?.animated !== false ? 400 : 0;
 
+  // Compute max value for Y axis
+  const allValues = datasets.flatMap(ds => ds.points.map(p => parseFloat(p.value) || 0));
+  const maxVal = Math.max(...allValues, 1);
+  const niceMax = Math.ceil(maxVal / 25) * 25 || 100;
+
+  // Find the label index where we place the badge for each dataset (pick the middle-high point)
+  const badgeIndex = (ds: ComparativeDataset) => {
+    const vals = ds.points.map(p => parseFloat(p.value) || 0);
+    // Pick the point closest to the middle of the chart
+    const mid = Math.floor(vals.length / 2);
+    return Math.max(0, Math.min(mid, vals.length - 1));
+  };
+
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data} margin={{ top: 30, right: 10, left: -20, bottom: 5 }}>
+        <AreaChart data={data} margin={{ top: 40, right: 20, left: 5, bottom: 5 }}>
           <defs>
-            {datasets.map(ds => (
-              <linearGradient key={ds.id} id={`cmp-area-${ds.id}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={ds.color} stopOpacity={0.4} />
+            <filter id="cmpBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
+            </filter>
+            {datasets.map((ds, di) => (
+              <linearGradient key={`area-${ds.id}`} id={`cmp-area-${ds.id}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={ds.color} stopOpacity={0.35} />
                 <stop offset="100%" stopColor={ds.color} stopOpacity={0.02} />
               </linearGradient>
             ))}
           </defs>
           {style?.showGrid !== false && (
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
           )}
           <XAxis
             dataKey="name"
-            tick={style?.showLabels !== false ? { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } : false}
-            axisLine={false}
+            tick={style?.showLabels !== false ? { fontSize: 12, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 } : false}
+            axisLine={{ stroke: 'hsl(var(--border))' }}
             tickLine={false}
           />
-          <YAxis tick={false} axisLine={false} tickLine={false} width={0} />
+          <YAxis
+            tick={style?.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false}
+            axisLine={false}
+            tickLine={false}
+            width={30}
+            domain={[0, niceMax]}
+            ticks={Array.from({ length: 5 }, (_, i) => Math.round((niceMax / 4) * i))}
+          />
           <Tooltip {...tooltipStyle} />
-          {datasets.map(ds => (
+          {datasets.map((ds, di) => (
             <Area
               key={ds.id}
               type="monotone"
@@ -69,13 +97,54 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
               stroke={ds.color}
               strokeWidth={3}
               fill={`url(#cmp-area-${ds.id})`}
-              dot={{ r: 5, fill: ds.color, stroke: 'hsl(var(--card))', strokeWidth: 3 }}
-              activeDot={{ r: 8, strokeWidth: 3 }}
+              dot={(props: any) => {
+                const { cx, cy, index } = props;
+                const bi = badgeIndex(ds);
+                const badgeColor = BADGE_COLORS[di % BADGE_COLORS.length];
+                const showBadge = index === bi && ds.tooltip;
+                const badgeText = ds.tooltip || ds.name;
+                const badgeW = Math.max(badgeText.length * 7 + 16, 50);
+                const badgeH = 26;
+
+                return (
+                  <g key={`${ds.id}-${index}`}>
+                    {/* Outer glow */}
+                    <circle cx={cx} cy={cy} r={8} fill={ds.color} opacity={0.15} />
+                    {/* Dot */}
+                    <circle cx={cx} cy={cy} r={5} fill={ds.color} stroke="white" strokeWidth={3} />
+                    {/* Floating badge */}
+                    {showBadge && (
+                      <g>
+                        <rect
+                          x={cx - badgeW / 2}
+                          y={cy - badgeH - 14}
+                          width={badgeW}
+                          height={badgeH}
+                          rx={badgeH / 2}
+                          fill={badgeColor}
+                          filter="url(#cmpBadgeShadow)"
+                        />
+                        <text
+                          x={cx}
+                          y={cy - badgeH / 2 - 14 + 1}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fontSize={11}
+                          fontWeight={700}
+                          fill="white"
+                        >
+                          {badgeText}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              }}
+              activeDot={{ r: 8, strokeWidth: 3, stroke: 'white', fill: ds.color }}
               animationDuration={dur}
               animationEasing="ease-out"
             />
           ))}
-          {style?.showLegend && <Legend wrapperStyle={{ fontSize: 12 }} />}
         </AreaChart>
       </ResponsiveContainer>
     </div>
