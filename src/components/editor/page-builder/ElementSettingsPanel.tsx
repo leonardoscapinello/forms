@@ -953,7 +953,100 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* ─── Progress Bar settings (definitions only) ─── */}
+          {/* ─── Timer settings ─── */}
+          {element.type === 'timer' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Modo</Label>
+                <Select
+                  value={element.timerMode || 'time'}
+                  onValueChange={v => onChange({ timerMode: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Texto inline</SelectItem>
+                    <SelectItem value="time">Contador de tempo</SelectItem>
+                    <SelectItem value="datetime">Data e hora alvo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(element.timerMode || 'time') !== 'datetime' && (
+                <div className="space-y-2">
+                  <Label>Duração (minutos)</Label>
+                  <Input
+                    type="number"
+                    value={element.timerDurationMinutes ?? 10}
+                    onChange={e => onChange({ timerDurationMinutes: Number(e.target.value) || 1 })}
+                    min={1}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
+
+              {(element.timerMode) === 'datetime' && (
+                <div className="space-y-2">
+                  <Label>Data e hora alvo</Label>
+                  <Input
+                    type="datetime-local"
+                    value={element.timerTargetDate ? element.timerTargetDate.slice(0, 16) : ''}
+                    onChange={e => onChange({ timerTargetDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Texto do timer</Label>
+                <Input
+                  value={element.timerLabel || ''}
+                  onChange={e => onChange({ timerLabel: e.target.value })}
+                  placeholder="Oferta expira em:"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Texto ao finalizar</Label>
+                <Input
+                  value={element.timerFinishedLabel || ''}
+                  onChange={e => onChange({ timerFinishedLabel: e.target.value })}
+                  placeholder="Tempo esgotado!"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Exibir</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['timerShowDays', 'Dias'],
+                    ['timerShowHours', 'Horas'],
+                    ['timerShowMinutes', 'Minutos'],
+                    ['timerShowSeconds', 'Segundos'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 text-xs">
+                      <Switch
+                        checked={element[key] !== false}
+                        onCheckedChange={v => onChange({ [key]: v })}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Arredondamento dos boxes ({element.timerBoxBorderRadius ?? 8}px)</Label>
+                <Slider
+                  value={[element.timerBoxBorderRadius ?? 8]}
+                  onValueChange={([v]) => onChange({ timerBoxBorderRadius: v })}
+                  min={0}
+                  max={24}
+                  step={1}
+                />
+              </div>
+            </div>
+          )}
+
           {element.type === 'progress_bar' && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1373,6 +1466,41 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       onChange={v => onChange({ horizontalBarLabelColor: v || '#000000' })}
                       allowTransparent={false}
                       defaultColor="#000000"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Timer specific colors */}
+              {element.type === 'timer' && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Cores do timer</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ColorPickerField
+                      label="Dígitos"
+                      value={element.timerDigitColor || '#ffffff'}
+                      onChange={v => onChange({ timerDigitColor: v || '#ffffff' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Fundo box"
+                      value={element.timerBoxBackground || '#EF4444'}
+                      onChange={v => onChange({ timerBoxBackground: v || '#EF4444' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Texto/Label"
+                      value={element.timerLabelColor || '#1a1a1a'}
+                      onChange={v => onChange({ timerLabelColor: v || '#1a1a1a' })}
+                      allowTransparent={false}
+                      defaultColor="#1a1a1a"
+                    />
+                    <ColorPickerField
+                      label="Separador"
+                      value={element.timerSeparatorColor || '#1a1a1a'}
+                      onChange={v => onChange({ timerSeparatorColor: v || '#1a1a1a' })}
+                      allowTransparent={false}
+                      defaultColor="#1a1a1a"
                     />
                   </div>
                 </div>

@@ -14,6 +14,7 @@ export type PageElementType =
   | 'chart'
   | 'progress_bar'
   | 'horizontal_bar'
+  | 'timer'
   // Layout elements
   | 'columns'
   // Section elements
@@ -195,6 +196,21 @@ export interface PageElement {
   horizontalBarLabelColor?: string;
   horizontalBarValueColor?: string;
   horizontalBarHeight?: number; // track height in px
+  // Timer / Countdown element
+  timerMode?: 'text' | 'time' | 'datetime'; // 3 modes
+  timerDurationMinutes?: number; // for 'text' and 'time' modes
+  timerTargetDate?: string; // ISO date string for 'datetime' mode
+  timerLabel?: string; // text displayed alongside countdown
+  timerFinishedLabel?: string; // text when timer reaches 0
+  timerShowDays?: boolean;
+  timerShowHours?: boolean;
+  timerShowMinutes?: boolean;
+  timerShowSeconds?: boolean;
+  timerDigitColor?: string;
+  timerLabelColor?: string;
+  timerSeparatorColor?: string;
+  timerBoxBackground?: string;
+  timerBoxBorderRadius?: number;
   // Form field properties
   label?: string;
   placeholder?: string;
@@ -239,6 +255,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   chart: 'Gráfico',
   progress_bar: 'Barra de progresso',
   horizontal_bar: 'Barra horizontal',
+  timer: 'Timer',
   columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
@@ -274,7 +291,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados',
-    types: ['chart', 'progress_bar', 'horizontal_bar'],
+    types: ['chart', 'progress_bar', 'horizontal_bar', 'timer'],
   },
   sections: {
     label: 'Seções',
@@ -416,6 +433,21 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.horizontalBarColor = '#6366f1';
       base.horizontalBarBackground = '#e5e7eb';
       base.horizontalBarHeight = 12;
+      break;
+    case 'timer':
+      base.timerMode = 'time';
+      base.timerDurationMinutes = 10;
+      base.timerLabel = 'Oferta expira em:';
+      base.timerFinishedLabel = 'Tempo esgotado!';
+      base.timerShowDays = false;
+      base.timerShowHours = true;
+      base.timerShowMinutes = true;
+      base.timerShowSeconds = true;
+      base.timerDigitColor = '#ffffff';
+      base.timerLabelColor = '#1a1a1a';
+      base.timerSeparatorColor = '#1a1a1a';
+      base.timerBoxBackground = '#EF4444';
+      base.timerBoxBorderRadius = 8;
       break;
     case 'input_text':
       base.label = 'Nome';
