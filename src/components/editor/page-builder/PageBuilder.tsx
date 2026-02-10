@@ -17,18 +17,22 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { PageElement, createDefaultPageElement, PageElementType } from '@/types/pageElements';
+import { FunnelPageStyle } from '@/types/form';
 import SortableElement from './SortableElement';
 import ElementToolbar from './ElementToolbar';
 import ElementSettingsPanel from './ElementSettingsPanel';
+import PageGeneralSettings from './PageGeneralSettings';
 import ElementPreview from './ElementPreview';
 import { LayoutTemplate } from 'lucide-react';
 
 interface Props {
   elements: PageElement[];
   onChange: (elements: PageElement[]) => void;
+  pageStyle?: FunnelPageStyle;
+  onPageStyleChange?: (patch: Partial<FunnelPageStyle>) => void;
 }
 
-export default function PageBuilder({ elements, onChange }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -39,6 +43,15 @@ export default function PageBuilder({ elements, onChange }: Props) {
 
   const selectedElement = elements.find(e => e.id === selectedId) || null;
   const activeElement = elements.find(e => e.id === activeId) || null;
+
+  const effectiveStyle: FunnelPageStyle = {
+    backgroundColor: '',
+    fontFamily: 'Inter',
+    gap: 32,
+    paddingX: 24,
+    paddingY: 32,
+    ...pageStyle,
+  };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -74,7 +87,6 @@ export default function PageBuilder({ elements, onChange }: Props) {
     onChange(elements.map(e => e.id === id ? { ...e, ...patch } : e));
   }, [elements, onChange]);
 
-  // Handle drop from sidebar (native HTML drag)
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('element-type') as PageElementType;
@@ -96,8 +108,20 @@ export default function PageBuilder({ elements, onChange }: Props) {
         onClick={() => setSelectedId(null)}
         onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={handleCanvasDrop}
+        style={{
+          backgroundColor: effectiveStyle.backgroundColor || undefined,
+          fontFamily: effectiveStyle.fontFamily || undefined,
+        }}
       >
-        <div className="max-w-2xl mx-auto py-8 px-6">
+        <div
+          className="max-w-2xl mx-auto"
+          style={{
+            paddingLeft: effectiveStyle.paddingX,
+            paddingRight: effectiveStyle.paddingX,
+            paddingTop: effectiveStyle.paddingY,
+            paddingBottom: effectiveStyle.paddingY,
+          }}
+        >
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -106,7 +130,7 @@ export default function PageBuilder({ elements, onChange }: Props) {
               onDragCancel={handleDragCancel}
             >
               <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3 min-h-[200px]">
+                <div className="min-h-[200px]" style={{ display: 'flex', flexDirection: 'column', gap: effectiveStyle.gap }}>
                   {elements.length === 0 ? (
                     <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
                       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
@@ -137,7 +161,6 @@ export default function PageBuilder({ elements, onChange }: Props) {
                 </div>
               </SortableContext>
 
-              {/* Drag overlay — floating ghost that follows cursor */}
               <DragOverlay dropAnimation={{
                 duration: 200,
                 easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
@@ -169,12 +192,10 @@ export default function PageBuilder({ elements, onChange }: Props) {
             onClose={() => setSelectedId(null)}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center p-6 text-center text-muted-foreground">
-            <div>
-              <p className="text-sm font-medium">Nenhum elemento selecionado</p>
-              <p className="text-xs mt-1">Clique em um elemento para editar suas propriedades</p>
-            </div>
-          </div>
+          <PageGeneralSettings
+            pageStyle={effectiveStyle}
+            onChange={patch => onPageStyleChange?.(patch)}
+          />
         )}
       </div>
     </div>

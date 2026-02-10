@@ -223,11 +223,21 @@ export interface FlowEdge {
   label?: string;
 }
 
+/** Style settings for a funnel page */
+export interface FunnelPageStyle {
+  backgroundColor?: string;
+  fontFamily?: string;
+  gap?: number;        // px between elements
+  paddingX?: number;   // horizontal padding
+  paddingY?: number;   // vertical padding
+}
+
 /** A funnel page — the primary building block. Each page contains elements (layout + fields). */
 export interface FunnelPage {
   id: string;
   title: string;
   elements: import('./pageElements').PageElement[];
+  pageStyle?: FunnelPageStyle;
 }
 
 export function createDefaultFunnelPage(title?: string): FunnelPage {
@@ -235,6 +245,13 @@ export function createDefaultFunnelPage(title?: string): FunnelPage {
     id: crypto.randomUUID(),
     title: title || 'Nova página',
     elements: [],
+    pageStyle: {
+      backgroundColor: '',
+      fontFamily: 'Inter',
+      gap: 32,
+      paddingX: 24,
+      paddingY: 32,
+    },
   };
 }
 
