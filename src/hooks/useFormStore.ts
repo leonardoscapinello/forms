@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { FormData, DEFAULT_FORM_STYLE, createDefaultFunnelPage } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import React from 'react';
 
 const DEBOUNCE_MS = 1000;
 
@@ -38,12 +39,26 @@ function formToDb(form: FormData, userId: string) {
   };
 }
 
-export function useFormStore() {
+interface FormStoreContextType {
+  forms: FormData[];
+  loaded: boolean;
+  createForm: () => Promise<FormData | null>;
+  updateForm: (id: string, patch: Partial<FormData>) => void;
+  deleteForm: (id: string) => Promise<void>;
+  getForm: (id: string) => FormData | undefined;
+}
+
+const FormStoreContext = createContext<FormStoreContextType | null>(null);
+
+export function FormStoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [forms, setForms] = useState<FormData[]>([]);
   const [loaded, setLoaded] = useState(false);
   const pendingUpdates = useRef<Map<string, Partial<FormData>>>(new Map());
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Keep a ref to latest forms for debounce callbacks
+  const formsRef = useRef<FormData[]>(forms);
+  formsRef.current = forms;
 
   // Load forms from DB on auth
   useEffect(() => {
@@ -68,9 +83,11 @@ export function useFormStore() {
   }, [user]);
 
   // Flush pending update to DB
-  const flushUpdate = useCallback(async (id: string, fullForm: FormData) => {
+  const flushUpdate = useCallback(async (id: string) => {
     if (!user) return;
-    const row = formToDb(fullForm, user.id);
+    const form = formsRef.current.find(f => f.id === id);
+    if (!form) return;
+    const row = formToDb(form, user.id);
     await supabase.from('forms').update({
       title: row.title,
       status: row.status,
@@ -83,26 +100,19 @@ export function useFormStore() {
       const updated = prev.map(f =>
         f.id === id ? { ...f, ...patch, updatedAt: new Date().toISOString() } : f
       );
-
-      // Debounced DB save
-      const existing = debounceTimers.current.get(id);
-      if (existing) clearTimeout(existing);
-
-      const merged = { ...(pendingUpdates.current.get(id) || {}), ...patch };
-      pendingUpdates.current.set(id, merged);
-
-      const timer = setTimeout(() => {
-        const form = updated.find(f => f.id === id);
-        if (form) {
-          flushUpdate(id, form);
-          pendingUpdates.current.delete(id);
-        }
-        debounceTimers.current.delete(id);
-      }, DEBOUNCE_MS);
-      debounceTimers.current.set(id, timer);
-
       return updated;
     });
+
+    // Debounced DB save
+    const existing = debounceTimers.current.get(id);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      flushUpdate(id);
+      pendingUpdates.current.delete(id);
+      debounceTimers.current.delete(id);
+    }, DEBOUNCE_MS);
+    debounceTimers.current.set(id, timer);
   }, [flushUpdate]);
 
   const createForm = useCallback(async (): Promise<FormData | null> => {
@@ -140,7 +150,6 @@ export function useFormStore() {
   }, [user]);
 
   const deleteForm = useCallback(async (id: string) => {
-    // Cancel any pending debounce
     const timer = debounceTimers.current.get(id);
     if (timer) clearTimeout(timer);
     debounceTimers.current.delete(id);
@@ -154,5 +163,13 @@ export function useFormStore() {
     return forms.find(f => f.id === id);
   }, [forms]);
 
-  return { forms, createForm, updateForm, deleteForm, getForm, loaded };
+  const value = { forms, loaded, createForm, updateForm, deleteForm, getForm };
+
+  return React.createElement(FormStoreContext.Provider, { value }, children);
+}
+
+export function useFormStore() {
+  const ctx = useContext(FormStoreContext);
+  if (!ctx) throw new Error('useFormStore must be used within FormStoreProvider');
+  return ctx;
 }
