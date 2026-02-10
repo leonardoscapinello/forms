@@ -448,7 +448,7 @@ function InteractiveElement({
 
     case 'input_phone':
       return withFieldHeader(
-        <PhoneFieldPreview value={value} onChange={onChange} />
+        <PhoneFieldPreview value={value} onChange={onChange} defaultCountryCode={element.defaultCountryCode} />
       );
 
     case 'input_checkbox':
