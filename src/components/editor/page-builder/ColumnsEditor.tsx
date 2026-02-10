@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import ElementPreview from './ElementPreview';
-import { Plus, Trash2, GripVertical, ArrowUpFromLine } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ArrowUpFromLine, ArrowLeft, ArrowRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +82,20 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
     const updated = (columns[colIdx]?.elements || []).filter(e => e.id !== elId);
     updateColumn(colIdx, updated);
   }, [columns, updateColumn]);
+
+  const moveElementToColumn = useCallback((fromCol: number, elId: string, toCol: number) => {
+    const el = columns[fromCol]?.elements.find(e => e.id === elId);
+    if (!el || toCol < 0 || toCol >= columnCount) return;
+    const newColumns = columns.map((col, i) => ({
+      ...col,
+      elements: i === fromCol
+        ? col.elements.filter(e => e.id !== elId)
+        : i === toCol
+          ? [...col.elements, el]
+          : [...col.elements],
+    }));
+    onChange({ columnData: newColumns });
+  }, [columns, columnCount, onChange]);
 
   // External drag (from toolbar or main canvas) into column
   const handleColDragOver = useCallback((e: React.DragEvent, colIdx: number) => {
@@ -216,6 +230,24 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                 <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-0.5">
+                {colIdx > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); moveElementToColumn(colIdx, el.id, colIdx - 1); }}
+                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                    title="Mover para coluna anterior"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                  </button>
+                )}
+                {colIdx < columnCount - 1 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); moveElementToColumn(colIdx, el.id, colIdx + 1); }}
+                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                    title="Mover para próxima coluna"
+                  >
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
                 {onMoveToMain && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onMoveToMain(el, element.id, colIdx); }}
