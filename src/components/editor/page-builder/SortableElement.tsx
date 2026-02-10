@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { PageElement } from '@/types/pageElements';
 import { GripVertical, Trash2 } from 'lucide-react';
 import ElementPreview from './ElementPreview';
+import ColumnsEditor from './ColumnsEditor';
 
 interface Props {
   element: PageElement;
@@ -10,10 +11,11 @@ interface Props {
   isDragActive?: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onElementChange?: (patch: Partial<PageElement>) => void;
   stepNumber?: number;
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, stepNumber }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, stepNumber }: Props) {
   const {
     attributes,
     listeners,
@@ -74,7 +76,11 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
       </div>
 
       <div className={`transition-opacity duration-200 ${isDragging ? 'opacity-0' : 'opacity-100'}`}>
-        <ElementPreview element={element} stepNumber={stepNumber} />
+        {element.type === 'columns' && onElementChange ? (
+          <ColumnsEditor element={element} onChange={onElementChange} />
+        ) : (
+          <ElementPreview element={element} stepNumber={stepNumber} />
+        )}
       </div>
     </div>
   );
