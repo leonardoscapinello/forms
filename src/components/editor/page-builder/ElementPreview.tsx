@@ -20,7 +20,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
-  // Container styles (margin only)
+  // Outer wrapper styles (margin)
   const containerStyle: React.CSSProperties = {};
   if (style?.margin !== undefined) containerStyle.margin = style.margin;
   if (style?.marginTop !== undefined) containerStyle.marginTop = style.marginTop;
@@ -28,24 +28,28 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   if (style?.marginBottom !== undefined) containerStyle.marginBottom = style.marginBottom;
   if (style?.marginLeft !== undefined) containerStyle.marginLeft = style.marginLeft;
 
-  // Element styles (padding, colors, borders, typography, width)
-  const elementStyle: React.CSSProperties = {};
-  if (style?.backgroundColor) elementStyle.backgroundColor = style.backgroundColor;
-  if (style?.color) elementStyle.color = style.color;
-  if (style?.borderRadius !== undefined) elementStyle.borderRadius = style.borderRadius;
+  // Box styles (background, border, padding, width) — applied universally via wrapper
+  const boxStyle: React.CSSProperties = {};
+  if (style?.backgroundColor) boxStyle.backgroundColor = style.backgroundColor;
+  if (style?.borderRadius !== undefined) boxStyle.borderRadius = style.borderRadius;
   if (style?.borderWidth) {
-    elementStyle.borderWidth = style.borderWidth;
-    elementStyle.borderStyle = style.borderStyle || 'solid';
-    elementStyle.borderColor = style.borderColor || 'currentColor';
+    boxStyle.borderWidth = style.borderWidth;
+    boxStyle.borderStyle = style.borderStyle || 'solid';
+    boxStyle.borderColor = style.borderColor || 'currentColor';
   }
+  if (style?.padding !== undefined) boxStyle.padding = style.padding;
+  if (style?.paddingTop !== undefined) boxStyle.paddingTop = style.paddingTop;
+  if (style?.paddingRight !== undefined) boxStyle.paddingRight = style.paddingRight;
+  if (style?.paddingBottom !== undefined) boxStyle.paddingBottom = style.paddingBottom;
+  if (style?.paddingLeft !== undefined) boxStyle.paddingLeft = style.paddingLeft;
+  if (style?.width) boxStyle.width = style.width;
+  if (style?.boxShadow) boxStyle.boxShadow = style.boxShadow;
+
+  // Typography styles — passed down to text-rendering elements
+  const elementStyle: React.CSSProperties = {};
+  if (style?.color) elementStyle.color = style.color;
   if (style?.fontFamily) elementStyle.fontFamily = style.fontFamily;
   if (style?.fontWeight) elementStyle.fontWeight = style.fontWeight;
-  if (style?.padding !== undefined) elementStyle.padding = style.padding;
-  if (style?.paddingTop !== undefined) elementStyle.paddingTop = style.paddingTop;
-  if (style?.paddingRight !== undefined) elementStyle.paddingRight = style.paddingRight;
-  if (style?.paddingBottom !== undefined) elementStyle.paddingBottom = style.paddingBottom;
-  if (style?.paddingLeft !== undefined) elementStyle.paddingLeft = style.paddingLeft;
-  if (style?.width) elementStyle.width = style.width;
 
   const isFormField = type.startsWith('input_');
 
@@ -71,11 +75,13 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     </div>
   );
 
+  // Helper: render inner content based on type
+  const renderContent = (): React.ReactNode => {
   switch (type) {
     case 'heading': {
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return (
-        <div className={alignClass} style={containerStyle}>
+        <div className={alignClass}>
           <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || 'Título'}
           </div>
@@ -85,7 +91,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'text':
       return (
-        <div className={alignClass} style={containerStyle}>
+        <div className={alignClass}>
           <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
             {element.content || ''}
           </p>
@@ -94,7 +100,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'image':
       return element.src ? (
-        <div className={alignClass} style={containerStyle}>
+        <div className={alignClass}>
           <img src={element.src} alt={element.alt || ''} className="max-w-full rounded-lg mx-auto" style={{ ...elementStyle, maxHeight: 400 }} />
         </div>
       ) : (
@@ -106,7 +112,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'button':
       return (
-        <div className={alignClass} style={containerStyle}>
+        <div className={alignClass}>
           <Button
             className="pointer-events-none"
             style={{
@@ -391,7 +397,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'chart':
       return (
-        <div style={containerStyle}>
+        <div>
           <ChartLivePreview
             chartType={element.chartType || 'column'}
             items={element.chartItems || []}
@@ -425,4 +431,20 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;
   }
+  };
+
+  // Check if we have any box styles to apply
+  const hasBoxStyle = Object.keys(boxStyle).length > 0;
+  const hasContainerStyle = Object.keys(containerStyle).length > 0;
+
+  const content = renderContent();
+
+  // If no wrapper styles needed, return content directly
+  if (!hasBoxStyle && !hasContainerStyle) return <>{content}</>;
+
+  return (
+    <div style={{ ...containerStyle, ...boxStyle }}>
+      {content}
+    </div>
+  );
 }
