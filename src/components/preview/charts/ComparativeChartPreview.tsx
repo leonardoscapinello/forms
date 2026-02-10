@@ -245,26 +245,29 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
   const cx = dims.w / 2;
   const cy = chartH / 2;
 
-  // Pre-compute badge positions for HTML overlay
-  const badges = rings.map((ring, ri) => {
+  // Pre-compute badge positions for HTML overlay — show ALL points with tooltips
+  const badges = rings.flatMap((ring, ri) => {
     const outer = outerBase - ri * (ringWidth + ringGap);
-    const tipPointIndex = ring.ds.points.findIndex(p => !!p.tooltip);
-    if (tipPointIndex === -1) return null;
-
-    const tipText = ring.ds.points[tipPointIndex].tooltip || '';
     const totalVal = ring.data.reduce((s, d) => s + d.value, 0);
-    let accum = 0;
-    for (let i = 0; i < tipPointIndex; i++) accum += ring.data[i].value;
-    accum += ring.data[tipPointIndex].value / 2;
-    const fraction = accum / totalVal;
-    const angleRad = (Math.PI / 2) - fraction * 2 * Math.PI;
 
-    const edgePx = { x: cx + outer * Math.cos(angleRad), y: cy - outer * Math.sin(angleRad) };
-    const badgeDist = outer + (isSmall ? 22 : 32);
-    const badgePx = { x: cx + badgeDist * Math.cos(angleRad), y: cy - badgeDist * Math.sin(angleRad) };
+    return ring.ds.points
+      .map((pt, pi) => {
+        if (!pt.tooltip) return null;
+        const tipText = pt.tooltip;
+        let accum = 0;
+        for (let i = 0; i < pi; i++) accum += ring.data[i].value;
+        accum += ring.data[pi].value / 2;
+        const fraction = accum / totalVal;
+        const angleRad = (Math.PI / 2) - fraction * 2 * Math.PI;
 
-    return { tipText, edgePx, badgePx, dsId: ring.ds.id };
-  }).filter(Boolean);
+        const edgePx = { x: cx + outer * Math.cos(angleRad), y: cy - outer * Math.sin(angleRad) };
+        const badgeDist = outer + (isSmall ? 22 : 32);
+        const badgePx = { x: cx + badgeDist * Math.cos(angleRad), y: cy - badgeDist * Math.sin(angleRad) };
+
+        return { tipText, edgePx, badgePx, key: `${ring.ds.id}-${pi}` };
+      })
+      .filter(Boolean);
+  });
 
   return (
     <div ref={containerRef} className="relative">
@@ -307,7 +310,7 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
         if (!b) return null;
         return (
           <svg
-            key={`line-${b.dsId}`}
+            key={`line-${b.key}`}
             className="absolute inset-0 pointer-events-none"
             width="100%"
             height={chartH}
@@ -327,7 +330,7 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
         if (!b) return null;
         return (
           <div
-            key={`badge-${b.dsId}`}
+            key={`badge-${b.key}`}
             className="absolute pointer-events-none"
             style={{
               left: b.badgePx.x,
