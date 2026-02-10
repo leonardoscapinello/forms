@@ -61,9 +61,13 @@ export interface PageElement {
   defaultCountryCode?: string;
   /** Unit for height/weight fields */
   unit?: string;
-  /** Min/max for number fields */
+  /** Whether user can toggle between units (e.g. kg/lb) */
+  allowUnitToggle?: boolean;
+  /** Min/max for number/height/weight fields */
   min?: number;
   max?: number;
+  /** Default value for height/weight */
+  defaultValue?: number;
   style?: PageElementStyle;
 }
 
@@ -208,14 +212,20 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'input_height':
       base.label = 'Qual sua altura?';
-      base.placeholder = '170';
       base.unit = 'cm';
+      base.allowUnitToggle = true;
+      base.min = 100;
+      base.max = 250;
+      base.defaultValue = 170;
       base.required = false;
       break;
     case 'input_weight':
       base.label = 'Qual seu peso?';
-      base.placeholder = '70';
       base.unit = 'kg';
+      base.allowUnitToggle = true;
+      base.min = 20;
+      base.max = 250;
+      base.defaultValue = 70;
       base.required = false;
       break;
   }

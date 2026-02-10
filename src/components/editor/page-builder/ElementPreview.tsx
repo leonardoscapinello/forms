@@ -153,6 +153,10 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             value={undefined}
             onChange={() => {}}
             defaultUnit={element.unit}
+            allowUnitToggle={element.allowUnitToggle !== false}
+            min={element.min}
+            max={element.max}
+            defaultValue={element.defaultValue}
           />
         </div>
       );

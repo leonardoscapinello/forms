@@ -548,9 +548,13 @@ function InteractiveElement({
       return withFieldHeader(
         <HeightWeightField
           type={type === 'input_height' ? 'height' : 'weight'}
-          value={typeof value === 'number' ? value : undefined}
+          value={value as any}
           onChange={onChange}
           defaultUnit={element.unit}
+          allowUnitToggle={element.allowUnitToggle !== false}
+          min={element.min}
+          max={element.max}
+          defaultValue={element.defaultValue}
         />
       );
 
