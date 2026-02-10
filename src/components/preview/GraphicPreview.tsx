@@ -87,10 +87,10 @@ export default function GraphicPreview({ variant, chartType = 'bar', items, titl
   } : {};
 
   return (
-    <div className="space-y-4 w-full" style={{ minWidth: 0 }}>
-      {description && <p className="text-sm text-muted-foreground">{description}</p>}
+    <div className="w-full" style={{ minWidth: 0 }}>
+      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
       {variant === 'chart' && (
-        <div className="w-full overflow-hidden" style={{ ...boxStyle, minHeight: 320 }}>
+        <div className="w-full" style={boxStyle}>
           <ChartLivePreview chartType={chartType} items={items} style={chartStyle} />
         </div>
       )}
