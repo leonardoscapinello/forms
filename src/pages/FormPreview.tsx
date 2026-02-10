@@ -22,6 +22,7 @@ export default function FormPreview() {
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
+  const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
 
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
@@ -40,8 +41,28 @@ export default function FormPreview() {
     setBlockedElements(prev => ({ ...prev, [elementId]: blocked }));
   }, []);
 
-  const goNext = useCallback(() => {
+  const registerValidator = useCallback((elementId: string, validator: (() => Promise<boolean>) | null) => {
+    if (validator) {
+      validatorsRef.current[elementId] = validator;
+    } else {
+      delete validatorsRef.current[elementId];
+    }
+  }, []);
+
+  const goNext = useCallback(async () => {
     if (isPageBlocked) return;
+
+    // Run all validators for current page elements
+    if (currentPage) {
+      const validators = currentPage.elements
+        .map(el => validatorsRef.current[el.id])
+        .filter(Boolean);
+      if (validators.length > 0) {
+        const results = await Promise.all(validators.map(v => v()));
+        if (results.some(r => !r)) return; // some validation failed
+      }
+    }
+
     setDirection(1);
     if (currentPageIndex === null) {
       if (pages.length > 0) {
@@ -56,7 +77,7 @@ export default function FormPreview() {
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages.length, isPageBlocked]);
+  }, [currentPageIndex, pages.length, isPageBlocked, currentPage]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
@@ -177,6 +198,7 @@ export default function FormPreview() {
                         onChange={v => setAnswer(el.id, v)}
                         stepNumber={fieldIndex}
                         onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
+                        registerValidator={validator => registerValidator(el.id, validator)}
                       />
                     );
                   })
@@ -212,12 +234,14 @@ function InteractiveElement({
   onChange,
   stepNumber,
   onBlockedChange,
+  registerValidator,
 }: {
   element: PageElement;
   value: any;
   onChange: (v: any) => void;
   stepNumber: number;
   onBlockedChange: (blocked: boolean) => void;
+  registerValidator: (validator: (() => Promise<boolean>) | null) => void;
 }) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
@@ -226,43 +250,42 @@ function InteractiveElement({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  // Report blocked state to parent (checking or has error with smart validation)
+  // Report blocked state to parent (only while checking)
   useEffect(() => {
-    if (element.type === 'input_email' && element.smartValidation) {
-      const isBlocked = emailChecking || (emailError !== null && emailValid === false);
-      onBlockedChange(isBlocked);
+    if (element.type === 'input_email') {
+      onBlockedChange(emailChecking);
     } else {
       onBlockedChange(false);
     }
-  }, [emailChecking, emailError, emailValid, element.type, element.smartValidation, onBlockedChange]);
+  }, [emailChecking, element.type, onBlockedChange]);
 
-  const handleEmailChange = useCallback((val: string) => {
-    onChange(val);
-    setEmailValid(null);
-    setEmailError(null);
+  // Register validator for smart email validation (triggered on "next")
+  useEffect(() => {
+    if (element.type === 'input_email' && element.smartValidation) {
+      registerValidator(async () => {
+        const val = value || '';
+        // Reset previous state
+        setEmailError(null);
+        setEmailValid(null);
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+        if (!val) {
+          if (element.required) {
+            setEmailError('E-mail obrigatório');
+            return false;
+          }
+          return true;
+        }
 
-    if (!val) {
-      onBlockedChange(false);
-      return;
-    }
+        if (!emailRegex.test(val)) {
+          setEmailError('E-mail inválido');
+          return false;
+        }
 
-    // Basic mask validation
-    if (!emailRegex.test(val)) {
-      setEmailError('E-mail inválido');
-      return;
-    }
-
-    // Smart validation via Reoon (if enabled)
-    if (element.smartValidation) {
-      // Block navigation immediately while waiting for debounce + check
-      onBlockedChange(true);
-      debounceRef.current = setTimeout(async () => {
+        // If already validated successfully for this value, skip API call
+        // Run smart validation via API
         setEmailChecking(true);
         try {
           const res = await supabase.functions.invoke('verify-email', { body: { email: val } });
@@ -270,20 +293,33 @@ function InteractiveElement({
           if (data?.is_safe_to_send === false) {
             setEmailError(data?.is_disposable ? 'E-mail descartável' : 'Este e-mail não é válido para receber mensagens');
             setEmailValid(false);
+            return false;
           } else if (data?.is_safe_to_send === true) {
             setEmailValid(true);
             setEmailError(null);
+            return true;
           }
-          // if null (not configured), just pass silently
+          // null = not configured, pass silently
+          return true;
         } catch {
-          // Don't block the user on API errors
-          onBlockedChange(false);
+          // Don't block on API errors
+          return true;
         } finally {
           setEmailChecking(false);
         }
-      }, 800);
+      });
+    } else {
+      registerValidator(null);
     }
-  }, [onChange, element.smartValidation, onBlockedChange]);
+    return () => registerValidator(null);
+  }, [element.type, element.smartValidation, element.required, value, registerValidator]);
+
+  const handleEmailChange = useCallback((val: string) => {
+    onChange(val);
+    // Reset validation state when user types (they'll be re-validated on next)
+    setEmailValid(null);
+    setEmailError(null);
+  }, [onChange]);
 
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
