@@ -411,12 +411,12 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const cols = element.progressBarLayout || 1;
       const disposition = element.progressBarDisposition || 'chart_legend';
       return (
-        <div className={`grid gap-0 ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} w-full`}>
+        <div className={`grid ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
           {bars.map(bar => (
             <div key={bar.id} className="flex flex-col items-center">
               {disposition === 'chart_legend' ? (
                 <>
-                  <div className="w-full h-48 rounded-xl bg-muted/50 overflow-hidden relative">
+                  <div className="w-full max-w-[120px] h-48 rounded-xl bg-muted/50 overflow-hidden relative">
                     <div
                       className="absolute bottom-0 left-0 right-0 transition-all duration-500"
                       style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
@@ -430,7 +430,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
               ) : (
                 <>
                   <p className="text-sm font-semibold text-foreground text-center leading-snug mb-3">{bar.label}</p>
-                  <div className="w-full h-48 rounded-xl bg-muted/50 overflow-hidden relative">
+                  <div className="w-full max-w-[120px] h-48 rounded-xl bg-muted/50 overflow-hidden relative">
                     <div
                       className="absolute bottom-0 left-0 right-0 transition-all duration-500"
                       style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
