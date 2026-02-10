@@ -923,13 +923,9 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     <div className="flex items-center justify-center mb-1">
                       <span className="text-[10px] text-muted-foreground">☰</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <div className="text-center">
-                        <span className="text-[10px] text-muted-foreground">Tipo</span>
-                        <div className="text-xs font-medium mt-0.5">Barra</div>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-[10px] text-muted-foreground">Cor</span>
+                        <span className="text-[10px] text-muted-foreground">Cor barra</span>
                         <div className="flex justify-center mt-0.5">
                           <input
                             type="color"
@@ -945,21 +941,69 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                         </div>
                       </div>
                       <div className="text-center">
-                        <span className="text-[10px] text-muted-foreground">Valor</span>
-                        <Input
-                          type="number"
-                          value={bar.value}
-                          onChange={e => {
-                            const items = (element.progressBarItems || []).map(b =>
-                              b.id === bar.id ? { ...b, value: Number(e.target.value) || 0 } : b
-                            );
-                            onChange({ progressBarItems: items });
-                          }}
-                          className="h-6 text-xs text-center mt-0.5"
-                          min={0}
-                          max={100}
-                        />
+                        <span className="text-[10px] text-muted-foreground">Fundo</span>
+                        <div className="flex justify-center mt-0.5">
+                          <input
+                            type="color"
+                            value={bar.barBackground || '#e5e7eb'}
+                            onChange={e => {
+                              const items = (element.progressBarItems || []).map(b =>
+                                b.id === bar.id ? { ...b, barBackground: e.target.value } : b
+                              );
+                              onChange({ progressBarItems: items });
+                            }}
+                            className="h-6 w-8 rounded border border-border cursor-pointer"
+                          />
+                        </div>
                       </div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground">Cor valor</span>
+                        <div className="flex justify-center mt-0.5">
+                          <input
+                            type="color"
+                            value={bar.valueColor || bar.color}
+                            onChange={e => {
+                              const items = (element.progressBarItems || []).map(b =>
+                                b.id === bar.id ? { ...b, valueColor: e.target.value } : b
+                              );
+                              onChange({ progressBarItems: items });
+                            }}
+                            className="h-6 w-8 rounded border border-border cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground">Cor texto</span>
+                        <div className="flex justify-center mt-0.5">
+                          <input
+                            type="color"
+                            value={bar.labelColor || '#000000'}
+                            onChange={e => {
+                              const items = (element.progressBarItems || []).map(b =>
+                                b.id === bar.id ? { ...b, labelColor: e.target.value } : b
+                              );
+                              onChange({ progressBarItems: items });
+                            }}
+                            className="h-6 w-8 rounded border border-border cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-[10px] text-muted-foreground">Valor (%)</span>
+                      <Input
+                        type="number"
+                        value={bar.value}
+                        onChange={e => {
+                          const items = (element.progressBarItems || []).map(b =>
+                            b.id === bar.id ? { ...b, value: Number(e.target.value) || 0 } : b
+                          );
+                          onChange({ progressBarItems: items });
+                        }}
+                        className="h-6 text-xs text-center mt-0.5"
+                        min={0}
+                        max={100}
+                      />
                     </div>
                     <Input
                       value={bar.label}
