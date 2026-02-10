@@ -413,6 +413,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const lblColor = element.horizontalBarLabelColor || 'hsl(var(--foreground))';
       const valColor = element.horizontalBarValueColor || barColor;
       const trackH = element.horizontalBarHeight || 12;
+      const dotSize = trackH + 10;
       const totalSegments = 5;
       const pct = Math.min(100, Math.max(0, barVal));
       const filledFull = Math.floor((pct / 100) * totalSegments);
@@ -423,20 +424,33 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             <span className="text-sm font-semibold" style={{ color: lblColor }}>{element.horizontalBarLabel || 'Progresso'}</span>
             <span className="text-sm font-extrabold" style={{ color: valColor }}>{barVal}%</span>
           </div>
-          <div className="flex gap-1 w-full">
-            {Array.from({ length: totalSegments }).map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-sm overflow-hidden"
-                style={{ height: trackH, backgroundColor: barBg }}
-              >
-                {i < filledFull ? (
-                  <div className="h-full w-full" style={{ backgroundColor: barColor }} />
-                ) : i === filledFull && partialFill > 0 ? (
-                  <div className="h-full" style={{ width: `${partialFill * 100}%`, backgroundColor: barColor }} />
-                ) : null}
-              </div>
-            ))}
+          <div className="relative w-full" style={{ height: dotSize }}>
+            <div className="flex gap-1 w-full absolute left-0 right-0" style={{ top: (dotSize - trackH) / 2 }}>
+              {Array.from({ length: totalSegments }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-sm overflow-hidden"
+                  style={{ height: trackH, backgroundColor: barBg }}
+                >
+                  {i < filledFull ? (
+                    <div className="h-full w-full" style={{ backgroundColor: barColor }} />
+                  ) : i === filledFull && partialFill > 0 ? (
+                    <div className="h-full" style={{ width: `${partialFill * 100}%`, backgroundColor: barColor }} />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div
+              className="absolute rounded-full shadow-md border-2 border-white transition-all duration-500"
+              style={{
+                width: dotSize,
+                height: dotSize,
+                backgroundColor: barColor,
+                left: `calc(${pct}% - ${dotSize / 2}px)`,
+                top: 0,
+                zIndex: 1,
+              }}
+            />
           </div>
         </div>
       );
