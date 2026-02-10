@@ -719,6 +719,10 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                     </div>
                   </div>
                   <Textarea value={item.text} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, text: e.target.value } : t); onChange({ testimonialItems: items }); }} className="text-xs" rows={2} placeholder="Depoimento..." />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Verificado</Label>
+                    <Switch checked={item.verified || false} onCheckedChange={v => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, verified: v } : t); onChange({ testimonialItems: items }); }} />
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <Input value={item.photoUrl || ''} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, photoUrl: e.target.value } : t); onChange({ testimonialItems: items }); }} className="h-8 text-xs flex-1" placeholder="URL da foto (opcional)" />
                     <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`testimonial-${item.id}`] = el; }}

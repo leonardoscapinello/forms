@@ -1,5 +1,5 @@
 import { PageElement } from '@/types/pageElements';
-import { Star, ImageIcon, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { Star, ImageIcon, ChevronDown, ChevronUp, Check, X, BadgeCheck, ShieldCheck } from 'lucide-react';
 import Twemoji from '@/components/Twemoji';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -36,7 +36,12 @@ export function TestimonialsPreview({ element }: { element: PageElement }) {
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
+                {item.verified && (
+                  <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                )}
+              </div>
               {item.socialProfile && (
                 <p className="text-xs text-muted-foreground truncate">{item.socialProfile}</p>
               )}
@@ -48,6 +53,12 @@ export function TestimonialsPreview({ element }: { element: PageElement }) {
             ))}
           </div>
           <p className="text-sm text-foreground/80 leading-relaxed">{item.text}</p>
+          {item.verified && (
+            <div className="flex items-center gap-1.5 pt-1 border-t border-border/50 mt-2">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-[10px] font-medium text-emerald-600">Depoimento verificado</span>
+            </div>
+          )}
         </div>
       ))}
     </div>
