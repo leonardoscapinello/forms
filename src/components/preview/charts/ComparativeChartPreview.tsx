@@ -200,21 +200,17 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   );
 }
 
-/** Point-level colors for segments */
-const SEGMENT_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#06b6d4', '#ec4899'];
+const FALLBACK_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#06b6d4', '#ec4899'];
 
 function CircularView({ datasets, labels, style }: { datasets: ComparativeDataset[]; labels: string[]; style?: ChartStyle }) {
   const dur = style?.animated !== false ? 400 : 0;
-
-  // Each dataset becomes a concentric ring; each point = a colored segment + gray remainder
-  // We'll build pie data where each ring has colored segments proportional to value, and one gray "remaining" segment
-  const maxPerRing = 100; // Assume percentage-based; use sum if values exceed 100
+  const maxPerRing = 100;
 
   const rings = datasets.map((ds, di) => {
     const points = ds.points.map((p, pi) => ({
       name: p.label || labels[pi] || `#${pi + 1}`,
       value: parseFloat(p.value) || 0,
-      color: SEGMENT_COLORS[pi % SEGMENT_COLORS.length],
+      color: p.color || FALLBACK_COLORS[pi % FALLBACK_COLORS.length],
     }));
     const total = points.reduce((s, p) => s + p.value, 0);
     const cappedTotal = Math.min(total, maxPerRing);
@@ -268,13 +264,13 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
 
       {/* Custom legend grid */}
       <div className="flex flex-col gap-2 mt-2 px-2">
-        {datasets.map((ds, di) => (
+        {datasets.map((ds) => (
           <div key={ds.id} className="flex items-center gap-4 flex-wrap">
             {ds.points.map((pt, pi) => (
               <div key={pt.id} className="flex items-center gap-1.5">
                 <span
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: di === 0 ? SEGMENT_COLORS[pi % SEGMENT_COLORS.length] : '#9ca3af' }}
+                  style={{ backgroundColor: pt.color || FALLBACK_COLORS[pi % FALLBACK_COLORS.length] }}
                 />
                 <span className="text-xs text-muted-foreground">{labels[pi] || pt.label}</span>
                 <span className="text-xs font-semibold">{pt.value}</span>
