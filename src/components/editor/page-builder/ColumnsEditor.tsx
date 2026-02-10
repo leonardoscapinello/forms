@@ -292,7 +292,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
-              <div className="pointer-events-none text-sm [&_*]:!text-sm [&_h2]:!text-base [&_input]:!text-sm [&_textarea]:!text-sm">
+              <div className="pointer-events-none">
                 <ElementPreview element={el} />
               </div>
             </div>
