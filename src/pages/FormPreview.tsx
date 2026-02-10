@@ -402,28 +402,34 @@ function InteractiveElement({
             </AnimatePresence>
           </div>
           <EmailDomainSuggestions value={value || ''} onSelect={handleEmailChange} />
-          <AnimatePresence>
-            {emailError && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                className="text-sm text-destructive flex items-center gap-1.5"
-              >
-                {emailError}
-              </motion.p>
-            )}
-            {emailValid && element.smartValidation && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                className="text-sm text-green-600 flex items-center gap-1.5"
-              >
-                E-mail verificado ✓
-              </motion.p>
-            )}
-          </AnimatePresence>
+          <div className="h-6 flex items-center">
+            <AnimatePresence mode="wait">
+              {emailError && (
+                <motion.p
+                  key="error"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-sm text-destructive"
+                >
+                  {emailError}
+                </motion.p>
+              )}
+              {emailValid && element.smartValidation && (
+                <motion.p
+                  key="valid"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-sm text-green-600"
+                >
+                  E-mail verificado ✓
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       );
 
