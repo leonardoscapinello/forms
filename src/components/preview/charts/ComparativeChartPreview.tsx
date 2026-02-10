@@ -172,7 +172,12 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   return (
     <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 20, right: 8, left: -24, bottom: 5 }}>
+        <BarChart data={data} margin={{ top: 36, right: 8, left: -24, bottom: 5 }}>
+          <defs>
+            <filter id="cmpBarBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
+            </filter>
+          </defs>
           {style?.showGrid !== false && (
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.5} />
           )}
@@ -184,7 +189,7 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
           />
           <YAxis tick={false} axisLine={false} tickLine={false} width={0} />
           <Tooltip {...tooltipStyle} />
-          {datasets.map(ds => (
+          {datasets.map((ds, di) => (
             <Bar
               key={ds.id}
               dataKey={ds.name}
@@ -192,6 +197,42 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
               radius={[6, 6, 0, 0]}
               animationDuration={dur}
               animationEasing="ease-out"
+              label={(props: any) => {
+                const { x, y, width: bw, index } = props;
+                const point = ds.points[index];
+                const tipText = point?.tooltip || '';
+                if (!tipText) return null;
+                const grad = BADGE_GRADIENTS[di % BADGE_GRADIENTS.length];
+                const t = labels.length > 1 ? index / (labels.length - 1) : 0;
+                const badgeColor = lerpColor(grad[0], grad[1], t);
+                const badgeW = Math.max(tipText.length * 6 + 14, 40);
+                const badgeH = 22;
+                const cx = x + bw / 2;
+                return (
+                  <g key={`bar-tip-${ds.id}-${index}`}>
+                    <rect
+                      x={cx - badgeW / 2}
+                      y={y - badgeH - 6}
+                      width={badgeW}
+                      height={badgeH}
+                      rx={badgeH / 2}
+                      fill={badgeColor}
+                      filter="url(#cmpBarBadgeShadow)"
+                    />
+                    <text
+                      x={cx}
+                      y={y - badgeH / 2 - 6 + 1}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={9}
+                      fontWeight={700}
+                      fill="white"
+                    >
+                      {tipText}
+                    </text>
+                  </g>
+                );
+              }}
             />
           ))}
           {style?.showLegend && <Legend wrapperStyle={{ fontSize: 12 }} />}
