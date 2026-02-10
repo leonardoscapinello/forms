@@ -1292,13 +1292,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 />
               )}
 
-              <ColorPickerField
-                label="Cor do fundo"
-                value={element.style?.backgroundColor || ''}
-                onChange={v => updateStyle({ backgroundColor: v || undefined })}
-                placeholder="Transparente"
-                defaultColor="#ffffff"
-              />
+
 
               <ColorPickerField
                 label="Cor do texto"
@@ -1398,6 +1392,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           {/* ═══════ EXTERIOR TAB ═══════ */}
           {activeTab === 'exterior' && (
             <div className="space-y-4">
+              <ColorPickerField
+                label="Cor do fundo"
+                value={element.style?.backgroundColor || ''}
+                onChange={v => updateStyle({ backgroundColor: v || undefined })}
+                placeholder="Transparente"
+                defaultColor="#ffffff"
+              />
+
               <BorderSettings
                 borderWidth={element.style?.borderWidth}
                 borderStyle={element.style?.borderStyle}
