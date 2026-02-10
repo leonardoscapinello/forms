@@ -48,13 +48,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   const maxVal = Math.max(...allValues, 1);
   const niceMax = Math.ceil(maxVal / 25) * 25 || 100;
 
-  // Find the label index where we place the badge for each dataset (pick the middle-high point)
-  const badgeIndex = (ds: ComparativeDataset) => {
-    const vals = ds.points.map(p => parseFloat(p.value) || 0);
-    // Pick the point closest to the middle of the chart
-    const mid = Math.floor(vals.length / 2);
-    return Math.max(0, Math.min(mid, vals.length - 1));
-  };
+  // No longer need badgeIndex — badges are per-point via point.tooltip
 
   return (
     <div>
@@ -99,11 +93,11 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
               fill={`url(#cmp-area-${ds.id})`}
               dot={(props: any) => {
                 const { cx, cy, index } = props;
-                const bi = badgeIndex(ds);
+                const point = ds.points[index];
                 const badgeColor = BADGE_COLORS[di % BADGE_COLORS.length];
-                const showBadge = index === bi && ds.tooltip;
-                const badgeText = ds.tooltip || ds.name;
-                const badgeW = Math.max(badgeText.length * 7 + 16, 50);
+                const tipText = point?.tooltip || '';
+                const showBadge = !!tipText;
+                const badgeW = Math.max(tipText.length * 7 + 16, 50);
                 const badgeH = 26;
 
                 return (
@@ -112,7 +106,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                     <circle cx={cx} cy={cy} r={8} fill={ds.color} opacity={0.15} />
                     {/* Dot */}
                     <circle cx={cx} cy={cy} r={5} fill={ds.color} stroke="white" strokeWidth={3} />
-                    {/* Floating badge */}
+                    {/* Floating badge — shown on every point that has a tooltip */}
                     {showBadge && (
                       <g>
                         <rect
@@ -133,7 +127,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                           fontWeight={700}
                           fill="white"
                         >
-                          {badgeText}
+                          {tipText}
                         </text>
                       </g>
                     )}
