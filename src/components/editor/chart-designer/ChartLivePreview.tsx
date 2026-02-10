@@ -71,6 +71,9 @@ function CustomLegend({ items }: { items: GraphicDataItem[] }) {
 function GradientDefs({ items }: { items: GraphicDataItem[] }) {
   return (
     <defs>
+      <filter id="tooltipCardShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.08" />
+      </filter>
       {items.map((item, i) => {
         if (item.colorMode !== 'gradient' || !item.gradientTo) return null;
         return (
@@ -84,7 +87,7 @@ function GradientDefs({ items }: { items: GraphicDataItem[] }) {
   );
 }
 
-// ─── Custom label that shows tooltip text above the bar ──────
+// ─── Custom label that shows tooltip text above the bar as a card ──────
 function TooltipLabel({ x, y, width, value, index, items }: any) {
   const item = items[index];
   if (!item) return null;
@@ -92,16 +95,34 @@ function TooltipLabel({ x, y, width, value, index, items }: any) {
   const suffix = item.suffix || '';
   const cx = x + width / 2;
 
-  return (
-    <g>
-      <text x={cx} y={y - (tooltip ? 16 : 6)} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+  if (!tooltip) {
+    return (
+      <text x={cx} y={y - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
         {value}{suffix}
       </text>
-      {tooltip && (
-        <text x={cx} y={y - 4} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
-          {tooltip}
-        </text>
-      )}
+    );
+  }
+
+  const cardW = Math.max(tooltip.length * 5.5, 40);
+  const cardH = 22;
+  const cardX = cx - cardW / 2;
+  const cardY = y - cardH - 18;
+
+  return (
+    <g>
+      {/* Value */}
+      <text x={cx} y={y - cardH - 22} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+        {value}{suffix}
+      </text>
+      {/* Card badge */}
+      <rect x={cardX} y={cardY} width={cardW} height={cardH} rx={6} ry={6}
+        fill="white" stroke="hsl(var(--border))" strokeWidth={1}
+        filter="url(#tooltipCardShadow)" />
+      <text x={cx} y={cardY + cardH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+        fontSize={8} fontWeight={600} fill="hsl(var(--foreground))" letterSpacing={0.5}
+        style={{ textTransform: 'uppercase' }}>
+        {tooltip}
+      </text>
     </g>
   );
 }
@@ -112,17 +133,34 @@ function HorizontalTooltipLabel({ x, y, width, height, value, index, items }: an
   const tooltip = item.tooltip;
   const suffix = item.suffix || '';
   const cy = y + height / 2;
+  const textX = x + width + 6;
+
+  if (!tooltip) {
+    return (
+      <text x={textX} y={cy} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+        {value}{suffix}
+      </text>
+    );
+  }
+
+  const cardW = Math.max(tooltip.length * 5.5, 40);
+  const cardH = 18;
+  const cardX = textX + String(value).length * 6 + (suffix ? suffix.length * 5 : 0) + 8;
+  const cardY = cy - cardH / 2;
 
   return (
     <g>
-      <text x={x + width + 6} y={cy - (tooltip ? 4 : 0)} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+      <text x={textX} y={cy} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
         {value}{suffix}
       </text>
-      {tooltip && (
-        <text x={x + width + 6} y={cy + 10} dominantBaseline="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
-          {tooltip}
-        </text>
-      )}
+      <rect x={cardX} y={cardY} width={cardW} height={cardH} rx={5} ry={5}
+        fill="white" stroke="hsl(var(--border))" strokeWidth={1}
+        filter="url(#tooltipCardShadow)" />
+      <text x={cardX + cardW / 2} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
+        fontSize={7} fontWeight={600} fill="hsl(var(--foreground))" letterSpacing={0.5}
+        style={{ textTransform: 'uppercase' }}>
+        {tooltip}
+      </text>
     </g>
   );
 }
@@ -134,7 +172,7 @@ function ColumnChart({ items, style }: { items: GraphicDataItem[]; style: ChartS
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 30, right: 20, left: 10, bottom: 20 }}>
+        <BarChart data={data} margin={{ top: 50, right: 20, left: 10, bottom: 20 }}>
           <GradientDefs items={items} />
           {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.5} />}
           <XAxis dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
