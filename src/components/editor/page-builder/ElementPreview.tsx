@@ -406,6 +406,51 @@ export default function ElementPreview({ element, stepNumber }: Props) {
         </div>
       );
 
+    case 'progress_bar': {
+      const bars = element.progressBarItems || [];
+      const cols = element.progressBarLayout || 1;
+      const disposition = element.progressBarDisposition || 'chart_legend';
+      return (
+        <div className={`grid gap-6 ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {bars.map(bar => (
+            <div key={bar.id} className="flex flex-col items-center gap-3">
+              {disposition === 'chart_legend' ? (
+                <>
+                  <div className="relative w-full flex justify-center">
+                    <div className="w-16 h-40 rounded-xl bg-muted/50 overflow-hidden relative">
+                      <div
+                        className="absolute bottom-0 left-0 right-0 rounded-xl transition-all duration-500"
+                        style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
+                      />
+                      <div className="absolute inset-0 flex items-start justify-center pt-2">
+                        <span className="text-xs font-bold text-white drop-shadow-md">{bar.value}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold text-foreground text-center leading-snug">{bar.label}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-foreground text-center leading-snug">{bar.label}</p>
+                  <div className="relative w-full flex justify-center">
+                    <div className="w-16 h-40 rounded-xl bg-muted/50 overflow-hidden relative">
+                      <div
+                        className="absolute bottom-0 left-0 right-0 rounded-xl transition-all duration-500"
+                        style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
+                      />
+                      <div className="absolute inset-0 flex items-start justify-center pt-2">
+                        <span className="text-xs font-bold text-white drop-shadow-md">{bar.value}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     case 'columns': {
       const colCount = element.columnCount || 2;
       const cols = element.columnData || [];
