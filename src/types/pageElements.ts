@@ -138,6 +138,11 @@ export interface ProgressBarItem {
   labelColor?: string;
   valueColor?: string;
   barBackground?: string;
+  // Per-bar (column) border
+  borderWidth?: number;
+  borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
+  borderColor?: string;
+  borderRadius?: number;
 }
 
 export interface ColumnData {
