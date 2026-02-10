@@ -38,7 +38,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
   };
 
   return (
-    <div className="w-72 border-l border-border bg-card flex flex-col h-full">
+    <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <h3 className="text-sm font-semibold">{PAGE_ELEMENT_LABELS[element.type]}</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>

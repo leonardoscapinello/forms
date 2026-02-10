@@ -124,15 +124,24 @@ export default function PageBuilder({ elements, onChange }: Props) {
         </div>
       </div>
 
-      {/* Right — Settings panel */}
-      {selectedElement && (
-        <ElementSettingsPanel
-          key={selectedElement.id}
-          element={selectedElement}
-          onChange={patch => handleElementChange(selectedElement.id, patch)}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
+      {/* Right — Settings panel (always visible) */}
+      <div className="w-72 border-l border-border bg-card flex flex-col h-full flex-shrink-0">
+        {selectedElement ? (
+          <ElementSettingsPanel
+            key={selectedElement.id}
+            element={selectedElement}
+            onChange={patch => handleElementChange(selectedElement.id, patch)}
+            onClose={() => setSelectedId(null)}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-6 text-center text-muted-foreground">
+            <div>
+              <p className="text-sm font-medium">Nenhum elemento selecionado</p>
+              <p className="text-xs mt-1">Clique em um elemento para editar suas propriedades</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
