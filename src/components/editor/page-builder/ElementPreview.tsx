@@ -214,6 +214,72 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       );
     }
 
+    case 'input_yes_no':
+      return withFieldHeader(
+        <div className="flex gap-3">
+          <div className="flex-1 px-5 py-4 rounded-xl border-2 border-border flex items-center justify-center gap-2 text-lg font-medium text-muted-foreground">
+            👍 <span>Sim</span>
+          </div>
+          <div className="flex-1 px-5 py-4 rounded-xl border-2 border-border flex items-center justify-center gap-2 text-lg font-medium text-muted-foreground">
+            👎 <span>Não</span>
+          </div>
+        </div>
+      );
+
+    case 'input_multi_select':
+      return withFieldHeader(
+        <div className="space-y-3">
+          {(element.options || []).map((opt, i) => (
+            <div
+              key={opt.id}
+              className="w-full text-left px-5 py-4 rounded-xl border-2 border-border flex items-center gap-4"
+            >
+              <span className="h-7 w-7 rounded-md border-2 border-border text-xs font-bold flex items-center justify-center flex-shrink-0 text-muted-foreground">
+                {String.fromCharCode(65 + i)}
+              </span>
+              <span className="text-lg flex-1">{opt.label}</span>
+              <div className="h-5 w-5 rounded border-2 border-border flex-shrink-0" />
+            </div>
+          ))}
+        </div>
+      );
+
+    case 'input_quiz_icon':
+      return withFieldHeader(
+        <div className="grid grid-cols-2 gap-3">
+          {(element.options || []).map((opt) => (
+            <div
+              key={opt.id}
+              className="px-4 py-5 rounded-xl border-2 border-border flex flex-col items-center gap-2 text-center"
+            >
+              <span className="text-3xl">{opt.emoji || '⭐'}</span>
+              <span className="text-sm font-medium">{opt.label}</span>
+            </div>
+          ))}
+        </div>
+      );
+
+    case 'input_quiz_image':
+      return withFieldHeader(
+        <div className="grid grid-cols-2 gap-3">
+          {(element.options || []).map((opt) => (
+            <div
+              key={opt.id}
+              className="rounded-xl border-2 border-border overflow-hidden"
+            >
+              {opt.imageUrl ? (
+                <img src={opt.imageUrl} alt={opt.label} className="w-full h-28 object-cover" />
+              ) : (
+                <div className="w-full h-28 bg-muted flex items-center justify-center text-muted-foreground">
+                  <ImageIcon className="h-6 w-6" />
+                </div>
+              )}
+              <div className="px-3 py-2 text-sm font-medium text-center">{opt.label}</div>
+            </div>
+          ))}
+        </div>
+      );
+
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;
   }

@@ -70,6 +70,10 @@ export default function FormPreview() {
         if (val === undefined || val === null || val === '' || val === false) {
           return false;
         }
+        // multi_select: require at least one selection
+        if (el.type === 'input_multi_select' && Array.isArray(val) && val.length === 0) {
+          return false;
+        }
       }
     }
     return true;
@@ -680,6 +684,136 @@ function InteractiveElement({
         </div>
       );
     }
+
+    case 'input_yes_no':
+      return withFieldHeader(
+        <div className="flex gap-3">
+          {[
+            { key: 'yes', label: 'Sim', emoji: '👍' },
+            { key: 'no', label: 'Não', emoji: '👎' },
+          ].map(opt => (
+            <motion.button
+              key={opt.key}
+              onClick={() => onChange(opt.key)}
+              whileTap={{ scale: 0.95 }}
+              animate={value === opt.key ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 0.2 }}
+              className={`flex-1 px-5 py-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 text-lg font-medium ${
+                value === opt.key
+                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                  : 'border-border hover:border-primary/40 text-foreground'
+              }`}
+            >
+              <span className="text-xl">{opt.emoji}</span>
+              <span>{opt.label}</span>
+            </motion.button>
+          ))}
+        </div>
+      );
+
+    case 'input_multi_select': {
+      const selected: string[] = Array.isArray(value) ? value : [];
+      const toggleOption = (optId: string) => {
+        if (selected.includes(optId)) {
+          onChange(selected.filter(id => id !== optId));
+        } else {
+          onChange([...selected, optId]);
+        }
+      };
+      return withFieldHeader(
+        <div className="space-y-2 md:space-y-3">
+          {(element.options || []).map((opt, i) => {
+            const isSelected = selected.includes(opt.id);
+            return (
+              <motion.button
+                key={opt.id}
+                onClick={() => toggleOption(opt.id)}
+                whileTap={{ scale: 0.98 }}
+                animate={isSelected ? { scale: [1, 1.02, 1] } : {}}
+                transition={{ duration: 0.2 }}
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
+                  isSelected
+                    ? 'border-primary bg-primary/5 text-foreground shadow-sm'
+                    : 'border-border hover:border-primary/40 text-foreground'
+                }`}
+              >
+                <motion.span
+                  className={`h-6 w-6 md:h-7 md:w-7 rounded-md border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                    isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+                  }`}
+                  animate={isSelected ? { scale: [1, 1.25, 1] } : {}}
+                  transition={{ duration: 0.25 }}
+                >
+                  {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)}
+                </motion.span>
+                <span className="text-base md:text-lg flex-1">{opt.label}</span>
+                <motion.div
+                  className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    isSelected ? 'border-primary bg-primary' : 'border-border'
+                  }`}
+                  animate={isSelected ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 0.2 }}
+                >
+                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                </motion.div>
+              </motion.button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    case 'input_quiz_icon':
+      return withFieldHeader(
+        <div className="grid grid-cols-2 gap-3">
+          {(element.options || []).map((opt) => (
+            <motion.button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              whileTap={{ scale: 0.95 }}
+              animate={value === opt.id ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 0.2 }}
+              className={`px-4 py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
+                value === opt.id
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-border hover:border-primary/40'
+              }`}
+            >
+              <span className="text-3xl">{opt.emoji || '⭐'}</span>
+              <span className="text-sm font-medium">{opt.label}</span>
+            </motion.button>
+          ))}
+        </div>
+      );
+
+    case 'input_quiz_image':
+      return withFieldHeader(
+        <div className="grid grid-cols-2 gap-3">
+          {(element.options || []).map((opt) => (
+            <motion.button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              whileTap={{ scale: 0.95 }}
+              animate={value === opt.id ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 0.2 }}
+              className={`rounded-xl border-2 overflow-hidden transition-all ${
+                value === opt.id
+                  ? 'border-primary bg-primary/5 shadow-sm'
+                  : 'border-border hover:border-primary/40'
+              }`}
+            >
+              {opt.imageUrl ? (
+                <img src={opt.imageUrl} alt={opt.label} className="w-full h-28 md:h-36 object-cover" />
+              ) : (
+                <div className="w-full h-28 md:h-36 bg-muted flex items-center justify-center text-muted-foreground">
+                  <span className="text-sm">Sem imagem</span>
+                </div>
+              )}
+              <div className="px-3 py-2 text-sm font-medium text-center">{opt.label}</div>
+            </motion.button>
+          ))}
+        </div>
+      );
 
     default:
       return null;
