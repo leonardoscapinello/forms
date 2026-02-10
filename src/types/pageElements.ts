@@ -63,11 +63,11 @@ export interface PageElement {
   unit?: string;
   /** Whether user can toggle between units (e.g. kg/lb) */
   allowUnitToggle?: boolean;
+  /** Default/pre-filled value for any form field */
+  defaultValue?: any;
   /** Min/max for number/height/weight fields */
   min?: number;
   max?: number;
-  /** Default value for height/weight */
-  defaultValue?: number;
   style?: PageElementStyle;
 }
 

@@ -95,7 +95,43 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
             </div>
           )}
 
-          {/* ─── Email: smart validation ─── */}
+          {/* ─── Form field: default value ─── */}
+          {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating'].includes(element.type) && (
+            <div className="space-y-2">
+              <Label>Valor pré-definido</Label>
+              <Input
+                value={element.defaultValue ?? ''}
+                onChange={e => onChange({ defaultValue: e.target.value || undefined })}
+                placeholder="Deixe vazio para não preencher"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor que aparecerá preenchido ao abrir o formulário
+              </p>
+            </div>
+          )}
+          {element.type === 'input_checkbox' && (
+            <div className="flex items-center justify-between">
+              <Label>Pré-marcado</Label>
+              <Switch
+                checked={element.defaultValue === true}
+                onCheckedChange={v => onChange({ defaultValue: v || undefined })}
+              />
+            </div>
+          )}
+          {element.type === 'input_rating' && (
+            <div className="space-y-2">
+              <Label>Avaliação pré-definida</Label>
+              <Input
+                type="number"
+                value={element.defaultValue ?? ''}
+                onChange={e => onChange({ defaultValue: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="0"
+                min={0}
+                max={element.maxRating || 5}
+              />
+            </div>
+          )}
+
           {element.type === 'input_email' && (
             <div className="flex items-center justify-between">
               <div>
