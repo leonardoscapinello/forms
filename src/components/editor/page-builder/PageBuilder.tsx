@@ -12,10 +12,11 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
-import { PageElement } from '@/types/pageElements';
+import { PageElement, createDefaultPageElement, PageElementType } from '@/types/pageElements';
 import SortableElement from './SortableElement';
 import ElementToolbar from './ElementToolbar';
 import ElementSettingsPanel from './ElementSettingsPanel';
+import { LayoutTemplate } from 'lucide-react';
 
 interface Props {
   elements: PageElement[];
@@ -54,44 +55,64 @@ export default function PageBuilder({ elements, onChange }: Props) {
     onChange(elements.map(e => e.id === id ? { ...e, ...patch } : e));
   }, [elements, onChange]);
 
-  return (
-    <div className="flex h-full">
-      {/* Main canvas */}
-      <div
-        className="flex-1 overflow-auto p-8"
-        onClick={() => setSelectedId(null)}
-      >
-        <div className="max-w-2xl mx-auto space-y-2">
-          {/* Toolbar */}
-          <ElementToolbar onAdd={handleAdd} />
+  // Handle drop from sidebar
+  const handleCanvasDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('element-type') as PageElementType;
+    if (type) {
+      const el = createDefaultPageElement(type);
+      onChange([...elements, el]);
+      setSelectedId(el.id);
+    }
+  }, [elements, onChange]);
 
-          {/* Sortable elements */}
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-1 py-4 pl-12">
-                {elements.length === 0 ? (
-                  <div className="py-20 text-center text-muted-foreground">
-                    <p className="text-lg font-medium">Página vazia</p>
-                    <p className="text-sm mt-1">Use a barra acima para adicionar elementos</p>
-                  </div>
-                ) : (
-                  elements.map(el => (
-                    <SortableElement
-                      key={el.id}
-                      element={el}
-                      isSelected={selectedId === el.id}
-                      onSelect={() => setSelectedId(el.id)}
-                      onDelete={() => handleDelete(el.id)}
-                    />
-                  ))
-                )}
-              </div>
-            </SortableContext>
-          </DndContext>
+  return (
+    <div className="flex h-full w-full">
+      {/* Left — Element toolbar */}
+      <ElementToolbar onAdd={handleAdd} />
+
+      {/* Center — Preview canvas */}
+      <div
+        className="flex-1 overflow-auto bg-muted/30"
+        onClick={() => setSelectedId(null)}
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDrop={handleCanvasDrop}
+      >
+        <div className="max-w-2xl mx-auto py-8 px-6">
+          {/* Phone-like frame */}
+          <div className="bg-card rounded-2xl border border-border shadow-sm min-h-[500px] p-6">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-1 pl-10">
+                  {elements.length === 0 ? (
+                    <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
+                        <LayoutTemplate className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-medium">Arraste elementos aqui</p>
+                        <p className="text-sm mt-1">Ou clique em um elemento na barra lateral esquerda</p>
+                      </div>
+                    </div>
+                  ) : (
+                    elements.map(el => (
+                      <SortableElement
+                        key={el.id}
+                        element={el}
+                        isSelected={selectedId === el.id}
+                        onSelect={() => setSelectedId(el.id)}
+                        onDelete={() => handleDelete(el.id)}
+                      />
+                    ))
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
         </div>
       </div>
 
-      {/* Settings panel */}
+      {/* Right — Settings panel */}
       {selectedElement && (
         <ElementSettingsPanel
           key={selectedElement.id}
