@@ -84,21 +84,88 @@ function GradientDefs({ items }: { items: GraphicDataItem[] }) {
   );
 }
 
-// ─── Column / Bar chart ─────────────────────────────
+// ─── Custom label that shows tooltip text above the bar ──────
+function TooltipLabel({ x, y, width, value, index, items }: any) {
+  const item = items[index];
+  if (!item) return null;
+  const tooltip = item.tooltip;
+  const suffix = item.suffix || '';
+  const cx = x + width / 2;
+
+  return (
+    <g>
+      <text x={cx} y={y - (tooltip ? 16 : 6)} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+        {value}{suffix}
+      </text>
+      {tooltip && (
+        <text x={cx} y={y - 4} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
+          {tooltip}
+        </text>
+      )}
+    </g>
+  );
+}
+
+function HorizontalTooltipLabel({ x, y, width, height, value, index, items }: any) {
+  const item = items[index];
+  if (!item) return null;
+  const tooltip = item.tooltip;
+  const suffix = item.suffix || '';
+  const cy = y + height / 2;
+
+  return (
+    <g>
+      <text x={x + width + 6} y={cy - (tooltip ? 4 : 0)} dominantBaseline="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+        {value}{suffix}
+      </text>
+      {tooltip && (
+        <text x={x + width + 6} y={cy + 10} dominantBaseline="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
+          {tooltip}
+        </text>
+      )}
+    </g>
+  );
+}
+
+// ─── Column chart (vertical bars) ───────────────────
 function ColumnChart({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
   const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getFill(item, i) }));
   const dur = style.animated !== false ? 400 : 0;
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 20, right: 20, left: 10, bottom: 20 }}>
+        <BarChart data={data} margin={{ top: 30, right: 20, left: 10, bottom: 20 }}>
           <GradientDefs items={items} />
           {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.5} />}
           <XAxis dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
           <YAxis tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
           <Tooltip {...tooltipStyle} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
           <Bar dataKey="value" radius={[8, 8, 0, 0]} animationDuration={dur} animationEasing="ease-out"
-            label={style.showValues !== false ? { position: 'top', fontSize: 10, fill: 'hsl(var(--foreground))', fontWeight: 600 } : false}>
+            label={style.showValues !== false ? (props: any) => <TooltipLabel {...props} items={items} /> : false}>
+            {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      {style.showLegend && <CustomLegend items={items} />}
+    </div>
+  );
+}
+
+// ─── Bar chart (horizontal bars) ────────────────────
+function HorizontalBarChart({ items, style }: { items: GraphicDataItem[]; style: ChartStyle }) {
+  const data = items.map((item, i) => ({ name: item.label, value: parseFloat(item.value) || 0, fill: getFill(item, i) }));
+  const dur = style.animated !== false ? 400 : 0;
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={Math.max(300, items.length * 50)}>
+        <BarChart data={data} layout="vertical" margin={{ top: 10, right: 60, left: 60, bottom: 10 }}>
+          <GradientDefs items={items} />
+          {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} opacity={0.5} />}
+          <XAxis type="number" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
+          <YAxis type="category" dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} width={55} />
+          <Tooltip {...tooltipStyle} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }} />
+          <Bar dataKey="value" radius={[0, 8, 8, 0]} animationDuration={dur} animationEasing="ease-out"
+            label={style.showValues !== false ? (props: any) => <HorizontalTooltipLabel {...props} items={items} /> : false}>
             {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
           </Bar>
         </BarChart>
@@ -191,6 +258,7 @@ export default function ChartLivePreview({ chartType, items, style }: Props) {
     case 'pie':
       return <PieDonutChart items={items} style={style} />;
     case 'bar':
+      return <HorizontalBarChart items={items} style={style} />;
     case 'column':
     default:
       return <ColumnChart items={items} style={style} />;
