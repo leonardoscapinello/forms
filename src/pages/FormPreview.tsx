@@ -750,6 +750,7 @@ function FieldRenderer({
         items={q.graphicData || []}
         title={q.title}
         description={q.description}
+        chartStyle={q.chartStyle}
       />
     );
   }

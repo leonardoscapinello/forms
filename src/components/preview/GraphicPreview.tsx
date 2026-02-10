@@ -1,10 +1,5 @@
-import { GraphicVariant, ChartType, GraphicDataItem } from '@/types/form';
-import BarChart from './charts/BarChart';
-import ColumnChart from './charts/ColumnChart';
-import PieChart from './charts/PieChart';
-import LineChart from './charts/LineChart';
-import ThermometerChart from './charts/ThermometerChart';
-import SpeedometerChart from './charts/SpeedometerChart';
+import { GraphicVariant, ChartType, GraphicDataItem, ChartStyle } from '@/types/form';
+import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 
 interface Props {
   variant: GraphicVariant;
@@ -12,6 +7,7 @@ interface Props {
   items: GraphicDataItem[];
   title?: string;
   description?: string;
+  chartStyle?: ChartStyle;
 }
 
 /** Timeline */
@@ -69,27 +65,7 @@ function KpiCards({ items }: { items: GraphicDataItem[] }) {
   );
 }
 
-// Simple fallback for advanced chart types in preview mode
-function SimpleBarFallback({ items }: { items: GraphicDataItem[] }) {
-  return <BarChart items={items} />;
-}
-
-const CHART_COMPONENTS: Record<ChartType, React.FC<{ items: GraphicDataItem[] }>> = {
-  bar: BarChart,
-  column: ColumnChart,
-  pie: PieChart,
-  line: LineChart,
-  thermometer: ThermometerChart,
-  speedometer: SpeedometerChart,
-  area: LineChart,
-  radar: SimpleBarFallback,
-  funnel: SimpleBarFallback,
-  waterfall: SimpleBarFallback,
-  treemap: SimpleBarFallback,
-  radialBar: SimpleBarFallback,
-};
-
-export default function GraphicPreview({ variant, chartType = 'bar', items, title, description }: Props) {
+export default function GraphicPreview({ variant, chartType = 'bar', items, title, description, chartStyle = {} }: Props) {
   if (!items?.length) {
     return (
       <div className="text-center py-8 text-muted-foreground text-sm">
@@ -98,12 +74,10 @@ export default function GraphicPreview({ variant, chartType = 'bar', items, titl
     );
   }
 
-  const ChartComponent = variant === 'chart' ? CHART_COMPONENTS[chartType] : null;
-
   return (
     <div className="space-y-4 w-full max-w-lg">
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      {ChartComponent && <ChartComponent items={items} />}
+      {variant === 'chart' && <ChartLivePreview chartType={chartType} items={items} style={chartStyle} />}
       {variant === 'timeline' && <Timeline items={items} />}
       {variant === 'steps' && <Steps items={items} />}
       {variant === 'kpis' && <KpiCards items={items} />}
