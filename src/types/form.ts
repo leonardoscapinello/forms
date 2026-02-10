@@ -72,6 +72,15 @@ export interface GraphicDataItem {
   suffix?: string;
 }
 
+export interface ChartBoxStyle {
+  padding?: number;       // px, default 24
+  margin?: number;        // px, default 0
+  borderWidth?: number;   // px, default 1
+  borderRadius?: number;  // px, default 16
+  borderColor?: string;   // hex, default border token
+  backgroundColor?: string; // hex, default card token
+}
+
 export interface ChartStyle {
   showGrid?: boolean;
   showLabels?: boolean;
@@ -80,6 +89,7 @@ export interface ChartStyle {
   animated?: boolean;
   innerRadius?: number; // for donut (0-80)
   colorScheme?: string; // preset name
+  box?: ChartBoxStyle;
 }
 
 export interface ValidationRule {

@@ -235,8 +235,17 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
             <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
               <motion.div
                 layout
-                className="w-full bg-card rounded-2xl border border-border shadow-sm p-6"
-                style={{ maxWidth: previewWidth }}
+                className="w-full shadow-sm"
+                style={{
+                  maxWidth: previewWidth,
+                  padding: chartStyle.box?.padding ?? 24,
+                  margin: chartStyle.box?.margin ?? 0,
+                  borderWidth: chartStyle.box?.borderWidth ?? 1,
+                  borderStyle: 'solid',
+                  borderColor: chartStyle.box?.borderColor || 'hsl(var(--border))',
+                  borderRadius: chartStyle.box?.borderRadius ?? 16,
+                  backgroundColor: chartStyle.box?.backgroundColor || 'hsl(var(--card))',
+                }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               >
                 {question.title && (
