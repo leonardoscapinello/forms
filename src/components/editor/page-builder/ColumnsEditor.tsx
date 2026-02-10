@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import ElementPreview from './ElementPreview';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
@@ -15,9 +15,10 @@ import {
 interface Props {
   element: PageElement;
   onChange: (patch: Partial<PageElement>) => void;
+  onRemoveFromMain?: (elementId: string) => void;
 }
 
-export default function ColumnsEditor({ element, onChange }: Props) {
+export default function ColumnsEditor({ element, onChange, onRemoveFromMain }: Props) {
   const columnCount = element.columnCount || 2;
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
@@ -39,7 +40,7 @@ export default function ColumnsEditor({ element, onChange }: Props) {
     updateColumn(colIdx, updated);
   }, [columns, updateColumn]);
 
-  // External drag (from toolbar) into column
+  // External drag (from toolbar or main canvas) into column
   const handleColDragOver = useCallback((e: React.DragEvent, colIdx: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -49,16 +50,41 @@ export default function ColumnsEditor({ element, onChange }: Props) {
   const handleColDrop = useCallback((e: React.DragEvent, colIdx: number) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Check for element move from main canvas
+    const moveJson = e.dataTransfer.getData('element-move-json');
+    const moveSource = e.dataTransfer.getData('element-move-source');
+
+    if (moveJson && moveSource === 'main') {
+      try {
+        const el = JSON.parse(moveJson) as PageElement;
+        if (el.type !== 'columns') {
+          const updated = [...(columns[colIdx]?.elements || []), el];
+          updateColumn(colIdx, updated);
+          onRemoveFromMain?.(el.id);
+          return;
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
+    // Check for new element from toolbar
     const type = e.dataTransfer.getData('element-type') as PageElementType;
     if (type && type !== 'columns') {
       addElement(colIdx, type);
     }
-  }, [addElement]);
+  }, [addElement, columns, updateColumn, onRemoveFromMain]);
 
   // Internal reorder via native drag
-  const handleInternalDragStart = useCallback((colIdx: number, elIdx: number) => {
+  const handleInternalDragStart = useCallback((e: React.DragEvent, colIdx: number, elIdx: number) => {
     setDragState({ colIdx, elIdx });
-  }, []);
+    const el = columns[colIdx]?.elements[elIdx];
+    if (el) {
+      // Set data for cross-container moves (column → main canvas)
+      e.dataTransfer.setData('element-move-json', JSON.stringify(el));
+      e.dataTransfer.setData('element-move-source', `column:${element.id}:${colIdx}:${elIdx}`);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  }, [columns, element.id]);
 
   const handleInternalDragOver = useCallback((e: React.DragEvent, colIdx: number, elIdx: number) => {
     e.preventDefault();
@@ -94,6 +120,12 @@ export default function ColumnsEditor({ element, onChange }: Props) {
     setDropTarget(null);
   }, [dragState, dropTarget, columns, onChange]);
 
+  // Clean up drag state when drag ends (e.g., dropped outside columns)
+  const handleInternalDragEnd = useCallback(() => {
+    setDragState(null);
+    setDropTarget(null);
+  }, []);
+
   // Types allowed inside columns (no nested columns)
   const allowedCategories = (Object.entries(ELEMENT_CATEGORIES) as [ElementCategory, typeof ELEMENT_CATEGORIES[ElementCategory]][])
     .map(([key, cat]) => ({
@@ -128,9 +160,10 @@ export default function ColumnsEditor({ element, onChange }: Props) {
             <div
               key={el.id}
               draggable
-              onDragStart={() => handleInternalDragStart(colIdx, elIdx)}
+              onDragStart={(e) => handleInternalDragStart(e, colIdx, elIdx)}
               onDragOver={(e) => handleInternalDragOver(e, colIdx, elIdx)}
               onDrop={(e) => handleInternalDrop(e)}
+              onDragEnd={handleInternalDragEnd}
               className={`relative group rounded-lg transition-all ${
                 dropTarget?.colIdx === colIdx && dropTarget?.elIdx === elIdx
                   ? 'border-t-2 border-primary'

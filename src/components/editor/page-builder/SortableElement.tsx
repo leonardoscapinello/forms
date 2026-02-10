@@ -12,10 +12,11 @@ interface Props {
   onSelect: () => void;
   onDelete: () => void;
   onElementChange?: (patch: Partial<PageElement>) => void;
+  onRemoveFromMain?: (elementId: string) => void;
   stepNumber?: number;
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, stepNumber }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, stepNumber }: Props) {
   const {
     attributes,
     listeners,
@@ -31,11 +32,24 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
     transition: transition || 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1)',
   };
 
+  const handleNativeDragStart = (e: React.DragEvent) => {
+    // Don't allow dragging columns elements to other containers
+    if (element.type === 'columns') {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData('element-move-json', JSON.stringify(element));
+    e.dataTransfer.setData('element-move-source', 'main');
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       data-sortable-id={element.id}
+      draggable={element.type !== 'columns'}
+      onDragStart={handleNativeDragStart}
       className={`group relative rounded-xl transition-all duration-200 ${
         isDragging
           ? 'opacity-30 scale-[0.98] bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl'
@@ -63,6 +77,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
         <button
           {...attributes}
           {...listeners}
+          onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
           className="p-1.5 rounded-md hover:bg-muted cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
         >
           <GripVertical className="h-4 w-4" />
@@ -77,7 +92,11 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
 
       <div className={`transition-opacity duration-200 ${isDragging ? 'opacity-0' : 'opacity-100'}`}>
         {element.type === 'columns' && onElementChange ? (
-          <ColumnsEditor element={element} onChange={onElementChange} />
+          <ColumnsEditor
+            element={element}
+            onChange={onElementChange}
+            onRemoveFromMain={onRemoveFromMain}
+          />
         ) : (
           <ElementPreview element={element} stepNumber={stepNumber} />
         )}
