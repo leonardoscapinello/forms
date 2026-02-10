@@ -214,30 +214,37 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
       >
         {/* Pinned notification elements */}
         {notificationElements.length > 0 && (
-          <div className="sticky top-0 z-20 px-4 pt-3 pb-1">
-            {notificationElements.map(el => (
-              <div
-                key={el.id}
-                className={`relative group rounded-xl cursor-pointer transition-all duration-200 ${
-                  selectedId === el.id
-                    ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                    : 'hover:ring-1 hover:ring-border'
-                }`}
-                onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
-              >
-                <div className={`absolute -left-6 top-1/2 -translate-y-1/2 transition-opacity duration-150 ${
-                  selectedId === el.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                }`}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(el.id); }}
-                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <ElementPreview element={el} />
+          <div className="sticky top-0 z-20">
+            <div className="bg-muted/60 backdrop-blur-sm px-4 pt-3 pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px flex-1 bg-border/50" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Notificação fixa</span>
+                <div className="h-px flex-1 bg-border/50" />
               </div>
-            ))}
+              {notificationElements.map(el => (
+                <div
+                  key={el.id}
+                  className={`relative group rounded-xl cursor-pointer transition-all duration-200 ${
+                    selectedId === el.id
+                      ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                      : 'hover:ring-1 hover:ring-border'
+                  }`}
+                  onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
+                >
+                  <div className={`absolute -left-6 top-1/2 -translate-y-1/2 transition-opacity duration-150 ${
+                    selectedId === el.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(el.id); }}
+                      className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <ElementPreview element={el} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
