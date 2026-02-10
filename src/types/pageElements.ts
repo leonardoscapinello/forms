@@ -11,6 +11,7 @@ export type PageElementType =
   | 'spacer'
   | 'alert'
   | 'notification'
+  | 'chart'
   // Layout elements
   | 'columns'
   // Section elements
@@ -148,9 +149,13 @@ export interface PageElement {
   // Notification
   notificationItems?: NotificationItem[];
   notificationMode?: 'sequential' | 'random';
-  notificationInterval?: number; // seconds between notifications
-  notificationDuration?: number; // seconds each notification stays visible
+  notificationInterval?: number;
+  notificationDuration?: number;
   notificationPosition?: 'top' | 'bottom';
+  // Chart element
+  chartType?: import('@/types/form').ChartType;
+  chartItems?: import('@/types/form').GraphicDataItem[];
+  chartStyle?: import('@/types/form').ChartStyle;
   // Section elements
   argumentItems?: ArgumentItem[];
   testimonialItems?: TestimonialItem[];
@@ -168,28 +173,18 @@ export interface PageElement {
   maxRating?: number;
   smartValidation?: boolean;
   defaultCountryCode?: string;
-  /** Unit for height/weight fields */
   unit?: string;
-  /** Whether user can toggle between units (e.g. kg/lb) */
   allowUnitToggle?: boolean;
-  /** Default/pre-filled value for any form field */
   defaultValue?: any;
-  /** Min/max for number/height/weight fields */
   min?: number;
   max?: number;
-  /** Date field mode */
   dateMode?: 'date' | 'time' | 'datetime';
-  /** Date display format */
   dateFormat?: string;
-  /** Columns layout */
   columnCount?: number;
   columnData?: ColumnData[];
-  /** Score for yes/no element */
   yesScore?: number;
   noScore?: number;
-  /** Button action */
   buttonAction?: 'none' | 'next' | 'previous' | 'specific' | 'finish';
-  /** Target page ID when buttonAction is 'specific' */
   buttonTargetPageId?: string;
   style?: PageElementStyle;
 }
@@ -211,6 +206,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   spacer: 'Espaço',
   alert: 'Atenção',
   notification: 'Notificação',
+  chart: 'Gráfico',
   columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
@@ -242,7 +238,7 @@ export type ElementCategory = 'visual' | 'sections' | 'fields';
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification', 'columns'],
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification', 'chart', 'columns'],
   },
   sections: {
     label: 'Seções',
@@ -357,6 +353,16 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
         { id: crypto.randomUUID(), elements: [] },
         { id: crypto.randomUUID(), elements: [] },
       ];
+      break;
+    case 'chart':
+      base.chartType = 'column';
+      base.chartItems = [
+        { id: crypto.randomUUID(), label: 'Jan', value: '65', color: '#6366f1' },
+        { id: crypto.randomUUID(), label: 'Fev', value: '80', color: '#3b82f6' },
+        { id: crypto.randomUUID(), label: 'Mar', value: '45', color: '#06b6d4' },
+        { id: crypto.randomUUID(), label: 'Abr', value: '90', color: '#10b981' },
+      ];
+      base.chartStyle = { showGrid: true, showLabels: true, showLegend: true, showValues: true, animated: true };
       break;
     case 'input_text':
       base.label = 'Nome';
