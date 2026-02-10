@@ -67,10 +67,11 @@ function KpiCards({ items }: { items: GraphicDataItem[] }) {
 
 function getBoxStyle(box: ChartBoxStyle = {}): React.CSSProperties {
   const bw = box.borderWidth ?? 1;
+  const hasColor = !!box.borderColor;
   return {
     padding: box.padding ?? 24,
     margin: box.margin ?? 0,
-    border: bw > 0 ? `${bw}px solid ${box.borderColor || 'hsl(var(--border))'}` : 'none',
+    border: bw > 0 ? `${bw}px solid ${hasColor ? box.borderColor : 'transparent'}` : 'none',
     borderRadius: box.borderRadius ?? 16,
     backgroundColor: box.backgroundColor || 'hsl(var(--card))',
   };
