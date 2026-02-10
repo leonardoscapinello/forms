@@ -52,6 +52,7 @@ export interface PageElement {
   required?: boolean;
   options?: SelectOption[];
   maxRating?: number;
+  smartValidation?: boolean;
   style?: PageElementStyle;
 }
 
