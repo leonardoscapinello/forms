@@ -389,6 +389,7 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       ];
       base.progressBarLayout = 2;
       base.progressBarDisposition = 'chart_legend';
+      base.style = { ...base.style, padding: 8 };
       break;
     case 'input_text':
       base.label = 'Nome';
