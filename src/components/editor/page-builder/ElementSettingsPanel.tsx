@@ -1367,79 +1367,56 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     </div>
                   ))}
 
-                  {/* Per-bar border settings */}
+                  {/* Column border settings (shared) */}
                   <Label className="text-xs font-medium text-muted-foreground mt-4">Bordas das colunas</Label>
-                  {(element.progressBarItems || []).map((bar) => (
-                    <div key={`border-${bar.id}`} className="space-y-2 p-2.5 rounded-lg border border-border">
-                      <p className="text-xs font-medium text-foreground truncate">{bar.label || 'Sem nome'}</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground">Largura</span>
-                          <Input
-                            type="number"
-                            value={bar.borderWidth ?? ''}
-                            onChange={e => {
-                              const items = (element.progressBarItems || []).map(b =>
-                                b.id === bar.id ? { ...b, borderWidth: e.target.value ? Number(e.target.value) : undefined } : b
-                              );
-                              onChange({ progressBarItems: items });
-                            }}
-                            placeholder="1"
-                            className="h-8 text-xs"
-                            min={0}
-                            max={20}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground">Estilo</span>
-                          <Select
-                            value={bar.borderStyle || 'solid'}
-                            onValueChange={v => {
-                              const items = (element.progressBarItems || []).map(b =>
-                                b.id === bar.id ? { ...b, borderStyle: v as any } : b
-                              );
-                              onChange({ progressBarItems: items });
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="solid">Sólida</SelectItem>
-                              <SelectItem value="dashed">Tracejada</SelectItem>
-                              <SelectItem value="dotted">Pontilhada</SelectItem>
-                              <SelectItem value="none">Nenhuma</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <ColorPickerField
-                        label="Cor da borda"
-                        value={bar.borderColor || ''}
-                        onChange={v => {
-                          const items = (element.progressBarItems || []).map(b =>
-                            b.id === bar.id ? { ...b, borderColor: v || undefined } : b
-                          );
-                          onChange({ progressBarItems: items });
-                        }}
-                        placeholder="Padrão"
-                        defaultColor="rgba(0,0,0,0.12)"
-                      />
+                  <div className="space-y-2 p-2.5 rounded-lg border border-border">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <span className="text-[10px] text-muted-foreground">Arredondamento ({bar.borderRadius ?? 8}px)</span>
-                        <Slider
-                          value={[bar.borderRadius ?? 8]}
-                          onValueChange={([v]) => {
-                            const items = (element.progressBarItems || []).map(b =>
-                              b.id === bar.id ? { ...b, borderRadius: v } : b
-                            );
-                            onChange({ progressBarItems: items });
-                          }}
+                        <span className="text-[10px] text-muted-foreground">Largura</span>
+                        <Input
+                          type="number"
+                          value={element.progressBarColBorderWidth ?? ''}
+                          onChange={e => onChange({ progressBarColBorderWidth: e.target.value ? Number(e.target.value) : undefined })}
+                          placeholder="1"
+                          className="h-8 text-xs"
                           min={0}
-                          max={50}
-                          step={1}
+                          max={20}
                         />
                       </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground">Estilo</span>
+                        <Select
+                          value={element.progressBarColBorderStyle || 'solid'}
+                          onValueChange={v => onChange({ progressBarColBorderStyle: v as any })}
+                        >
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="solid">Sólida</SelectItem>
+                            <SelectItem value="dashed">Tracejada</SelectItem>
+                            <SelectItem value="dotted">Pontilhada</SelectItem>
+                            <SelectItem value="none">Nenhuma</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  ))}
+                    <ColorPickerField
+                      label="Cor da borda"
+                      value={element.progressBarColBorderColor || ''}
+                      onChange={v => onChange({ progressBarColBorderColor: v || undefined })}
+                      placeholder="Padrão"
+                      defaultColor="rgba(0,0,0,0.12)"
+                    />
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground">Arredondamento ({element.progressBarColBorderRadius ?? 8}px)</span>
+                      <Slider
+                        value={[element.progressBarColBorderRadius ?? 8]}
+                        onValueChange={([v]) => onChange({ progressBarColBorderRadius: v })}
+                        min={0}
+                        max={50}
+                        step={1}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
