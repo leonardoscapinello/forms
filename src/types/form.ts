@@ -68,8 +68,14 @@ export interface GraphicDataItem {
   value: string;
   description?: string;
   color?: string;
+  /** Second color for gradient fill */
+  gradientTo?: string;
+  /** 'solid' or 'gradient' */
+  colorMode?: 'solid' | 'gradient';
   icon?: string;
   suffix?: string;
+  /** Always-visible tooltip text shown in legend */
+  tooltip?: string;
 }
 
 export interface ChartBoxStyle {
