@@ -92,6 +92,18 @@ export interface ChartStyle {
   box?: ChartBoxStyle;
 }
 
+/** A single chart panel inside a graphic block (for multi-chart grids) */
+export interface ChartPanel {
+  id: string;
+  label?: string;            // optional title above the chart
+  chartType: ChartType;
+  items: GraphicDataItem[];
+  style: ChartStyle;
+}
+
+/** Grid layout for multi-chart blocks */
+export type GridColumns = 1 | 2 | 3;
+
 export interface ValidationRule {
   minLength?: number;
   maxLength?: number;
@@ -125,6 +137,9 @@ export interface Question {
   graphicChartType?: ChartType;
   graphicData?: GraphicDataItem[];
   chartStyle?: ChartStyle;
+  // Multi-chart grid support
+  chartPanels?: ChartPanel[];
+  gridColumns?: GridColumns;
   // For opinion scale / NPS
   scaleMin?: number;
   scaleMax?: number;

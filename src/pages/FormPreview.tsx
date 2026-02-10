@@ -751,6 +751,8 @@ function FieldRenderer({
         title={q.title}
         description={q.description}
         chartStyle={q.chartStyle}
+        chartPanels={q.chartPanels}
+        gridColumns={q.gridColumns}
       />
     );
   }
