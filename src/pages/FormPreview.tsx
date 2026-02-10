@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
 import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions';
 import HeightWeightField from '@/components/preview/HeightWeightField';
+import Twemoji from '@/components/Twemoji';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -780,7 +781,7 @@ function InteractiveElement({
                   : 'border-border hover:border-primary/40 text-foreground'
               }`}
             >
-              <span className="text-xl">{opt.emoji}</span>
+              <Twemoji className="text-xl">{opt.emoji}</Twemoji>
               <span>{opt.label}</span>
             </motion.button>
           ))}
@@ -855,7 +856,7 @@ function InteractiveElement({
                   : 'border-border hover:border-primary/40'
               }`}
             >
-              <span className="text-3xl">{opt.emoji || '⭐'}</span>
+              <Twemoji className="text-3xl">{opt.emoji || '⭐'}</Twemoji>
               <span className="text-sm font-medium">{opt.label}</span>
             </motion.button>
           ))}

@@ -2,6 +2,7 @@ import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
 import { ImageIcon, VideoIcon, Star, Check } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
+import Twemoji from '@/components/Twemoji';
 
 interface Props {
   element: PageElement;
@@ -218,10 +219,10 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       return withFieldHeader(
         <div className="flex gap-3">
           <div className="flex-1 px-5 py-4 rounded-xl border-2 border-border flex items-center justify-center gap-2 text-lg font-medium text-muted-foreground">
-            👍 <span>Sim</span>
+            <Twemoji>👍</Twemoji> <span>Sim</span>
           </div>
           <div className="flex-1 px-5 py-4 rounded-xl border-2 border-border flex items-center justify-center gap-2 text-lg font-medium text-muted-foreground">
-            👎 <span>Não</span>
+            <Twemoji>👎</Twemoji> <span>Não</span>
           </div>
         </div>
       );
@@ -252,7 +253,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
               key={opt.id}
               className="px-4 py-5 rounded-xl border-2 border-border flex flex-col items-center gap-2 text-center"
             >
-              <span className="text-3xl">{opt.emoji || '⭐'}</span>
+              <Twemoji className="text-3xl">{opt.emoji || '⭐'}</Twemoji>
               <span className="text-sm font-medium">{opt.label}</span>
             </div>
           ))}

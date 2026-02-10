@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Twemoji — consistent Apple-style emojis across all platforms */
+img.emoji {
+  display: inline-block;
+  height: 1em;
+  width: 1em;
+  margin: 0 0.05em 0 0.1em;
+  vertical-align: -0.1em;
+}
+
 /* FormFlow Design System — Light warm theme inspired by ecosystem reference */
 
 @layer base {
