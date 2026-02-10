@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
+import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
@@ -539,6 +540,19 @@ function InteractiveElement({
           position={element.notificationPosition || 'top'}
         />
       );
+
+    case 'arguments':
+      return <ArgumentsPreview element={element} />;
+    case 'testimonials':
+      return <TestimonialsPreview element={element} />;
+    case 'faq':
+      return <FAQPreview element={element} />;
+    case 'pricing':
+      return <PricingPreview element={element} />;
+    case 'before_after':
+      return <BeforeAfterPreview element={element} />;
+    case 'carousel':
+      return <CarouselPreview element={element} />;
 
     // ─── Interactive form fields (with "N → label" header) ──────────────────
     case 'input_email':

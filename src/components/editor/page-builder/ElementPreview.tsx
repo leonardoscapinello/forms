@@ -4,6 +4,7 @@ import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, X
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { Bell } from 'lucide-react';
+import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
 
 interface Props {
   element: PageElement;
@@ -336,6 +337,19 @@ export default function ElementPreview({ element, stepNumber }: Props) {
           ))}
         </div>
       );
+
+    case 'arguments':
+      return <ArgumentsPreview element={element} />;
+    case 'testimonials':
+      return <TestimonialsPreview element={element} />;
+    case 'faq':
+      return <FAQPreview element={element} />;
+    case 'pricing':
+      return <PricingPreview element={element} />;
+    case 'before_after':
+      return <BeforeAfterPreview element={element} />;
+    case 'carousel':
+      return <CarouselPreview element={element} />;
 
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;
