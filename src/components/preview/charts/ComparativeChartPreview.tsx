@@ -1,3 +1,4 @@
+import { useRef, useState, useEffect } from 'react';
 import { ComparativeDataset, ComparativeChartMode } from '@/types/pageElements';
 import { ChartStyle } from '@/types/form';
 import {
@@ -205,6 +206,19 @@ const FALLBACK_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', 
 function CircularView({ datasets, labels, style }: { datasets: ComparativeDataset[]; labels: string[]; style?: ChartStyle }) {
   const dur = style?.animated !== false ? 400 : 0;
   const maxPerRing = 100;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dims, setDims] = useState({ w: 300, h: 320 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0) setDims({ w: width, h: 320 });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const rings = datasets.map((ds, di) => {
     const points = ds.points.map((p, pi) => ({
@@ -226,15 +240,34 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
   const ringWidth = 28;
   const ringGap = 6;
 
+  const cx = dims.w / 2;
+  const cy = 320 / 2;
+
+  // Pre-compute badge positions for HTML overlay
+  const badges = rings.map((ring, ri) => {
+    const outer = outerBase - ri * (ringWidth + ringGap);
+    const tipPointIndex = ring.ds.points.findIndex(p => !!p.tooltip);
+    if (tipPointIndex === -1) return null;
+
+    const tipText = ring.ds.points[tipPointIndex].tooltip || '';
+    const totalVal = ring.data.reduce((s, d) => s + d.value, 0);
+    let accum = 0;
+    for (let i = 0; i < tipPointIndex; i++) accum += ring.data[i].value;
+    accum += ring.data[tipPointIndex].value / 2;
+    const fraction = accum / totalVal;
+    const angleRad = (Math.PI / 2) - fraction * 2 * Math.PI;
+
+    const edgePx = { x: cx + outer * Math.cos(angleRad), y: cy - outer * Math.sin(angleRad) };
+    const badgeDist = outer + 32;
+    const badgePx = { x: cx + badgeDist * Math.cos(angleRad), y: cy - badgeDist * Math.sin(angleRad) };
+
+    return { tipText, edgePx, badgePx, dsId: ring.ds.id };
+  }).filter(Boolean);
+
   return (
-    <div>
+    <div ref={containerRef} className="relative">
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
-          <defs>
-            <filter id="circBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.15" />
-            </filter>
-          </defs>
           {rings.map((ring, ri) => {
             const outer = outerBase - ri * (ringWidth + ringGap);
             const inner = outer - ringWidth;
@@ -264,64 +297,57 @@ function CircularView({ datasets, labels, style }: { datasets: ComparativeDatase
             );
           })}
           <Tooltip {...tooltipStyle} />
-
-          {/* SVG tooltip badges with connecting lines */}
-          {rings.map((ring, ri) => {
-            const outer = outerBase - ri * (ringWidth + ringGap);
-            const tipPointIndex = ring.ds.points.findIndex(p => !!p.tooltip);
-            if (tipPointIndex === -1) return null;
-
-            const tipText = ring.ds.points[tipPointIndex].tooltip || '';
-            const totalVal = ring.data.reduce((s, d) => s + d.value, 0);
-            let accum = 0;
-            for (let i = 0; i < tipPointIndex; i++) accum += ring.data[i].value;
-            accum += ring.data[tipPointIndex].value / 2;
-            const fraction = accum / totalVal;
-            const angleRad = (Math.PI / 2) - fraction * 2 * Math.PI;
-
-            const scale = 0.58;
-            const edgeX = 50 + outer * Math.cos(angleRad) * scale;
-            const edgeY = 50 - outer * Math.sin(angleRad) * scale;
-            const badgeX = 50 + (outer + 28) * Math.cos(angleRad) * scale;
-            const badgeY = 50 - (outer + 28) * Math.sin(angleRad) * scale;
-
-            const badgeW = Math.max(tipText.length * 7.5 + 20, 60);
-
-            return (
-              <g key={`tip-${ring.ds.id}`}>
-                <line
-                  x1={`${edgeX}%`} y1={`${edgeY}%`}
-                  x2={`${badgeX}%`} y2={`${badgeY}%`}
-                  stroke="hsl(var(--foreground))"
-                  strokeWidth={1.5}
-                  opacity={0.5}
-                />
-                <foreignObject
-                  x={`${badgeX - 12}%`}
-                  y={`${badgeY - 4}%`}
-                  width={badgeW + 20}
-                  height={32}
-                  style={{ overflow: 'visible' }}
-                >
-                  <div style={{
-                    backgroundColor: '#374151',
-                    color: 'white',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '4px 12px',
-                    borderRadius: 12,
-                    whiteSpace: 'nowrap',
-                    display: 'inline-block',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  }}>
-                    {tipText}
-                  </div>
-                </foreignObject>
-              </g>
-            );
-          })}
         </PieChart>
       </ResponsiveContainer>
+
+      {/* Badge overlays */}
+      {badges.map(b => {
+        if (!b) return null;
+        return (
+          <svg
+            key={`line-${b.dsId}`}
+            className="absolute inset-0 pointer-events-none"
+            width="100%"
+            height={320}
+            style={{ overflow: 'visible' }}
+          >
+            <line
+              x1={b.edgePx.x} y1={b.edgePx.y}
+              x2={b.badgePx.x} y2={b.badgePx.y}
+              stroke="hsl(var(--foreground))"
+              strokeWidth={1.5}
+              opacity={0.45}
+            />
+          </svg>
+        );
+      })}
+      {badges.map(b => {
+        if (!b) return null;
+        return (
+          <div
+            key={`badge-${b.dsId}`}
+            className="absolute pointer-events-none"
+            style={{
+              left: b.badgePx.x,
+              top: b.badgePx.y,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <div style={{
+              backgroundColor: '#374151',
+              color: 'white',
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '4px 12px',
+              borderRadius: 12,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}>
+              {b.tipText}
+            </div>
+          </div>
+        );
+      })}
 
       {/* Centered legend */}
       <div className="flex flex-col gap-2 mt-1 px-2 items-center">
