@@ -1075,22 +1075,21 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       {ds.points.map((pt, pi) => (
                         <div key={pt.id} className="space-y-1">
                           <div className="flex items-center gap-1.5">
-                            <input
-                              type="color"
+                            <ColorPickerField
                               value={pt.color || '#9ca3af'}
-                              onChange={e => {
+                              onChange={v => {
                                 const datasets = (element.comparativeDatasets || []).map(d => {
                                   if (d.id !== ds.id) return d;
                                   return {
                                     ...d,
                                     points: d.points.map((p, j) =>
-                                      j === pi ? { ...p, color: e.target.value } : p
+                                      j === pi ? { ...p, color: v } : p
                                     ),
                                   };
                                 });
                                 onChange({ comparativeDatasets: datasets });
                               }}
-                              className="w-5 h-5 rounded border-0 cursor-pointer p-0"
+                              allowTransparent={false}
                             />
                             <span className="text-[10px] text-muted-foreground w-12 truncate">
                               {(element.comparativeLabels || [])[pi] || `#${pi + 1}`}
