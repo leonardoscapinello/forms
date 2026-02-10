@@ -9,6 +9,7 @@ export type PageElementType =
   | 'divider'
   | 'video'
   | 'spacer'
+  | 'alert'
   // Form input elements
   | 'input_text'
   | 'input_email'
@@ -60,6 +61,8 @@ export interface PageElement {
   href?: string;
   level?: 1 | 2 | 3 | 4;
   height?: number;
+  // Alert variant
+  alertVariant?: 'info' | 'success' | 'warning' | 'error';
   // Form field properties
   label?: string;
   placeholder?: string;
@@ -98,6 +101,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   divider: 'Divisor',
   video: 'Vídeo',
   spacer: 'Espaço',
+  alert: 'Atenção',
   input_text: 'Campo',
   input_email: 'E-mail',
   input_phone: 'Telefone',
@@ -122,7 +126,7 @@ export type ElementCategory = 'visual' | 'fields';
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer'],
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert'],
   },
   fields: {
     label: 'Formulário',
@@ -164,6 +168,10 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'spacer':
       base.height = 40;
+      break;
+    case 'alert':
+      base.content = 'Esta é uma mensagem importante.';
+      base.alertVariant = 'info';
       break;
     case 'input_text':
       base.label = 'Nome';

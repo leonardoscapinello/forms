@@ -426,14 +426,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
           )}
 
           {/* ─── Visual element: content ─── */}
-          {(element.type === 'heading' || element.type === 'text' || element.type === 'button') && (
+          {(element.type === 'heading' || element.type === 'text' || element.type === 'button' || element.type === 'alert') && (
             <div className="space-y-2">
               <Label>Conteúdo</Label>
-              {element.type === 'text' ? (
+              {(element.type === 'text' || element.type === 'alert') ? (
                 <Textarea
                   value={element.content || ''}
                   onChange={e => onChange({ content: e.target.value })}
-                  rows={4}
+                  rows={element.type === 'alert' ? 3 : 4}
                 />
               ) : (
                 <Input
@@ -441,6 +441,25 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                   onChange={e => onChange({ content: e.target.value })}
                 />
               )}
+            </div>
+          )}
+
+          {/* ─── Alert variant ─── */}
+          {element.type === 'alert' && (
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={element.alertVariant || 'info'}
+                onValueChange={v => onChange({ alertVariant: v as any })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="info">ℹ️ Informação</SelectItem>
+                  <SelectItem value="success">✅ Sucesso</SelectItem>
+                  <SelectItem value="warning">⚠️ Aviso</SelectItem>
+                  <SelectItem value="error">❌ Erro</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
