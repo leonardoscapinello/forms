@@ -12,6 +12,7 @@ export type PageElementType =
   | 'alert'
   | 'notification'
   | 'chart'
+  | 'progress_bar'
   // Layout elements
   | 'columns'
   // Section elements
@@ -129,6 +130,13 @@ export interface NotificationItem {
   icon?: string; // emoji
 }
 
+export interface ProgressBarItem {
+  id: string;
+  label: string;
+  value: number; // 0-100
+  color: string;
+}
+
 export interface ColumnData {
   id: string;
   elements: PageElement[];
@@ -157,6 +165,10 @@ export interface PageElement {
   chartType?: import('@/types/form').ChartType;
   chartItems?: import('@/types/form').GraphicDataItem[];
   chartStyle?: import('@/types/form').ChartStyle;
+  // Progress bar element
+  progressBarItems?: ProgressBarItem[];
+  progressBarLayout?: 1 | 2; // 1 or 2 columns
+  progressBarDisposition?: 'chart_legend' | 'legend_chart'; // order
   // Section elements
   argumentItems?: ArgumentItem[];
   testimonialItems?: TestimonialItem[];
@@ -208,6 +220,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   alert: 'Atenção',
   notification: 'Notificação',
   chart: 'Gráfico',
+  progress_bar: 'Barra de progresso',
   columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
@@ -243,7 +256,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados',
-    types: ['chart'],
+    types: ['chart', 'progress_bar'],
   },
   sections: {
     label: 'Seções',
@@ -368,6 +381,14 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
         { id: crypto.randomUUID(), label: 'Abr', value: '90', color: '#10b981' },
       ];
       base.chartStyle = { showGrid: true, showLabels: true, showLegend: true, showValues: true, animated: true };
+      break;
+    case 'progress_bar':
+      base.progressBarItems = [
+        { id: crypto.randomUUID(), label: 'Onde você está hoje.', value: 10, color: '#ef4444' },
+        { id: crypto.randomUUID(), label: 'Onde Você Vai Estar em 30 Dias:', value: 100, color: '#22c55e' },
+      ];
+      base.progressBarLayout = 2;
+      base.progressBarDisposition = 'chart_legend';
       break;
     case 'input_text':
       base.label = 'Nome';
