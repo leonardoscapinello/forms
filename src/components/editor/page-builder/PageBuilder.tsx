@@ -85,15 +85,13 @@ export default function PageBuilder({ elements, onChange }: Props) {
         onDrop={handleCanvasDrop}
       >
         <div className="max-w-2xl mx-auto py-8 px-6">
-          {/* Card frame */}
-          <div className="bg-card rounded-2xl border border-border shadow-sm min-h-[500px] p-6">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={elements.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-1 min-h-[200px]">
+                <div className="space-y-8 min-h-[200px]">
                   {elements.length === 0 ? (
                     <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
                       <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
@@ -106,7 +104,6 @@ export default function PageBuilder({ elements, onChange }: Props) {
                     </div>
                   ) : (
                     elements.map((el, idx) => {
-                      // Count only form fields for step numbering (matches preview)
                       const formFieldIndex = elements.slice(0, idx + 1).filter(e => e.type.startsWith('input_')).length;
                       const isField = el.type.startsWith('input_');
                       return (
@@ -124,7 +121,6 @@ export default function PageBuilder({ elements, onChange }: Props) {
                 </div>
               </SortableContext>
             </DndContext>
-          </div>
         </div>
       </div>
 
