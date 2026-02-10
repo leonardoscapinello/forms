@@ -3,6 +3,7 @@ import {
   Heading, Type, Image, MousePointerClick, Minus, Video, ArrowUpDown,
   Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
+  AlertTriangle,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -14,6 +15,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   divider: Minus,
   video: Video,
   spacer: ArrowUpDown,
+  alert: AlertTriangle,
   input_text: TextCursorInput,
   input_email: Mail,
   input_phone: Phone,
