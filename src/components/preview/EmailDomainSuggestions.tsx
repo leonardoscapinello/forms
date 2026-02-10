@@ -29,11 +29,14 @@ export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainS
 
   const suggestions = useMemo(() => {
     if (!value || !value.includes('@')) return [];
-    const [username, partialDomain] = value.split('@');
-    if (!username || !partialDomain) return [];
+    const atIndex = value.indexOf('@');
+    const username = value.slice(0, atIndex);
+    const partialDomain = value.slice(atIndex + 1);
+    if (!username) return [];
     if (DOMAINS.includes(partialDomain)) return [];
+    // Show all top domains when just "@" is typed (partialDomain is empty)
     return DOMAINS
-      .filter(d => d.startsWith(partialDomain.toLowerCase()))
+      .filter(d => !partialDomain || d.startsWith(partialDomain.toLowerCase()))
       .slice(0, 5);
   }, [value]);
 
