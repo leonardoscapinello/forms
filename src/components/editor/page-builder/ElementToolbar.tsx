@@ -5,7 +5,7 @@ import {
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
   AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
   LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows, CircleDot as CircleProgress,
-  ListOrdered,
+  ListOrdered, Gauge,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -41,6 +41,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   input_select: ListFilter,
   input_radio: CircleDot,
   input_rating: Star,
+  input_nps: Gauge,
   input_number: Hash,
   input_textarea: AlignLeft,
   input_date: Calendar,

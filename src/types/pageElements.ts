@@ -36,6 +36,7 @@ export type PageElementType =
   | 'input_select'
   | 'input_radio'
   | 'input_rating'
+  | 'input_nps'
   | 'input_number'
   | 'input_textarea'
   | 'input_date'
@@ -46,6 +47,8 @@ export type PageElementType =
   | 'input_multi_select'
   | 'input_quiz_icon'
   | 'input_quiz_image';
+
+export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
@@ -286,6 +289,13 @@ export interface PageElement {
   noScore?: number;
   buttonAction?: 'none' | 'next' | 'previous' | 'specific' | 'finish';
   buttonTargetPageId?: string;
+  // Rating/NPS properties
+  ratingStyle?: RatingIconStyle;
+  ratingEmoji?: string; // custom emoji when ratingStyle === 'emoji'
+  ratingActiveColor?: string;
+  ratingInactiveColor?: string;
+  npsLowLabel?: string;
+  npsHighLabel?: string;
   style?: PageElementStyle;
 }
 
@@ -328,6 +338,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_select: 'Seleção',
   input_radio: 'Radio',
   input_rating: 'Avaliação',
+  input_nps: 'NPS',
   input_number: 'Número',
   input_textarea: 'Textarea',
   input_date: 'Data',
@@ -356,7 +367,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   fields: {
     label: 'Formulário',
-    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating', 'input_yes_no', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'],
+    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating', 'input_nps', 'input_yes_no', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'],
   },
 };
 
@@ -603,6 +614,16 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'input_rating':
       base.label = 'Avaliação';
       base.maxRating = 5;
+      base.ratingStyle = 'star';
+      base.ratingActiveColor = '#facc15';
+      base.ratingInactiveColor = '#d1d5db';
+      break;
+    case 'input_nps':
+      base.label = 'Em uma escala de 0 a 10, o quanto você recomendaria?';
+      base.maxRating = 10;
+      base.ratingStyle = 'nps';
+      base.npsLowLabel = 'Nada provável';
+      base.npsHighLabel = 'Muito provável';
       break;
     case 'input_number':
       base.label = 'Número';

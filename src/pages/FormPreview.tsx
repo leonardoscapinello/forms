@@ -919,6 +919,36 @@ function InteractiveElement({
     case 'input_rating': {
       const max = element.maxRating || 5;
       const current = value || 0;
+      const style = element.ratingStyle || 'star';
+      const activeColor = element.ratingActiveColor || '#facc15';
+      const inactiveColor = element.ratingInactiveColor || '#d1d5db';
+
+      if (style === 'numeric') {
+        return withFieldHeader(
+          <div className="flex gap-1.5 flex-wrap">
+            {Array.from({ length: max }).map((_, i) => (
+              <motion.button
+                key={i}
+                onClick={() => onChange(i + 1)}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.08 }}
+                className="w-10 h-10 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-colors"
+                style={{
+                  borderColor: i < current ? activeColor : inactiveColor,
+                  backgroundColor: i < current ? activeColor : 'transparent',
+                  color: i < current ? '#fff' : inactiveColor,
+                }}
+              >
+                {i + 1}
+              </motion.button>
+            ))}
+          </div>
+        );
+      }
+
+      const iconMap: Record<string, string> = { star: '⭐', heart: '❤️', thumbsUp: '👍', emoji: element.ratingEmoji || '⭐' };
+      const emoji = iconMap[style] || '⭐';
+
       return withFieldHeader(
         <div className="flex gap-2">
           {Array.from({ length: max }).map((_, i) => (
@@ -929,14 +959,53 @@ function InteractiveElement({
               whileHover={{ scale: 1.15 }}
               animate={i < current ? { scale: [1, 1.3, 1] } : {}}
               transition={{ duration: 0.2, delay: i * 0.03 }}
+              className="text-2xl md:text-3xl"
+              style={{ opacity: i < current ? 1 : 0.3, filter: i < current ? 'none' : 'grayscale(1)' }}
             >
-              <Star
-                className={`h-7 w-7 md:h-8 md:w-8 transition-colors ${
-                  i < current ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'
-                }`}
-              />
+              {emoji}
             </motion.button>
           ))}
+        </div>
+      );
+    }
+
+    case 'input_nps': {
+      const max = element.maxRating || 10;
+      const current = value ?? -1;
+      const getNpsColor = (i: number, maxVal: number) => {
+        const ratio = i / maxVal;
+        if (ratio <= 0.6) return '#ef4444';
+        if (ratio <= 0.8) return '#f59e0b';
+        return '#22c55e';
+      };
+      return withFieldHeader(
+        <div className="space-y-2">
+          <div className="flex gap-1">
+            {Array.from({ length: max + 1 }).map((_, i) => {
+              const isSelected = current === i;
+              const color = getNpsColor(i, max);
+              return (
+                <motion.button
+                  key={i}
+                  onClick={() => onChange(i)}
+                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.08 }}
+                  className="flex-1 h-11 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-all"
+                  style={{
+                    borderColor: isSelected ? color : 'hsl(var(--border))',
+                    backgroundColor: isSelected ? color : 'transparent',
+                    color: isSelected ? '#fff' : 'hsl(var(--muted-foreground))',
+                  }}
+                >
+                  {i}
+                </motion.button>
+              );
+            })}
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground px-1">
+            <span>{element.npsLowLabel || 'Nada provável'}</span>
+            <span>{element.npsHighLabel || 'Muito provável'}</span>
+          </div>
         </div>
       );
     }
