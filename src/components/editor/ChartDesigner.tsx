@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChartType, GraphicDataItem, Question, ChartStyle } from '@/types/form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Database, Palette, Sparkles, Monitor, Smartphone, Tablet } from 'lucide-react';
@@ -42,8 +42,15 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
   const items = question.graphicData || [];
   const chartStyle = question.chartStyle || {};
 
+  // Ensure graphicVariant is 'chart' when using Chart Designer
+  useEffect(() => {
+    if (question.graphicVariant !== 'chart') {
+      onChange({ graphicVariant: 'chart' });
+    }
+  }, []); // only on mount
+
   const setChartType = useCallback((type: ChartType) => {
-    onChange({ graphicChartType: type });
+    onChange({ graphicChartType: type, graphicVariant: 'chart' });
   }, [onChange]);
 
   const setItems = useCallback((newItems: GraphicDataItem[]) => {
@@ -55,7 +62,7 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
   }, [onChange]);
 
   const handleApplyTemplate = useCallback((type: ChartType, templateItems: GraphicDataItem[]) => {
-    onChange({ graphicChartType: type, graphicData: templateItems });
+    onChange({ graphicChartType: type, graphicData: templateItems, graphicVariant: 'chart' });
     setActiveTab('data');
   }, [onChange]);
 
