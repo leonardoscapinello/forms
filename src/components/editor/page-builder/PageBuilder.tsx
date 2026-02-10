@@ -10,9 +10,9 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  DragOverEvent,
   DragOverlay,
   CollisionDetection,
-  rectIntersection,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -44,19 +44,23 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const [dropIndex, setDropIndex] = useState<number>(-1);
   const dragCounterRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const lastColumnOverRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Custom collision: prioritize column droppables (pointer must be inside them), fall back to sortable reorder
+  // Custom collision: prioritize column droppables, fall back to sortable reorder
   const customCollision: CollisionDetection = useCallback((args) => {
-    // First check if pointer is within a column droppable
-    const pointerCollisions = pointerWithin(args);
-    const columnHit = pointerCollisions.find(c => String(c.id).startsWith('col-drop:'));
-    if (columnHit) return [columnHit];
-    // Otherwise use closestCenter for sortable reorder
+    // Filter droppable containers to only column ones, then use pointerWithin
+    const columnContainers = args.droppableContainers.filter(c => String(c.id).startsWith('col-drop:'));
+    if (columnContainers.length > 0) {
+      const columnArgs = { ...args, droppableContainers: columnContainers };
+      const hits = pointerWithin(columnArgs);
+      if (hits.length > 0) return [hits[0]];
+    }
+    // Otherwise use closestCenter for sortable reorder  
     return closestCenter(args);
   }, []);
 
@@ -91,18 +95,32 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   // --- dnd-kit handlers (reorder existing) ---
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    lastColumnOverRef.current = null;
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const overId = event.over ? String(event.over.id) : null;
+    if (overId?.startsWith('col-drop:')) {
+      lastColumnOverRef.current = overId;
+    } else {
+      lastColumnOverRef.current = null;
+    }
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
-    if (!over) return;
+    if (!over && !lastColumnOverRef.current) return;
 
-    const overId = String(over.id);
+    // Determine the actual drop target — prefer lastColumnOverRef for column drops
+    // since collision detection can be unreliable during layout shifts
+    const overId = over ? String(over.id) : '';
+    const columnDropId = overId.startsWith('col-drop:') ? overId : lastColumnOverRef.current;
+    lastColumnOverRef.current = null;
 
     // Check if dropped on a column droppable (id format: col-drop:{columnsElementId}:{colIdx})
-    if (overId.startsWith('col-drop:')) {
-      const parts = overId.split(':');
+    if (columnDropId) {
+      const parts = columnDropId.split(':');
       const columnsElementId = parts[1];
       const colIdx = parseInt(parts[2]);
       const draggedElement = elements.find(e => e.id === active.id);
@@ -128,7 +146,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     }
 
     // Normal reorder
-    if (active.id !== over.id) {
+    if (over && active.id !== over.id) {
       const oldIndex = elements.findIndex(e => e.id === active.id);
       const newIndex = elements.findIndex(e => e.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1) {
@@ -415,6 +433,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             sensors={sensors}
             collisionDetection={customCollision}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
