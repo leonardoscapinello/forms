@@ -8,6 +8,9 @@ import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import PageListPanel from '@/components/editor/PageListPanel';
 import FormResponses from '@/components/editor/FormResponses';
+import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
+import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
+import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, ChevronRight, Cloud, CloudOff, Loader2 } from 'lucide-react';
@@ -25,6 +28,17 @@ export default function FormEditor() {
   const [editorView, setEditorView] = useState<EditorView>('pages');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingWelcome, setEditingWelcome] = useState(false);
+
+  const {
+    collaborators,
+    lockElement,
+    unlockElement,
+    broadcastCursor,
+    isLockedByOther,
+  } = useRealtimeCollaboration({
+    formId: id!,
+    currentPageId: editingPageId,
+  });
 
   useEffect(() => {
     if (!form) navigate('/', { replace: true });
@@ -154,7 +168,11 @@ export default function FormEditor() {
   if (!form) return null;
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div
+      className="h-screen flex flex-col bg-background"
+      onMouseMove={(e) => broadcastCursor(e.clientX, e.clientY)}
+    >
+      <CursorOverlay collaborators={collaborators} />
       <header className="flex-shrink-0 border-b border-border bg-card">
         <div className="flex items-center gap-3 py-3 px-5">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
@@ -187,7 +205,9 @@ export default function FormEditor() {
             ))}
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-4">
+            {/* Online collaborators */}
+            <CollaboratorAvatars collaborators={collaborators} />
             {/* Save status indicator */}
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {saveStatus === 'saving' ? (
@@ -275,6 +295,9 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                lockElement={lockElement}
+                unlockElement={unlockElement}
+                isLockedByOther={isLockedByOther}
               />
             ) : editingPage ? (
               <PageBuilder
@@ -288,6 +311,9 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                lockElement={lockElement}
+                unlockElement={unlockElement}
+                isLockedByOther={isLockedByOther}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">

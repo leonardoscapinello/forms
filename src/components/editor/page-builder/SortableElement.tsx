@@ -4,6 +4,8 @@ import { PageElement } from '@/types/pageElements';
 import { GripVertical, Trash2 } from 'lucide-react';
 import ElementPreview from './ElementPreview';
 import ColumnsEditor from './ColumnsEditor';
+import ElementLockIndicator from '@/components/editor/collaboration/ElementLockIndicator';
+import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
 
 interface Props {
   element: PageElement;
@@ -17,9 +19,10 @@ interface Props {
   selectedId?: string | null;
   onSelectElement?: (id: string) => void;
   stepNumber?: number;
+  lockedBy?: CollaboratorPresence | null;
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy }: Props) {
   const {
     attributes,
     listeners,
@@ -49,21 +52,29 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        ...(lockedBy ? { '--tw-ring-color': lockedBy.color } as React.CSSProperties : {}),
+      }}
       data-sortable-id={element.id}
-      draggable={element.type !== 'columns'}
+      draggable={element.type !== 'columns' && !lockedBy}
       onDragStart={handleNativeDragStart}
       className={`group relative rounded-xl transition-all duration-200 ${
-        isDragging
-          ? 'opacity-30 scale-[0.98] bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl'
-          : isOver && isDragActive
-            ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-md'
-            : isSelected
-              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-              : 'hover:ring-1 hover:ring-border'
+        lockedBy
+          ? 'ring-2 ring-offset-2 ring-offset-background opacity-70 cursor-not-allowed'
+          : isDragging
+            ? 'opacity-30 scale-[0.98] bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl'
+            : isOver && isDragActive
+              ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-md'
+              : isSelected
+                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                : 'hover:ring-1 hover:ring-border'
       }`}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onClick={(e) => { e.stopPropagation(); if (!lockedBy) onSelect(); }}
     >
+      {/* Lock indicator */}
+      {lockedBy && <ElementLockIndicator lockedBy={lockedBy} />}
+
       {/* Drop indicator line */}
       {isOver && isDragActive && !isDragging && (
         <div className="absolute -top-1.5 left-0 right-0 flex items-center z-10">

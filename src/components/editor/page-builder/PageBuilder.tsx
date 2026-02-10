@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { FunnelPage } from '@/types/form';
+import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
 import {
   DndContext,
   pointerWithin,
@@ -35,9 +36,12 @@ interface Props {
   pageStyle?: FunnelPageStyle;
   onPageStyleChange?: (patch: Partial<FunnelPageStyle>) => void;
   pages?: FunnelPage[];
+  lockElement?: (elementId: string) => void;
+  unlockElement?: () => void;
+  isLockedByOther?: (elementId: string) => CollaboratorPresence | null;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, lockElement, unlockElement, isLockedByOther }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -337,13 +341,18 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     sortableElements.forEach((el, idx) => {
       const formFieldIndex = sortableElements.slice(0, idx + 1).filter(e => e.type.startsWith('input_')).length;
       const isField = el.type.startsWith('input_');
+      const lockedBy = isLockedByOther?.(el.id) || null;
       result.push(
         <SortableElement
           key={el.id}
           element={el}
           isSelected={selectedId === el.id}
           isDragActive={activeId !== null}
-          onSelect={() => setSelectedId(el.id)}
+          onSelect={() => {
+            if (lockedBy) return; // Prevent selecting locked elements
+            setSelectedId(el.id);
+            lockElement?.(el.id);
+          }}
           onDelete={() => handleDelete(el.id)}
           onElementChange={(patch) => handleElementChange(el.id, patch)}
           onRemoveFromMain={(elementId) => {
@@ -354,6 +363,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
           selectedId={selectedId}
           onSelectElement={(id) => setSelectedId(id)}
           stepNumber={isField ? formFieldIndex : undefined}
+          lockedBy={lockedBy}
         />
       );
       if (isExternalDragOver && dropIndex === idx + 1) {
@@ -373,7 +383,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         className={`flex-1 overflow-auto transition-colors duration-200 ${
           isExternalDragOver ? 'bg-primary/[0.03]' : 'bg-muted/30'
         }`}
-        onClick={() => setSelectedId(null)}
+        onClick={() => { setSelectedId(null); unlockElement?.(); }}
         onDragOver={handleCanvasDragOver}
         onDragEnter={handleCanvasDragEnter}
         onDragLeave={handleCanvasDragLeave}
