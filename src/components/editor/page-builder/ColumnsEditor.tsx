@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import ElementPreview from './ElementPreview';
-import { Plus, Trash2, GripVertical, ArrowUpFromLine, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ArrowUpFromLine, ArrowLeft, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +96,16 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
     }));
     onChange({ columnData: newColumns });
   }, [columns, columnCount, onChange]);
+
+  const reorderInColumn = useCallback((colIdx: number, elIdx: number, direction: -1 | 1) => {
+    const col = columns[colIdx];
+    if (!col) return;
+    const newIdx = elIdx + direction;
+    if (newIdx < 0 || newIdx >= col.elements.length) return;
+    const newElements = [...col.elements];
+    [newElements[elIdx], newElements[newIdx]] = [newElements[newIdx], newElements[elIdx]];
+    updateColumn(colIdx, newElements);
+  }, [columns, updateColumn]);
 
   // External drag (from toolbar or main canvas) into column
   const handleColDragOver = useCallback((e: React.DragEvent, colIdx: number) => {
@@ -226,8 +236,26 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                     : 'hover:ring-1 hover:ring-border'
               }`}
             >
-              <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab z-10">
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex flex-col gap-0.5">
+                {elIdx > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, -1); }}
+                    className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                    title="Mover para cima"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </button>
+                )}
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
+                {elIdx < (columns[colIdx]?.elements.length || 0) - 1 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, 1); }}
+                    className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                    title="Mover para baixo"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-0.5">
                 {colIdx > 0 && (
