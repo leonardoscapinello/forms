@@ -13,6 +13,7 @@ export type PageElementType =
   | 'notification'
   | 'chart'
   | 'progress_bar'
+  | 'horizontal_bar'
   // Layout elements
   | 'columns'
   // Section elements
@@ -171,7 +172,6 @@ export interface PageElement {
   // Progress bar element
   progressBarItems?: ProgressBarItem[];
   progressBarLayout?: 1 | 2; // 1 or 2 columns
-  progressBarDirection?: 'vertical' | 'horizontal'; // bar direction
   progressBarDisposition?: 'chart_legend' | 'legend_chart'; // order
   // Progress bar column border (shared across all bars)
   progressBarColBorderWidth?: number;
@@ -187,6 +187,14 @@ export interface PageElement {
   afterImage?: string;
   beforeAfterMode?: 'slider' | 'side_by_side';
   carouselImages?: CarouselImage[];
+  // Horizontal bar element
+  horizontalBarLabel?: string;
+  horizontalBarValue?: number; // 0-100
+  horizontalBarColor?: string;
+  horizontalBarBackground?: string;
+  horizontalBarLabelColor?: string;
+  horizontalBarValueColor?: string;
+  horizontalBarHeight?: number; // track height in px
   // Form field properties
   label?: string;
   placeholder?: string;
@@ -230,6 +238,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   notification: 'Notificação',
   chart: 'Gráfico',
   progress_bar: 'Barra de progresso',
+  horizontal_bar: 'Barra horizontal',
   columns: 'Colunas',
   arguments: 'Argumentos',
   testimonials: 'Depoimentos',
@@ -265,7 +274,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados',
-    types: ['chart', 'progress_bar'],
+    types: ['chart', 'progress_bar', 'horizontal_bar'],
   },
   sections: {
     label: 'Seções',
@@ -399,6 +408,13 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.progressBarLayout = 2;
       base.progressBarDisposition = 'chart_legend';
       base.style = { ...base.style };
+      break;
+    case 'horizontal_bar':
+      base.horizontalBarLabel = 'Progresso';
+      base.horizontalBarValue = 65;
+      base.horizontalBarColor = '#6366f1';
+      base.horizontalBarBackground = '#e5e7eb';
+      base.horizontalBarHeight = 12;
       break;
     case 'input_text':
       base.label = 'Nome';

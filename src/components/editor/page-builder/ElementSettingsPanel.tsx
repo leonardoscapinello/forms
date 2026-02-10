@@ -919,25 +919,43 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Horizontal Bar settings ─── */}
+          {element.type === 'horizontal_bar' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Label</Label>
+                <Input
+                  value={element.horizontalBarLabel || ''}
+                  onChange={e => onChange({ horizontalBarLabel: e.target.value })}
+                  placeholder="Progresso"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Valor ({element.horizontalBarValue ?? 50}%)</Label>
+                <Slider
+                  value={[element.horizontalBarValue ?? 50]}
+                  onValueChange={([v]) => onChange({ horizontalBarValue: v })}
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Altura da barra ({element.horizontalBarHeight || 12}px)</Label>
+                <Slider
+                  value={[element.horizontalBarHeight || 12]}
+                  onValueChange={([v]) => onChange({ horizontalBarHeight: v })}
+                  min={4}
+                  max={32}
+                  step={2}
+                />
+              </div>
+            </div>
+          )}
+
           {/* ─── Progress Bar settings (definitions only) ─── */}
           {element.type === 'progress_bar' && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Direção</Label>
-                <Select
-                  value={element.progressBarDirection || 'vertical'}
-                  onValueChange={v => onChange({ progressBarDirection: v as any })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="vertical">Vertical</SelectItem>
-                    <SelectItem value="horizontal">Horizontal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {element.progressBarDirection !== 'horizontal' && (
-              <>
               <div className="space-y-2">
                 <Label>Layout</Label>
                 <Select
@@ -965,8 +983,6 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   </SelectContent>
                 </Select>
               </div>
-              </>
-              )}
 
               <div className="space-y-2">
                 <Label>Barras ({(element.progressBarItems || []).length})</Label>
@@ -1326,6 +1342,41 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 onFontFamilyChange={v => updateStyle({ fontFamily: v })}
                 onFontWeightChange={v => updateStyle({ fontWeight: v })}
               />
+
+              {/* Horizontal Bar colors */}
+              {element.type === 'horizontal_bar' && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Cores da barra</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ColorPickerField
+                      label="Barra"
+                      value={element.horizontalBarColor || '#6366f1'}
+                      onChange={v => onChange({ horizontalBarColor: v || '#6366f1' })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Fundo"
+                      value={element.horizontalBarBackground || '#e5e7eb'}
+                      onChange={v => onChange({ horizontalBarBackground: v || '#e5e7eb' })}
+                      allowTransparent={false}
+                      defaultColor="#e5e7eb"
+                    />
+                    <ColorPickerField
+                      label="Valor"
+                      value={element.horizontalBarValueColor || element.horizontalBarColor || '#6366f1'}
+                      onChange={v => onChange({ horizontalBarValueColor: v || undefined })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Label"
+                      value={element.horizontalBarLabelColor || '#000000'}
+                      onChange={v => onChange({ horizontalBarLabelColor: v || '#000000' })}
+                      allowTransparent={false}
+                      defaultColor="#000000"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Progress Bar specific colors */}
               {element.type === 'progress_bar' && (element.progressBarItems || []).length > 0 && (
