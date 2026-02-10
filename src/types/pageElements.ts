@@ -10,6 +10,7 @@ export type PageElementType =
   | 'video'
   | 'spacer'
   | 'alert'
+  | 'notification'
   // Form input elements
   | 'input_text'
   | 'input_email'
@@ -50,6 +51,13 @@ export interface SelectOption {
   score?: number;
 }
 
+export interface NotificationItem {
+  id: string;
+  title: string;
+  text: string;
+  icon?: string; // emoji
+}
+
 export interface PageElement {
   id: string;
   type: PageElementType;
@@ -63,6 +71,10 @@ export interface PageElement {
   height?: number;
   // Alert variant
   alertVariant?: 'info' | 'success' | 'warning' | 'error';
+  // Notification
+  notificationItems?: NotificationItem[];
+  notificationMode?: 'sequential' | 'random';
+  notificationInterval?: number; // seconds
   // Form field properties
   label?: string;
   placeholder?: string;
@@ -102,6 +114,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   video: 'Vídeo',
   spacer: 'Espaço',
   alert: 'Atenção',
+  notification: 'Notificação',
   input_text: 'Campo',
   input_email: 'E-mail',
   input_phone: 'Telefone',
@@ -126,7 +139,7 @@ export type ElementCategory = 'visual' | 'fields';
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   visual: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert'],
+    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'alert', 'notification'],
   },
   fields: {
     label: 'Formulário',
@@ -172,6 +185,15 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'alert':
       base.content = 'Esta é uma mensagem importante.';
       base.alertVariant = 'info';
+      break;
+    case 'notification':
+      base.notificationItems = [
+        { id: crypto.randomUUID(), title: 'Novo pedido', text: 'João acabou de fazer um pedido', icon: '🛒' },
+        { id: crypto.randomUUID(), title: 'Avaliação', text: 'Maria deixou uma avaliação ⭐⭐⭐⭐⭐', icon: '⭐' },
+        { id: crypto.randomUUID(), title: 'Bem-vindo!', text: 'Lucas se cadastrou agora', icon: '👋' },
+      ];
+      base.notificationMode = 'sequential';
+      base.notificationInterval = 4;
       break;
     case 'input_text':
       base.label = 'Nome';

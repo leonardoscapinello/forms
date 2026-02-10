@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
+import { Bell } from 'lucide-react';
 
 interface Props {
   element: PageElement;
@@ -125,6 +126,42 @@ export default function ElementPreview({ element, stepNumber }: Props) {
           <p className={`text-sm leading-relaxed ${alertConfig.textColor}`}>
             {element.content || 'Mensagem de atenção'}
           </p>
+        </div>
+      );
+    }
+
+    case 'notification': {
+      const firstItem = (element.notificationItems || [])[0];
+      return (
+        <div className="w-full flex justify-center">
+          <div
+            className="w-full max-w-sm rounded-2xl px-4 py-3 flex items-start gap-3 shadow-lg border"
+            style={{
+              background: 'rgba(255,255,255,0.82)',
+              backdropFilter: 'blur(24px)',
+              borderColor: 'rgba(255,255,255,0.2)',
+            }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Twemoji className="text-lg leading-none">{firstItem?.icon || '🔔'}</Twemoji>
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] font-semibold text-gray-900 truncate">
+                  {firstItem?.title || 'Notificação'}
+                </p>
+                <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">agora</span>
+              </div>
+              <p className="text-[12px] text-gray-600 leading-snug mt-0.5 line-clamp-2">
+                {firstItem?.text || 'Texto da notificação'}
+              </p>
+            </div>
+          </div>
+          {(element.notificationItems || []).length > 1 && (
+            <div className="absolute -bottom-1 right-4 text-[10px] text-muted-foreground">
+              +{(element.notificationItems || []).length - 1} mais
+            </div>
+          )}
         </div>
       );
     }

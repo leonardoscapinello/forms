@@ -1,4 +1,4 @@
-import { PageElement, PAGE_ELEMENT_LABELS, SelectOption } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem } from '@/types/pageElements';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -543,6 +543,110 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
                 max={8}
                 step={1}
               />
+            </div>
+          )}
+
+          {/* ─── Notification settings ─── */}
+          {element.type === 'notification' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Modo de exibição</Label>
+                <Select
+                  value={element.notificationMode || 'sequential'}
+                  onValueChange={v => onChange({ notificationMode: v as any })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sequential">Sequencial</SelectItem>
+                    <SelectItem value="random">Aleatório</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Intervalo ({element.notificationInterval || 4}s)</Label>
+                <Slider
+                  value={[element.notificationInterval || 4]}
+                  onValueChange={([v]) => onChange({ notificationInterval: v })}
+                  min={2}
+                  max={15}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notificações ({(element.notificationItems || []).length}/10)</Label>
+                <div className="space-y-2">
+                  {(element.notificationItems || []).map((item) => (
+                    <div key={item.id} className="space-y-1.5 p-2 rounded-lg border border-border">
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={item.icon || ''}
+                          onChange={e => {
+                            const items = (element.notificationItems || []).map(n =>
+                              n.id === item.id ? { ...n, icon: e.target.value } : n
+                            );
+                            onChange({ notificationItems: items });
+                          }}
+                          className="h-8 w-14 text-center text-lg"
+                          placeholder="🔔"
+                        />
+                        <Input
+                          value={item.title}
+                          onChange={e => {
+                            const items = (element.notificationItems || []).map(n =>
+                              n.id === item.id ? { ...n, title: e.target.value } : n
+                            );
+                            onChange({ notificationItems: items });
+                          }}
+                          className="h-8 text-sm flex-1"
+                          placeholder="Título"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            onChange({ notificationItems: (element.notificationItems || []).filter(n => n.id !== item.id) });
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <Input
+                        value={item.text}
+                        onChange={e => {
+                          const items = (element.notificationItems || []).map(n =>
+                            n.id === item.id ? { ...n, text: e.target.value } : n
+                          );
+                          onChange({ notificationItems: items });
+                        }}
+                        className="h-8 text-xs"
+                        placeholder="Texto da notificação..."
+                      />
+                    </div>
+                  ))}
+                  {(element.notificationItems || []).length < 10 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => {
+                        const items = [...(element.notificationItems || [])];
+                        items.push({
+                          id: crypto.randomUUID(),
+                          title: `Notificação ${items.length + 1}`,
+                          text: 'Texto da notificação',
+                          icon: '🔔',
+                        });
+                        onChange({ notificationItems: items });
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar notificação
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
