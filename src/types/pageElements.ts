@@ -62,6 +62,7 @@ export interface PageElementStyle {
   borderWidth?: number;
   borderColor?: string;
   borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
+  boxShadow?: string;
   maxWidth?: string;
   width?: string;
 }

@@ -1308,7 +1308,24 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
               />
             </div>
 
-            {/* Padding */}
+            {/* Shadow */}
+            <div className="space-y-2 mb-4">
+              <Label className="text-xs">Sombra</Label>
+              <Select
+                value={element.style?.boxShadow || 'none'}
+                onValueChange={v => updateStyle({ boxShadow: v === 'none' ? undefined : v })}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sem sombra" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  <SelectItem value="0 1px 3px rgba(0,0,0,0.08)">Leve</SelectItem>
+                  <SelectItem value="0 4px 12px rgba(0,0,0,0.1)">Média</SelectItem>
+                  <SelectItem value="0 8px 24px rgba(0,0,0,0.15)">Forte</SelectItem>
+                  <SelectItem value="0 12px 40px rgba(0,0,0,0.2)">Extra forte</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2 mb-4">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Padding</Label>
