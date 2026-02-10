@@ -200,7 +200,7 @@ export interface PageElement {
   comparativeLabels?: string[]; // X-axis labels shared across datasets
   // Progress bar element
   progressBarItems?: ProgressBarItem[];
-  progressBarLayout?: 1 | 2; // 1 or 2 columns
+  progressBarLayout?: 1 | 2 | 3; // 1, 2 or 3 columns
   progressBarDisposition?: 'chart_legend' | 'legend_chart'; // order
   progressBarBarWidth?: number; // max width of each vertical bar in px (default 120)
   // Progress bar column border (shared across all bars)
