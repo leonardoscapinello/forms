@@ -363,10 +363,19 @@ function InteractiveElement({
         <div className="space-y-2">
           <div className="relative">
             <input
-              type="email"
+              type="text"
+              inputMode="email"
               value={value || ''}
               onChange={e => handleEmailChange(e.target.value)}
               placeholder={element.placeholder || 'seu@email.com'}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-1p-ignore
+              data-lpignore="true"
+              data-bwignore
+              data-form-type="other"
               className={`w-full bg-transparent border-0 border-b-2 outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
                 emailError ? 'border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
               }`}
