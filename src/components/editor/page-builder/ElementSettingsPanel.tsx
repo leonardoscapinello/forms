@@ -101,7 +101,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose }: Pro
               <div>
                 <Label>Validação inteligente</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Verifica se o e-mail existe via Reoon
+                  Verifica em tempo real se o e-mail é válido e pode receber mensagens
                 </p>
               </div>
               <Switch
