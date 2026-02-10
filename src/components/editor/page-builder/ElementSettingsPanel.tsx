@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { X, Plus, Trash2, Upload, Loader2, Star } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Loader2, Star, Link, Unlink } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useRef } from 'react';
@@ -24,6 +24,8 @@ const isFormField = (type: string) => type.startsWith('input_');
 export default function ElementSettingsPanel({ element, onChange, onClose, pages }: Props) {
   const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [paddingLinked, setPaddingLinked] = useState(true);
+  const [marginLinked, setMarginLinked] = useState(true);
 
   const updateStyle = (patch: Record<string, any>) => {
     onChange({ style: { ...element.style, ...patch } });
@@ -1176,26 +1178,82 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
 
             {/* Padding */}
             <div className="space-y-2 mb-4">
-              <Label className="text-xs">Padding ({element.style?.padding ?? 0}px)</Label>
-              <Slider
-                value={[element.style?.padding ?? 0]}
-                onValueChange={([v]) => updateStyle({ padding: v })}
-                min={0}
-                max={80}
-                step={2}
-              />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Padding</Label>
+                <button
+                  type="button"
+                  onClick={() => setPaddingLinked(!paddingLinked)}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={paddingLinked ? 'Editar lados individualmente' : 'Editar todos juntos'}
+                >
+                  {paddingLinked ? <Link className="h-3.5 w-3.5" /> : <Unlink className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {paddingLinked ? (
+                <Slider
+                  value={[element.style?.padding ?? 0]}
+                  onValueChange={([v]) => updateStyle({ padding: v, paddingTop: undefined, paddingRight: undefined, paddingBottom: undefined, paddingLeft: undefined })}
+                  min={0}
+                  max={80}
+                  step={2}
+                />
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {([['paddingTop', 'Cima'], ['paddingRight', 'Direita'], ['paddingBottom', 'Baixo'], ['paddingLeft', 'Esquerda']] as const).map(([key, label]) => (
+                    <div key={key} className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground">{label}</span>
+                      <Input
+                        type="number"
+                        value={element.style?.[key] ?? element.style?.padding ?? 0}
+                        onChange={e => updateStyle({ padding: undefined, [key]: e.target.value ? Number(e.target.value) : 0 })}
+                        className="h-8 text-xs"
+                        min={0}
+                        max={80}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Margin */}
             <div className="space-y-2 mb-4">
-              <Label className="text-xs">Margem ({element.style?.margin ?? 0}px)</Label>
-              <Slider
-                value={[element.style?.margin ?? 0]}
-                onValueChange={([v]) => updateStyle({ margin: v })}
-                min={0}
-                max={80}
-                step={2}
-              />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Margem</Label>
+                <button
+                  type="button"
+                  onClick={() => setMarginLinked(!marginLinked)}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={marginLinked ? 'Editar lados individualmente' : 'Editar todos juntos'}
+                >
+                  {marginLinked ? <Link className="h-3.5 w-3.5" /> : <Unlink className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {marginLinked ? (
+                <Slider
+                  value={[element.style?.margin ?? 0]}
+                  onValueChange={([v]) => updateStyle({ margin: v, marginTop: undefined, marginRight: undefined, marginBottom: undefined, marginLeft: undefined })}
+                  min={0}
+                  max={80}
+                  step={2}
+                />
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {([['marginTop', 'Cima'], ['marginRight', 'Direita'], ['marginBottom', 'Baixo'], ['marginLeft', 'Esquerda']] as const).map(([key, label]) => (
+                    <div key={key} className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground">{label}</span>
+                      <Input
+                        type="number"
+                        value={element.style?.[key] ?? element.style?.margin ?? 0}
+                        onChange={e => updateStyle({ margin: undefined, [key]: e.target.value ? Number(e.target.value) : 0 })}
+                        className="h-8 text-xs"
+                        min={0}
+                        max={80}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Width */}
