@@ -20,6 +20,7 @@ export default function FormPreview() {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
+  const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
 
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
@@ -29,7 +30,17 @@ export default function FormPreview() {
   const totalSteps = pages.length;
   const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? (((currentPageIndex || 0) + 1) / totalSteps) * 100 : 0;
 
+  const isPageBlocked = useMemo(() => {
+    if (!currentPage) return false;
+    return currentPage.elements.some(el => blockedElements[el.id]);
+  }, [currentPage, blockedElements]);
+
+  const setElementBlocked = useCallback((elementId: string, blocked: boolean) => {
+    setBlockedElements(prev => ({ ...prev, [elementId]: blocked }));
+  }, []);
+
   const goNext = useCallback(() => {
+    if (isPageBlocked) return;
     setDirection(1);
     if (currentPageIndex === null) {
       if (pages.length > 0) {
@@ -44,7 +55,7 @@ export default function FormPreview() {
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages.length]);
+  }, [currentPageIndex, pages.length, isPageBlocked]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
@@ -164,6 +175,7 @@ export default function FormPreview() {
                         value={answers[el.id]}
                         onChange={v => setAnswer(el.id, v)}
                         stepNumber={fieldIndex}
+                        onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
                       />
                     );
                   })
@@ -181,9 +193,10 @@ export default function FormPreview() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
-          <Button onClick={goNext} className="text-sm px-6">
+          <Button onClick={goNext} className="text-sm px-6" disabled={isPageBlocked}>
+            {isPageBlocked && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {currentPageIndex !== null && currentPageIndex >= pages.length - 1 ? 'Enviar' : 'OK'}
-            <Check className="ml-2 h-4 w-4" />
+            {!isPageBlocked && <Check className="ml-2 h-4 w-4" />}
           </Button>
         </div>
       )}
@@ -197,11 +210,13 @@ function InteractiveElement({
   value,
   onChange,
   stepNumber,
+  onBlockedChange,
 }: {
   element: PageElement;
   value: any;
   onChange: (v: any) => void;
   stepNumber: number;
+  onBlockedChange: (blocked: boolean) => void;
 }) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
@@ -214,6 +229,16 @@ function InteractiveElement({
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+  // Report blocked state to parent (checking or has error with smart validation)
+  useEffect(() => {
+    if (element.type === 'input_email' && element.smartValidation) {
+      const isBlocked = emailChecking || (emailError !== null && emailValid === false);
+      onBlockedChange(isBlocked);
+    } else {
+      onBlockedChange(false);
+    }
+  }, [emailChecking, emailError, emailValid, element.type, element.smartValidation, onBlockedChange]);
+
   const handleEmailChange = useCallback((val: string) => {
     onChange(val);
     setEmailValid(null);
@@ -221,7 +246,10 @@ function InteractiveElement({
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!val) return;
+    if (!val) {
+      onBlockedChange(false);
+      return;
+    }
 
     // Basic mask validation
     if (!emailRegex.test(val)) {
@@ -231,6 +259,8 @@ function InteractiveElement({
 
     // Smart validation via Reoon (if enabled)
     if (element.smartValidation) {
+      // Block navigation immediately while waiting for debounce + check
+      onBlockedChange(true);
       debounceRef.current = setTimeout(async () => {
         setEmailChecking(true);
         try {
@@ -246,12 +276,13 @@ function InteractiveElement({
           // if null (not configured), just pass silently
         } catch {
           // Don't block the user on API errors
+          onBlockedChange(false);
         } finally {
           setEmailChecking(false);
         }
       }, 800);
     }
-  }, [onChange, element.smartValidation]);
+  }, [onChange, element.smartValidation, onBlockedChange]);
 
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
