@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -914,6 +914,209 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   }}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar dado
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Comparative Chart settings ─── */}
+          {element.type === 'comparative_chart' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Modo do gráfico</Label>
+                <Select
+                  value={element.comparativeMode || 'cartesian'}
+                  onValueChange={v => onChange({ comparativeMode: v as ComparativeChartMode })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cartesian">Cartesiano (Linhas)</SelectItem>
+                    <SelectItem value="bar">Barras</SelectItem>
+                    <SelectItem value="circular">Circular</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Grade</Label>
+                  <Switch
+                    checked={element.chartStyle?.showGrid !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showGrid: v } })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Labels</Label>
+                  <Switch
+                    checked={element.chartStyle?.showLabels !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showLabels: v } })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Legenda</Label>
+                  <Switch
+                    checked={element.chartStyle?.showLegend !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showLegend: v } })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Valores</Label>
+                  <Switch
+                    checked={element.chartStyle?.showValues !== false}
+                    onCheckedChange={v => onChange({ chartStyle: { ...element.chartStyle, showValues: v } })}
+                  />
+                </div>
+              </div>
+
+              {/* Labels (X-axis) */}
+              {(element.comparativeMode || 'cartesian') !== 'circular' && (
+                <div className="space-y-2">
+                  <Label>Eixo X ({(element.comparativeLabels || []).length} pontos)</Label>
+                  {(element.comparativeLabels || []).map((lbl, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <Input
+                        value={lbl}
+                        onChange={e => {
+                          const labels = [...(element.comparativeLabels || [])];
+                          labels[i] = e.target.value;
+                          onChange({ comparativeLabels: labels });
+                        }}
+                        className="h-8 text-sm flex-1"
+                        placeholder={`Ponto ${i + 1}`}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          const labels = (element.comparativeLabels || []).filter((_, j) => j !== i);
+                          const datasets = (element.comparativeDatasets || []).map(ds => ({
+                            ...ds,
+                            points: ds.points.filter((_, j) => j !== i),
+                          }));
+                          onChange({ comparativeLabels: labels, comparativeDatasets: datasets });
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => {
+                      const labels = [...(element.comparativeLabels || []), `Ponto ${(element.comparativeLabels || []).length + 1}`];
+                      const datasets = (element.comparativeDatasets || []).map(ds => ({
+                        ...ds,
+                        points: [...ds.points, { id: crypto.randomUUID(), label: labels[labels.length - 1], value: '0' }],
+                      }));
+                      onChange({ comparativeLabels: labels, comparativeDatasets: datasets });
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar ponto
+                  </Button>
+                </div>
+              )}
+
+              {/* Datasets */}
+              <div className="space-y-3">
+                <Label>Conjuntos de dados ({(element.comparativeDatasets || []).length})</Label>
+                {(element.comparativeDatasets || []).map((ds) => (
+                  <div key={ds.id} className="space-y-2 p-3 rounded-lg border border-border">
+                    <div className="flex items-center gap-1.5">
+                      <ColorPickerField
+                        value={ds.color}
+                        onChange={v => {
+                          const datasets = (element.comparativeDatasets || []).map(d =>
+                            d.id === ds.id ? { ...d, color: v || '#6366f1' } : d
+                          );
+                          onChange({ comparativeDatasets: datasets });
+                        }}
+                        allowTransparent={false}
+                        defaultColor="#6366f1"
+                      />
+                      <Input
+                        value={ds.name}
+                        onChange={e => {
+                          const datasets = (element.comparativeDatasets || []).map(d =>
+                            d.id === ds.id ? { ...d, name: e.target.value } : d
+                          );
+                          onChange({ comparativeDatasets: datasets });
+                        }}
+                        className="h-8 text-sm flex-1"
+                        placeholder="Nome do dataset"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          onChange({ comparativeDatasets: (element.comparativeDatasets || []).filter(d => d.id !== ds.id) });
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <Input
+                      value={ds.tooltip || ''}
+                      onChange={e => {
+                        const datasets = (element.comparativeDatasets || []).map(d =>
+                          d.id === ds.id ? { ...d, tooltip: e.target.value } : d
+                        );
+                        onChange({ comparativeDatasets: datasets });
+                      }}
+                      className="h-7 text-xs"
+                      placeholder="Tooltip da legenda (opcional)"
+                    />
+                    {/* Data points */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-medium">Valores</span>
+                      {ds.points.map((pt, pi) => (
+                        <div key={pt.id} className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground w-16 truncate">
+                            {(element.comparativeLabels || [])[pi] || `#${pi + 1}`}
+                          </span>
+                          <Input
+                            value={pt.value}
+                            onChange={e => {
+                              const datasets = (element.comparativeDatasets || []).map(d => {
+                                if (d.id !== ds.id) return d;
+                                return {
+                                  ...d,
+                                  points: d.points.map((p, j) =>
+                                    j === pi ? { ...p, value: e.target.value } : p
+                                  ),
+                                };
+                              });
+                              onChange({ comparativeDatasets: datasets });
+                            }}
+                            className="h-7 text-xs w-20 font-mono"
+                            placeholder="0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    const colors = ['#6366f1', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#ec4899'];
+                    const datasets = [...(element.comparativeDatasets || [])];
+                    const labels = element.comparativeLabels || [];
+                    datasets.push({
+                      id: crypto.randomUUID(),
+                      name: `Dataset ${datasets.length + 1}`,
+                      color: colors[datasets.length % colors.length],
+                      points: labels.map((l, i) => ({ id: crypto.randomUUID(), label: l, value: '0' })),
+                    });
+                    onChange({ comparativeDatasets: datasets });
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar dataset
                 </Button>
               </div>
             </div>

@@ -6,6 +6,7 @@ import Twemoji from '@/components/Twemoji';
 import { Bell } from 'lucide-react';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
+import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
 
 interface Props {
@@ -403,6 +404,18 @@ export default function ElementPreview({ element, stepNumber }: Props) {
             chartType={element.chartType || 'column'}
             items={element.chartItems || []}
             style={element.chartStyle || {}}
+          />
+        </div>
+      );
+
+    case 'comparative_chart':
+      return (
+        <div className="rounded-lg p-3" style={{ border: '1px solid rgba(0,0,0,0.12)' }}>
+          <ComparativeChartPreview
+            datasets={element.comparativeDatasets || []}
+            labels={element.comparativeLabels || []}
+            mode={element.comparativeMode || 'cartesian'}
+            style={element.chartStyle}
           />
         </div>
       );

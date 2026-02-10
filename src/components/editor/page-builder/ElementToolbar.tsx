@@ -4,7 +4,7 @@ import {
   Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
   AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
-  LayoutGrid, BarChart3, Activity, Percent, Timer,
+  LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -19,6 +19,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   alert: AlertTriangle,
   notification: Bell,
   chart: BarChart3,
+  comparative_chart: GitCompareArrows,
   progress_bar: Activity,
   horizontal_bar: Percent,
   timer: Timer,
