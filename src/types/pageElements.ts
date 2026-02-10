@@ -135,6 +135,9 @@ export interface ProgressBarItem {
   label: string;
   value: number; // 0-100
   color: string;
+  labelColor?: string;
+  valueColor?: string;
+  barBackground?: string;
 }
 
 export interface ColumnData {
@@ -384,8 +387,8 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'progress_bar':
       base.progressBarItems = [
-        { id: crypto.randomUUID(), label: 'Onde você está hoje.', value: 10, color: '#ef4444' },
-        { id: crypto.randomUUID(), label: 'Onde Você Vai Estar em 30 Dias:', value: 100, color: '#22c55e' },
+        { id: crypto.randomUUID(), label: 'Onde você está hoje.', value: 10, color: '#ef4444', barBackground: '#fecaca', valueColor: '#991b1b', labelColor: '#1a1a1a' },
+        { id: crypto.randomUUID(), label: 'Onde Você Vai Estar em 30 Dias:', value: 100, color: '#22c55e', barBackground: '#bbf7d0', valueColor: '#14532d', labelColor: '#1a1a1a' },
       ];
       base.progressBarLayout = 2;
       base.progressBarDisposition = 'chart_legend';
