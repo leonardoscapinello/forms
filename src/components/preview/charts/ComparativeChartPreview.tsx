@@ -69,7 +69,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   // No longer need badgeIndex — badges are per-point via point.tooltip
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={260}>
         <AreaChart data={data} margin={{ top: 36, right: 8, left: 0, bottom: 5 }}>
           <defs>
@@ -170,7 +170,7 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   const dur = style?.animated !== false ? 400 : 0;
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} margin={{ top: 20, right: 8, left: -24, bottom: 5 }}>
           {style?.showGrid !== false && (
