@@ -19,7 +19,18 @@ export default function FormPreview() {
   const form = getForm(id!);
 
   const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null); // null = welcome
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, any>>(() => {
+    if (!form) return {};
+    const defaults: Record<string, any> = {};
+    for (const page of form.pages || []) {
+      for (const el of page.elements || []) {
+        if (el.defaultValue !== undefined && el.defaultValue !== '') {
+          defaults[el.id] = el.defaultValue;
+        }
+      }
+    }
+    return defaults;
+  });
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
