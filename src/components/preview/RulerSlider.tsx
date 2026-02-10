@@ -31,12 +31,16 @@ export default function RulerSlider({
     [min, max, step],
   );
 
+  const pointerIdRef = useRef<number | null>(null);
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      e.preventDefault();
       dragging.current = true;
       startX.current = e.clientX;
       startValue.current = value;
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      pointerIdRef.current = e.pointerId;
+      containerRef.current?.setPointerCapture(e.pointerId);
     },
     [value],
   );
@@ -45,15 +49,19 @@ export default function RulerSlider({
     (e: React.PointerEvent) => {
       if (!dragging.current) return;
       const dx = e.clientX - startX.current;
-      // Moving ruler RIGHT means value DECREASES
       const dv = -dx / PX_PER_UNIT;
       onChange(clamp(startValue.current + dv));
     },
     [onChange, clamp],
   );
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
     dragging.current = false;
+    if (pointerIdRef.current !== null) {
+      try { containerRef.current?.releasePointerCapture(pointerIdRef.current); } catch {}
+      pointerIdRef.current = null;
+    }
   }, []);
 
   // Mouse wheel support
@@ -99,10 +107,9 @@ export default function RulerSlider({
     >
       {/* Ticks layer — translated so `value` is at center */}
       <div
-        className="absolute top-0 h-full"
+        className="absolute top-0 h-full pointer-events-none"
         style={{
           left: '50%',
-          transform: `translateX(0px)`,
         }}
       >
         {ticks.map((t) => {
