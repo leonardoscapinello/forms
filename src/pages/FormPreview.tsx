@@ -1104,7 +1104,7 @@ function InteractiveElement({
       const barColor = element.horizontalBarColor || 'hsl(var(--primary))';
       const barBg = element.horizontalBarBackground || 'rgba(0,0,0,0.08)';
       const lblColor = element.horizontalBarLabelColor || 'hsl(var(--foreground))';
-      const valColor = element.horizontalBarValueColor || barColor;
+      const valColor = element.horizontalBarValueColor || '#818388';
       const trackH = element.horizontalBarHeight || 12;
       const dotSize = trackH + 10;
       const totalSegments = 5;
@@ -1134,11 +1134,12 @@ function InteractiveElement({
               ))}
             </div>
             <div
-              className="absolute rounded-full shadow-md border-2 border-white transition-all duration-500"
+              className="absolute rounded-full shadow-sm transition-all duration-500"
               style={{
                 width: dotSize,
                 height: dotSize,
-                backgroundColor: barColor,
+                backgroundColor: '#ffffff',
+                border: `3px solid ${barColor}`,
                 left: `calc(${pct}% - ${dotSize / 2}px)`,
                 top: 0,
                 zIndex: 1,
