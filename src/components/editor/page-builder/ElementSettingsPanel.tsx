@@ -188,7 +188,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           )}
 
           {/* ─── Form field: default value ─── */}
-          {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating'].includes(element.type) && (
+          {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating', 'input_nps'].includes(element.type) && (
             <div className="space-y-2">
               <Label>Valor pré-definido</Label>
               <Input
@@ -210,7 +210,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
               />
             </div>
           )}
-          {element.type === 'input_rating' && (
+          {(element.type === 'input_rating' || element.type === 'input_nps') && (
             <div className="space-y-2">
               <Label>Avaliação pré-definida</Label>
               <Input
@@ -485,18 +485,62 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* ─── Rating count ─── */}
+          {/* ─── Rating style & count ─── */}
           {element.type === 'input_rating' && (
-            <div className="space-y-2">
-              <Label>Estrelas ({element.maxRating || 5})</Label>
-              <Slider
-                value={[element.maxRating || 5]}
-                onValueChange={([v]) => onChange({ maxRating: v })}
-                min={3}
-                max={10}
-                step={1}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Estilo</Label>
+                <Select value={element.ratingStyle || 'star'} onValueChange={v => onChange({ ratingStyle: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="star">⭐ Estrelas</SelectItem>
+                    <SelectItem value="heart">❤️ Corações</SelectItem>
+                    <SelectItem value="thumbsUp">👍 Curtidas</SelectItem>
+                    <SelectItem value="emoji">😀 Emoji personalizado</SelectItem>
+                    <SelectItem value="numeric">🔢 Numérico</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {element.ratingStyle === 'emoji' && (
+                <div className="space-y-2">
+                  <Label>Emoji</Label>
+                  <Input value={element.ratingEmoji || '⭐'} onChange={e => onChange({ ratingEmoji: e.target.value })} />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Quantidade ({element.maxRating || 5})</Label>
+                <Slider
+                  value={[element.maxRating || 5]}
+                  onValueChange={([v]) => onChange({ maxRating: v })}
+                  min={3}
+                  max={10}
+                  step={1}
+                />
+              </div>
+            </>
+          )}
+          {element.type === 'input_nps' && (
+            <>
+              <div className="space-y-2">
+                <Label>Escala máxima ({element.maxRating || 10})</Label>
+                <Select value={String(element.maxRating || 10)} onValueChange={v => onChange({ maxRating: Number(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">0 – 5</SelectItem>
+                    <SelectItem value="7">0 – 7</SelectItem>
+                    <SelectItem value="10">0 – 10</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Rótulo inferior</Label>
+                <Input value={element.npsLowLabel || ''} onChange={e => onChange({ npsLowLabel: e.target.value })} placeholder="Nada provável" />
+              </div>
+              <div className="space-y-2">
+                <Label>Rótulo superior</Label>
+                <Input value={element.npsHighLabel || ''} onChange={e => onChange({ npsHighLabel: e.target.value })} placeholder="Muito provável" />
+              </div>
+            </>
           )}
 
           {/* ─── Visual element: content ─── */}
@@ -1794,6 +1838,28 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 onFontFamilyChange={v => updateStyle({ fontFamily: v })}
                 onFontWeightChange={v => updateStyle({ fontWeight: v })}
               />
+
+              {/* Rating/NPS colors */}
+              {(element.type === 'input_rating' || element.type === 'input_nps') && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium text-muted-foreground">Cores da avaliação</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ColorPickerField
+                      label="Ativo"
+                      value={element.ratingActiveColor || (element.type === 'input_nps' ? '#22c55e' : '#facc15')}
+                      onChange={v => onChange({ ratingActiveColor: v })}
+                      allowTransparent={false}
+                    />
+                    <ColorPickerField
+                      label="Inativo"
+                      value={element.ratingInactiveColor || '#d1d5db'}
+                      onChange={v => onChange({ ratingInactiveColor: v })}
+                      allowTransparent={false}
+                      defaultColor="#d1d5db"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Horizontal Bar colors */}
               {element.type === 'horizontal_bar' && (

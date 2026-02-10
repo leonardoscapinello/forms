@@ -311,11 +311,42 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
     case 'input_rating': {
       const max = element.maxRating || 5;
+      const style = element.ratingStyle || 'star';
+      const activeColor = element.ratingActiveColor || '#facc15';
+      const inactiveColor = element.ratingInactiveColor || '#d1d5db';
+      if (style === 'numeric') {
+        return withFieldHeader(
+          <div className="flex gap-1.5 flex-wrap">
+            {Array.from({ length: max }).map((_, i) => (
+              <div key={i} className="w-9 h-9 rounded-lg border-2 flex items-center justify-center text-sm font-bold" style={{ borderColor: inactiveColor, color: inactiveColor }}>{i + 1}</div>
+            ))}
+          </div>
+        );
+      }
+      const iconMap: Record<string, string> = { star: '⭐', heart: '❤️', thumbsUp: '👍', emoji: element.ratingEmoji || '⭐' };
+      const emoji = iconMap[style] || '⭐';
       return withFieldHeader(
         <div className="flex gap-2">
           {Array.from({ length: max }).map((_, i) => (
-            <Star key={i} className="h-8 w-8 text-muted-foreground/30" />
+            <span key={i} className="text-2xl opacity-30">{emoji}</span>
           ))}
+        </div>
+      );
+    }
+
+    case 'input_nps': {
+      const max = element.maxRating || 10;
+      return withFieldHeader(
+        <div className="space-y-1">
+          <div className="flex gap-1">
+            {Array.from({ length: max + 1 }).map((_, i) => (
+              <div key={i} className="flex-1 h-10 rounded-lg border-2 border-border flex items-center justify-center text-xs font-bold text-muted-foreground">{i}</div>
+            ))}
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+            <span>{element.npsLowLabel || 'Nada provável'}</span>
+            <span>{element.npsHighLabel || 'Muito provável'}</span>
+          </div>
         </div>
       );
     }
