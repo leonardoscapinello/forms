@@ -8,8 +8,9 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
   HardDrive, Save, TestTube, Loader2, CheckCircle2, XCircle, Eye, EyeOff,
-  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail,
+  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog,
 } from 'lucide-react';
+import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -328,6 +329,7 @@ function IntegrationsTab() {
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
+    <div className="space-y-6">
     <div className="rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
@@ -394,6 +396,9 @@ function IntegrationsTab() {
           Salvar
         </Button>
       </div>
+    </div>
+
+    <ReoonIntegrationCard />
     </div>
   );
 }
