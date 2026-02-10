@@ -269,6 +269,10 @@ export interface FormData {
   pages: FunnelPage[];
   /** Global page style — shared by all pages */
   globalPageStyle?: FunnelPageStyle;
+  /** Whether to show a welcome/start screen before the first page */
+  showWelcomeScreen?: boolean;
+  /** The welcome screen page (editable via page builder) */
+  welcomePage?: FunnelPage;
   conditions?: ConditionNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
