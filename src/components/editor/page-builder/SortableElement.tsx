@@ -13,10 +13,11 @@ interface Props {
   onDelete: () => void;
   onElementChange?: (patch: Partial<PageElement>) => void;
   onRemoveFromMain?: (elementId: string) => void;
+  onMoveToMain?: (element: PageElement, sourceColumnsId: string, colIdx: number) => void;
   stepNumber?: number;
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, stepNumber }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, stepNumber }: Props) {
   const {
     attributes,
     listeners,
@@ -96,6 +97,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
             element={element}
             onChange={onElementChange}
             onRemoveFromMain={onRemoveFromMain}
+            onMoveToMain={onMoveToMain}
           />
         ) : (
           <ElementPreview element={element} stepNumber={stepNumber} />
