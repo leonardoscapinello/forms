@@ -10,9 +10,10 @@ interface Props {
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  stepNumber?: number;
 }
 
-export default function SortableElement({ element, isSelected, onSelect, onDelete }: Props) {
+export default function SortableElement({ element, isSelected, onSelect, onDelete, stepNumber }: Props) {
   const {
     attributes,
     listeners,
@@ -58,7 +59,7 @@ export default function SortableElement({ element, isSelected, onSelect, onDelet
         </button>
       </div>
 
-      <ElementPreview element={element} />
+      <ElementPreview element={element} stepNumber={stepNumber} />
     </div>
   );
 }

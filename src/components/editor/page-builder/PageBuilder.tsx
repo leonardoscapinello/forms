@@ -105,15 +105,21 @@ export default function PageBuilder({ elements, onChange }: Props) {
                       </div>
                     </div>
                   ) : (
-                    elements.map(el => (
-                      <SortableElement
-                        key={el.id}
-                        element={el}
-                        isSelected={selectedId === el.id}
-                        onSelect={() => setSelectedId(el.id)}
-                        onDelete={() => handleDelete(el.id)}
-                      />
-                    ))
+                    elements.map((el, idx) => {
+                      // Count only form fields for step numbering (matches preview)
+                      const formFieldIndex = elements.slice(0, idx + 1).filter(e => e.type.startsWith('input_')).length;
+                      const isField = el.type.startsWith('input_');
+                      return (
+                        <SortableElement
+                          key={el.id}
+                          element={el}
+                          isSelected={selectedId === el.id}
+                          onSelect={() => setSelectedId(el.id)}
+                          onDelete={() => handleDelete(el.id)}
+                          stepNumber={isField ? formFieldIndex : undefined}
+                        />
+                      );
+                    })
                   )}
                 </div>
               </SortableContext>
