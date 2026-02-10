@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DOMAINS = [
@@ -24,6 +24,8 @@ interface EmailDomainSuggestionsProps {
 
 export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainSuggestionsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [openUp, setOpenUp] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const suggestions = useMemo(() => {
     if (!value || !value.includes('@')) return [];
@@ -35,8 +37,15 @@ export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainS
       .slice(0, 5);
   }, [value]);
 
-  // Reset active index when suggestions change
   useEffect(() => { setActiveIndex(0); }, [suggestions.length]);
+
+  // Detect if there's enough space below, otherwise open upward
+  useEffect(() => {
+    if (suggestions.length === 0 || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setOpenUp(spaceBelow < 200);
+  }, [suggestions.length]);
 
   const username = value?.split('@')[0] || '';
 
@@ -46,10 +55,8 @@ export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainS
     }
   }, [suggestions, activeIndex, username, onSelect]);
 
-  // Keyboard navigation
   useEffect(() => {
     if (suggestions.length === 0) return;
-
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -69,37 +76,42 @@ export default function EmailDomainSuggestions({ value, onSelect }: EmailDomainS
   if (suggestions.length === 0) return null;
 
   return (
-    <AnimatePresence>
-      <motion.ul
-        initial={{ opacity: 0, y: -4 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -4 }}
-        className="mt-1 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden z-50 relative"
-        role="listbox"
-      >
-        {suggestions.map((domain, i) => (
-          <motion.li
-            key={domain}
-            role="option"
-            aria-selected={i === activeIndex}
-            onClick={() => onSelect(`${username}@${domain}`)}
-            onMouseEnter={() => setActiveIndex(i)}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm cursor-pointer transition-colors ${
-              i === activeIndex
-                ? 'bg-primary/10 text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50'
-            }`}
-          >
-            <span className="text-foreground font-medium">{username}@</span>
-            <span>{domain}</span>
-            {i === activeIndex && (
-              <span className="ml-auto text-xs text-muted-foreground/60 hidden md:inline">
-                Tab ↵
-              </span>
-            )}
-          </motion.li>
-        ))}
-      </motion.ul>
-    </AnimatePresence>
+    <div ref={containerRef} className="relative" style={{ height: 0 }}>
+      <AnimatePresence>
+        <motion.ul
+          initial={{ opacity: 0, y: openUp ? 4 : -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: openUp ? 4 : -4 }}
+          transition={{ duration: 0.15 }}
+          className={`absolute left-0 right-0 z-50 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden ${
+            openUp ? 'bottom-1' : 'top-1'
+          }`}
+          role="listbox"
+        >
+          {suggestions.map((domain, i) => (
+            <motion.li
+              key={domain}
+              role="option"
+              aria-selected={i === activeIndex}
+              onClick={() => onSelect(`${username}@${domain}`)}
+              onMouseEnter={() => setActiveIndex(i)}
+              className={`flex items-center gap-2 px-3 py-2.5 text-sm cursor-pointer transition-colors ${
+                i === activeIndex
+                  ? 'bg-primary/10 text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              <span className="text-foreground font-medium">{username}@</span>
+              <span>{domain}</span>
+              {i === activeIndex && (
+                <span className="ml-auto text-xs text-muted-foreground/60 hidden md:inline">
+                  Tab ↵
+                </span>
+              )}
+            </motion.li>
+          ))}
+        </motion.ul>
+      </AnimatePresence>
+    </div>
   );
 }
