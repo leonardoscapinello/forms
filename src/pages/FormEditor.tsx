@@ -1,15 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { Question, FormData, ConditionNodeData, createDefaultConditionGroup } from '@/types/form';
+import { PageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import QuestionSidePanel from '@/components/editor/QuestionSidePanel';
 import FormResponses from '@/components/editor/FormResponses';
+import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { ArrowLeft, Eye, Layout } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
 
-type EditorTab = 'workflow' | 'responses';
+type EditorTab = 'workflow' | 'page' | 'responses';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
@@ -132,26 +134,19 @@ export default function FormEditor() {
 
           {/* Tabs */}
           <div className="flex items-center gap-1 ml-6">
-            <button
-              onClick={() => setActiveTab('workflow')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'workflow'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              Workflow
-            </button>
-            <button
-              onClick={() => setActiveTab('responses')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                activeTab === 'responses'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              Respostas
-            </button>
+            {(['workflow', 'page', 'responses'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === tab
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                {tab === 'workflow' ? 'Workflow' : tab === 'page' ? 'Página' : 'Respostas'}
+              </button>
+            ))}
           </div>
 
           <div className="ml-auto flex items-center gap-2">
@@ -211,6 +206,17 @@ export default function FormEditor() {
               />
             )}
           </>
+        )}
+
+        {activeTab === 'page' && (
+          <PageBuilder
+            elements={selectedQuestion?.pageElements || []}
+            onChange={(elements: PageElement[]) => {
+              if (selectedQuestion) {
+                handleQuestionChange(selectedQuestion.id, { pageElements: elements });
+              }
+            }}
+          />
         )}
 
         {activeTab === 'responses' && (
