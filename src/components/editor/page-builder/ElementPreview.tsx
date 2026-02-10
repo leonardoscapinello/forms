@@ -411,7 +411,6 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const cols = element.progressBarLayout || 1;
       const disposition = element.progressBarDisposition || 'chart_legend';
       return (
-        <div className="rounded-lg p-3" style={{ border: '1px solid rgba(0,0,0,0.12)' }}>
         <div className={`grid ${cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
           {bars.map(bar => {
             const barBg = bar.barBackground || 'hsl(var(--muted) / 0.3)';
@@ -442,12 +441,11 @@ export default function ElementPreview({ element, stepNumber }: Props) {
               </p>
             );
             return (
-              <div key={bar.id} className="flex flex-col items-center gap-3">
+              <div key={bar.id} className="flex flex-col items-center gap-3 rounded-lg p-3" style={{ border: '1px solid rgba(0,0,0,0.12)' }}>
                 {disposition === 'chart_legend' ? <>{barContent}{labelContent}</> : <>{labelContent}{barContent}</>}
               </div>
             );
           })}
-        </div>
         </div>
       );
     }
