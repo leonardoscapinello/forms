@@ -231,8 +231,11 @@ function LineChart({ items, style }: { items: GraphicDataItem[]; style: ChartSty
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 20 }}>
+        <AreaChart data={data} margin={{ top: 50, right: 20, left: 10, bottom: 20 }}>
           <defs>
+            <filter id="tooltipCardShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.08" />
+            </filter>
             {/* Area fill: horizontal gradient using ALL item colors */}
             <linearGradient id={areaFillId} x1="0" y1="0" x2="1" y2="0">
               {colorStops.map((stop, i) => (
@@ -254,9 +257,50 @@ function LineChart({ items, style }: { items: GraphicDataItem[]; style: ChartSty
             stroke={items.length > 1 ? `url(#${strokeGradId})` : firstColor}
             strokeWidth={3}
             fill={`url(#${areaFillId})`}
-            dot={({ cx, cy, index }: any) => (
-              <circle key={index} cx={cx} cy={cy} r={5} fill={getColor(items[index] || items[0], index)} stroke="hsl(var(--card))" strokeWidth={3} />
-            )}
+            dot={({ cx, cy, index }: any) => {
+              const item = items[index] || items[0];
+              const tooltip = item?.tooltip;
+              const suffix = item?.suffix || '';
+              const val = data[index]?.value;
+              const color = getColor(item, index);
+
+              if (!tooltip) {
+                return (
+                  <g key={index}>
+                    <circle cx={cx} cy={cy} r={5} fill={color} stroke="hsl(var(--card))" strokeWidth={3} />
+                    {style.showValues !== false && val !== undefined && (
+                      <text x={cx} y={cy - 12} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+                        {val}{suffix}
+                      </text>
+                    )}
+                  </g>
+                );
+              }
+
+              const cardW = Math.max(tooltip.length * 5.5, 40);
+              const cardH = 22;
+              const cardX = cx - cardW / 2;
+              const cardY = cy - cardH - 24;
+
+              return (
+                <g key={index}>
+                  <circle cx={cx} cy={cy} r={5} fill={color} stroke="hsl(var(--card))" strokeWidth={3} />
+                  {style.showValues !== false && val !== undefined && (
+                    <text x={cx} y={cy - cardH - 28} textAnchor="middle" fontSize={10} fontWeight={600} fill="hsl(var(--foreground))">
+                      {val}{suffix}
+                    </text>
+                  )}
+                  <rect x={cardX} y={cardY} width={cardW} height={cardH} rx={6} ry={6}
+                    fill="white" stroke="hsl(var(--border))" strokeWidth={1}
+                    filter="url(#tooltipCardShadow)" />
+                  <text x={cx} y={cardY + cardH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+                    fontSize={8} fontWeight={600} fill="hsl(var(--foreground))" letterSpacing={0.5}
+                    style={{ textTransform: 'uppercase' }}>
+                    {tooltip}
+                  </text>
+                </g>
+              );
+            }}
             activeDot={{ r: 8, strokeWidth: 3, className: 'drop-shadow-md' }}
             animationDuration={dur} animationEasing="ease-out" />
         </AreaChart>
