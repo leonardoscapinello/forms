@@ -75,9 +75,13 @@ export default function GraphicPreview({ variant, chartType = 'bar', items, titl
   }
 
   return (
-    <div className="space-y-4 w-full max-w-lg">
+    <div className="space-y-4 w-full max-w-lg" style={{ minWidth: 0 }}>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      {variant === 'chart' && <ChartLivePreview chartType={chartType} items={items} style={chartStyle} />}
+      {variant === 'chart' && (
+        <div className="w-full" style={{ minHeight: 300 }}>
+          <ChartLivePreview chartType={chartType} items={items} style={chartStyle} />
+        </div>
+      )}
       {variant === 'timeline' && <Timeline items={items} />}
       {variant === 'steps' && <Steps items={items} />}
       {variant === 'kpis' && <KpiCards items={items} />}
