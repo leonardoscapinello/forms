@@ -1,11 +1,13 @@
 import { FunnelPage, FormVariable, FormVariableType } from '@/types/form';
-import { Plus, FileText, Trash2, Home, Variable, ChevronDown, ChevronRight, Pencil, Check, X } from 'lucide-react';
+import { Plus, FileText, Trash2, Home, Variable, ChevronDown, ChevronRight, Pencil, Check, X, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { PageElement } from '@/types/pageElements';
+import { isValidVariableName } from '@/lib/variableInterpolation';
+import { toast } from 'sonner';
 
 interface Props {
   pages: FunnelPage[];
@@ -59,9 +61,25 @@ export default function PageListPanel({
 
   const confirmEditVar = () => {
     if (editingVarId && editingVarName.trim()) {
-      onUpdateVariable?.(editingVarId, { name: editingVarName.trim() });
+      const sanitized = editingVarName.trim().replace(/\s+/g, '_');
+      if (!isValidVariableName(sanitized)) {
+        toast.error('Nome inválido. Use apenas letras, números e _');
+        return;
+      }
+      // Check uniqueness
+      const isDuplicate = variables.some(v => v.id !== editingVarId && v.name === sanitized);
+      if (isDuplicate) {
+        toast.error('Já existe uma variável com esse nome');
+        return;
+      }
+      onUpdateVariable?.(editingVarId, { name: sanitized });
     }
     setEditingVarId(null);
+  };
+
+  const copyVarSyntax = (name: string) => {
+    navigator.clipboard.writeText(`{{${name}}}`);
+    toast.success(`{{${name}}} copiado!`);
   };
 
   return (
@@ -185,7 +203,7 @@ export default function PageListPanel({
             <div className="py-8 text-center text-muted-foreground">
               <Variable className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">Nenhuma variável</p>
-              <p className="text-xs mt-1">Crie variáveis para armazenar dados</p>
+              <p className="text-xs mt-1">Crie variáveis e use <code className="font-mono bg-muted px-1 rounded">{`{{nome}}`}</code> nos textos</p>
             </div>
           ) : (
             variables.map(v => (
@@ -220,6 +238,16 @@ export default function PageListPanel({
                     </button>
                   </div>
                 </div>
+
+                {/* Copyable syntax tag */}
+                <button
+                  onClick={() => copyVarSyntax(v.name)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors w-fit"
+                  title="Clique para copiar"
+                >
+                  <span>{`{{${v.name}}}`}</span>
+                  <Copy className="h-3 w-3" />
+                </button>
 
                 {/* Variable type */}
                 <Select

@@ -22,6 +22,8 @@ import DateFieldPreview from '@/components/preview/DateFieldPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
+import { interpolateText } from '@/lib/variableInterpolation';
+import { FormVariable } from '@/types/form';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -264,6 +266,8 @@ export default function FormPreview() {
                       onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
                       registerValidator={validator => registerValidator(el.id, validator)}
                       onNavigate={handleButtonNavigate}
+                      variables={form.variables || []}
+                      answers={answers}
                     />
                   );
                 })}
@@ -333,6 +337,8 @@ export default function FormPreview() {
                           onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
                           registerValidator={validator => registerValidator(el.id, validator)}
                           onNavigate={handleButtonNavigate}
+                          variables={form.variables || []}
+                          answers={answers}
                         />
                       );
                     });
@@ -372,6 +378,8 @@ function InteractiveElement({
   onBlockedChange,
   registerValidator,
   onNavigate,
+  variables = [],
+  answers = {},
 }: {
   element: PageElement;
   value: any;
@@ -381,8 +389,11 @@ function InteractiveElement({
   onBlockedChange: (blocked: boolean) => void;
   registerValidator: (validator: (() => Promise<boolean>) | null) => void;
   onNavigate?: (action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => void;
+  variables?: FormVariable[];
+  answers?: Record<string, any>;
 }) {
   const { type, style } = element;
+  const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // Universal style wrappers matching ElementPreview
@@ -527,11 +538,11 @@ function InteractiveElement({
         <span className="text-lg md:text-xl lg:text-2xl font-semibold text-primary mt-0.5">→</span>
         <div>
           <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
-            {element.label || 'Sem título'}
+            {t(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{element.description}</p>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{t(element.description)}</p>
           )}
         </div>
       </div>
@@ -552,7 +563,7 @@ function InteractiveElement({
       return wrapWithStyle(
         <div className={alignClass}>
           <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
-            {element.content || 'Título'}
+            {t(element.content) || 'Título'}
           </div>
         </div>
       );
@@ -562,7 +573,7 @@ function InteractiveElement({
       return wrapWithStyle(
         <div className={alignClass}>
           <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
-            {element.content || ''}
+            {t(element.content) || ''}
           </p>
         </div>
       );
@@ -613,7 +624,7 @@ function InteractiveElement({
               fontWeight: style?.fontWeight,
             }}
           >
-            {element.content || 'Botão'}
+            {t(element.content) || 'Botão'}
           </Button>
         </div>
       );
@@ -645,7 +656,7 @@ function InteractiveElement({
         <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${alertConfig.bg} ${alertConfig.border}`}>
           <AlertIconComp className={`h-5 w-5 mt-0.5 flex-shrink-0 ${alertConfig.iconColor}`} />
           <p className={`text-sm md:text-base leading-relaxed ${alertConfig.textColor}`}>
-            {element.content || 'Mensagem de atenção'}
+            {t(element.content) || 'Mensagem de atenção'}
           </p>
         </div>
       );
