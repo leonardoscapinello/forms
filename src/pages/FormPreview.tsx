@@ -55,6 +55,10 @@ export default function FormPreview() {
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
 
+  // Always-fresh ref to form — avoids stale closures in callbacks
+  const formRef = useRef(form);
+  useEffect(() => { formRef.current = form; }, [form]);
+
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
 
@@ -150,14 +154,14 @@ export default function FormPreview() {
     toNodeId: string,
     currentAnswers: Record<string, any>,
   ): Record<string, any> => {
-    if (!form?.variableOpNodes?.length || !form?.flowEdges?.length || !form?.variables?.length) return currentAnswers;
+    const f = formRef.current;
+    if (!f?.variableOpNodes?.length || !f?.flowEdges?.length || !f?.variables?.length) return currentAnswers;
 
-    const edges = form.flowEdges;
+    const edges = f.flowEdges;
     let updated = { ...currentAnswers };
 
-    // Collect all vo-* nodes reachable from fromNodeId that eventually lead to toNodeId
-    // BFS traversal through vo- nodes only
-    const voNodesToApply: typeof form.variableOpNodes = [];
+    // BFS: collect all vo-* nodes on a path from fromNodeId to toNodeId
+    const voNodesToApply: typeof f.variableOpNodes = [];
     const visited = new Set<string>();
     const queue: string[] = [fromNodeId];
 
@@ -166,15 +170,14 @@ export default function FormPreview() {
       if (visited.has(current)) continue;
       visited.add(current);
 
-      // Find all outgoing edges from current node
       for (const edge of edges) {
         if (edge.source !== current) continue;
         const nextId = edge.target;
-        if (nextId === toNodeId) continue; // reached destination, stop this branch
-        if (!nextId.startsWith('vo-')) continue; // only traverse vo- nodes
+        if (nextId === toNodeId) continue; // reached destination, stop branch
+        if (!nextId.startsWith('vo-')) continue;
         const voId = nextId.replace('vo-', '');
-        const vop = form.variableOpNodes?.find(v => v.id === voId);
-        // Only include if this vo-node has a path to toNodeId
+        const vop = f.variableOpNodes?.find(v => v.id === voId);
+        // Only include if this vo-node eventually connects to toNodeId
         const leadsToTarget = edges.some(e => e.source === nextId && e.target === toNodeId);
         if (vop && leadsToTarget && !visited.has(nextId)) {
           voNodesToApply.push(vop);
@@ -185,20 +188,19 @@ export default function FormPreview() {
 
     for (const vop of voNodesToApply) {
       for (const op of vop.operations) {
-        const variable = form.variables?.find(v => v.id === op.variableId);
+        const variable = f.variables?.find(v => v.id === op.variableId);
         if (!variable) continue;
 
         const storeKey = `__var_${variable.name}`;
-        const currentRaw = updated[storeKey] ?? updated[variable.sourceElementId || ''] ?? variable.defaultValue ?? '0';
+        const currentRaw = updated[storeKey] ?? variable.defaultValue ?? '0';
         const currentNum = parseFloat(String(currentRaw)) || 0;
 
-        // Resolve operand: field answer or literal/{{var}}
         let resolvedOperand: string;
         if (op.operandType === 'field' && op.operandFieldId) {
           const fieldVal = updated[op.operandFieldId];
           resolvedOperand = fieldVal !== undefined && fieldVal !== null ? String(fieldVal) : '0';
         } else {
-          resolvedOperand = interpolateText(op.operand || '0', form.variables || [], updated);
+          resolvedOperand = interpolateText(op.operand || '0', f.variables || [], updated);
         }
         const operandNum = parseFloat(resolvedOperand) || 0;
 
@@ -215,7 +217,7 @@ export default function FormPreview() {
       }
     }
     return updated;
-  }, [form]);
+  }, []);
 
   /**
    * Resolve the next node ID from the workflow graph.
@@ -223,27 +225,28 @@ export default function FormPreview() {
    * and variable-op nodes in between.
    */
   const resolveNextNodeId = useCallback((fromNodeId: string, currentAnswersSnapshot: Record<string, any>): string | null => {
-    if (!form?.flowEdges?.length) return null;
-    const edges = form.flowEdges;
+    const f = formRef.current;
+    if (!f?.flowEdges?.length) return null;
+    const edges = f.flowEdges;
 
-    // Walk edges, skipping through condition and vo- nodes until we land on a page or 'end'
+    // Walk edges, skipping through condition (c-) and variable-op (vo-) nodes
+    // until we land on a page node (p-) or the 'end' node.
     const walkFrom = (nodeId: string, visited = new Set<string>()): string | null => {
       if (visited.has(nodeId)) return null;
       visited.add(nodeId);
 
-      // Find direct outgoing edges
       const outEdges = edges.filter(e => e.source === nodeId);
       if (!outEdges.length) return null;
 
       for (const edge of outEdges) {
         const target = edge.target;
 
-        // If it's a condition node, resolve the correct branch
-        if (target.startsWith('cond-')) {
-          const condId = target.replace('cond-', '');
-          const condData = form.conditions?.find(c => c.id === condId);
+        // Condition node — prefix is "c-" (set in FlowCanvas)
+        if (target.startsWith('c-')) {
+          const condId = target.replace('c-', '');
+          const condData = f.conditions?.find(c => c.id === condId);
           if (!condData) continue;
-          const matchedBranchId = resolveConditionBranch(condData, currentAnswersSnapshot, form.variables);
+          const matchedBranchId = resolveConditionBranch(condData, currentAnswersSnapshot, f.variables);
           const handleId = `branch-${matchedBranchId}`;
           const branchEdge = edges.find(e => e.source === target && e.sourceHandle === handleId);
           if (branchEdge) {
@@ -253,16 +256,17 @@ export default function FormPreview() {
           continue;
         }
 
-        // If it's a variable-op node, pass through and continue walking
+        // Variable-op node — walk through it, operations will be applied separately
         if (target.startsWith('vo-')) {
           const result = walkFrom(target, visited);
           if (result !== null) return result;
+          continue;
         }
 
-        // If it's a page node, that's our destination
+        // Page node — destination found
         if (target.startsWith('p-')) return target;
 
-        // 'end' node
+        // End node
         if (target === 'end') return 'end';
       }
 
@@ -270,7 +274,7 @@ export default function FormPreview() {
     };
 
     return walkFrom(fromNodeId);
-  }, [form]);
+  }, []);
 
   const goNext = useCallback(async () => {
     if (isPageBlocked) return;
