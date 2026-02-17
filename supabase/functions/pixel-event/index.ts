@@ -14,6 +14,16 @@ async function sha256(value: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Fetch pixel config from integration_settings table
+async function fetchPixelConfig(supabaseAdmin: ReturnType<typeof createClient>): Promise<Record<string, any>> {
+  const { data } = await supabaseAdmin
+    .from('integration_settings')
+    .select('config')
+    .eq('integration_type', 'pixels')
+    .maybeSingle();
+  return (data?.config as Record<string, any>) || {};
+}
+
 // Save event log to database
 async function saveEventLog(supabaseAdmin: ReturnType<typeof createClient>, logEntry: {
   form_id: string;
@@ -41,7 +51,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Supabase admin client for logging
+  // Supabase admin client for DB access and logging
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -65,6 +75,9 @@ serve(async (req) => {
       customParams,
     } = body;
 
+    // Fetch pixel config from DB (not from env secrets)
+    const pixelConfig = await fetchPixelConfig(supabaseAdmin);
+
     const results: Record<string, any> = {};
     let serverFired = false;
 
@@ -87,11 +100,12 @@ serve(async (req) => {
 
     // ── Meta Conversions API ──────────────────────────────────────────────────
     if (platform === 'meta_pixel') {
-      const pixelId = Deno.env.get('META_PIXEL_ID');
-      const accessToken = Deno.env.get('META_CAPI_TOKEN');
+      const pixelId = pixelConfig.metaPixelId;
+      const accessToken = pixelConfig.metaCapiToken;
+      const enabled = pixelConfig.metaEnabled;
 
-      if (!pixelId || !accessToken) {
-        results.meta = { skipped: true, reason: 'META_PIXEL_ID or META_CAPI_TOKEN not configured' };
+      if (!enabled || !pixelId || !accessToken) {
+        results.meta = { skipped: true, reason: !enabled ? 'Meta Pixel disabled in settings' : 'Pixel ID or CAPI Token not configured in Settings → Integrations' };
       } else {
         const userData_hashed: Record<string, string> = {};
         if (resolvedUserData?.email) userData_hashed.em = await sha256(resolvedUserData.email);
@@ -129,11 +143,12 @@ serve(async (req) => {
 
     // ── Google Analytics 4 Measurement Protocol ───────────────────────────────
     if (platform === 'google_analytics') {
-      const measurementId = Deno.env.get('GA4_MEASUREMENT_ID');
-      const apiSecret = Deno.env.get('GA4_API_SECRET');
+      const measurementId = pixelConfig.ga4MeasurementId;
+      const apiSecret = pixelConfig.ga4ApiSecret;
+      const enabled = pixelConfig.ga4Enabled;
 
-      if (!measurementId || !apiSecret) {
-        results.ga4 = { skipped: true, reason: 'GA4_MEASUREMENT_ID or GA4_API_SECRET not configured' };
+      if (!enabled || !measurementId || !apiSecret) {
+        results.ga4 = { skipped: true, reason: !enabled ? 'GA4 disabled in settings' : 'Measurement ID or API Secret not configured in Settings → Integrations' };
       } else {
         const payload = {
           client_id: eventId,
@@ -160,11 +175,12 @@ serve(async (req) => {
 
     // ── TikTok Events API ─────────────────────────────────────────────────────
     if (platform === 'tiktok_pixel') {
-      const pixelId = Deno.env.get('TIKTOK_PIXEL_ID');
-      const accessToken = Deno.env.get('TIKTOK_ACCESS_TOKEN');
+      const pixelId = pixelConfig.tiktokPixelId;
+      const accessToken = pixelConfig.tiktokAccessToken;
+      const enabled = pixelConfig.tiktokEnabled;
 
-      if (!pixelId || !accessToken) {
-        results.tiktok = { skipped: true, reason: 'TIKTOK_PIXEL_ID or TIKTOK_ACCESS_TOKEN not configured' };
+      if (!enabled || !pixelId || !accessToken) {
+        results.tiktok = { skipped: true, reason: !enabled ? 'TikTok Pixel disabled in settings' : 'Pixel ID or Access Token not configured in Settings → Integrations' };
       } else {
         const userData_hashed: Record<string, string> = {};
         if (resolvedUserData?.email) userData_hashed.email = await sha256(resolvedUserData.email);
@@ -201,12 +217,13 @@ serve(async (req) => {
 
     // ── LinkedIn Conversions API ───────────────────────────────────────────────
     if (platform === 'linkedin_pixel') {
-      const partnerId = Deno.env.get('LINKEDIN_PARTNER_ID');
-      const accessToken = Deno.env.get('LINKEDIN_ACCESS_TOKEN');
-      const conversionId = Deno.env.get('LINKEDIN_CONVERSION_ID');
+      const partnerId = pixelConfig.linkedinPartnerId;
+      const accessToken = pixelConfig.linkedinAccessToken;
+      const conversionId = pixelConfig.linkedinConversionId;
+      const enabled = pixelConfig.linkedinEnabled;
 
-      if (!partnerId || !accessToken || !conversionId) {
-        results.linkedin = { skipped: true, reason: 'LINKEDIN_PARTNER_ID, LINKEDIN_ACCESS_TOKEN or LINKEDIN_CONVERSION_ID not configured' };
+      if (!enabled || !partnerId || !accessToken || !conversionId) {
+        results.linkedin = { skipped: true, reason: !enabled ? 'LinkedIn Pixel disabled in settings' : 'Partner ID, Access Token or Conversion ID not configured in Settings → Integrations' };
       } else {
         const userData_hashed: Record<string, any> = {};
         if (resolvedUserData?.email) userData_hashed.email = await sha256(resolvedUserData.email);
