@@ -37,7 +37,7 @@ export function AppSidebar() {
             <span className="text-xs font-bold text-primary-foreground">FF</span>
           </div>
           <span className="text-base font-semibold text-sidebar-primary tracking-tight">
-            FormFlow
+            twobrain
           </span>
         </div>
       </div>

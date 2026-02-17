@@ -95,9 +95,9 @@ export default function Login() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="inline-flex h-12 w-12 rounded-xl bg-primary items-center justify-center mb-4">
-            <span className="text-lg font-bold text-primary-foreground">FF</span>
+            <span className="text-lg font-bold text-primary-foreground">TB</span>
           </div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">FormFlow</h1>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">twobrain</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {setupMode ? 'Configure o administrador inicial' : 'Entre com suas credenciais'}
           </p>
