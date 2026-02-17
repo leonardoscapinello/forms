@@ -92,6 +92,102 @@ export type Database = {
         }
         Relationships: []
       }
+      form_page_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          form_id: string
+          id: string
+          page_id: string | null
+          page_index: number | null
+          page_title: string | null
+          response_id: string
+          session_id: string | null
+          time_on_page_ms: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          form_id: string
+          id?: string
+          page_id?: string | null
+          page_index?: number | null
+          page_title?: string | null
+          response_id: string
+          session_id?: string | null
+          time_on_page_ms?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          form_id?: string
+          id?: string
+          page_id?: string | null
+          page_index?: number | null
+          page_title?: string | null
+          response_id?: string
+          session_id?: string | null
+          time_on_page_ms?: number | null
+        }
+        Relationships: []
+      }
+      form_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_page_index: number | null
+          form_id: string
+          id: string
+          ip_address: string | null
+          last_seen_at: string
+          pages_visited: number | null
+          query_params: Json | null
+          referrer: string | null
+          response_id: string
+          source_url: string | null
+          started_at: string
+          status: string
+          total_pages: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_page_index?: number | null
+          form_id: string
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          pages_visited?: number | null
+          query_params?: Json | null
+          referrer?: string | null
+          response_id: string
+          source_url?: string | null
+          started_at?: string
+          status?: string
+          total_pages?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_page_index?: number | null
+          form_id?: string
+          id?: string
+          ip_address?: string | null
+          last_seen_at?: string
+          pages_visited?: number | null
+          query_params?: Json | null
+          referrer?: string | null
+          response_id?: string
+          source_url?: string | null
+          started_at?: string
+          status?: string
+          total_pages?: number | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       forms: {
         Row: {
           created_at: string

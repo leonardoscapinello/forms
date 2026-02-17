@@ -94,7 +94,11 @@ export default function FormPreview() {
       ? Object.fromEntries(new URLSearchParams(window.location.search).entries())
       : {} as Record<string, string>,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    referrer: typeof document !== 'undefined' ? document.referrer : '',
   });
+  const sessionDbIdRef = useRef<string | null>(null);
+  const maxPageVisitedRef = useRef<number>(-1);
+  const pageEnteredAtRef = useRef<number>(Date.now());
 
   // Initialise answers and page index once form is loaded
   useEffect(() => {
@@ -102,6 +106,32 @@ export default function FormPreview() {
     setAnswers(buildDefaults(form));
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Insert session record on form load
+  useEffect(() => {
+    if (!form?.id) return;
+    const { responseId, userAgent, queryParams, referrer } = sessionMetaRef.current;
+    ;(supabase as any).from('form_sessions').insert({
+      form_id: form.id,
+      response_id: responseId,
+      status: 'active',
+      total_pages: form.pages?.length || 0,
+      source_url: typeof window !== 'undefined' ? window.location.href : '',
+      referrer: referrer || null,
+      user_agent: userAgent,
+      query_params: queryParams,
+    }).select('id').single().then(({ data }: any) => {
+      if (data?.id) sessionDbIdRef.current = data.id;
+    });
+
+    // Insert form_start page event
+    ;(supabase as any).from('form_page_events').insert({
+      form_id: form.id,
+      response_id: responseId,
+      event_type: 'form_start',
+    }).then(() => {});
+  }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Fire pixel load events once the form is ready
   useEffect(() => {
@@ -168,9 +198,62 @@ export default function FormPreview() {
     }
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Track page views & session progress when page changes or form completes
+  useEffect(() => {
+    if (!form?.id) return;
+    const { responseId } = sessionMetaRef.current;
+    const sessionId = sessionDbIdRef.current;
+    const now = new Date().toISOString();
+    const timeOnPage = Date.now() - pageEnteredAtRef.current;
+    pageEnteredAtRef.current = Date.now();
+
+    if (finished) {
+      if (sessionId) {
+        ;(supabase as any).from('form_sessions').update({
+          status: 'completed',
+          completed_at: now,
+          last_seen_at: now,
+          pages_visited: maxPageVisitedRef.current + 1,
+        }).eq('id', sessionId).then(() => {});
+      }
+      ;(supabase as any).from('form_page_events').insert({
+        session_id: sessionId,
+        form_id: form.id,
+        response_id: responseId,
+        event_type: 'form_complete',
+        time_on_page_ms: timeOnPage > 0 ? timeOnPage : null,
+      }).then(() => {});
+      return;
+    }
+
+    if (currentPageIndex !== null) {
+      const page = form.pages?.[currentPageIndex];
+      const newMax = Math.max(currentPageIndex, maxPageVisitedRef.current);
+      maxPageVisitedRef.current = newMax;
+      if (sessionId) {
+        ;(supabase as any).from('form_sessions').update({
+          current_page_index: currentPageIndex,
+          pages_visited: newMax + 1,
+          last_seen_at: now,
+        }).eq('id', sessionId).then(() => {});
+      }
+      ;(supabase as any).from('form_page_events').insert({
+        session_id: sessionId,
+        form_id: form.id,
+        response_id: responseId,
+        page_id: page?.id,
+        page_index: currentPageIndex,
+        page_title: page?.title,
+        event_type: 'page_view',
+        time_on_page_ms: currentPageIndex > 0 ? timeOnPage : null,
+      }).then(() => {});
+    }
+  }, [currentPageIndex, finished, form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
   useEffect(() => { formRef.current = form; }, [form]);
+
 
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
