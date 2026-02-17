@@ -285,6 +285,7 @@ export default function FormPreview() {
     setDirection(1);
 
     const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
+    const hasWorkflow = (formRef.current?.flowEdges?.length ?? 0) > 0;
 
     // Walk workflow: resolves next page AND applies variable ops in one pass
     const { nextNodeId, updatedAnswers } = walkWorkflow(fromNodeId, answers);
@@ -305,7 +306,10 @@ export default function FormPreview() {
       }
     }
 
-    // Fallback: sequential navigation (no workflow connection)
+    // If a workflow is defined, strictly respect it — no fallback navigation
+    if (hasWorkflow) return;
+
+    // Fallback: sequential navigation (only when no workflow is configured)
     if (currentPageIndex === null) {
       if (pages.length > 0) {
         const nextPage = pages[0];
@@ -322,6 +326,7 @@ export default function FormPreview() {
       setFinished(true);
     }
   }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, answers]);
+
 
   const goBack = useCallback(() => {
     setDirection(-1);
