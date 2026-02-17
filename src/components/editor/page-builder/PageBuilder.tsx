@@ -499,9 +499,9 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         </div>
       </div>
 
-      {/* Right — Settings panel (always visible) */}
-      <div className="w-72 border-l border-border bg-card flex flex-col h-full flex-shrink-0">
-        {selectedElement ? (
+      {/* Right — Settings panel (only visible when element selected) */}
+      {selectedElement && (
+        <div className="w-72 border-l border-border bg-card flex flex-col h-full flex-shrink-0">
           <ElementSettingsPanel
             key={selectedElement.id}
             element={selectedElement}
@@ -510,13 +510,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             pages={pages}
             variables={variables}
           />
-        ) : (
-          <PageGeneralSettings
-            pageStyle={effectiveStyle}
-            onChange={patch => onPageStyleChange?.(patch)}
-          />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
