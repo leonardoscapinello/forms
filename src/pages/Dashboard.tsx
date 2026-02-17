@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { Plus, FileText, MoreHorizontal, Trash2, BarChart3, CheckCircle } from 'lucide-react';
+import { useTags, useAllFormTags } from '@/hooks/useTags';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useCallback } from 'react';
+import { Plus, FileText, MoreHorizontal, Trash2, BarChart3, CheckCircle, Tag, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,7 +11,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 const STATUS_MAP = {
   draft: { label: 'Rascunho', variant: 'secondary' as const },
@@ -16,9 +22,69 @@ const STATUS_MAP = {
   archived: { label: 'Arquivado', variant: 'outline' as const },
 };
 
+function FormTagsPicker({ formId, tags, formTagIds, onToggle }: {
+  formId: string;
+  tags: { id: string; name: string; color: string }[];
+  formTagIds: string[];
+  onToggle: (tagId: string, isActive: boolean) => void;
+}) {
+  if (tags.length === 0) {
+    return (
+      <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+        Nenhuma tag criada ainda
+      </DropdownMenuLabel>
+    );
+  }
+  return (
+    <>
+      {tags.map(tag => {
+        const active = formTagIds.includes(tag.id);
+        return (
+          <DropdownMenuItem
+            key={tag.id}
+            onClick={e => { e.stopPropagation(); onToggle(tag.id, active); }}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <span
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: tag.color }}
+            />
+            <span className="flex-1 text-xs">{tag.name}</span>
+            {active && <Check className="h-3 w-3 text-primary flex-shrink-0" />}
+          </DropdownMenuItem>
+        );
+      })}
+    </>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { forms, createForm, deleteForm } = useFormStore();
+  const { tags } = useTags();
+  const [filterTagId, setFilterTagId] = useState<string | null>(null);
+
+  const formIds = forms.map(f => f.id);
+  const formTagsMap = useAllFormTags(formIds);
+
+  const [localTagsMap, setLocalTagsMap] = useState<Record<string, string[]>>({});
+
+  // Merge remote + local mutations
+  const getFormTagIds = (formId: string) => {
+    return localTagsMap[formId] ?? formTagsMap[formId] ?? [];
+  };
+
+  const toggleTag = useCallback(async (formId: string, tagId: string, isActive: boolean) => {
+    const current = getFormTagIds(formId);
+    const updated = isActive ? current.filter(id => id !== tagId) : [...current, tagId];
+    setLocalTagsMap(prev => ({ ...prev, [formId]: updated }));
+
+    if (isActive) {
+      await supabase.from('form_tags').delete().eq('form_id', formId).eq('tag_id', tagId);
+    } else {
+      await supabase.from('form_tags').insert({ form_id: formId, tag_id: tagId });
+    }
+  }, [localTagsMap, formTagsMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {
     const form = await createForm();
@@ -27,6 +93,10 @@ export default function Dashboard() {
 
   const totalResponses = forms.reduce((sum, f) => sum + f.responseCount, 0);
   const publishedCount = forms.filter(f => f.status === 'published').length;
+
+  const filteredForms = filterTagId
+    ? forms.filter(f => getFormTagIds(f.id).includes(filterTagId))
+    : forms;
 
   return (
     <div>
@@ -70,32 +140,65 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Filter by tag */}
+      {tags.length > 0 && (
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
+          <Tag className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          <span className="text-xs text-muted-foreground">Filtrar:</span>
+          {tags.map(tag => (
+            <button
+              key={tag.id}
+              onClick={() => setFilterTagId(filterTagId === tag.id ? null : tag.id)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                filterTagId === tag.id
+                  ? 'border-transparent text-white shadow-sm'
+                  : 'border-border bg-card text-muted-foreground hover:text-foreground'
+              }`}
+              style={filterTagId === tag.id ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: filterTagId === tag.id ? 'rgba(255,255,255,0.8)' : tag.color }}
+              />
+              {tag.name}
+              {filterTagId === tag.id && <X className="h-3 w-3 ml-0.5" />}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Forms */}
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-          Seus formulários
+          {filterTagId ? `Formulários com "${tags.find(t => t.id === filterTagId)?.name}"` : 'Seus formulários'}
         </h2>
 
-        {forms.length === 0 ? (
+        {filteredForms.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-border bg-card">
             <div className="rounded-full bg-muted p-4 mb-4">
               <FileText className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-base font-medium text-foreground mb-1">
-              Nenhum formulário ainda
+              {filterTagId ? 'Nenhum formulário com essa tag' : 'Nenhum formulário ainda'}
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Crie seu primeiro formulário para começar a coletar respostas.
+              {filterTagId
+                ? 'Adicione essa tag a um formulário para vê-lo aqui.'
+                : 'Crie seu primeiro formulário para começar a coletar respostas.'}
             </p>
-            <Button onClick={handleCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Criar formulário
-            </Button>
+            {!filterTagId && (
+              <Button onClick={handleCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                Criar formulário
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {forms.map(form => {
+            {filteredForms.map(form => {
               const status = STATUS_MAP[form.status];
+              const tagIds = getFormTagIds(form.id);
+              const formTags = tags.filter(t => tagIds.includes(t.id));
               return (
                 <div
                   key={form.id}
@@ -110,13 +213,20 @@ export default function Dashboard() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        <DropdownMenuLabel className="text-xs flex items-center gap-1.5">
+                          <Tag className="h-3 w-3" /> Tags
+                        </DropdownMenuLabel>
+                        <FormTagsPicker
+                          formId={form.id}
+                          tags={tags}
+                          formTagIds={tagIds}
+                          onToggle={(tagId, isActive) => toggleTag(form.id, tagId, isActive)}
+                        />
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={e => {
-                            e.stopPropagation();
-                            deleteForm(form.id);
-                          }}
+                          onClick={() => deleteForm(form.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Excluir
@@ -127,9 +237,24 @@ export default function Dashboard() {
                   <h3 className="font-medium text-foreground truncate mb-1">
                     {form.title}
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mb-3">
                     {form.questions.length} pergunta{form.questions.length !== 1 ? 's' : ''} · {form.responseCount} resposta{form.responseCount !== 1 ? 's' : ''}
                   </p>
+                  {/* Tags pills */}
+                  {formTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {formTags.map(tag => (
+                        <span
+                          key={tag.id}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                          style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                        >
+                          <span className="w-1 h-1 rounded-full" style={{ backgroundColor: tag.color }} />
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

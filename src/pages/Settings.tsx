@@ -8,7 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
   HardDrive, Save, TestTube, Loader2, CheckCircle2, XCircle, Eye, EyeOff,
-  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail, Radio,
+  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail, Radio, Tag,
+  Pencil, Check, X,
 } from 'lucide-react';
 import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
 import PixelIntegrationsCard from '@/components/settings/PixelIntegrationsCard';
@@ -16,11 +17,13 @@ import EmailValidationsTab from '@/components/settings/EmailValidationsTab';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { useTags } from '@/hooks/useTags';
 
 // ─── Tab navigation ───
 const TABS = [
   { id: 'general', label: 'Geral', icon: Settings2 },
   { id: 'users', label: 'Usuários', icon: Users },
+  { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'integrations', label: 'Integrações', icon: Plug },
   { id: 'pixels', label: 'Pixels & Webhooks', icon: Radio },
   { id: 'validations', label: 'Validações', icon: Mail },
@@ -61,8 +64,9 @@ export default function Settings() {
               {TABS.find(t => t.id === tab)?.label}
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {tab === 'general' && 'Informações gerais do sistema.'}
+            {tab === 'general' && 'Informações gerais do sistema.'}
               {tab === 'users' && 'Gerencie usuários e permissões.'}
+              {tab === 'tags' && 'Crie e gerencie tags para organizar os formulários.'}
               {tab === 'integrations' && 'Configure integrações externas.'}
               {tab === 'pixels' && 'Configure pixels de rastreamento e webhooks para o Workflow.'}
               {tab === 'validations' && 'Consulte e gerencie validações de e-mail.'}
@@ -72,6 +76,7 @@ export default function Settings() {
 
           {tab === 'general' && <GeneralTab />}
           {tab === 'users' && <UsersTab />}
+          {tab === 'tags' && <TagsTab />}
           {tab === 'integrations' && <IntegrationsTab />}
           {tab === 'pixels' && <PixelIntegrationsCard />}
           {tab === 'validations' && <EmailValidationsTab />}
@@ -420,6 +425,159 @@ function IntegrationsTab() {
     </div>
 
     <ReoonIntegrationCard />
+    </div>
+  );
+}
+
+// ─── Tags Tab ───
+const TAG_COLORS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
+  '#eab308', '#22c55e', '#14b8a6', '#0ea5e9', '#64748b',
+];
+
+function TagsTab() {
+  const { tags, loading, createTag, updateTag, deleteTag } = useTags();
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState(TAG_COLORS[0]);
+  const [creating, setCreating] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState('');
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    setCreating(true);
+    await createTag(newName, newColor);
+    setNewName('');
+    setNewColor(TAG_COLORS[0]);
+    setCreating(false);
+  };
+
+  const startEdit = (tag: { id: string; name: string; color: string }) => {
+    setEditId(tag.id);
+    setEditName(tag.name);
+    setEditColor(tag.color);
+  };
+
+  const confirmEdit = async () => {
+    if (!editId || !editName.trim()) return;
+    await updateTag(editId, { name: editName.trim(), color: editColor });
+    setEditId(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Create */}
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <h2 className="text-base font-semibold text-foreground">Nova tag</h2>
+        <div className="flex items-end gap-3">
+          <div className="flex-1 space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Nome</Label>
+            <Input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="Ex: Prioridade alta"
+              className="text-sm"
+              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Cor</Label>
+            <div className="flex items-center gap-1.5">
+              {TAG_COLORS.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setNewColor(c)}
+                  className={`w-6 h-6 rounded-full transition-transform ${newColor === c ? 'scale-125 ring-2 ring-offset-1 ring-border' : 'hover:scale-110'}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+          <Button size="sm" onClick={handleCreate} disabled={creating || !newName.trim()}>
+            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+            Criar
+          </Button>
+        </div>
+        {/* Preview */}
+        {newName && (
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">Prévia:</span>
+            <span
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+              style={{ backgroundColor: `${newColor}20`, color: newColor }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: newColor }} />
+              {newName}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* List */}
+      <div className="rounded-xl border border-border bg-card">
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Tags criadas</h2>
+          <span className="text-xs text-muted-foreground">{tags.length} tag{tags.length !== 1 ? 's' : ''}</span>
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : tags.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            <Tag className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">Nenhuma tag criada ainda</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {tags.map(tag => (
+              <li key={tag.id} className="flex items-center gap-3 px-4 py-3">
+                {editId === tag.id ? (
+                  <>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {TAG_COLORS.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setEditColor(c)}
+                          className={`w-5 h-5 rounded-full transition-transform ${editColor === c ? 'scale-125 ring-2 ring-offset-1 ring-border' : 'hover:scale-110'}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                    <Input
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      className="h-7 text-xs flex-1"
+                      autoFocus
+                      onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') setEditId(null); }}
+                    />
+                    <button onClick={confirmEdit} className="p-1 text-primary hover:text-primary/80"><Check className="h-4 w-4" /></button>
+                    <button onClick={() => setEditId(null)} className="p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                  </>
+                ) : (
+                  <>
+                    <span
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0"
+                      style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                    </span>
+                    <span className="flex-1 text-xs text-muted-foreground">{tag.created_at ? new Date(tag.created_at).toLocaleDateString('pt-BR') : ''}</span>
+                    <button onClick={() => startEdit(tag)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => deleteTag(tag.id)} className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
