@@ -1,11 +1,14 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Variable, Plus, Trash2 } from 'lucide-react';
+import { Variable, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { InputElementGroup } from './VariableAssignPanel';
+import { validateVariableOpNode } from './nodeValidation';
+
 
 interface VariableOpNodeProps {
   nodeId: string;
@@ -28,6 +31,8 @@ const OP_OPTIONS: { value: VariableOpType; label: string }[] = [
 function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps }) {
   const { label, operations, variables, allInputElements = [], onChange, onDelete } = data;
 
+  const validation = useMemo(() => validateVariableOpNode(operations, variables), [operations, variables]);
+
   const addOp = useCallback(() => {
     if (variables.length === 0) return;
     const newOp: VariableOperation = {
@@ -49,9 +54,14 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
   }, [operations, onChange]);
 
   return (
+    <TooltipProvider>
     <div
       className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-        selected ? 'border-node-variable-op-accent shadow-md ring-2 ring-node-variable-op-accent/20' : 'border-border'
+        !validation.isValid
+          ? 'border-destructive shadow-destructive/20 shadow-md ring-1 ring-destructive/40'
+          : selected
+            ? 'border-node-variable-op-accent shadow-md ring-2 ring-node-variable-op-accent/20'
+            : 'border-border'
       }`}
     >
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-variable-op-accent !border-2 !border-card" />
@@ -63,7 +73,21 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
         <span className="text-[11px] font-medium uppercase tracking-wide text-node-variable-op-accent">
           Variáveis
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          {!validation.isValid && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex items-center">
+                  <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[220px] text-xs">
+                <ul className="space-y-0.5">
+                  {validation.errors.map((e, i) => <li key={i}>• {e}</li>)}
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Button
             variant="ghost" size="icon"
             className="h-6 w-6 text-muted-foreground hover:text-destructive"
@@ -73,6 +97,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
           </Button>
         </div>
       </div>
+
 
       {/* Node label */}
       <div className="px-3 pt-2.5 pb-1">
@@ -207,7 +232,9 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
         </Button>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
 
 export default memo(VariableOpNode);
+

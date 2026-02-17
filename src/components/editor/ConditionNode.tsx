@@ -1,10 +1,12 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { ConditionBranch, ConditionGroup, Question, FormVariable, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ConditionGroupEditor from './ConditionGroupEditor';
+import { validateConditionNode } from './nodeValidation';
 
 interface ConditionNodeDataProps {
   conditionId: string;
@@ -19,6 +21,8 @@ interface ConditionNodeDataProps {
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
   const { label, branches, questions, variables = [], onChange, onDelete } = data;
   const [expandedBranch, setExpandedBranch] = useState<string | null>(branches[0]?.id ?? null);
+
+  const validation = useMemo(() => validateConditionNode(branches, variables), [branches, variables]);
 
   const addBranch = useCallback(() => {
     const newBranch: ConditionBranch = {
@@ -41,130 +45,168 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
   }, [branches, onChange, expandedBranch]);
 
   return (
-    <div
-      className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-        selected ? 'border-node-condition-accent shadow-md ring-2 ring-node-condition-accent/20' : 'border-border'
-      }`}
-    >
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card" />
+    <TooltipProvider>
+      <div
+        className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
+          !validation.isValid
+            ? 'border-destructive shadow-destructive/20 shadow-md ring-1 ring-destructive/40'
+            : selected
+              ? 'border-node-condition-accent shadow-md ring-2 ring-node-condition-accent/20'
+              : 'border-border'
+        }`}
+      >
+        <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card" />
 
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-node-condition-accent/30 bg-node-condition rounded-t-xl">
-        <GitBranch className="h-3.5 w-3.5 text-node-condition-accent" />
-        <span className="text-[11px] font-medium uppercase tracking-wide text-node-condition-accent">
-          Condicional
-        </span>
-        <div className="ml-auto">
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onDelete}>
-            <Trash2 className="h-3 w-3" />
+        {/* Header */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-node-condition-accent/30 bg-node-condition rounded-t-xl">
+          <GitBranch className="h-3.5 w-3.5 text-node-condition-accent" />
+          <span className="text-[11px] font-medium uppercase tracking-wide text-node-condition-accent">
+            Condicional
+          </span>
+          <div className="ml-auto flex items-center gap-1">
+            {!validation.isValid && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center">
+                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[220px] text-xs">
+                  <ul className="space-y-0.5">
+                    {validation.errors.map((e, i) => <li key={i}>• {e}</li>)}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Label */}
+        <div className="px-3 pt-2.5 pb-1">
+          <Input
+            value={label}
+            onChange={e => onChange({ label: e.target.value })}
+            placeholder="Nome do nó"
+            className="text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent h-8"
+          />
+        </div>
+
+        {/* Branches */}
+        <div className="px-3 pb-3 space-y-1.5">
+          {branches.map((branch, idx) => {
+            const group: ConditionGroup = branch.conditionGroup || {
+              id: crypto.randomUUID(),
+              logic: 'and',
+              rules: [{
+                id: crypto.randomUUID(),
+                questionId: branch.questionId || questions[0]?.id || '',
+                operator: branch.operator || 'equals',
+                value: branch.value || '',
+              }],
+              groups: [],
+            };
+
+            const isExpanded = expandedBranch === branch.id;
+
+            // Check if this specific branch has errors
+            const branchRules = branch.conditionGroup?.rules ?? [];
+            const branchHasError = branchRules.length === 0 || branchRules.some(r => {
+              if (r.subjectType === 'variable') return !r.variableId;
+              if (!r.questionId) return true;
+              const needsValue = r.operator !== 'is_empty' && r.operator !== 'is_not_empty';
+              return needsValue && !r.value?.trim();
+            });
+
+            return (
+              <div
+                key={branch.id}
+                className={`relative rounded-lg border overflow-hidden transition-colors ${
+                  branchHasError ? 'border-destructive/50 bg-destructive/5' : 'border-border bg-muted/20'
+                }`}
+              >
+                {/* Branch output handle */}
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id={`branch-${branch.id}`}
+                  className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card"
+                  style={{ top: 'auto', right: -6, bottom: 'auto' }}
+                />
+
+                {/* Branch header */}
+                <div
+                  className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+                  onClick={() => setExpandedBranch(isExpanded ? null : branch.id)}
+                >
+                  {isExpanded
+                    ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    : <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  }
+                  <span className="text-[11px] font-medium text-node-condition-accent flex-shrink-0 w-5">{idx + 1}.</span>
+                  <Input
+                    value={branch.label}
+                    onChange={e => { e.stopPropagation(); updateBranch(branch.id, { label: e.target.value }); }}
+                    onClick={e => e.stopPropagation()}
+                    className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent flex-1"
+                    placeholder={`Caminho ${idx + 1}`}
+                  />
+                  {branchHasError && (
+                    <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
+                  )}
+                  {branches.length > 1 && (
+                    <button
+                      onClick={e => { e.stopPropagation(); removeBranch(branch.id); }}
+                      className="p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Branch conditions */}
+                {isExpanded && (
+                  <div className="px-2.5 pb-2.5">
+                    <ConditionGroupEditor
+                      group={group}
+                      questions={questions}
+                      variables={variables}
+                      onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Default/else output */}
+          <div className="relative flex items-center gap-2 text-xs text-muted-foreground px-2.5 py-1.5 rounded-lg border border-dashed border-border">
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="branch-default"
+              className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card"
+              style={{ top: 'auto', right: -6 }}
+            />
+            <span className="italic">Padrão (else)</span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs h-7 text-muted-foreground border border-dashed border-border"
+            onClick={addBranch}
+          >
+            <Plus className="mr-1 h-3 w-3" />
+            Adicionar caminho
           </Button>
         </div>
       </div>
-
-      {/* Label */}
-      <div className="px-3 pt-2.5 pb-1">
-        <Input
-          value={label}
-          onChange={e => onChange({ label: e.target.value })}
-          placeholder="Nome do nó"
-          className="text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent h-8"
-        />
-      </div>
-
-      {/* Branches */}
-      <div className="px-3 pb-3 space-y-1.5">
-        {branches.map((branch, idx) => {
-          const group: ConditionGroup = branch.conditionGroup || {
-            id: crypto.randomUUID(),
-            logic: 'and',
-            rules: [{
-              id: crypto.randomUUID(),
-              questionId: branch.questionId || questions[0]?.id || '',
-              operator: branch.operator || 'equals',
-              value: branch.value || '',
-            }],
-            groups: [],
-          };
-
-          const isExpanded = expandedBranch === branch.id;
-
-          return (
-            <div key={branch.id} className="relative rounded-lg border border-border bg-muted/20 overflow-hidden">
-              {/* Branch output handle — positioned on the right side of header */}
-              <Handle
-                type="source"
-                position={Position.Right}
-                id={`branch-${branch.id}`}
-                className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card"
-                style={{ top: 'auto', right: -6, bottom: 'auto' }}
-              />
-
-              {/* Branch header — collapsible */}
-              <div
-                className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
-                onClick={() => setExpandedBranch(isExpanded ? null : branch.id)}
-              >
-                {isExpanded
-                  ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  : <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                }
-                <span className="text-[11px] font-medium text-node-condition-accent flex-shrink-0 w-5">{idx + 1}.</span>
-                <Input
-                  value={branch.label}
-                  onChange={e => { e.stopPropagation(); updateBranch(branch.id, { label: e.target.value }); }}
-                  onClick={e => e.stopPropagation()}
-                  className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent flex-1"
-                  placeholder={`Caminho ${idx + 1}`}
-                />
-                {branches.length > 1 && (
-                  <button
-                    onClick={e => { e.stopPropagation(); removeBranch(branch.id); }}
-                    className="p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
-                  >
-                    <Trash2 className="h-2.5 w-2.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Branch conditions — shown when expanded */}
-              {isExpanded && (
-                <div className="px-2.5 pb-2.5">
-                  <ConditionGroupEditor
-                    group={group}
-                    questions={questions}
-                    variables={variables}
-                    onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Default/else output */}
-        <div className="relative flex items-center gap-2 text-xs text-muted-foreground px-2.5 py-1.5 rounded-lg border border-dashed border-border">
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="branch-default"
-            className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card"
-            style={{ top: 'auto', right: -6 }}
-          />
-          <span className="italic">Padrão (else)</span>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-xs h-7 text-muted-foreground border border-dashed border-border"
-          onClick={addBranch}
-        >
-          <Plus className="mr-1 h-3 w-3" />
-          Adicionar caminho
-        </Button>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
 export default memo(ConditionNode);
+
