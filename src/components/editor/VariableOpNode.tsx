@@ -17,12 +17,12 @@ interface VariableOpNodeProps {
   onDelete: () => void;
 }
 
-const OP_OPTIONS: { value: VariableOpType; label: string; symbol: string }[] = [
-  { value: 'set',      label: 'Atribuir (=)',      symbol: '=' },
-  { value: 'add',      label: 'Somar (+)',          symbol: '+' },
-  { value: 'subtract', label: 'Subtrair (−)',       symbol: '−' },
-  { value: 'multiply', label: 'Multiplicar (×)',    symbol: '×' },
-  { value: 'divide',   label: 'Dividir (÷)',        symbol: '÷' },
+const OP_OPTIONS: { value: VariableOpType; label: string }[] = [
+  { value: 'set',      label: 'Atribuir (=)' },
+  { value: 'add',      label: 'Somar (+)' },
+  { value: 'subtract', label: 'Subtrair (−)' },
+  { value: 'multiply', label: 'Multiplicar (×)' },
+  { value: 'divide',   label: 'Dividir (÷)' },
 ];
 
 function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps }) {
@@ -75,7 +75,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
       </div>
 
       {/* Node label */}
-      <div className="px-3 pt-2.5">
+      <div className="px-3 pt-2.5 pb-1">
         <Input
           value={label}
           onChange={e => onChange({ label: e.target.value })}
@@ -85,67 +85,47 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
       </div>
 
       {/* Operations list */}
-      <div className="p-3 space-y-2">
+      <div className="px-3 pb-3 space-y-2">
         {variables.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground text-center py-2">
+          <p className="text-xs text-muted-foreground text-center py-3 border border-dashed border-border rounded-lg">
             Crie variáveis primeiro no painel de páginas
           </p>
         ) : operations.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground text-center py-2 border border-dashed border-border rounded-lg">
-            Nenhuma operação
+          <p className="text-xs text-muted-foreground text-center py-3 border border-dashed border-border rounded-lg">
+            Nenhuma operação configurada
           </p>
         ) : (
           operations.map(op => {
-            const variable = variables.find(v => v.id === op.variableId);
-            const opDef = OP_OPTIONS.find(o => o.value === op.op);
             const operandType = op.operandType ?? 'literal';
-            // Find selected field label across all groups
-            let selectedFieldLabel: string | undefined;
-            for (const group of allInputElements) {
-              const el = group.elements.find(e => e.elementId === op.operandFieldId);
-              if (el) { selectedFieldLabel = el.elementLabel; break; }
-            }
-
-            // Preview label for operand
-            const operandPreview = operandType === 'field'
-              ? (selectedFieldLabel ?? '?')
-              : (op.operand || '?');
 
             return (
-              <div key={op.id} className="bg-muted/30 rounded-lg border border-border/60 p-2 space-y-1.5">
-                {/* Summary row */}
-                <div className="flex items-center gap-1.5 text-xs font-mono">
-                  <span className="text-node-variable-op-accent font-semibold px-1 bg-node-variable-op rounded text-[10px]">
-                    {variable ? `{{${variable.name}}}` : '—'}
-                  </span>
-                  <span className="text-muted-foreground font-bold">{opDef?.symbol}</span>
-                  <span className="text-foreground truncate max-w-[80px]">{operandPreview}</span>
+              <div key={op.id} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
+                {/* Row 1: Variable picker + delete */}
+                <div className="flex items-center gap-2">
+                  <Select value={op.variableId} onValueChange={val => updateOp(op.id, { variableId: val })}>
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Variável..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variables.map(v => (
+                        <SelectItem key={v.id} value={v.id} className="text-xs">
+                          <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
+                          <span className="ml-1.5 text-muted-foreground">({v.type})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <button
                     onClick={() => removeOp(op.id)}
-                    className="ml-auto p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors"
+                    className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
-                {/* Variable picker */}
-                <Select value={op.variableId} onValueChange={val => updateOp(op.id, { variableId: val })}>
-                  <SelectTrigger className="h-6 text-[11px]">
-                    <SelectValue placeholder="Variável..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {variables.map(v => (
-                      <SelectItem key={v.id} value={v.id} className="text-xs">
-                        <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
-                        <span className="ml-1.5 text-muted-foreground">({v.type})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Operation picker */}
+                {/* Row 2: Operation picker */}
                 <Select value={op.op} onValueChange={val => updateOp(op.id, { op: val as VariableOpType })}>
-                  <SelectTrigger className="h-6 text-[11px]">
+                  <SelectTrigger className="h-7 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -155,27 +135,27 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                   </SelectContent>
                 </Select>
 
-                {/* Operand source type toggle */}
+                {/* Row 3: Operand source toggle */}
                 <div className="flex gap-1">
                   {(['literal', 'field'] as VariableOperandType[]).map(t => (
                     <button
                       key={t}
                       onClick={() => updateOp(op.id, { operandType: t, operand: '', operandFieldId: undefined })}
-                      className={`flex-1 text-[10px] py-0.5 rounded border transition-colors ${
+                      className={`flex-1 text-xs py-1 rounded border transition-colors ${
                         operandType === t
-                          ? 'bg-node-variable-op-accent text-card border-node-variable-op-accent'
+                          ? 'bg-node-variable-op-accent text-card border-node-variable-op-accent font-medium'
                           : 'border-border text-muted-foreground hover:border-node-variable-op-accent/50'
                       }`}
                     >
-                      {t === 'literal' ? 'Valor livre' : 'Campo'}
+                      {t === 'literal' ? 'Valor livre' : 'Campo do formulário'}
                     </button>
                   ))}
                 </div>
 
-                {/* Operand value */}
+                {/* Row 4: Operand value */}
                 {operandType === 'field' ? (
                   allInputElements.length === 0 ? (
-                    <p className="text-[10px] text-muted-foreground text-center py-1">
+                    <p className="text-xs text-muted-foreground text-center py-1.5 border border-dashed border-border rounded">
                       Nenhum campo nas páginas anteriores
                     </p>
                   ) : (
@@ -183,7 +163,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                       value={op.operandFieldId || ''}
                       onValueChange={val => updateOp(op.id, { operandFieldId: val })}
                     >
-                      <SelectTrigger className="h-6 text-[11px]">
+                      <SelectTrigger className="h-7 text-xs">
                         <SelectValue placeholder="Selecionar campo..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -193,7 +173,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                               📄 {group.pageTitle}
                             </SelectLabel>
                             {group.elements.map(el => (
-                              <SelectItem key={el.elementId} value={el.elementId} className="text-[11px] pl-4">
+                              <SelectItem key={el.elementId} value={el.elementId} className="text-xs pl-5">
                                 {el.elementLabel}
                               </SelectItem>
                             ))}
@@ -207,7 +187,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                     value={op.operand}
                     onChange={e => updateOp(op.id, { operand: e.target.value })}
                     placeholder={op.op === 'set' ? 'Valor ou {{var}}...' : 'Número ou {{var}}...'}
-                    className="h-6 text-[11px]"
+                    className="h-7 text-xs"
                   />
                 )}
               </div>
@@ -218,7 +198,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
         <Button
           variant="ghost"
           size="sm"
-          className="w-full text-[11px] h-7 text-muted-foreground border border-dashed border-border"
+          className="w-full text-xs h-7 text-muted-foreground border border-dashed border-border"
           onClick={addOp}
           disabled={variables.length === 0}
         >

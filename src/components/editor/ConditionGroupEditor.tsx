@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question, FormVariable } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Parentheses } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -12,14 +12,14 @@ import {
 } from '@/components/ui/select';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
-  { value: 'equals', label: '= Igual a' },
-  { value: 'not_equals', label: '≠ Diferente' },
-  { value: 'contains', label: '∋ Contém' },
-  { value: 'not_contains', label: '∌ Não contém' },
-  { value: 'greater_than', label: '> Maior que' },
-  { value: 'less_than', label: '< Menor que' },
-  { value: 'is_empty', label: '∅ Vazio' },
-  { value: 'is_not_empty', label: '✓ Não vazio' },
+  { value: 'equals',      label: 'igual a' },
+  { value: 'not_equals',  label: 'diferente de' },
+  { value: 'contains',    label: 'contém' },
+  { value: 'not_contains',label: 'não contém' },
+  { value: 'greater_than',label: 'maior que' },
+  { value: 'less_than',   label: 'menor que' },
+  { value: 'is_empty',    label: 'está vazio' },
+  { value: 'is_not_empty',label: 'não está vazio' },
 ];
 
 interface Props {
@@ -27,32 +27,9 @@ interface Props {
   questions: Question[];
   variables?: FormVariable[];
   onChange: (group: ConditionGroup) => void;
-  onRemove?: () => void;
-  depth?: number;
 }
 
-type Item = { type: 'rule'; rule: ConditionRule } | { type: 'group'; group: ConditionGroup };
-
-function getItemLogic(item: Item): LogicOperator {
-  if (item.type === 'rule') return item.rule.logicWithPrev || 'and';
-  return item.group.rules[0]?.logicWithPrev || item.group.logic || 'and';
-}
-
-function setItemLogic(item: Item, logic: LogicOperator, onChange: (group: ConditionGroup) => void, group: ConditionGroup) {
-  if (item.type === 'rule') {
-    onChange({
-      ...group,
-      rules: group.rules.map(r => r.id === item.rule.id ? { ...r, logicWithPrev: logic } : r),
-    });
-  } else {
-    onChange({
-      ...group,
-      groups: group.groups.map(g => g.id === item.group.id ? { ...g, logic } : g),
-    });
-  }
-}
-
-export default function ConditionGroupEditor({ group, questions, variables = [], onChange, onRemove, depth = 0 }: Props) {
+export default function ConditionGroupEditor({ group, questions, variables = [], onChange }: Props) {
   const updateRule = useCallback((ruleId: string, patch: Partial<ConditionRule>) => {
     onChange({ ...group, rules: group.rules.map(r => (r.id === ruleId ? { ...r, ...patch } : r)) });
   }, [group, onChange]);
@@ -73,200 +50,135 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
     onChange({ ...group, rules: [...group.rules, rule] });
   }, [group, questions, onChange]);
 
-  const addSubGroup = useCallback(() => {
-    const sub: ConditionGroup = {
-      id: crypto.randomUUID(),
-      logic: 'and',
-      rules: [
-        { id: crypto.randomUUID(), subjectType: 'question', questionId: questions[0]?.id || '', operator: 'equals', value: '' },
-        { id: crypto.randomUUID(), subjectType: 'question', questionId: questions[0]?.id || '', operator: 'equals', value: '', logicWithPrev: 'and' },
-      ],
-      groups: [],
-    };
-    onChange({ ...group, groups: [...group.groups, sub] });
-  }, [group, questions, onChange]);
-
-  const updateSubGroup = useCallback((subId: string, updated: ConditionGroup) => {
-    onChange({ ...group, groups: group.groups.map(g => (g.id === subId ? updated : g)) });
+  const toggleLogic = useCallback((ruleId: string, current: LogicOperator) => {
+    onChange({
+      ...group,
+      rules: group.rules.map(r => r.id === ruleId ? { ...r, logicWithPrev: current === 'and' ? 'or' : 'and' } : r),
+    });
   }, [group, onChange]);
 
-  const removeSubGroup = useCallback((subId: string) => {
-    onChange({ ...group, groups: group.groups.filter(g => g.id !== subId) });
-  }, [group, onChange]);
-
-  const items: Item[] = [
-    ...group.rules.map(r => ({ type: 'rule' as const, rule: r })),
-    ...group.groups.map(g => ({ type: 'group' as const, group: g })),
-  ];
-
-  const totalItems = items.length;
-
-  const depthBorders = ['border-primary/20', 'border-warning/20', 'border-destructive/20'];
-  const depthBgs = ['bg-primary/5', 'bg-warning/5', 'bg-destructive/5'];
-
   return (
-    <div className={`${depth > 0 ? `rounded-lg border ${depthBorders[depth % 3]} ${depthBgs[depth % 3]} p-2` : ''}`}>
-      {depth > 0 && onRemove && (
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-            <Parentheses className="h-2.5 w-2.5" />
-            Grupo
-          </span>
-          <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive" onClick={onRemove}>
-            <Trash2 className="h-2.5 w-2.5" />
-          </Button>
-        </div>
-      )}
+    <div className="space-y-1.5">
+      {group.rules.map((rule, idx) => {
+        const subjectType = rule.subjectType ?? 'question';
+        const logic = rule.logicWithPrev ?? 'and';
 
-      {items.map((item, idx) => (
-        <div key={item.type === 'rule' ? item.rule.id : item.group.id}>
-          {idx > 0 && (
-            <LogicConnector
-              logic={getItemLogic(item)}
-              onToggle={(logic) => setItemLogic(item, logic, onChange, group)}
-            />
-          )}
+        return (
+          <div key={rule.id}>
+            {/* Logic connector between rules */}
+            {idx > 0 && (
+              <div className="flex items-center gap-2 py-1">
+                <div className="flex-1 h-px bg-border" />
+                <button
+                  onClick={() => toggleLogic(rule.id, logic)}
+                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full select-none cursor-pointer transition-colors ${
+                    logic === 'and'
+                      ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                      : 'bg-warning/15 text-warning hover:bg-warning/25'
+                  }`}
+                >
+                  {logic === 'and' ? 'E' : 'OU'}
+                </button>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
 
-          {item.type === 'rule' ? (
-            <RuleRow
-              rule={item.rule}
-              questions={questions}
-              variables={variables}
-              canRemove={totalItems > 1}
-              onUpdate={(patch) => updateRule(item.rule.id, patch)}
-              onRemove={() => removeRule(item.rule.id)}
-            />
-          ) : (
-            <ConditionGroupEditor
-              group={item.group}
-              questions={questions}
-              variables={variables}
-              onChange={updated => updateSubGroup(item.group.id, updated)}
-              onRemove={() => removeSubGroup(item.group.id)}
-              depth={depth + 1}
-            />
-          )}
-        </div>
-      ))}
+            {/* Rule card */}
+            <div className="rounded-lg bg-background border border-border p-2 space-y-1.5">
+              {/* Subject: question or variable toggle */}
+              {variables.length > 0 && (
+                <div className="flex gap-1">
+                  {(['question', 'variable'] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => updateRule(rule.id, { subjectType: t, variableId: undefined })}
+                      className={`flex-1 text-[10px] py-0.5 rounded border transition-colors ${
+                        subjectType === t
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      {t === 'question' ? 'Campo' : 'Variável'}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-      <div className="flex gap-1 mt-1.5">
-        <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5 hover:text-foreground" onClick={addRule}>
-          <Plus className="mr-0.5 h-2 w-2" />
-          Regra
-        </Button>
-        {depth < 2 && (
-          <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5 hover:text-foreground" onClick={addSubGroup}>
-            <Parentheses className="mr-0.5 h-2 w-2" />
-            Grupo
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+              {/* Subject selector */}
+              <div className="flex items-center gap-1.5">
+                {subjectType === 'variable' ? (
+                  <Select value={rule.variableId || ''} onValueChange={v => updateRule(rule.id, { variableId: v })}>
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Escolha a variável..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200]">
+                      {variables.map(v => (
+                        <SelectItem key={v.id} value={v.id} className="text-xs">
+                          <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
+                          <span className="ml-1.5 text-muted-foreground">({v.type})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select value={rule.questionId} onValueChange={v => updateRule(rule.id, { questionId: v })}>
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Escolha o campo..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200]">
+                      {questions.map(q => (
+                        <SelectItem key={q.id} value={q.id} className="text-xs">
+                          {q.title || 'Sem título'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {group.rules.length > 1 && (
+                  <button
+                    onClick={() => removeRule(rule.id)}
+                    className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
 
-function LogicConnector({ logic, onToggle }: { logic: LogicOperator; onToggle: (v: LogicOperator) => void }) {
-  const isAnd = logic === 'and';
-  return (
-    <div className="flex items-center py-0.5 my-0.5">
-      <div className="flex-1 h-px bg-border" />
-      <button
-        onClick={() => onToggle(isAnd ? 'or' : 'and')}
-        className={`text-[8px] font-bold px-2.5 py-0.5 rounded-full select-none cursor-pointer transition-colors ${
-          isAnd
-            ? 'bg-primary/15 text-primary hover:bg-primary/25'
-            : 'bg-warning/15 text-warning hover:bg-warning/25'
-        }`}
+              {/* Operator + value */}
+              <div className="flex items-center gap-1.5">
+                <Select value={rule.operator} onValueChange={v => updateRule(rule.id, { operator: v as ConditionOperator })}>
+                  <SelectTrigger className="h-7 text-xs flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    {OPERATORS.map(op => (
+                      <SelectItem key={op.value} value={op.value} className="text-xs">{op.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (
+                  <Input
+                    value={rule.value}
+                    onChange={e => updateRule(rule.id, { value: e.target.value })}
+                    placeholder="Valor..."
+                    className="h-7 text-xs flex-1"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 text-[10px] text-muted-foreground px-2 hover:text-foreground w-full border border-dashed border-border"
+        onClick={addRule}
       >
-        {isAnd ? 'E' : 'OU'}
-      </button>
-      <div className="flex-1 h-px bg-border" />
-    </div>
-  );
-}
-
-function RuleRow({ rule, questions, variables, canRemove, onUpdate, onRemove }: {
-  rule: ConditionRule;
-  questions: Question[];
-  variables: FormVariable[];
-  canRemove: boolean;
-  onUpdate: (patch: Partial<ConditionRule>) => void;
-  onRemove: () => void;
-}) {
-  const subjectType = rule.subjectType ?? 'question';
-  const hasVariables = variables.length > 0;
-
-  return (
-    <div className="rounded bg-card border border-border p-1.5 space-y-1">
-      {/* Subject type toggle (only show if there are variables) */}
-      {hasVariables && (
-        <div className="flex gap-0.5 mb-0.5">
-          {(['question', 'variable'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => onUpdate({ subjectType: t, variableId: undefined })}
-              className={`flex-1 text-[9px] py-0.5 rounded border transition-colors ${
-                subjectType === t
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/50'
-              }`}
-            >
-              {t === 'question' ? 'Campo' : 'Variável'}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center gap-1">
-        {subjectType === 'variable' ? (
-          <Select
-            value={rule.variableId || ''}
-            onValueChange={v => onUpdate({ variableId: v, questionId: rule.questionId })}
-          >
-            <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
-              <SelectValue placeholder="Variável..." />
-            </SelectTrigger>
-            <SelectContent className="z-[200] bg-popover">
-              {variables.map(v => (
-                <SelectItem key={v.id} value={v.id} className="text-[10px]">
-                  <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
-                  <span className="ml-1 text-muted-foreground">({v.type})</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Select value={rule.questionId} onValueChange={v => onUpdate({ questionId: v })}>
-            <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
-              <SelectValue placeholder="Campo..." />
-            </SelectTrigger>
-            <SelectContent className="z-[200] bg-popover">
-              {questions.map(q => (
-                <SelectItem key={q.id} value={q.id} className="text-[10px]">{q.title || 'Sem título'}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {canRemove && (
-          <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={onRemove}>
-            <Trash2 className="h-2 w-2" />
-          </Button>
-        )}
-      </div>
-
-      <div className="flex items-center gap-1">
-        <Select value={rule.operator} onValueChange={v => onUpdate({ operator: v as ConditionOperator })}>
-          <SelectTrigger className="h-5 text-[10px] flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent className="z-[200] bg-popover">
-            {OPERATORS.map(op => (
-              <SelectItem key={op.value} value={op.value} className="text-[10px]">{op.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (
-          <Input value={rule.value} onChange={e => onUpdate({ value: e.target.value })} placeholder="Valor" className="text-[10px] h-5 flex-1" />
-        )}
-      </div>
+        <Plus className="mr-1 h-2.5 w-2.5" />
+        Adicionar regra
+      </Button>
     </div>
   );
 }
