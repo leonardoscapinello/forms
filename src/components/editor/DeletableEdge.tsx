@@ -40,17 +40,17 @@ export default function DeletableEdge({
             onClick={onDelete}
             className="
               flex items-center justify-center
-              w-5 h-5 rounded-full
+              w-6 h-6 rounded-full
               bg-background border border-border
-              text-muted-foreground hover:text-destructive hover:border-destructive
+              text-muted-foreground hover:text-destructive hover:border-destructive hover:bg-destructive/5
               shadow-sm transition-all duration-150
-              opacity-0
+              opacity-40
               [.react-flow__edge:hover_&]:opacity-100
               [.react-flow__edge.selected_&]:opacity-100
             "
             title="Remover conexão"
           >
-            <X className="h-2.5 w-2.5" />
+            <X className="h-3 w-3" />
           </button>
         </div>
       </EdgeLabelRenderer>
