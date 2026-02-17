@@ -54,6 +54,8 @@ export default function FormPreview() {
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
+  const answersRef = useRef(answers);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
 
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
@@ -181,10 +183,14 @@ export default function FormPreview() {
         if (operandType === 'field') {
           if (!op.operandFieldId) continue;
           const fieldVal = updated[op.operandFieldId];
-          if (fieldVal === undefined || fieldVal === null) continue;
+          // Skip if field has no value yet — don't overwrite variable with empty
+          if (fieldVal === undefined || fieldVal === null || fieldVal === '') continue;
           resolvedOperand = String(fieldVal);
         } else {
+          // literal: only process if there's actually a value or template
           resolvedOperand = interpolateText(op.operand ?? '', f?.variables || [], updated);
+          // Skip set with empty literal to avoid clearing previously assigned values
+          if (op.op === 'set' && resolvedOperand === '' && (op.operand ?? '') === '') continue;
         }
 
         if (op.op === 'set') {
@@ -208,11 +214,10 @@ export default function FormPreview() {
       return updated;
     };
 
-
-    // DFS walk: returns { target, answers } or null
+    // DFS walk: returns { nextNodeId, updatedAnswers } or null
     const walk = (
       nodeId: string,
-      answers: Record<string, any>,
+      ans: Record<string, any>,
       visited = new Set<string>(),
     ): { nextNodeId: string; updatedAnswers: Record<string, any> } | null => {
       if (visited.has(nodeId)) return null;
@@ -228,11 +233,11 @@ export default function FormPreview() {
           const condId = target.replace('c-', '');
           const condData = f?.conditions?.find(c => c.id === condId);
           if (!condData) continue;
-          const matchedBranchId = resolveConditionBranch(condData, answers, f?.variables);
+          const matchedBranchId = resolveConditionBranch(condData, ans, f?.variables);
           const handleId = `branch-${matchedBranchId}`;
           const branchEdge = edges.find(e => e.source === target && e.sourceHandle === handleId);
           if (branchEdge) {
-            const result = walk(branchEdge.target, answers, visited);
+            const result = walk(branchEdge.target, ans, visited);
             if (result) return result;
           }
           continue;
@@ -241,17 +246,19 @@ export default function FormPreview() {
         // Variable-op node — apply operations then continue walking
         if (target.startsWith('vo-')) {
           const vopId = target.replace('vo-', '');
-          const answersAfterOp = applyVopNode(vopId, answers);
+          const answersAfterOp = applyVopNode(vopId, ans);
           const result = walk(target, answersAfterOp, visited);
           if (result) return result;
           continue;
         }
 
-        // Page node — destination
-        if (target.startsWith('p-')) return { nextNodeId: target, updatedAnswers: answers };
+        // Page node — destination found, return with current accumulated answers
+        if (target.startsWith('p-')) {
+          return { nextNodeId: target, updatedAnswers: ans };
+        }
 
         // End node
-        if (target === 'end') return { nextNodeId: 'end', updatedAnswers: answers };
+        if (target === 'end') return { nextNodeId: 'end', updatedAnswers: ans };
       }
 
       return null;
@@ -282,12 +289,11 @@ export default function FormPreview() {
 
     const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
     const allEdges = formRef.current?.flowEdges || [];
-
-    // Check if the current node has any outgoing edges defined in the workflow
     const currentNodeHasOutEdges = allEdges.some(e => e.source === fromNodeId);
 
-    // Walk workflow: resolves next page AND applies variable ops in one pass
-    const { nextNodeId, updatedAnswers } = walkWorkflow(fromNodeId, answers);
+    // Use answersRef.current to always get the latest state — avoids stale closure
+    const latestAnswers = answersRef.current;
+    const { nextNodeId, updatedAnswers } = walkWorkflow(fromNodeId, latestAnswers);
 
     if (nextNodeId === 'end') {
       setFinished(true);
@@ -305,15 +311,12 @@ export default function FormPreview() {
       }
     }
 
-    // If current node has outgoing edges but walk found no valid next page → end of form
-    // (intentional dead-end or broken connection that should stop navigation)
-    // If current node has NO outgoing edges → fallback to sequential navigation
     if (currentNodeHasOutEdges) {
       setFinished(true);
       return;
     }
 
-    // Fallback: sequential navigation when current node has no workflow edges
+    // Fallback: sequential navigation
     if (currentPageIndex === null) {
       if (pages.length > 0) {
         const nextPage = pages[0];
@@ -329,7 +332,7 @@ export default function FormPreview() {
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, answers]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow]);
 
 
   const goBack = useCallback(() => {
