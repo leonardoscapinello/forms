@@ -175,19 +175,32 @@ export default function FormPreview() {
         const variable = f?.variables?.find(v => v.id === op.variableId);
         if (!variable) continue;
         const storeKey = `__var_${variable.name}`;
+
+        // Resolve the operand value
+        const operandType = op.operandType ?? 'literal';
+        let resolvedOperand: string;
+        if (operandType === 'field') {
+          if (!op.operandFieldId) continue; // skip — no field selected
+          const fieldVal = updated[op.operandFieldId];
+          if (fieldVal === undefined || fieldVal === null) continue; // skip — field not answered yet
+          resolvedOperand = String(fieldVal);
+        } else {
+          // literal — support {{var}} interpolation
+          resolvedOperand = interpolateText(op.operand ?? '', f?.variables || [], updated);
+        }
+
+        // For 'set', store the string as-is (preserves text values)
+        if (op.op === 'set') {
+          updated[storeKey] = resolvedOperand;
+          continue;
+        }
+
+        // Arithmetic ops need numbers
         const currentRaw = updated[storeKey] ?? variable.defaultValue ?? '0';
         const currentNum = parseFloat(String(currentRaw)) || 0;
-        let resolvedOperand: string;
-        if (op.operandType === 'field' && op.operandFieldId) {
-          const fieldVal = updated[op.operandFieldId];
-          resolvedOperand = fieldVal !== undefined && fieldVal !== null ? String(fieldVal) : '0';
-        } else {
-          resolvedOperand = interpolateText(op.operand || '0', f?.variables || [], updated);
-        }
         const operandNum = parseFloat(resolvedOperand) || 0;
         let result: string;
         switch (op.op) {
-          case 'set':      result = resolvedOperand; break;
           case 'add':      result = String(currentNum + operandNum); break;
           case 'subtract': result = String(currentNum - operandNum); break;
           case 'multiply': result = String(currentNum * operandNum); break;
@@ -198,6 +211,7 @@ export default function FormPreview() {
       }
       return updated;
     };
+
 
     // DFS walk: returns { target, answers } or null
     const walk = (
