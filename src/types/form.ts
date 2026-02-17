@@ -284,12 +284,28 @@ export interface IntegrationNodeData {
   webhookParams?: WebhookParam[];
 }
 
-/** Analytics / Pixel node — one per pixel platform */
-export interface AnalyticsNodeData {
+/** A single platform config inside an analytics node */
+export interface AnalyticsPlatformEntry {
   id: string;
   platform: AnalyticsPlatform;
-  eventType?: PixelEventType;
+  eventType: PixelEventType | 'PageView';
   customEventName?: string;
+  /** Extra key/value params sent in server-side API payload */
+  customParams?: { id: string; key: string; value: string }[];
+  enabled: boolean;
+}
+
+/** Analytics / Pixel node — supports multiple platforms simultaneously */
+export interface AnalyticsNodeData {
+  id: string;
+  /** @deprecated — kept for backward compat with single-platform nodes */
+  platform?: AnalyticsPlatform;
+  /** @deprecated */
+  eventType?: PixelEventType;
+  /** @deprecated */
+  customEventName?: string;
+  /** New: one entry per platform (all enabled ones fire together) */
+  platforms?: AnalyticsPlatformEntry[];
 }
 
 /** A pixel event fired automatically when the form loads */

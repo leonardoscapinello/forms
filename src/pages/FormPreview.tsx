@@ -399,47 +399,61 @@ export default function FormPreview() {
           for (const [k, v] of Object.entries(currentAns)) {
             if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
           }
-          const eventId = `${f?.id}_${anId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-          const eventName = anNode.eventType === 'custom'
-            ? (anNode.customEventName || 'CustomEvent')
-            : (anNode.eventType || 'Lead');
           const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
-
-          // Client-side script
-          if (typeof window !== 'undefined') {
-            try {
-              if (anNode.platform === 'meta_pixel' && (window as any).fbq)
-                (window as any).fbq('track', eventName, {}, { eventID: eventId });
-              if (anNode.platform === 'google_analytics' && (window as any).gtag)
-                (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId });
-              if (anNode.platform === 'tiktok_pixel' && (window as any).ttq)
-                (window as any).ttq.track(eventName, {}, { event_id: eventId });
-              if (anNode.platform === 'linkedin_pixel' && (window as any).lintrk)
-                (window as any).lintrk('track', { conversion_id: eventId });
-            } catch (_) {}
-          }
-
-          // Server-side API
           const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
           const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          if (projectId && anonKey) {
-            fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
-              body: JSON.stringify({
-                platform: anNode.platform,
-                eventName,
-                eventId,
-                formId: f?.id,
-                answers: currentAns,
-                variables,
-                userData: {
-                  email: emailVal ? emailVal[1] : undefined,
-                  phone: phoneVal ? phoneVal[1] : undefined,
-                },
-                sourceUrl,
-              }),
-            }).catch(() => {});
+
+          // Build the list of platforms to fire (new multi-platform format or legacy single)
+          const platformEntries = anNode.platforms
+            ? anNode.platforms.filter(p => p.enabled)
+            : anNode.platform
+              ? [{ id: anId, platform: anNode.platform, eventType: anNode.eventType || 'Lead', enabled: true, customParams: [] }]
+              : [];
+
+          for (const entry of platformEntries) {
+            const eventId = `${f?.id}_${anId}_${entry.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            const eventName = entry.eventType === 'custom'
+              ? (entry.customEventName || 'CustomEvent')
+              : (entry.eventType || 'Lead');
+            const extraParams = Object.fromEntries(
+              (entry.customParams || []).filter(p => p.key).map(p => [p.key, p.value])
+            );
+
+            // Client-side script
+            if (typeof window !== 'undefined') {
+              try {
+                if (entry.platform === 'meta_pixel' && (window as any).fbq)
+                  (window as any).fbq('track', eventName, extraParams, { eventID: eventId });
+                if (entry.platform === 'google_analytics' && (window as any).gtag)
+                  (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId, ...extraParams });
+                if (entry.platform === 'tiktok_pixel' && (window as any).ttq)
+                  (window as any).ttq.track(eventName, extraParams, { event_id: eventId });
+                if (entry.platform === 'linkedin_pixel' && (window as any).lintrk)
+                  (window as any).lintrk('track', { conversion_id: eventId, ...extraParams });
+              } catch (_) {}
+            }
+
+            // Server-side API (non-blocking)
+            if (projectId && anonKey) {
+              fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
+                body: JSON.stringify({
+                  platform: entry.platform,
+                  eventName,
+                  eventId,
+                  formId: f?.id,
+                  answers: currentAns,
+                  variables,
+                  customParams: extraParams,
+                  userData: {
+                    email: emailVal ? emailVal[1] : undefined,
+                    phone: phoneVal ? phoneVal[1] : undefined,
+                  },
+                  sourceUrl,
+                }),
+              }).catch(() => {});
+            }
           }
         }
         currentNodeId = target;
