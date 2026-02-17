@@ -429,123 +429,68 @@ export default function FormPreview() {
       )}
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center px-4 md:px-8">
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="w-full max-w-2xl mx-auto"
+      {(() => {
+        const pageStyle = form.globalPageStyle || {};
+        const paddingX = pageStyle.paddingX ?? 24;
+        const paddingY = pageStyle.paddingY ?? 32;
+        const gap = pageStyle.gap ?? 32;
+        const bgColor = pageStyle.backgroundColor || undefined;
+        const fontFamily = pageStyle.fontFamily || undefined;
+
+        // Default screens (no custom elements): centered layout with own padding
+        const showDefaultWelcome = isWelcome && (!form.showWelcomeScreen || !form.welcomePage?.elements?.length);
+        const showDefaultThankYou = isThankYou && !form.thankYouPage?.elements?.length;
+        const isDefaultScreen = showDefaultWelcome || showDefaultThankYou;
+
+        return (
+          <div
+            className="flex-1 overflow-auto"
+            style={{ backgroundColor: bgColor, fontFamily }}
           >
-            {/* Welcome */}
-            {isWelcome && form.showWelcomeScreen && form.welcomePage?.elements?.length ? (
-              <div className="space-y-5 md:space-y-8">
-                {form.welcomePage.elements.map((el, elIdx) => {
-                  const isField = el.type.startsWith('input_');
-                  const fieldIndex = isField
-                    ? form.welcomePage!.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
-                    : elIdx + 1;
-                  return (
-                    <InteractiveElement
-                      key={el.id}
-                      element={el}
-                      value={answers[el.id]}
-                      onChange={v => setAnswer(el.id, v)}
-                      stepNumber={fieldIndex}
-                      letterOffset={0}
-                      onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
-                      registerValidator={validator => registerValidator(el.id, validator)}
-                      onNavigate={handleButtonNavigate}
-                      variables={form.variables || []}
-                      answers={answers}
-                    />
-                  );
-                })}
-              </div>
-            ) : isWelcome ? (
-              <div className="text-center space-y-4 md:space-y-5">
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                  {form.welcomeTitle || form.title}
-                </h1>
-                <p className="text-base md:text-lg text-muted-foreground">
-                  {form.welcomeDescription || form.description || 'Clique em começar para iniciar.'}
-                </p>
-                <Button size="lg" onClick={goNext} className="mt-6 md:mt-8 text-base px-6 md:px-8 py-3 h-auto">
-                  Começar
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </div>
-            ) : null}
-
-            {/* Thank You */}
-            {isThankYou && (
-              form.thankYouPage?.elements?.length ? (
-                <div className="space-y-5 md:space-y-8">
-                  {form.thankYouPage.elements.map((el, elIdx) => {
-                    const isField = el.type.startsWith('input_');
-                    const fieldIndex = isField
-                      ? form.thankYouPage!.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
-                      : elIdx + 1;
-                    return (
-                      <InteractiveElement
-                        key={el.id}
-                        element={el}
-                        value={answers[el.id]}
-                        onChange={v => setAnswer(el.id, v)}
-                        stepNumber={fieldIndex}
-                        letterOffset={0}
-                        onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
-                        registerValidator={validator => registerValidator(el.id, validator)}
-                        onNavigate={handleButtonNavigate}
-                        variables={form.variables || []}
-                        answers={answers}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center space-y-4 md:space-y-5">
-                  <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
-                    <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
-                  </div>
-                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                    {form.thankYouTitle || 'Obrigado!'}
-                  </h1>
-                  <p className="text-base md:text-lg text-muted-foreground">
-                    {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
-                  </p>
-                  {totalScore > 0 && (
-                    <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
-                      <p className="text-sm text-muted-foreground">Sua pontuação</p>
-                      <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
+                custom={direction}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="w-full mx-auto"
+                style={isDefaultScreen ? { maxWidth: 672 } : {
+                  maxWidth: 672 + paddingX * 2,
+                  paddingLeft: paddingX,
+                  paddingRight: paddingX,
+                  paddingTop: paddingY,
+                  paddingBottom: paddingY,
+                }}
+              >
+                {/* Default welcome (no custom elements) */}
+                {showDefaultWelcome && (
+                  <div className="flex items-center justify-center min-h-[60vh] px-4 md:px-8">
+                    <div className="text-center space-y-4 md:space-y-5 max-w-2xl w-full">
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                        {form.welcomeTitle || form.title}
+                      </h1>
+                      <p className="text-base md:text-lg text-muted-foreground">
+                        {form.welcomeDescription || form.description || 'Clique em começar para iniciar.'}
+                      </p>
+                      <Button size="lg" onClick={goNext} className="mt-6 md:mt-8 text-base px-6 md:px-8 py-3 h-auto">
+                        Começar
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-              )
-            )}
+                  </div>
+                )}
 
-            {/* Page content */}
-            {currentPage && !isThankYou && (
-              <div className="space-y-5 md:space-y-8">
-                {currentPage.elements.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
-                ) : (
-                  (() => {
-                    const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
-                    let cumulativeLetterOffset = 0;
-                    return currentPage.elements.map((el, elIdx) => {
+                {/* Welcome with custom elements */}
+                {isWelcome && form.showWelcomeScreen && (form.welcomePage?.elements?.length ?? 0) > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+                    {form.welcomePage!.elements.map((el, elIdx) => {
                       const isField = el.type.startsWith('input_');
                       const fieldIndex = isField
-                        ? currentPage.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                        ? form.welcomePage!.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
                         : elIdx + 1;
-                      const letterOffset = SELECTION_TYPES.includes(el.type) ? cumulativeLetterOffset : 0;
-                      if (SELECTION_TYPES.includes(el.type)) {
-                        cumulativeLetterOffset += (el.options || []).length;
-                      }
                       return (
                         <InteractiveElement
                           key={el.id}
@@ -553,7 +498,7 @@ export default function FormPreview() {
                           value={answers[el.id]}
                           onChange={v => setAnswer(el.id, v)}
                           stepNumber={fieldIndex}
-                          letterOffset={letterOffset}
+                          letterOffset={0}
                           onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
                           registerValidator={validator => registerValidator(el.id, validator)}
                           onNavigate={handleButtonNavigate}
@@ -561,14 +506,107 @@ export default function FormPreview() {
                           answers={answers}
                         />
                       );
-                    });
-                  })()
+                    })}
+                  </div>
                 )}
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+
+                {/* Default thank you (no custom elements) */}
+                {showDefaultThankYou && (
+                  <div className="flex items-center justify-center min-h-[60vh] px-4 md:px-8">
+                    <div className="text-center space-y-4 md:space-y-5 max-w-2xl w-full">
+                      <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
+                        <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
+                      </div>
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                        {form.thankYouTitle || 'Obrigado!'}
+                      </h1>
+                      <p className="text-base md:text-lg text-muted-foreground">
+                        {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
+                      </p>
+                      {totalScore > 0 && (
+                        <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
+                          <p className="text-sm text-muted-foreground">Sua pontuação</p>
+                          <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Thank you with custom elements */}
+                {isThankYou && (form.thankYouPage?.elements?.length ?? 0) > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+                    {form.thankYouPage!.elements.map((el, elIdx) => {
+                      const isField = el.type.startsWith('input_');
+                      const fieldIndex = isField
+                        ? form.thankYouPage!.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                        : elIdx + 1;
+                      return (
+                        <InteractiveElement
+                          key={el.id}
+                          element={el}
+                          value={answers[el.id]}
+                          onChange={v => setAnswer(el.id, v)}
+                          stepNumber={fieldIndex}
+                          letterOffset={0}
+                          onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
+                          registerValidator={validator => registerValidator(el.id, validator)}
+                          onNavigate={handleButtonNavigate}
+                          variables={form.variables || []}
+                          answers={answers}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Page content (normal pages) */}
+                {currentPage && !isThankYou && (
+                  <>
+                    {currentPage.elements.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
+                    ) : (
+                      (() => {
+                        const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
+                        let cumulativeLetterOffset = 0;
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+                            {currentPage.elements.map((el, elIdx) => {
+                              const isField = el.type.startsWith('input_');
+                              const fieldIndex = isField
+                                ? currentPage.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                                : elIdx + 1;
+                              const letterOffset = SELECTION_TYPES.includes(el.type) ? cumulativeLetterOffset : 0;
+                              if (SELECTION_TYPES.includes(el.type)) {
+                                cumulativeLetterOffset += (el.options || []).length;
+                              }
+                              return (
+                                <InteractiveElement
+                                  key={el.id}
+                                  element={el}
+                                  value={answers[el.id]}
+                                  onChange={v => setAnswer(el.id, v)}
+                                  stepNumber={fieldIndex}
+                                  letterOffset={letterOffset}
+                                  onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
+                                  registerValidator={validator => registerValidator(el.id, validator)}
+                                  onNavigate={handleButtonNavigate}
+                                  variables={form.variables || []}
+                                  answers={answers}
+                                />
+                              );
+                            })}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        );
+      })()}
 
       {/* Navigation */}
       {!isWelcome && !isThankYou && (
