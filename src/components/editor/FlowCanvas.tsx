@@ -33,6 +33,8 @@ import ConditionNode from './ConditionNode';
 import VariableOpNode from './VariableOpNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
+import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
+
 
 const NODE_SPACING = 350;
 
@@ -168,8 +170,10 @@ function FlowCanvasInner({
       });
     });
 
+
     (form.conditions || []).forEach((cond, i) => {
       const nodeId = `c-${cond.id}`;
+      const validation = validateConditionNode(cond.branches, variables);
       n.push({
         id: nodeId,
         type: 'conditionNode',
@@ -180,6 +184,7 @@ function FlowCanvasInner({
           branches: cond.branches,
           questions: form.questions || [],
           variables,
+          hasError: !validation.isValid,
           onChange: (patch: Partial<ConditionNodeData>) => onConditionChange(cond.id, patch),
           onDelete: () => onConditionDelete(cond.id),
         },
@@ -189,6 +194,7 @@ function FlowCanvasInner({
     variableOpNodes.forEach((vop, i) => {
       const nodeId = `vo-${vop.id}`;
       const prevElements = getPreviousPageElements(nodeId);
+      const validation = validateVariableOpNode(vop.operations, variables);
       n.push({
         id: nodeId,
         type: 'variableOpNode',
@@ -199,11 +205,13 @@ function FlowCanvasInner({
           operations: vop.operations,
           variables,
           allInputElements: prevElements,
+          hasError: !validation.isValid,
           onChange: (patch: Partial<VariableOpNodeData>) => onVariableOpChange(vop.id, patch),
           onDelete: () => onVariableOpDelete(vop.id),
         },
       });
     });
+
 
     return n;
   }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete]);
@@ -426,11 +434,18 @@ function FlowCanvasInner({
         />
         <MiniMap
           className="!bg-card !border-border !rounded-lg !shadow-sm"
-          nodeColor="hsl(var(--muted))"
+          nodeColor={(node) => {
+            if (node.data?.hasError) return 'hsl(var(--destructive))';
+            if (node.type === 'conditionNode') return 'hsl(var(--node-condition-accent))';
+            if (node.type === 'variableOpNode') return 'hsl(var(--node-variable-op-accent))';
+            if (node.type === 'pageNode') return 'hsl(var(--muted-foreground))';
+            return 'hsl(var(--muted))';
+          }}
           maskColor="hsl(var(--background) / 0.7)"
           pannable
           zoomable
         />
+
       </ReactFlow>
 
       {dropMenu && (
