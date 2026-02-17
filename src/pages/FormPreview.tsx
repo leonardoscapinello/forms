@@ -27,6 +27,7 @@ import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import DebugPanel from '@/components/preview/DebugPanel';
 import { buildWebhookPayload } from '@/lib/webhookPayload';
+import { firePixel, firePixelDual } from '@/lib/firePixel';
 
 function buildDefaults(form: AppFormData | null) {
   if (!form) return {};
@@ -134,13 +135,12 @@ export default function FormPreview() {
 
 
   // Fire pixel load events once the form is ready
+  // ── Load Events: disparo server-side com retry, nunca falha por AdBlock ──────
   useEffect(() => {
     if (!form?.id) return;
     const loadEvents = form.pixelLoadEvents || [];
     if (loadEvents.length === 0) return;
 
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
     const { responseId } = sessionMetaRef.current;
@@ -151,50 +151,19 @@ export default function FormPreview() {
         : evt.eventType;
       const eventId = `${form.id}_load_${evt.id}_${Date.now()}`;
 
-      // Client-side script (non-blocking)
-      let firedClient = false;
-      if (typeof window !== 'undefined') {
-        try {
-          if (evt.platform === 'meta_pixel' && (window as any).fbq) {
-            (window as any).fbq('track', eventName, {}, { eventID: eventId });
-            firedClient = true;
-          }
-          if (evt.platform === 'google_analytics' && (window as any).gtag) {
-            (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId });
-            firedClient = true;
-          }
-          if (evt.platform === 'tiktok_pixel' && (window as any).ttq) {
-            (window as any).ttq.track(eventName, {}, { event_id: eventId });
-            firedClient = true;
-          }
-          if (evt.platform === 'linkedin_pixel' && (window as any).lintrk) {
-            (window as any).lintrk('track', { conversion_id: eventId });
-            firedClient = true;
-          }
-        } catch (_) {}
-      }
-
-      // Server-side API (non-blocking) — always called to log the event
-      if (projectId && anonKey) {
-        fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
-          body: JSON.stringify({
-            platform: evt.platform,
-            eventName,
-            eventId,
-            formId: form.id,
-            responseId,
-            triggerType: 'load_event',
-            firedClient,
-            answers: {},
-            variables: {},
-            userData: {},
-            sourceUrl,
-            userAgent,
-          }),
-        }).catch(() => {});
-      }
+      firePixelDual({
+        platform: evt.platform,
+        eventName,
+        eventId,
+        formId: form.id,
+        responseId,
+        triggerType: 'load_event',
+        answers: {},
+        variables: {},
+        userData: {},
+        sourceUrl,
+        userAgent,
+      });
     }
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -450,64 +419,59 @@ export default function FormPreview() {
         continue;
       }
 
-      // Intermediate: webhook integration node — fire async (non-blocking) and advance
+      // Intermediate: webhook integration node — fire server-side with retry
       if (target.startsWith('int-')) {
         const intgId = target.replace('int-', '');
         const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
-        if (intgNode) {
-          const eventId = `${f?.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        if (intgNode && f) {
+          const eventId = `${f.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
           const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
-          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-          const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          if (projectId && anonKey && f) {
-            const extraParams = Object.fromEntries(
-              (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
-            );
-            const { payload: webhookPayload, userData } = buildWebhookPayload({
-              form: f,
-              answers: currentAns,
-              respondent: { user_agent: sessionMetaRef.current.userAgent },
-              responseId: sessionMetaRef.current.responseId,
-              landedAt: sessionMetaRef.current.landedAt,
-              submittedAt: new Date().toISOString(),
-              extraParams,
-              queryParams: sessionMetaRef.current.queryParams,
-            });
-            fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
-              body: JSON.stringify({
-                platform: 'webhook',
-                eventId,
-                formId: f?.id,
-                sourceUrl,
-                webhookUrl: intgNode.webhookUrl,
-                webhookMethod: intgNode.webhookMethod,
-                webhookPayload,
-                userData,
-                queryParams: sessionMetaRef.current.queryParams,
-                userAgent: sessionMetaRef.current.userAgent,
-              }),
-            }).catch(() => {});
-          }
+          const extraParams = Object.fromEntries(
+            (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
+          );
+          const { payload: wPayload, userData } = buildWebhookPayload({
+            form: f,
+            answers: currentAns,
+            respondent: { user_agent: sessionMetaRef.current.userAgent },
+            responseId: sessionMetaRef.current.responseId,
+            landedAt: sessionMetaRef.current.landedAt,
+            submittedAt: new Date().toISOString(),
+            extraParams,
+            queryParams: sessionMetaRef.current.queryParams,
+          });
+          firePixel({
+            platform: 'webhook',
+            eventName: 'webhook_fired',
+            eventId,
+            formId: f.id,
+            responseId: sessionMetaRef.current.responseId,
+            triggerType: 'flow_node',
+            sourceUrl,
+            webhookUrl: intgNode.webhookUrl,
+            webhookMethod: intgNode.webhookMethod,
+            webhookPayload: wPayload,
+            userData,
+            queryParams: sessionMetaRef.current.queryParams,
+            userAgent: sessionMetaRef.current.userAgent,
+          });
         }
         currentNodeId = target;
         continue;
       }
 
-      // Intermediate: analytics node — fire pixel + server-side API (non-blocking)
+      // Intermediate: analytics node — fire server-side with retry (AdBlock-proof)
       if (target.startsWith('an-')) {
         const anId = target.replace('an-', '');
         const anNode = f?.analyticsNodes?.find(n => n.id === anId);
-        if (anNode) {
+        if (anNode && f) {
           const emailVal = Object.entries(currentAns).find(([k]) => {
-            for (const pg of f?.pages || []) {
+            for (const pg of f.pages || []) {
               if ((pg.elements || []).find(e => e.id === k && e.type === 'input_email')) return true;
             }
             return false;
           });
           const phoneVal = Object.entries(currentAns).find(([k]) => {
-            for (const pg of f?.pages || []) {
+            for (const pg of f.pages || []) {
               if ((pg.elements || []).find(e => e.id === k && e.type === 'input_phone')) return true;
             }
             return false;
@@ -517,73 +481,39 @@ export default function FormPreview() {
             if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
           }
           const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
-          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-          const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-          // Build the list of platforms to fire (new multi-platform format or legacy single)
           const platformEntries = anNode.platforms
             ? anNode.platforms.filter(p => p.enabled)
             : anNode.platform
-              ? [{ id: anId, platform: anNode.platform, eventType: anNode.eventType || 'Lead', enabled: true, customParams: [] }]
+              ? [{ id: anId, platform: anNode.platform, eventType: anNode.eventType || 'Lead', enabled: true, customParams: [] as any[] }]
               : [];
 
           for (const entry of platformEntries) {
-            const eventId = `${f?.id}_${anId}_${entry.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            const eventId = `${f.id}_${anId}_${entry.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             const eventName = entry.eventType === 'custom'
-              ? (entry.customEventName || 'CustomEvent')
+              ? (('customEventName' in entry ? entry.customEventName : undefined) || 'CustomEvent')
               : (entry.eventType || 'Lead');
             const extraParams = Object.fromEntries(
               (entry.customParams || []).filter(p => p.key).map(p => [p.key, p.value])
             );
 
-            // Client-side script
-            let firedClient = false;
-            if (typeof window !== 'undefined') {
-              try {
-                if (entry.platform === 'meta_pixel' && (window as any).fbq) {
-                  (window as any).fbq('track', eventName, extraParams, { eventID: eventId });
-                  firedClient = true;
-                }
-                if (entry.platform === 'google_analytics' && (window as any).gtag) {
-                  (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId, ...extraParams });
-                  firedClient = true;
-                }
-                if (entry.platform === 'tiktok_pixel' && (window as any).ttq) {
-                  (window as any).ttq.track(eventName, extraParams, { event_id: eventId });
-                  firedClient = true;
-                }
-                if (entry.platform === 'linkedin_pixel' && (window as any).lintrk) {
-                  (window as any).lintrk('track', { conversion_id: eventId, ...extraParams });
-                  firedClient = true;
-                }
-              } catch (_) {}
-            }
-
-            // Server-side API (non-blocking) — always called to log the event
-            if (projectId && anonKey) {
-              fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
-                body: JSON.stringify({
-                  platform: entry.platform,
-                  eventName,
-                  eventId,
-                  formId: f?.id,
-                  responseId: sessionMetaRef.current.responseId,
-                  triggerType: 'flow_node',
-                  firedClient,
-                  answers: currentAns,
-                  variables,
-                  customParams: extraParams,
-                  userData: {
-                    email: emailVal ? emailVal[1] : undefined,
-                    phone: phoneVal ? phoneVal[1] : undefined,
-                  },
-                  sourceUrl,
-                  userAgent: sessionMetaRef.current.userAgent,
-                }),
-              }).catch(() => {});
-            }
+            firePixelDual({
+              platform: entry.platform,
+              eventName,
+              eventId,
+              formId: f.id,
+              responseId: sessionMetaRef.current.responseId,
+              triggerType: 'flow_node',
+              answers: currentAns,
+              variables,
+              customParams: extraParams,
+              userData: {
+                email: emailVal ? String(emailVal[1]) : undefined,
+                phone: phoneVal ? String((phoneVal[1] as any)?.full_number ?? phoneVal[1]) : undefined,
+              },
+              sourceUrl,
+              userAgent: sessionMetaRef.current.userAgent,
+            });
           }
         }
         currentNodeId = target;
