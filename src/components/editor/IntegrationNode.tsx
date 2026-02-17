@@ -194,7 +194,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
                             updated[idx] = { ...updated[idx], responsePath: e.target.value };
                             onChange({ responseMappings: updated });
                           }}
-                          placeholder="ex: data.token"
+                          placeholder="ex: data.token ou items[0].id"
                           className="h-7 text-xs font-mono"
                         />
                       </div>
