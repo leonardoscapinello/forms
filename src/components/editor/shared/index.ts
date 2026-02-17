@@ -1,4 +1,5 @@
 export { default as ColorPickerField } from './ColorPickerField';
+export { default as VariableInput } from './VariableInput';
 export { default as TypographySelector } from './TypographySelector';
 export { default as AlignmentSelector } from './AlignmentSelector';
 export { default as BorderSettings } from './BorderSettings';

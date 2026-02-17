@@ -1,5 +1,5 @@
 import { FunnelPage, FormVariable, FormVariableType } from '@/types/form';
-import { Plus, FileText, Trash2, Home, Variable, ChevronDown, ChevronRight, Pencil, Check, X, Copy } from 'lucide-react';
+import { Plus, FileText, Trash2, Home, Variable, ChevronDown, ChevronRight, Pencil, Check, X, Copy, Braces } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -242,11 +242,17 @@ export default function PageListPanel({
                 {/* Copyable syntax tag */}
                 <button
                   onClick={() => copyVarSyntax(v.name)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors w-fit"
+                  className="group/tag flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/8 border border-primary/20 hover:bg-primary/15 hover:border-primary/40 text-[11px] font-mono text-primary transition-all w-full justify-between"
                   title="Clique para copiar"
                 >
-                  <span>{`{{${v.name}}}`}</span>
-                  <Copy className="h-3 w-3" />
+                  <div className="flex items-center gap-1.5">
+                    <Braces className="h-3 w-3 opacity-60" />
+                    <span>{`{{${v.name}}}`}</span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover/tag:opacity-100 transition-opacity">
+                    <Copy className="h-3 w-3" />
+                    <span className="text-[10px] font-sans">copiar</span>
+                  </div>
                 </button>
 
                 {/* Variable type */}
