@@ -20,6 +20,7 @@ import {
   SpacingControl,
   ShadowSelector,
   WidthSelector,
+  VariableInput,
 } from '@/components/editor/shared';
 
 interface Props {
@@ -109,10 +110,11 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           {isFormField(element.type) && (
             <div className="space-y-2">
               <Label>Enunciado</Label>
-              <Input
+              <VariableInput
                 value={element.label || ''}
-                onChange={e => onChange({ label: e.target.value })}
+                onChange={v => onChange({ label: v })}
                 placeholder="Pergunta ou instrução"
+                variables={variables}
               />
             </div>
           )}
@@ -121,11 +123,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           {isFormField(element.type) && (
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
-              <Textarea
+              <VariableInput
+                as="textarea"
                 value={element.description || ''}
-                onChange={e => onChange({ description: e.target.value })}
+                onChange={v => onChange({ description: v })}
                 placeholder="Texto de apoio..."
                 rows={2}
+                variables={variables}
               />
             </div>
           )}
@@ -653,15 +657,18 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             <div className="space-y-2">
               <Label>Conteúdo</Label>
               {(element.type === 'text' || element.type === 'alert') ? (
-                <Textarea
+                <VariableInput
+                  as="textarea"
                   value={element.content || ''}
-                  onChange={e => onChange({ content: e.target.value })}
+                  onChange={v => onChange({ content: v })}
                   rows={element.type === 'alert' ? 3 : 4}
+                  variables={variables}
                 />
               ) : (
-                <Input
+                <VariableInput
                   value={element.content || ''}
-                  onChange={e => onChange({ content: e.target.value })}
+                  onChange={v => onChange({ content: v })}
+                  variables={variables}
                 />
               )}
             </div>
