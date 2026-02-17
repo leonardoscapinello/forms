@@ -241,13 +241,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating', 'input_nps'].includes(element.type) && (
             <div className="space-y-2">
               <Label>Valor pré-definido</Label>
-              <Input
-                value={element.defaultValue ?? ''}
-                onChange={e => onChange({ defaultValue: e.target.value || undefined })}
+              <VariableInput
+                value={String(element.defaultValue ?? '')}
+                onChange={v => onChange({ defaultValue: v || undefined })}
                 placeholder="Deixe vazio para não preencher"
+                variables={variables}
               />
               <p className="text-xs text-muted-foreground">
-                Valor que aparecerá preenchido ao abrir o formulário
+                Valor que aparecerá preenchido ao abrir o formulário. Use <code className="bg-muted px-0.5 rounded font-mono text-[10px]">{`{{variavel}}`}</code> para preencher dinamicamente.
               </p>
             </div>
           )}
