@@ -306,8 +306,12 @@ export default function FormPreview() {
       }
     }
 
-    // If a workflow is defined, strictly respect it — no fallback navigation
-    if (hasWorkflow) return;
+    // If a workflow is defined but no outgoing connection found → end of form
+    if (hasWorkflow) {
+      setFinished(true);
+      return;
+    }
+
 
     // Fallback: sequential navigation (only when no workflow is configured)
     if (currentPageIndex === null) {
