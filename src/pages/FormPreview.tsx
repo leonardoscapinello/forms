@@ -460,7 +460,14 @@ export default function FormPreview() {
           // Apply response mappings to variables
           if (responseBody && intgNode.responseMappings?.length) {
             const getNestedValue = (obj: any, path: string): any => {
-              return path.split('.').reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+              // Tokenize path supporting both dot notation and array indexing
+              // e.g. "items[0].id" → ["items", "0", "id"]
+              // e.g. "results[1].name" → ["results", "1", "name"]
+              const tokens = path
+                .replace(/\[(\d+)\]/g, '.$1') // convert [0] → .0
+                .split('.')
+                .filter(Boolean);
+              return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
             };
             for (const mapping of intgNode.responseMappings) {
               if (!mapping.responsePath || !mapping.variableId) continue;

@@ -276,7 +276,7 @@ export interface WebhookParam {
 /** Maps a JSON path in the webhook response body to a form variable */
 export interface WebhookResponseMapping {
   id: string;
-  /** Dot-notation path in the response JSON. E.g. "data.user.id" or "token" */
+  /** Dot-notation or bracket path in the response JSON. E.g. "data.user.id", "token", "items[0].id", "results[1].name" */
   responsePath: string;
   /** The form variable ID to store the value into */
   variableId: string;
