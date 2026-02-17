@@ -83,6 +83,12 @@ img.emoji {
     --node-ending-accent: 220 10% 45%;
     --node-integration: 145 60% 92%;
     --node-integration-accent: 145 55% 40%;
+    /* Webhook = integration (green) */
+    --node-webhook: 145 60% 92%;
+    --node-webhook-accent: 145 55% 40%;
+    /* Analytics/Pixel = purple */
+    --node-analytics: 258 60% 94%;
+    --node-analytics-accent: 258 55% 55%;
   }
 
   .dark {
@@ -137,6 +143,10 @@ img.emoji {
     --node-ending-accent: 220 10% 60%;
     --node-integration: 145 30% 18%;
     --node-integration-accent: 145 45% 55%;
+    --node-webhook: 145 30% 18%;
+    --node-webhook-accent: 145 45% 55%;
+    --node-analytics: 258 30% 22%;
+    --node-analytics-accent: 258 50% 70%;
   }
 }
 
