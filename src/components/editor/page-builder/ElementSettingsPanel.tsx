@@ -194,6 +194,25 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Form field: fieldName (ID para webhooks) ─── */}
+          {isFormField(element.type) && (
+            <div className="space-y-2">
+              <Label>
+                Nome do campo{' '}
+                <span className="text-muted-foreground font-normal">(ID)</span>
+              </Label>
+              <Input
+                value={element.fieldName || ''}
+                onChange={e => onChange({ fieldName: e.target.value.replace(/\s+/g, '_').toLowerCase() || undefined })}
+                placeholder={element.id.slice(0, 8) + '…'}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Chave usada nos webhooks e integrações. Use letras, números e <code className="bg-muted px-0.5 rounded">_</code>. Ex: <code className="bg-muted px-0.5 rounded">email_principal</code>
+              </p>
+            </div>
+          )}
+
           {/* ─── Form field: variable binding ─── */}
           {isFormField(element.type) && variables.length > 0 && (
             <div className="space-y-2">
