@@ -1,7 +1,15 @@
 import { memo, useCallback, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { FileText } from 'lucide-react';
-import { FunnelPage } from '@/types/form';
+import { FileText, Variable } from 'lucide-react';
+import { FunnelPage, FormVariable, VariableAssignment } from '@/types/form';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import VariableAssignPanel from './VariableAssignPanel';
+
+interface AllInputElement {
+  elementId: string;
+  elementLabel: string;
+  pageTitle: string;
+}
 
 interface PageNodeData {
   page: FunnelPage;
@@ -9,12 +17,15 @@ interface PageNodeData {
   onChange: (patch: Partial<FunnelPage>) => void;
   onDelete: () => void;
   onSelect: () => void;
+  variables?: FormVariable[];
+  allInputElements?: AllInputElement[];
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange } = data;
+  const { page, index, onSelect, onChange, variables = [], allInputElements = [] } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
+  const [varPopoverOpen, setVarPopoverOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,6 +46,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
   }, [editValue, page.title, onChange]);
 
   const elementCount = page.elements?.length || 0;
+  const assignmentCount = page.variableAssignments?.length || 0;
 
   return (
     <div
@@ -100,6 +112,54 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
           </div>
         )}
       </div>
+
+      {/* Footer: variable assignments button */}
+      {variables.length > 0 && (
+        <div
+          className="border-t border-border/50 px-3 py-1.5"
+          onClick={e => e.stopPropagation()}
+          onDoubleClick={e => e.stopPropagation()}
+        >
+          <Popover open={varPopoverOpen} onOpenChange={setVarPopoverOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className={`flex items-center gap-1.5 text-[10px] w-full rounded px-1.5 py-1 transition-colors ${
+                  assignmentCount > 0
+                    ? 'text-primary bg-primary/8 hover:bg-primary/15'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                <Variable className="h-3 w-3 flex-shrink-0" />
+                {assignmentCount > 0
+                  ? `${assignmentCount} variável${assignmentCount > 1 ? 'is' : ''} atribuída${assignmentCount > 1 ? 's' : ''}`
+                  : 'Atribuir variáveis'}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="start"
+              sideOffset={4}
+              className="w-80 p-0"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+                <Variable className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Atribuição de variáveis</p>
+                  <p className="text-[10px] text-muted-foreground">Executado ao entrar nesta página</p>
+                </div>
+              </div>
+              <div className="p-3">
+                <VariableAssignPanel
+                  assignments={page.variableAssignments || []}
+                  variables={variables}
+                  allInputElements={allInputElements}
+                  onChange={assignments => onChange({ variableAssignments: assignments })}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
     </div>
   );
 }

@@ -238,12 +238,28 @@ export interface FunnelPageStyle {
   paddingY?: number;   // vertical padding
 }
 
+/** How a variable gets its value when a page is visited */
+export type VariableAssignmentSource = 'field' | 'free';
+
+export interface VariableAssignment {
+  id: string;
+  variableId: string;
+  /** 'field' = copy from a form element's answer; 'free' = static text (may use {{var}} interpolation) */
+  sourceType: VariableAssignmentSource;
+  /** When sourceType === 'field': the element whose answer to read */
+  sourceElementId?: string;
+  /** When sourceType === 'free': the literal value (may contain {{vars}}) */
+  value?: string;
+}
+
 /** A funnel page — the primary building block. Each page contains elements (layout + fields). */
 export interface FunnelPage {
   id: string;
   title: string;
   elements: import('./pageElements').PageElement[];
   pageStyle?: FunnelPageStyle;
+  /** Variable assignments executed when this page is entered */
+  variableAssignments?: VariableAssignment[];
 }
 
 export function createDefaultFunnelPage(title?: string): FunnelPage {

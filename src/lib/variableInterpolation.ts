@@ -4,6 +4,7 @@ import { FunnelPage } from '@/types/form';
 
 /**
  * Resolves all {{varName}} placeholders in a string using the current variable values.
+ * Variable assignment overrides are stored in answers as `__var_<name>`.
  */
 export function interpolateText(
   text: string,
@@ -15,6 +16,12 @@ export function interpolateText(
   return text.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) => {
     const variable = variables.find(v => v.name === varName);
     if (!variable) return `{{${varName}}}`;
+
+    // Check if a variable assignment override exists (set at runtime)
+    const assignOverride = answers[`__var_${varName}`];
+    if (assignOverride !== undefined && assignOverride !== null) {
+      return String(assignOverride);
+    }
 
     if (variable.type === 'response' && variable.sourceElementId) {
       const val = answers[variable.sourceElementId];
