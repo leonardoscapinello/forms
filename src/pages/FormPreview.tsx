@@ -1464,7 +1464,7 @@ function InteractiveElement({
               >
                 {String.fromCharCode(65 + letterOffset + i)}
               </motion.span>
-              <span className="text-base md:text-lg">{opt.label}</span>
+              <span className="text-base md:text-lg">{t(opt.label)}</span>
             </motion.button>
           ))}
         </div>
@@ -1495,7 +1495,7 @@ function InteractiveElement({
               >
                 {String.fromCharCode(65 + letterOffset + i)}
               </motion.span>
-              <span className="text-base md:text-lg">{opt.label}</span>
+              <span className="text-base md:text-lg">{t(opt.label)}</span>
             </motion.button>
           ))}
         </div>
@@ -1656,7 +1656,7 @@ function InteractiveElement({
                 >
                   {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
-                <span className="text-base md:text-lg flex-1">{opt.label}</span>
+                <span className="text-base md:text-lg flex-1">{t(opt.label)}</span>
                 <motion.div
                   className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                     isSelected ? 'border-primary bg-primary' : 'border-border'
@@ -1697,7 +1697,7 @@ function InteractiveElement({
                   </div>
                 )}
                 <Twemoji className="text-3xl">{opt.emoji || '⭐'}</Twemoji>
-                <span className="text-sm font-medium">{opt.label}</span>
+                <span className="text-sm font-medium">{t(opt.label)}</span>
               </motion.button>
             );
           })}
@@ -1737,7 +1737,7 @@ function InteractiveElement({
                   )}
                   {selected && <div className="absolute inset-0 bg-primary/10" />}
                 </div>
-                <div className={`px-3 py-2 text-sm font-medium text-center ${selected ? 'bg-primary/5' : ''}`}>{opt.label}</div>
+                <div className={`px-3 py-2 text-sm font-medium text-center ${selected ? 'bg-primary/5' : ''}`}>{t(opt.label)}</div>
               </motion.button>
             );
           })}
