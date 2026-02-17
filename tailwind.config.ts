@@ -84,6 +84,10 @@ export default {
           "ending-accent": "hsl(var(--node-ending-accent))",
           integration: "hsl(var(--node-integration))",
           "integration-accent": "hsl(var(--node-integration-accent))",
+          webhook: "hsl(var(--node-webhook))",
+          "webhook-accent": "hsl(var(--node-webhook-accent))",
+          analytics: "hsl(var(--node-analytics))",
+          "analytics-accent": "hsl(var(--node-analytics-accent))",
         },
       },
       borderRadius: {

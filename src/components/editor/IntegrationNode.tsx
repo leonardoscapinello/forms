@@ -18,46 +18,53 @@ export const INTEGRATION_PLATFORMS: {
   icon: React.ComponentType<{ className?: string }>;
   colorClass: string;
   bgClass: string;
+  /** 'webhook' | 'analytics' — drives node color tokens */
+  category: 'webhook' | 'analytics';
 }[] = [
   {
     value: 'webhook',
     label: 'Webhook',
     description: 'Enviar dados para uma URL',
     icon: Webhook,
-    colorClass: 'text-node-integration-accent',
-    bgClass: 'bg-node-integration',
+    colorClass: 'text-node-webhook-accent',
+    bgClass: 'bg-node-webhook',
+    category: 'webhook',
   },
   {
     value: 'meta_pixel',
     label: 'Meta Pixel',
     description: 'Facebook / Instagram Ads',
     icon: Facebook,
-    colorClass: 'text-[hsl(220,89%,55%)]',
-    bgClass: 'bg-[hsl(220,80%,94%)]',
+    colorClass: 'text-node-analytics-accent',
+    bgClass: 'bg-node-analytics',
+    category: 'analytics',
   },
   {
     value: 'google_analytics',
     label: 'Google Analytics',
     description: 'GA4 / Google Ads',
     icon: BarChart3,
-    colorClass: 'text-[hsl(15,90%,50%)]',
-    bgClass: 'bg-[hsl(15,80%,94%)]',
+    colorClass: 'text-node-analytics-accent',
+    bgClass: 'bg-node-analytics',
+    category: 'analytics',
   },
   {
     value: 'tiktok_pixel',
     label: 'TikTok Pixel',
     description: 'TikTok Ads',
     icon: Music2,
-    colorClass: 'text-[hsl(0,0%,14%)]',
-    bgClass: 'bg-[hsl(0,0%,93%)]',
+    colorClass: 'text-node-analytics-accent',
+    bgClass: 'bg-node-analytics',
+    category: 'analytics',
   },
   {
     value: 'linkedin_pixel',
     label: 'LinkedIn Pixel',
     description: 'LinkedIn Ads',
     icon: Linkedin,
-    colorClass: 'text-[hsl(211,65%,44%)]',
-    bgClass: 'bg-[hsl(211,60%,93%)]',
+    colorClass: 'text-node-analytics-accent',
+    bgClass: 'bg-node-analytics',
+    category: 'analytics',
   },
 ];
 
@@ -92,23 +99,32 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
   const Icon = platformCfg.icon;
   const isPixel = nodeData.platform !== 'webhook';
 
+  const accentBorder = platformCfg.category === 'webhook'
+    ? 'border-node-webhook-accent shadow-md ring-2 ring-node-webhook-accent/20'
+    : 'border-node-analytics-accent shadow-md ring-2 ring-node-analytics-accent/20';
+  const headerBorder = platformCfg.category === 'webhook'
+    ? 'border-node-webhook-accent/30'
+    : 'border-node-analytics-accent/30';
+  const handleColor = platformCfg.category === 'webhook'
+    ? '!bg-node-webhook-accent'
+    : '!bg-node-analytics-accent';
+  const categoryLabel = platformCfg.category === 'webhook' ? 'Integração' : 'Analytics';
+
   return (
     <TooltipProvider>
       <div
         className={`w-72 rounded-xl border bg-card shadow-sm transition-all ${
-          selected
-            ? `border-node-integration-accent shadow-md ring-2 ring-node-integration-accent/20`
-            : 'border-border'
+          selected ? accentBorder : 'border-border'
         }`}
       >
-        <Handle type="target" position={Position.Left}  className="!w-3 !h-3 !bg-node-integration-accent !border-2 !border-card" />
-        <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-node-integration-accent !border-2 !border-card" />
+        <Handle type="target" position={Position.Left}  className={`!w-3 !h-3 ${handleColor} !border-2 !border-card`} />
+        <Handle type="source" position={Position.Right} className={`!w-3 !h-3 ${handleColor} !border-2 !border-card`} />
 
         {/* Header */}
-        <div className={`flex items-center gap-2 px-3 py-2 border-b border-node-integration-accent/30 ${platformCfg.bgClass} rounded-t-xl`}>
+        <div className={`flex items-center gap-2 px-3 py-2 border-b ${headerBorder} ${platformCfg.bgClass} rounded-t-xl`}>
           <Icon className={`h-3.5 w-3.5 ${platformCfg.colorClass}`} />
           <span className={`text-[11px] font-medium uppercase tracking-wide ${platformCfg.colorClass}`}>
-            Integração
+            {categoryLabel}
           </span>
           <div className="ml-auto flex items-center gap-1">
             <Button
@@ -269,8 +285,8 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
           <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] ${platformCfg.bgClass} ${platformCfg.colorClass}`}>
             <Icon className="h-3 w-3 flex-shrink-0" />
             {isPixel
-              ? `Script + API server-side com dedup`
-              : `POST com answers + variáveis + metadata`}
+              ? `Script client-side + API server-side com dedup`
+              : `Disparo HTTP com answers + variáveis + metadata`}
           </div>
         </div>
       </div>
