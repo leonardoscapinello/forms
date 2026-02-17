@@ -241,6 +241,7 @@ function FlowCanvasInner({
           nodeData: intg,
           onChange: (patch: Partial<IntegrationNodeData>) => onIntegrationChange(intg.id, patch),
           onDelete: () => onIntegrationDelete(intg.id),
+          variables,
         },
       });
     });

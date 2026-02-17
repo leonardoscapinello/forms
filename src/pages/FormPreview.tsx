@@ -27,7 +27,7 @@ import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import DebugPanel from '@/components/preview/DebugPanel';
 import { buildWebhookPayload } from '@/lib/webhookPayload';
-import { firePixel, firePixelDual } from '@/lib/firePixel';
+import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 
 function buildDefaults(form: AppFormData | null) {
   if (!form) return {};
@@ -322,10 +322,10 @@ export default function FormPreview() {
    *   - nextNodeId: 'p-<id>', 'end', or null (no connection defined)
    *   - updatedAnswers: answers after applying all variable operations along the path
    */
-  const walkWorkflow = useCallback((
+  const walkWorkflow = useCallback(async (
     fromNodeId: string,
     currentAnswers: Record<string, any>,
-  ): { nextNodeId: string | null; updatedAnswers: Record<string, any> } => {
+  ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any> }> => {
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
@@ -439,7 +439,9 @@ export default function FormPreview() {
             extraParams,
             queryParams: sessionMetaRef.current.queryParams,
           });
-          firePixel({
+
+          // Fire webhook and capture response (for variable mapping)
+          const responseBody = await fireWebhookWithResponse({
             platform: 'webhook',
             eventName: 'webhook_fired',
             eventId,
@@ -454,6 +456,21 @@ export default function FormPreview() {
             queryParams: sessionMetaRef.current.queryParams,
             userAgent: sessionMetaRef.current.userAgent,
           });
+
+          // Apply response mappings to variables
+          if (responseBody && intgNode.responseMappings?.length) {
+            const getNestedValue = (obj: any, path: string): any => {
+              return path.split('.').reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+            };
+            for (const mapping of intgNode.responseMappings) {
+              if (!mapping.responsePath || !mapping.variableId) continue;
+              const value = getNestedValue(responseBody, mapping.responsePath);
+              if (value !== undefined) {
+                const varKey = `__var_${mapping.variableId}`;
+                currentAns = { ...currentAns, [varKey]: String(value) };
+              }
+            }
+          }
         }
         currentNodeId = target;
         continue;
@@ -556,7 +573,7 @@ export default function FormPreview() {
 
     // Use answersRef.current to always get the latest state — avoids stale closure
     const latestAnswers = answersRef.current;
-    const { nextNodeId, updatedAnswers } = walkWorkflow(fromNodeId, latestAnswers);
+    const { nextNodeId, updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
 
     if (nextNodeId === 'end') {
       setFinished(true);

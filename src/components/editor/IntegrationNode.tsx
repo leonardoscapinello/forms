@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Webhook, Trash2, Plus, X } from 'lucide-react';
-import { IntegrationNodeData, IntegrationPlatform, WebhookParam } from '@/types/form';
+import { Webhook, Trash2, Plus, X, ArrowDownToLine } from 'lucide-react';
+import { IntegrationNodeData, IntegrationPlatform, WebhookParam, WebhookResponseMapping } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -15,15 +15,16 @@ interface IntegrationNodeProps {
   nodeData: IntegrationNodeData;
   onChange: (patch: Partial<IntegrationNodeData>) => void;
   onDelete: () => void;
+  variables?: import('@/types/form').FormVariable[];
 }
 
 function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNodeProps }) {
-  const { nodeData, onChange, onDelete } = data;
+  const { nodeData, onChange, onDelete, variables = [] } = data;
 
   return (
     <TooltipProvider>
       <div
-        className={`w-72 rounded-xl border bg-card shadow-sm transition-all ${
+        className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
           selected
             ? 'border-node-webhook-accent shadow-md ring-2 ring-node-webhook-accent/20'
             : 'border-border'
@@ -131,6 +132,110 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
                 </Button>
               </div>
             ))}
+          </div>
+
+          {/* ── Response Mappings ── */}
+          <div className="space-y-1 border-t border-border pt-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <ArrowDownToLine className="h-3 w-3 text-node-webhook-accent" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Retorno → Variáveis
+                </span>
+              </div>
+              {variables.length > 0 && (
+                <Button
+                  variant="ghost" size="icon"
+                  className="h-5 w-5 text-muted-foreground"
+                  onClick={() => {
+                    const newMapping: WebhookResponseMapping = {
+                      id: crypto.randomUUID(),
+                      responsePath: '',
+                      variableId: '',
+                    };
+                    onChange({ responseMappings: [...(nodeData.responseMappings || []), newMapping] });
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+
+            {variables.length === 0 ? (
+              <p className="text-[10px] text-muted-foreground/70 italic">
+                Crie variáveis no formulário para usar aqui.
+              </p>
+            ) : (nodeData.responseMappings || []).length === 0 ? (
+              <button
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-[10px] text-muted-foreground hover:border-node-webhook-accent hover:text-node-webhook-accent transition-colors"
+                onClick={() => {
+                  const newMapping: WebhookResponseMapping = {
+                    id: crypto.randomUUID(),
+                    responsePath: '',
+                    variableId: '',
+                  };
+                  onChange({ responseMappings: [newMapping] });
+                }}
+              >
+                <Plus className="h-3 w-3" />
+                Mapear campo da resposta
+              </button>
+            ) : (
+              <div className="space-y-1.5">
+                {(nodeData.responseMappings || []).map((mapping, idx) => (
+                  <div key={mapping.id} className="space-y-1 bg-muted/40 rounded-lg p-2">
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 space-y-0.5">
+                        <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Caminho JSON</span>
+                        <Input
+                          value={mapping.responsePath}
+                          onChange={e => {
+                            const updated = [...(nodeData.responseMappings || [])];
+                            updated[idx] = { ...updated[idx], responsePath: e.target.value };
+                            onChange({ responseMappings: updated });
+                          }}
+                          placeholder="ex: data.token"
+                          className="h-7 text-xs font-mono"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive mt-4"
+                        onClick={() => {
+                          const updated = (nodeData.responseMappings || []).filter((_, i) => i !== idx);
+                          onChange({ responseMappings: updated });
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Salvar em variável</span>
+                      <Select
+                        value={mapping.variableId}
+                        onValueChange={val => {
+                          const updated = [...(nodeData.responseMappings || [])];
+                          updated[idx] = { ...updated[idx], variableId: val };
+                          onChange({ responseMappings: updated });
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Selecionar variável..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {variables.map(v => (
+                            <SelectItem key={v.id} value={v.id} className="text-xs">
+                              <span className="font-mono text-node-webhook-accent">{`{{${v.name}}}`}</span>
+                              <span className="ml-1.5 text-muted-foreground">{v.type}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info pill */}

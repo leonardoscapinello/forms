@@ -260,13 +260,23 @@ serve(async (req) => {
           meta: Object.keys(body.webhookParams || {}).length > 0 ? body.webhookParams : undefined,
         };
 
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: method !== 'GET' ? JSON.stringify(outPayload) : undefined,
-        });
-        results.webhook = { ok: res.ok, status: res.status };
-        serverFired = res.ok;
+        let webhookResponseBody: Record<string, any> | null = null;
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: method !== 'GET' ? JSON.stringify(outPayload) : undefined,
+          });
+          results.webhook = { ok: res.ok, status: res.status };
+          serverFired = res.ok;
+          // Try to parse response body (for variable mapping)
+          const contentType = res.headers.get('content-type') || '';
+          if (res.ok && contentType.includes('application/json')) {
+            try { webhookResponseBody = await res.json(); } catch { /* ignore */ }
+          }
+        } catch (fetchErr) {
+          results.webhook = { ok: false, error: String(fetchErr) };
+        }
 
         // Log webhook fires as analytics event too
         await saveEventLog(supabaseAdmin, {
@@ -284,7 +294,7 @@ serve(async (req) => {
           custom_params: customParams,
         });
 
-        return new Response(JSON.stringify({ success: true, results }), {
+        return new Response(JSON.stringify({ success: true, results, webhookResponseBody }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
