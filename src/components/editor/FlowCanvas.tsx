@@ -146,6 +146,7 @@ function FlowCanvasInner({
           label: cond.label,
           branches: cond.branches,
           questions: form.questions || [],
+          variables,
           onChange: (patch: Partial<ConditionNodeData>) => onConditionChange(cond.id, patch),
           onDelete: () => onConditionDelete(cond.id),
         },

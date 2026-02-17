@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question, FormVariable } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Parentheses } from 'lucide-react';
@@ -25,6 +25,7 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
 interface Props {
   group: ConditionGroup;
   questions: Question[];
+  variables?: FormVariable[];
   onChange: (group: ConditionGroup) => void;
   onRemove?: () => void;
   depth?: number;
@@ -34,7 +35,6 @@ type Item = { type: 'rule'; rule: ConditionRule } | { type: 'group'; group: Cond
 
 function getItemLogic(item: Item): LogicOperator {
   if (item.type === 'rule') return item.rule.logicWithPrev || 'and';
-  // For groups, use the first rule's logicWithPrev or group logic
   return item.group.rules[0]?.logicWithPrev || item.group.logic || 'and';
 }
 
@@ -52,7 +52,7 @@ function setItemLogic(item: Item, logic: LogicOperator, onChange: (group: Condit
   }
 }
 
-export default function ConditionGroupEditor({ group, questions, onChange, onRemove, depth = 0 }: Props) {
+export default function ConditionGroupEditor({ group, questions, variables = [], onChange, onRemove, depth = 0 }: Props) {
   const updateRule = useCallback((ruleId: string, patch: Partial<ConditionRule>) => {
     onChange({ ...group, rules: group.rules.map(r => (r.id === ruleId ? { ...r, ...patch } : r)) });
   }, [group, onChange]);
@@ -64,6 +64,7 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
   const addRule = useCallback(() => {
     const rule: ConditionRule = {
       id: crypto.randomUUID(),
+      subjectType: 'question',
       questionId: questions[0]?.id || '',
       operator: 'equals',
       value: '',
@@ -77,8 +78,8 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
       id: crypto.randomUUID(),
       logic: 'and',
       rules: [
-        { id: crypto.randomUUID(), questionId: questions[0]?.id || '', operator: 'equals', value: '' },
-        { id: crypto.randomUUID(), questionId: questions[0]?.id || '', operator: 'equals', value: '', logicWithPrev: 'and' },
+        { id: crypto.randomUUID(), subjectType: 'question', questionId: questions[0]?.id || '', operator: 'equals', value: '' },
+        { id: crypto.randomUUID(), subjectType: 'question', questionId: questions[0]?.id || '', operator: 'equals', value: '', logicWithPrev: 'and' },
       ],
       groups: [],
     };
@@ -93,7 +94,6 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
     onChange({ ...group, groups: group.groups.filter(g => g.id !== subId) });
   }, [group, onChange]);
 
-  // Build flat ordered list of items
   const items: Item[] = [
     ...group.rules.map(r => ({ type: 'rule' as const, rule: r })),
     ...group.groups.map(g => ({ type: 'group' as const, group: g })),
@@ -106,7 +106,6 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
 
   return (
     <div className={`${depth > 0 ? `rounded-lg border ${depthBorders[depth % 3]} ${depthBgs[depth % 3]} p-2` : ''}`}>
-      {/* Group header for sub-groups */}
       {depth > 0 && onRemove && (
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -121,7 +120,6 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
 
       {items.map((item, idx) => (
         <div key={item.type === 'rule' ? item.rule.id : item.group.id}>
-          {/* Logic connector between items — clickable toggle */}
           {idx > 0 && (
             <LogicConnector
               logic={getItemLogic(item)}
@@ -133,6 +131,7 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
             <RuleRow
               rule={item.rule}
               questions={questions}
+              variables={variables}
               canRemove={totalItems > 1}
               onUpdate={(patch) => updateRule(item.rule.id, patch)}
               onRemove={() => removeRule(item.rule.id)}
@@ -141,6 +140,7 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
             <ConditionGroupEditor
               group={item.group}
               questions={questions}
+              variables={variables}
               onChange={updated => updateSubGroup(item.group.id, updated)}
               onRemove={() => removeSubGroup(item.group.id)}
               depth={depth + 1}
@@ -149,7 +149,6 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
         </div>
       ))}
 
-      {/* Actions */}
       <div className="flex gap-1 mt-1.5">
         <Button variant="ghost" size="sm" className="h-5 text-[9px] text-muted-foreground px-1.5 hover:text-foreground" onClick={addRule}>
           <Plus className="mr-0.5 h-2 w-2" />
@@ -166,7 +165,6 @@ export default function ConditionGroupEditor({ group, questions, onChange, onRem
   );
 }
 
-/** Clickable AND/OR toggle between rules */
 function LogicConnector({ logic, onToggle }: { logic: LogicOperator; onToggle: (v: LogicOperator) => void }) {
   const isAnd = logic === 'and';
   return (
@@ -187,29 +185,75 @@ function LogicConnector({ logic, onToggle }: { logic: LogicOperator; onToggle: (
   );
 }
 
-function RuleRow({ rule, questions, canRemove, onUpdate, onRemove }: {
-  rule: ConditionRule; questions: Question[]; canRemove: boolean;
-  onUpdate: (patch: Partial<ConditionRule>) => void; onRemove: () => void;
+function RuleRow({ rule, questions, variables, canRemove, onUpdate, onRemove }: {
+  rule: ConditionRule;
+  questions: Question[];
+  variables: FormVariable[];
+  canRemove: boolean;
+  onUpdate: (patch: Partial<ConditionRule>) => void;
+  onRemove: () => void;
 }) {
+  const subjectType = rule.subjectType ?? 'question';
+  const hasVariables = variables.length > 0;
+
   return (
     <div className="rounded bg-card border border-border p-1.5 space-y-1">
+      {/* Subject type toggle (only show if there are variables) */}
+      {hasVariables && (
+        <div className="flex gap-0.5 mb-0.5">
+          {(['question', 'variable'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => onUpdate({ subjectType: t, variableId: undefined })}
+              className={`flex-1 text-[9px] py-0.5 rounded border transition-colors ${
+                subjectType === t
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border text-muted-foreground hover:border-primary/50'
+              }`}
+            >
+              {t === 'question' ? 'Campo' : 'Variável'}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-1">
-        <Select value={rule.questionId} onValueChange={v => onUpdate({ questionId: v })}>
-          <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
-            <SelectValue placeholder="Pergunta" />
-          </SelectTrigger>
-          <SelectContent className="z-[200] bg-popover">
-            {questions.map(q => (
-              <SelectItem key={q.id} value={q.id} className="text-[10px]">{q.title || 'Sem título'}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {subjectType === 'variable' ? (
+          <Select
+            value={rule.variableId || ''}
+            onValueChange={v => onUpdate({ variableId: v, questionId: rule.questionId })}
+          >
+            <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
+              <SelectValue placeholder="Variável..." />
+            </SelectTrigger>
+            <SelectContent className="z-[200] bg-popover">
+              {variables.map(v => (
+                <SelectItem key={v.id} value={v.id} className="text-[10px]">
+                  <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
+                  <span className="ml-1 text-muted-foreground">({v.type})</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select value={rule.questionId} onValueChange={v => onUpdate({ questionId: v })}>
+            <SelectTrigger className="h-5 text-[10px] flex-1 min-w-0">
+              <SelectValue placeholder="Campo..." />
+            </SelectTrigger>
+            <SelectContent className="z-[200] bg-popover">
+              {questions.map(q => (
+                <SelectItem key={q.id} value={q.id} className="text-[10px]">{q.title || 'Sem título'}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {canRemove && (
           <Button variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={onRemove}>
             <Trash2 className="h-2 w-2" />
           </Button>
         )}
       </div>
+
       <div className="flex items-center gap-1">
         <Select value={rule.operator} onValueChange={v => onUpdate({ operator: v as ConditionOperator })}>
           <SelectTrigger className="h-5 text-[10px] flex-1"><SelectValue /></SelectTrigger>
