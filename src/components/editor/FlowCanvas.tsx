@@ -24,13 +24,14 @@ import '@xyflow/react/dist/style.css';
 import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
-  VariableOpNodeData,
+  VariableOpNodeData, IntegrationNodeData,
 } from '@/types/form';
 import PageNode from './PageNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
 import ConditionNode from './ConditionNode';
 import VariableOpNode from './VariableOpNode';
+import IntegrationNode from './IntegrationNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
@@ -44,6 +45,7 @@ const nodeTypes = {
   endNode: EndNode,
   conditionNode: ConditionNode,
   variableOpNode: VariableOpNode,
+  integrationNode: IntegrationNode,
 };
 
 const edgeTypes = {
@@ -68,6 +70,9 @@ interface Props {
   onVariableOpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onVariableOpChange: (nodeId: string, patch: Partial<VariableOpNodeData>) => void;
   onVariableOpDelete: (nodeId: string) => void;
+  onIntegrationAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onIntegrationChange: (nodeId: string, patch: Partial<IntegrationNodeData>) => void;
+  onIntegrationDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
 }
@@ -81,6 +86,7 @@ function FlowCanvasInner({
   form, onPageChange, onPageDelete, onPageAddAtPosition,
   onConditionAddAtPosition, onConditionChange, onConditionDelete,
   onVariableOpAddAtPosition, onVariableOpChange, onVariableOpDelete,
+  onIntegrationAddAtPosition, onIntegrationChange, onIntegrationDelete,
   onFormUpdate, onPageSelect,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,6 +103,7 @@ function FlowCanvasInner({
   const pages = form.pages || [];
   const variables = form.variables || [];
   const variableOpNodes = form.variableOpNodes || [];
+  const integrationNodes = form.integrationNodes || [];
 
   // Build a grouped structure of input elements per page
   const inputElementsByPage = useMemo(() => {
@@ -217,9 +224,22 @@ function FlowCanvasInner({
       });
     });
 
+    integrationNodes.forEach((intg, i) => {
+      const nodeId = `int-${intg.id}`;
+      n.push({
+        id: nodeId,
+        type: 'integrationNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 3) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: intg,
+          onChange: (patch: Partial<IntegrationNodeData>) => onIntegrationChange(intg.id, patch),
+          onDelete: () => onIntegrationDelete(intg.id),
+        },
+      });
+    });
 
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -340,6 +360,8 @@ function FlowCanvasInner({
         onConditionDelete(nodeId.replace('c-', ''));
       } else if (nodeId.startsWith('vo-')) {
         onVariableOpDelete(nodeId.replace('vo-', ''));
+      } else if (nodeId.startsWith('int-')) {
+        onIntegrationDelete(nodeId.replace('int-', ''));
       }
     }
 
@@ -425,6 +447,12 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onVariableOpAddAtPosition]);
 
+  const handleDropAddIntegration = useCallback(() => {
+    if (!dropMenu) return;
+    onIntegrationAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onIntegrationAddAtPosition]);
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -481,6 +509,7 @@ function FlowCanvasInner({
           onAddPage={handleDropAddPage}
           onAddCondition={handleDropAddCondition}
           onAddVariableOp={handleDropAddVariableOp}
+          onAddIntegration={handleDropAddIntegration}
           onClose={() => setDropMenu(null)}
         />
       )}

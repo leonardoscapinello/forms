@@ -256,6 +256,96 @@ export default function FormPreview() {
         continue;
       }
 
+      // Intermediate: integration node — fire async (non-blocking) and advance
+      if (target.startsWith('int-')) {
+        const intgId = target.replace('int-', '');
+        const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
+        if (intgNode) {
+          // Collect userData from answers (email/phone fields)
+          const emailVal = Object.entries(currentAns).find(([k]) => {
+            // Find element keys that correspond to email-type fields
+            const allPages = f?.pages || [];
+            for (const pg of allPages) {
+              const el = (pg.elements || []).find(e => e.id === k && e.type === 'input_email');
+              if (el) return true;
+            }
+            return false;
+          });
+          const phoneVal = Object.entries(currentAns).find(([k]) => {
+            const allPages = f?.pages || [];
+            for (const pg of allPages) {
+              const el = (pg.elements || []).find(e => e.id === k && e.type === 'input_phone');
+              if (el) return true;
+            }
+            return false;
+          });
+
+          const variables: Record<string, any> = {};
+          for (const [k, v] of Object.entries(currentAns)) {
+            if (k.startsWith('__var_')) {
+              variables[k.replace('__var_', '')] = v;
+            }
+          }
+
+          const eventId = `${f?.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const eventName = intgNode.eventType === 'custom'
+            ? (intgNode.customEventName || 'CustomEvent')
+            : (intgNode.eventType || 'Lead');
+          const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+          // ── Client-side pixel script ──────────────────────────────────────
+          if (typeof window !== 'undefined') {
+            try {
+              if (intgNode.platform === 'meta_pixel' && (window as any).fbq) {
+                (window as any).fbq('track', eventName, {}, { eventID: eventId });
+              }
+              if (intgNode.platform === 'google_analytics' && (window as any).gtag) {
+                (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), {
+                  event_dedup_id: eventId,
+                });
+              }
+              if (intgNode.platform === 'tiktok_pixel' && (window as any).ttq) {
+                (window as any).ttq.track(eventName, {}, { event_id: eventId });
+              }
+              if (intgNode.platform === 'linkedin_pixel' && (window as any).lintrk) {
+                (window as any).lintrk('track', { conversion_id: eventId });
+              }
+            } catch (_) { /* ignore client-side errors */ }
+          }
+
+          // ── Server-side API (non-blocking) ────────────────────────────────
+          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+          const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          if (projectId && anonKey) {
+            fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': anonKey,
+                'Authorization': `Bearer ${anonKey}`,
+              },
+              body: JSON.stringify({
+                platform: intgNode.platform,
+                eventName,
+                eventId,
+                formId: f?.id,
+                answers: currentAns,
+                variables,
+                userData: {
+                  email: emailVal ? emailVal[1] : undefined,
+                  phone: phoneVal ? phoneVal[1] : undefined,
+                },
+                sourceUrl,
+                webhookUrlOverride: intgNode.webhookUrlOverride,
+                webhookMethod: intgNode.webhookMethod,
+              }),
+            }).catch(() => { /* non-blocking */ });
+          }
+        }
+        currentNodeId = target;
+        continue;
+      }
+
       // Intermediate: condition node — advance to it (branch is resolved next iteration)
       if (target.startsWith('c-')) {
         currentNodeId = target;

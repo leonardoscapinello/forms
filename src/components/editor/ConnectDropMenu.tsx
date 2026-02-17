@@ -1,14 +1,15 @@
-import { FileText, GitBranch, Variable } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook } from 'lucide-react';
 
 interface Props {
   position: { x: number; y: number };
   onAddPage: () => void;
   onAddCondition: () => void;
   onAddVariableOp: () => void;
+  onAddIntegration: () => void;
   onClose: () => void;
 }
 
-export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onClose }: Props) {
+export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
@@ -61,7 +62,24 @@ export default function ConnectDropMenu({ position, onAddPage, onAddCondition, o
             <p className="text-[10px] text-muted-foreground">Atribuir, somar, calcular variáveis</p>
           </div>
         </button>
+
+        <div className="h-px bg-border my-1.5 mx-3" />
+
+        {/* Integration */}
+        <button
+          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
+          onClick={() => { onAddIntegration(); onClose(); }}
+        >
+          <div className="h-8 w-8 rounded-lg bg-node-integration flex items-center justify-center flex-shrink-0">
+            <Webhook className="h-4 w-4 text-node-integration-accent" />
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Integração</span>
+            <p className="text-[10px] text-muted-foreground">Pixel, webhook, conversões API</p>
+          </div>
+        </button>
       </div>
     </>
   );
 }
+

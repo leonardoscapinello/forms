@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
@@ -211,6 +211,48 @@ export default function FormEditor() {
     const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
     updateForm(form.id, {
       variableOpNodes: (form.variableOpNodes || []).filter(v => v.id !== nodeId),
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
+  // ---- IntegrationNode CRUD ----
+
+  const handleIntegrationAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const intg: IntegrationNodeData = {
+      id: crypto.randomUUID(),
+      platform: 'webhook',
+      eventType: 'Lead',
+    };
+    const nodeId = `int-${intg.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, {
+      integrationNodes: [...(form.integrationNodes || []), intg],
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
+  const handleIntegrationChange = useCallback((nodeId: string, patch: Partial<IntegrationNodeData>) => {
+    if (!form) return;
+    const integrationNodes = (form.integrationNodes || []).map(n =>
+      n.id === nodeId ? { ...n, ...patch } : n
+    );
+    updateForm(form.id, { integrationNodes });
+  }, [form, updateForm]);
+
+  const handleIntegrationDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `int-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(
+      e => e.source !== rfNodeId && e.target !== rfNodeId
+    );
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, {
+      integrationNodes: (form.integrationNodes || []).filter(n => n.id !== nodeId),
       flowEdges,
       nodePositions,
     });
@@ -439,6 +481,9 @@ export default function FormEditor() {
               onVariableOpAddAtPosition={handleVariableOpAddAtPosition}
               onVariableOpChange={handleVariableOpChange}
               onVariableOpDelete={handleVariableOpDelete}
+              onIntegrationAddAtPosition={handleIntegrationAddAtPosition}
+              onIntegrationChange={handleIntegrationChange}
+              onIntegrationDelete={handleIntegrationDelete}
               onFormUpdate={handleFormUpdate}
               onPageSelect={handlePageSelectFromWorkflow}
             />
