@@ -3,13 +3,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { FileText, Variable } from 'lucide-react';
 import { FunnelPage, FormVariable, VariableAssignment } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import VariableAssignPanel from './VariableAssignPanel';
-
-interface AllInputElement {
-  elementId: string;
-  elementLabel: string;
-  pageTitle: string;
-}
+import VariableAssignPanel, { InputElementGroup } from './VariableAssignPanel';
 
 interface PageNodeData {
   page: FunnelPage;
@@ -18,7 +12,7 @@ interface PageNodeData {
   onDelete: () => void;
   onSelect: () => void;
   variables?: FormVariable[];
-  allInputElements?: AllInputElement[];
+  allInputElements?: InputElementGroup[];
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {

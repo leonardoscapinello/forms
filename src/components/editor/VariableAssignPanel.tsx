@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { FormVariable, VariableAssignment, VariableAssignmentSource } from '@/types/form';
-import { PageElement } from '@/types/pageElements';
-import { Plus, Trash2, Variable, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Variable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+export interface InputElementGroup {
+  pageId: string;
+  pageTitle: string;
+  elements: { elementId: string; elementLabel: string }[];
+}
 
 interface Props {
   assignments: VariableAssignment[];
   variables: FormVariable[];
-  /** All form input elements across ALL pages (for field picker) */
-  allInputElements: { elementId: string; elementLabel: string; pageTitle: string }[];
+  /** Input elements grouped by page, only including previous pages */
+  allInputElements: InputElementGroup[];
   onChange: (assignments: VariableAssignment[]) => void;
 }
 
@@ -125,14 +129,20 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
                     <SelectContent>
                       {allInputElements.length === 0 ? (
                         <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                          Nenhum campo de entrada encontrado
+                          Nenhum campo de entrada nas páginas anteriores
                         </div>
                       ) : (
-                        allInputElements.map(f => (
-                          <SelectItem key={f.elementId} value={f.elementId} className="text-xs">
-                            <span className="text-muted-foreground">{f.pageTitle} →</span>{' '}
-                            {f.elementLabel}
-                          </SelectItem>
+                        allInputElements.map(group => (
+                          <SelectGroup key={group.pageId}>
+                            <SelectLabel className="text-[10px] font-semibold text-muted-foreground px-2 py-1">
+                              📄 {group.pageTitle}
+                            </SelectLabel>
+                            {group.elements.map(el => (
+                              <SelectItem key={el.elementId} value={el.elementId} className="text-xs pl-4">
+                                {el.elementLabel}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))
                       )}
                     </SelectContent>

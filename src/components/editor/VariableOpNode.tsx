@@ -4,20 +4,15 @@ import { Variable, Plus, Trash2 } from 'lucide-react';
 import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-interface InputElement {
-  elementId: string;
-  elementLabel: string;
-  pageTitle: string;
-}
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { InputElementGroup } from './VariableAssignPanel';
 
 interface VariableOpNodeProps {
   nodeId: string;
   label: string;
   operations: VariableOperation[];
   variables: FormVariable[];
-  allInputElements: InputElement[];
+  allInputElements: InputElementGroup[];
   onChange: (patch: Partial<VariableOpNodeData>) => void;
   onDelete: () => void;
 }
@@ -104,11 +99,16 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
             const variable = variables.find(v => v.id === op.variableId);
             const opDef = OP_OPTIONS.find(o => o.value === op.op);
             const operandType = op.operandType ?? 'literal';
-            const selectedField = allInputElements.find(e => e.elementId === op.operandFieldId);
+            // Find selected field label across all groups
+            let selectedFieldLabel: string | undefined;
+            for (const group of allInputElements) {
+              const el = group.elements.find(e => e.elementId === op.operandFieldId);
+              if (el) { selectedFieldLabel = el.elementLabel; break; }
+            }
 
             // Preview label for operand
             const operandPreview = operandType === 'field'
-              ? (selectedField ? selectedField.elementLabel : '?')
+              ? (selectedFieldLabel ?? '?')
               : (op.operand || '?');
 
             return (
@@ -176,7 +176,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                 {operandType === 'field' ? (
                   allInputElements.length === 0 ? (
                     <p className="text-[10px] text-muted-foreground text-center py-1">
-                      Nenhum campo de entrada encontrado nas páginas
+                      Nenhum campo nas páginas anteriores
                     </p>
                   ) : (
                     <Select
@@ -187,11 +187,17 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                         <SelectValue placeholder="Selecionar campo..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {allInputElements.map(el => (
-                          <SelectItem key={el.elementId} value={el.elementId} className="text-xs">
-                            <span>{el.elementLabel}</span>
-                            <span className="ml-1.5 text-muted-foreground text-[10px]">({el.pageTitle})</span>
-                          </SelectItem>
+                        {allInputElements.map(group => (
+                          <SelectGroup key={group.pageId}>
+                            <SelectLabel className="text-[10px] font-semibold text-muted-foreground px-2 py-0.5">
+                              📄 {group.pageTitle}
+                            </SelectLabel>
+                            {group.elements.map(el => (
+                              <SelectItem key={el.elementId} value={el.elementId} className="text-[11px] pl-4">
+                                {el.elementLabel}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>

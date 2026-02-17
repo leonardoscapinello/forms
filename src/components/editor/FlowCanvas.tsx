@@ -91,21 +91,52 @@ function FlowCanvasInner({
   const variables = form.variables || [];
   const variableOpNodes = form.variableOpNodes || [];
 
-  const allInputElements = useMemo(() => {
-    const result: { elementId: string; elementLabel: string; pageTitle: string }[] = [];
-    for (const page of pages) {
-      for (const el of page.elements || []) {
-        if (el.type.startsWith('input_')) {
-          result.push({
-            elementId: el.id,
-            elementLabel: el.label || el.type.replace('input_', ''),
-            pageTitle: page.title,
-          });
+  // Build a grouped structure of input elements per page
+  const inputElementsByPage = useMemo(() => {
+    return pages.map(page => ({
+      pageId: page.id,
+      pageTitle: page.title,
+      elements: (page.elements || [])
+        .filter(el => el.type.startsWith('input_'))
+        .map(el => ({
+          elementId: el.id,
+          elementLabel: el.label || el.type.replace('input_', '').replace(/_/g, ' '),
+        })),
+    })).filter(p => p.elements.length > 0);
+  }, [pages]);
+
+  /**
+   * Given a target node ID, returns the grouped input elements from all page nodes
+   * that are strictly upstream (reachable via incoming edges).
+   * Uses BFS on reversed edges.
+   */
+  const getPreviousPageElements = useCallback((targetNodeId: string) => {
+    const edges = form.flowEdges || [];
+    const visited = new Set<string>();
+    const queue = [targetNodeId];
+    const upstreamPageIds: string[] = [];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      // Find all nodes that have an edge pointing to current
+      for (const edge of edges) {
+        if (edge.target !== current) continue;
+        const src = edge.source;
+        if (visited.has(src)) continue;
+        // If it's a page node, collect its page ID
+        if (src.startsWith('p-')) {
+          const pageId = src.slice(2);
+          if (!upstreamPageIds.includes(pageId)) upstreamPageIds.push(pageId);
         }
+        queue.push(src);
       }
     }
-    return result;
-  }, [pages]);
+
+    // Return grouped elements preserving the page order from `pages`
+    return inputElementsByPage.filter(p => upstreamPageIds.includes(p.pageId));
+  }, [form.flowEdges, inputElementsByPage]);
 
   const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
@@ -119,6 +150,8 @@ function FlowCanvasInner({
 
     pages.forEach((page, i) => {
       const nodeId = `p-${page.id}`;
+      // For a page node: previous pages are all upstream pages (excluding itself)
+      const prevElements = getPreviousPageElements(nodeId);
       n.push({
         id: nodeId,
         type: 'pageNode',
@@ -130,7 +163,7 @@ function FlowCanvasInner({
           onDelete: () => onPageDelete(page.id),
           onSelect: () => onPageSelect(page.id),
           variables,
-          allInputElements,
+          allInputElements: prevElements,
         },
       });
     });
@@ -155,6 +188,7 @@ function FlowCanvasInner({
 
     variableOpNodes.forEach((vop, i) => {
       const nodeId = `vo-${vop.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
       n.push({
         id: nodeId,
         type: 'variableOpNode',
@@ -164,7 +198,7 @@ function FlowCanvasInner({
           label: vop.label,
           operations: vop.operations,
           variables,
-          allInputElements,
+          allInputElements: prevElements,
           onChange: (patch: Partial<VariableOpNodeData>) => onVariableOpChange(vop.id, patch),
           onDelete: () => onVariableOpDelete(vop.id),
         },
@@ -172,7 +206,7 @@ function FlowCanvasInner({
     });
 
     return n;
-  }, [form, pages, variables, allInputElements, variableOpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete]);
 
   const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {
