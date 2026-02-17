@@ -1,4 +1,4 @@
-import { FileText, GitBranch, Variable, Webhook } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2 } from 'lucide-react';
 
 interface Props {
   position: { x: number; y: number };
@@ -6,10 +6,11 @@ interface Props {
   onAddCondition: () => void;
   onAddVariableOp: () => void;
   onAddIntegration: () => void;
+  onAddAnalytics: () => void;
   onClose: () => void;
 }
 
-export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onClose }: Props) {
+export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
@@ -65,21 +66,36 @@ export default function ConnectDropMenu({ position, onAddPage, onAddCondition, o
 
         <div className="h-px bg-border my-1.5 mx-3" />
 
-        {/* Integration */}
+        {/* Webhook */}
         <button
           className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
           onClick={() => { onAddIntegration(); onClose(); }}
         >
-          <div className="h-8 w-8 rounded-lg bg-node-integration flex items-center justify-center flex-shrink-0">
-            <Webhook className="h-4 w-4 text-node-integration-accent" />
+          <div className="h-8 w-8 rounded-lg bg-node-webhook flex items-center justify-center flex-shrink-0">
+            <Webhook className="h-4 w-4 text-node-webhook-accent" />
           </div>
           <div>
-            <span className="font-medium text-foreground">Integração</span>
-            <p className="text-[10px] text-muted-foreground">Pixel, webhook, conversões API</p>
+            <span className="font-medium text-foreground">Webhook</span>
+            <p className="text-[10px] text-muted-foreground">Enviar dados para uma URL</p>
+          </div>
+        </button>
+
+        <div className="h-px bg-border my-1.5 mx-3" />
+
+        {/* Analytics / Pixel */}
+        <button
+          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
+          onClick={() => { onAddAnalytics(); onClose(); }}
+        >
+          <div className="h-8 w-8 rounded-lg bg-node-analytics flex items-center justify-center flex-shrink-0">
+            <BarChart2 className="h-4 w-4 text-node-analytics-accent" />
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Analytics</span>
+            <p className="text-[10px] text-muted-foreground">Meta, Google, TikTok, LinkedIn Pixel</p>
           </div>
         </button>
       </div>
     </>
   );
 }
-

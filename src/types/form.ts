@@ -249,7 +249,10 @@ export interface VariableOpNodeData {
 
 // ── Integration Nodes ────────────────────────────────────────────────────────
 
-export type IntegrationPlatform = 'webhook' | 'meta_pixel' | 'google_analytics' | 'tiktok_pixel' | 'linkedin_pixel';
+export type IntegrationPlatform = 'webhook';
+
+/** Platforms for pixel / analytics tracking */
+export type AnalyticsPlatform = 'meta_pixel' | 'google_analytics' | 'tiktok_pixel' | 'linkedin_pixel';
 
 export type PixelEventType =
   | 'Lead'
@@ -272,17 +275,21 @@ export interface WebhookParam {
 
 export interface IntegrationNodeData {
   id: string;
-  platform: IntegrationPlatform;
-  /** Pixel event to fire (for pixel platforms) */
-  eventType?: PixelEventType;
-  /** Custom event name when eventType === 'custom' */
-  customEventName?: string;
-  /** For webhook: destination URL (required, no global fallback) */
+  platform: IntegrationPlatform; // always 'webhook'
+  /** Destination URL (required) */
   webhookUrl?: string;
-  /** HTTP method for webhook */
+  /** HTTP method */
   webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
   /** Additional static params merged into the webhook body */
   webhookParams?: WebhookParam[];
+}
+
+/** Analytics / Pixel node — one per pixel platform */
+export interface AnalyticsNodeData {
+  id: string;
+  platform: AnalyticsPlatform;
+  eventType?: PixelEventType;
+  customEventName?: string;
 }
 
 export interface FlowEdge {
@@ -378,6 +385,7 @@ export interface FormData {
   conditions?: ConditionNodeData[];
   variableOpNodes?: VariableOpNodeData[];
   integrationNodes?: IntegrationNodeData[];
+  analyticsNodes?: AnalyticsNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
   /** Form variables for dynamic content and logic */

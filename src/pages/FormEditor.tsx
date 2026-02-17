@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
@@ -216,14 +216,13 @@ export default function FormEditor() {
     });
   }, [form, updateForm]);
 
-  // ---- IntegrationNode CRUD ----
+  // ---- IntegrationNode (Webhook) CRUD ----
 
   const handleIntegrationAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
     const intg: IntegrationNodeData = {
       id: crypto.randomUUID(),
       platform: 'webhook',
-      eventType: 'Lead',
     };
     const nodeId = `int-${intg.id}`;
     const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
@@ -253,6 +252,48 @@ export default function FormEditor() {
     const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
     updateForm(form.id, {
       integrationNodes: (form.integrationNodes || []).filter(n => n.id !== nodeId),
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
+  // ---- AnalyticsNode (Pixel) CRUD ----
+
+  const handleAnalyticsAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const an: AnalyticsNodeData = {
+      id: crypto.randomUUID(),
+      platform: 'meta_pixel',
+      eventType: 'Lead',
+    };
+    const nodeId = `an-${an.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, {
+      analyticsNodes: [...(form.analyticsNodes || []), an],
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
+  const handleAnalyticsChange = useCallback((nodeId: string, patch: Partial<AnalyticsNodeData>) => {
+    if (!form) return;
+    const analyticsNodes = (form.analyticsNodes || []).map(n =>
+      n.id === nodeId ? { ...n, ...patch } : n
+    );
+    updateForm(form.id, { analyticsNodes });
+  }, [form, updateForm]);
+
+  const handleAnalyticsDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `an-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(
+      e => e.source !== rfNodeId && e.target !== rfNodeId
+    );
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, {
+      analyticsNodes: (form.analyticsNodes || []).filter(n => n.id !== nodeId),
       flowEdges,
       nodePositions,
     });
@@ -484,6 +525,9 @@ export default function FormEditor() {
               onIntegrationAddAtPosition={handleIntegrationAddAtPosition}
               onIntegrationChange={handleIntegrationChange}
               onIntegrationDelete={handleIntegrationDelete}
+              onAnalyticsAddAtPosition={handleAnalyticsAddAtPosition}
+              onAnalyticsChange={handleAnalyticsChange}
+              onAnalyticsDelete={handleAnalyticsDelete}
               onFormUpdate={handleFormUpdate}
               onPageSelect={handlePageSelectFromWorkflow}
             />
