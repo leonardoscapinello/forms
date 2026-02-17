@@ -152,12 +152,12 @@ export default function FormPreview() {
   }, []);
 
   /**
-   * Walk the workflow graph from `fromNodeId`, evaluating conditions and collecting
-   * variable-op nodes along the way.
+   * Walk the workflow graph from `fromNodeId`, evaluating conditions and variable-op nodes.
+   * Uses an iterative approach to avoid stale closures.
    *
    * Returns: { nextNodeId, updatedAnswers }
-   *   - nextNodeId: 'p-<id>', 'end', or null (no connection)
-   *   - updatedAnswers: answers after applying all variable operations in the path
+   *   - nextNodeId: 'p-<id>', 'end', or null (no connection defined)
+   *   - updatedAnswers: answers after applying all variable operations along the path
    */
   const walkWorkflow = useCallback((
     fromNodeId: string,
@@ -168,7 +168,7 @@ export default function FormPreview() {
 
     if (!edges.length) return { nextNodeId: null, updatedAnswers: currentAnswers };
 
-    // Apply operations from a single variable-op node
+    // Helper: apply all operations of a variable-op node
     const applyVopNode = (vopId: string, ans: Record<string, any>): Record<string, any> => {
       const vop = f?.variableOpNodes?.find(v => v.id === vopId);
       if (!vop || !vop.operations?.length) return ans;
@@ -177,19 +177,16 @@ export default function FormPreview() {
         const variable = f?.variables?.find(v => v.id === op.variableId);
         if (!variable) continue;
         const storeKey = `__var_${variable.name}`;
-
         const operandType = op.operandType ?? 'literal';
+
         let resolvedOperand: string;
         if (operandType === 'field') {
           if (!op.operandFieldId) continue;
           const fieldVal = updated[op.operandFieldId];
-          // Skip if field has no value yet — don't overwrite variable with empty
           if (fieldVal === undefined || fieldVal === null || fieldVal === '') continue;
           resolvedOperand = String(fieldVal);
         } else {
-          // literal: only process if there's actually a value or template
           resolvedOperand = interpolateText(op.operand ?? '', f?.variables || [], updated);
-          // Skip set with empty literal to avoid clearing previously assigned values
           if (op.op === 'set' && resolvedOperand === '' && (op.operand ?? '') === '') continue;
         }
 
@@ -201,71 +198,75 @@ export default function FormPreview() {
         const currentRaw = updated[storeKey] ?? variable.defaultValue ?? '0';
         const currentNum = parseFloat(String(currentRaw)) || 0;
         const operandNum = parseFloat(resolvedOperand) || 0;
-        let result: string;
         switch (op.op) {
-          case 'add':      result = String(currentNum + operandNum); break;
-          case 'subtract': result = String(currentNum - operandNum); break;
-          case 'multiply': result = String(currentNum * operandNum); break;
-          case 'divide':   result = operandNum !== 0 ? String(currentNum / operandNum) : String(currentNum); break;
-          default:         result = resolvedOperand;
+          case 'add':      updated[storeKey] = String(currentNum + operandNum); break;
+          case 'subtract': updated[storeKey] = String(currentNum - operandNum); break;
+          case 'multiply': updated[storeKey] = String(currentNum * operandNum); break;
+          case 'divide':   updated[storeKey] = operandNum !== 0 ? String(currentNum / operandNum) : String(currentNum); break;
+          default:         updated[storeKey] = resolvedOperand;
         }
-        updated[storeKey] = result;
       }
       return updated;
     };
 
-    // DFS walk: returns { nextNodeId, updatedAnswers } or null
-    const walk = (
-      nodeId: string,
-      ans: Record<string, any>,
-      visited = new Set<string>(),
-    ): { nextNodeId: string; updatedAnswers: Record<string, any> } | null => {
-      if (visited.has(nodeId)) return null;
-      visited.add(nodeId);
+    // Iterative graph traversal — no recursion, no stale closures
+    let currentNodeId = fromNodeId;
+    let currentAns = { ...currentAnswers };
+    const visited = new Set<string>();
 
-      const outEdges = edges.filter(e => e.source === nodeId);
+    for (let i = 0; i < 200; i++) {
+      if (visited.has(currentNodeId)) break;
+      visited.add(currentNodeId);
 
-      for (const edge of outEdges) {
-        const target = edge.target;
+      const outEdges = edges.filter(e => e.source === currentNodeId);
+      if (outEdges.length === 0) break; // dead end
 
-        // Condition node (prefix "c-")
-        if (target.startsWith('c-')) {
-          const condId = target.replace('c-', '');
-          const condData = f?.conditions?.find(c => c.id === condId);
-          if (!condData) continue;
-          const matchedBranchId = resolveConditionBranch(condData, ans, f?.variables);
+      // Determine which edge to follow
+      let nextEdge = outEdges[0]; // default: first edge
+
+      // If current node is a condition node, pick branch by evaluation
+      if (currentNodeId.startsWith('c-')) {
+        const condId = currentNodeId.replace('c-', '');
+        const condData = f?.conditions?.find(c => c.id === condId);
+        if (condData) {
+          const matchedBranchId = resolveConditionBranch(condData, currentAns, f?.variables);
           const handleId = `branch-${matchedBranchId}`;
-          const branchEdge = edges.find(e => e.source === target && e.sourceHandle === handleId);
-          if (branchEdge) {
-            const result = walk(branchEdge.target, ans, visited);
-            if (result) return result;
-          }
-          continue;
+          const branchEdge = outEdges.find(e => e.sourceHandle === handleId);
+          if (branchEdge) nextEdge = branchEdge;
         }
-
-        // Variable-op node — apply operations then continue walking
-        if (target.startsWith('vo-')) {
-          const vopId = target.replace('vo-', '');
-          const answersAfterOp = applyVopNode(vopId, ans);
-          const result = walk(target, answersAfterOp, visited);
-          if (result) return result;
-          continue;
-        }
-
-        // Page node — destination found, return with current accumulated answers
-        if (target.startsWith('p-')) {
-          return { nextNodeId: target, updatedAnswers: ans };
-        }
-
-        // End node
-        if (target === 'end') return { nextNodeId: 'end', updatedAnswers: ans };
       }
 
-      return null;
-    };
+      const target = nextEdge.target;
 
-    const result = walk(fromNodeId, currentAnswers);
-    return result ?? { nextNodeId: null, updatedAnswers: currentAnswers };
+      // Terminal: found a page
+      if (target.startsWith('p-')) {
+        return { nextNodeId: target, updatedAnswers: currentAns };
+      }
+
+      // Terminal: end node
+      if (target === 'end') {
+        return { nextNodeId: 'end', updatedAnswers: currentAns };
+      }
+
+      // Intermediate: variable-op node — apply ops and advance
+      if (target.startsWith('vo-')) {
+        const vopId = target.replace('vo-', '');
+        currentAns = applyVopNode(vopId, currentAns);
+        currentNodeId = target;
+        continue;
+      }
+
+      // Intermediate: condition node — advance to it (branch is resolved next iteration)
+      if (target.startsWith('c-')) {
+        currentNodeId = target;
+        continue;
+      }
+
+      // Any other node (start, unknown) — just advance
+      currentNodeId = target;
+    }
+
+    return { nextNodeId: null, updatedAnswers: currentAns };
   }, []);
 
 
