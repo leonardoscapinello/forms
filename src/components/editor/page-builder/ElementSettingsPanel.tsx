@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { X, Plus, Trash2, Upload, Loader2, Star } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Loader2, Star, ChevronDown, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useRef } from 'react';
@@ -36,7 +36,26 @@ const isFormField = (type: string) => type.startsWith('input_');
 export default function ElementSettingsPanel({ element, onChange, onClose, pages, variables = [] }: Props) {
   const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const [activeTab, setActiveTab] = useState<'definitions' | 'appearance' | 'exterior'>('definitions');
+  const [openSections, setOpenSections] = useState({ content: true, appearance: false, exterior: false });
+
+  const toggleSection = (key: keyof typeof openSections) =>
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const SectionHeader = ({ sectionKey, label }: { sectionKey: keyof typeof openSections; label: string }) => (
+    <button
+      type="button"
+      onClick={() => toggleSection(sectionKey)}
+      className="w-full flex items-center gap-2 py-2 px-1 text-left group"
+    >
+      {openSections[sectionKey]
+        ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+        : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+      }
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors flex-1">
+        {label}
+      </span>
+    </button>
+  );
 
   const updateStyle = (patch: Record<string, any>) => {
     onChange({ style: { ...element.style, ...patch } });
@@ -70,11 +89,8 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
     onChange({ options: (element.options || []).filter(o => o.id !== id) });
   };
 
-  const TAB_OPTIONS = [
-    { key: 'definitions' as const, label: 'Definições' },
-    { key: 'appearance' as const, label: 'Aparência' },
-    { key: 'exterior' as const, label: 'Exterior' },
-  ];
+  // (collapsible sections replace tabs — see openSections state above)
+
 
   return (
     <div className="flex flex-col h-full">
@@ -85,29 +101,19 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
         </Button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-border">
-        {TAB_OPTIONS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 ${
-              activeTab === tab.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* ═══ Collapsible sections (replaces tabs) ═══ */}
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-5">
+        <div className="px-4 py-2">
 
-          {activeTab === 'definitions' && (<>
+          {/* ══ CONTEÚDO ══ */}
+          <div className="border-b border-border/50">
+            <SectionHeader sectionKey="content" label="Conteúdo" />
+          </div>
+          {openSections.content && (<div className="space-y-4 pt-2 pb-4">
           {/* ─── Form field: label (enunciado) ─── */}
           {isFormField(element.type) && (
+
             <div className="space-y-2">
               <Label>Enunciado</Label>
               <VariableInput
@@ -2061,10 +2067,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          </>)}
+          </div>)}
 
-          {/* ═══════ APARÊNCIA TAB ═══════ */}
-          {activeTab === 'appearance' && (
+          {/* ══ APARÊNCIA ══ */}
+          <div className="border-b border-border/50">
+            <SectionHeader sectionKey="appearance" label="Aparência" />
+          </div>
+          {openSections.appearance && (
             <div className="space-y-4">
               {!['divider', 'spacer', 'columns'].includes(element.type) && (
                 <AlignmentSelector
@@ -2409,9 +2418,12 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* ═══════ EXTERIOR TAB ═══════ */}
-          {activeTab === 'exterior' && (
-            <div className="space-y-4">
+          {/* ══ EXTERIOR ══ */}
+          <div className="border-b border-border/50">
+            <SectionHeader sectionKey="exterior" label="Exterior" />
+          </div>
+          {openSections.exterior && (
+            <div className="space-y-4 pt-2 pb-4">
               <ColorPickerField
                 label="Cor do fundo"
                 value={element.style?.backgroundColor || ''}
