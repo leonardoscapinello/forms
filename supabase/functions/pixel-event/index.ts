@@ -29,6 +29,7 @@ serve(async (req) => {
       variables,     // { [varName]: value }
       userData,      // { email?, phone? } — raw, will be hashed
       sourceUrl,
+      customParams,  // { [key]: value } — extra params per platform
     } = body;
 
     const results: Record<string, any> = {};
@@ -58,6 +59,7 @@ serve(async (req) => {
             user_data: userData_hashed,
             custom_data: {
               form_id: formId,
+              ...(customParams || {}),
               ...Object.fromEntries(
                 Object.entries(variables || {}).map(([k, v]) => [`var_${k}`, v])
               ),
@@ -90,6 +92,7 @@ serve(async (req) => {
               engagement_time_msec: 1,
               form_id: formId,
               event_dedup_id: eventId,
+              ...(customParams || {}),
               ...Object.fromEntries(
                 Object.entries(variables || {}).map(([k, v]) => [`var_${k}`, v])
               ),
@@ -131,6 +134,7 @@ serve(async (req) => {
           },
           properties: {
             contents: [{ content_id: formId }],
+            ...(customParams || {}),
             ...Object.fromEntries(
               Object.entries(variables || {}).map(([k, v]) => [`var_${k}`, v])
             ),
