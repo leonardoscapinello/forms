@@ -26,6 +26,7 @@ import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import DebugPanel from '@/components/preview/DebugPanel';
+import { buildWebhookPayload } from '@/lib/webhookPayload';
 
 function buildDefaults(form: AppFormData | null) {
   if (!form) return {};
@@ -84,6 +85,16 @@ export default function FormPreview() {
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  // Capture session metadata once on mount
+  const sessionMetaRef = useRef({
+    responseId: crypto.randomUUID(),
+    landedAt: new Date().toISOString(),
+    queryParams: typeof window !== 'undefined'
+      ? Object.fromEntries(new URLSearchParams(window.location.search).entries())
+      : {} as Record<string, string>,
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+  });
 
   // Initialise answers and page index once form is loaded
   useEffect(() => {
@@ -346,15 +357,24 @@ export default function FormPreview() {
         const intgId = target.replace('int-', '');
         const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
         if (intgNode) {
-          const variables: Record<string, any> = {};
-          for (const [k, v] of Object.entries(currentAns)) {
-            if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
-          }
           const eventId = `${f?.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
           const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
           const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
           const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          if (projectId && anonKey) {
+          if (projectId && anonKey && f) {
+            const extraParams = Object.fromEntries(
+              (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
+            );
+            const { payload: webhookPayload, userData } = buildWebhookPayload({
+              form: f,
+              answers: currentAns,
+              respondent: { user_agent: sessionMetaRef.current.userAgent },
+              responseId: sessionMetaRef.current.responseId,
+              landedAt: sessionMetaRef.current.landedAt,
+              submittedAt: new Date().toISOString(),
+              extraParams,
+              queryParams: sessionMetaRef.current.queryParams,
+            });
             fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
@@ -362,14 +382,13 @@ export default function FormPreview() {
                 platform: 'webhook',
                 eventId,
                 formId: f?.id,
-                answers: currentAns,
-                variables,
                 sourceUrl,
                 webhookUrl: intgNode.webhookUrl,
                 webhookMethod: intgNode.webhookMethod,
-                webhookParams: Object.fromEntries(
-                  (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
-                ),
+                webhookPayload,
+                userData,
+                queryParams: sessionMetaRef.current.queryParams,
+                userAgent: sessionMetaRef.current.userAgent,
               }),
             }).catch(() => {});
           }

@@ -25,14 +25,37 @@ serve(async (req) => {
       eventName,
       eventId,       // deduplication ID (same as client-side)
       formId,
-      answers,       // { [elementId]: value }
-      variables,     // { [varName]: value }
+      // New rich payload (from buildWebhookPayload)
+      webhookPayload,
+      // Legacy flat fields (kept for backward compat)
+      answers,
+      variables,
       userData,      // { email?, phone? } — raw, will be hashed
       sourceUrl,
       customParams,  // { [key]: value } — extra params per platform
     } = body;
 
     const results: Record<string, any> = {};
+
+    // Resolve fields from new structured payload or legacy flat payload
+    const resolvedSourceUrl = webhookPayload?.event
+      ? (sourceUrl || '')
+      : (sourceUrl || '');
+    const resolvedFormId = formId || webhookPayload?.event?.form_id || '';
+    const resolvedVariables = variables || webhookPayload?.variables || {};
+    const resolvedUserData = userData || (() => {
+      // Try to extract email/phone from typed answers in new payload
+      const ans = webhookPayload?.answers || {};
+      let email: string | undefined;
+      let phone: string | undefined;
+      for (const val of Object.values(ans)) {
+        if (typeof val === 'string' && val.includes('@')) email = val;
+        if (typeof val === 'object' && val !== null && (val as any).full_number) {
+          phone = (val as any).full_number;
+        }
+      }
+      return { email, phone };
+    })();
 
     // ── Meta Conversions API ──────────────────────────────────────────────────
     if (platform === 'meta_pixel') {
@@ -43,27 +66,29 @@ serve(async (req) => {
         results.meta = { skipped: true, reason: 'META_PIXEL_ID or META_CAPI_TOKEN not configured' };
       } else {
         const userData_hashed: Record<string, string> = {};
-        if (userData?.email) userData_hashed.em = await sha256(userData.email);
-        if (userData?.phone) {
-          const phoneClean = userData.phone.replace(/\D/g, '');
+        if (resolvedUserData?.email) userData_hashed.em = await sha256(resolvedUserData.email);
+        if (resolvedUserData?.phone) {
+          const phoneClean = resolvedUserData.phone.replace(/\D/g, '');
           userData_hashed.ph = await sha256(phoneClean);
         }
+
+        const customData: Record<string, any> = {
+          form_id: resolvedFormId,
+          ...(customParams || {}),
+          ...Object.fromEntries(
+            Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])
+          ),
+        };
 
         const payload = {
           data: [{
             event_name: eventName,
             event_time: Math.floor(Date.now() / 1000),
             event_id: eventId,
-            event_source_url: sourceUrl || '',
+            event_source_url: resolvedSourceUrl,
             action_source: 'website',
             user_data: userData_hashed,
-            custom_data: {
-              form_id: formId,
-              ...(customParams || {}),
-              ...Object.fromEntries(
-                Object.entries(variables || {}).map(([k, v]) => [`var_${k}`, v])
-              ),
-            },
+            custom_data: customData,
           }],
         };
 
@@ -90,11 +115,11 @@ serve(async (req) => {
             name: eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
             params: {
               engagement_time_msec: 1,
-              form_id: formId,
+              form_id: resolvedFormId,
               event_dedup_id: eventId,
               ...(customParams || {}),
               ...Object.fromEntries(
-                Object.entries(variables || {}).map(([k, v]) => [`var_${k}`, v])
+                Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])
               ),
             },
           }],
@@ -117,9 +142,9 @@ serve(async (req) => {
         results.tiktok = { skipped: true, reason: 'TIKTOK_PIXEL_ID or TIKTOK_ACCESS_TOKEN not configured' };
       } else {
         const userData_hashed: Record<string, string> = {};
-        if (userData?.email) userData_hashed.email = await sha256(userData.email);
-        if (userData?.phone) {
-          const phoneClean = userData.phone.replace(/\D/g, '');
+        if (resolvedUserData?.email) userData_hashed.email = await sha256(resolvedUserData.email);
+        if (resolvedUserData?.phone) {
+          const phoneClean = resolvedUserData.phone.replace(/\D/g, '');
           userData_hashed.phone_number = await sha256(phoneClean);
         }
 
@@ -129,14 +154,14 @@ serve(async (req) => {
           event_id: eventId,
           timestamp: new Date().toISOString(),
           context: {
-            page: { url: sourceUrl || '' },
+            page: { url: resolvedSourceUrl },
             user: userData_hashed,
           },
           properties: {
-            contents: [{ content_id: formId }],
+            contents: [{ content_id: resolvedFormId }],
             ...(customParams || {}),
             ...Object.fromEntries(
-              Object.entries(variables || {}).map(([k, v]) => [`var_${k}`, v])
+              Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])
             ),
           },
         };
@@ -164,7 +189,7 @@ serve(async (req) => {
         results.linkedin = { skipped: true, reason: 'LINKEDIN_PARTNER_ID, LINKEDIN_ACCESS_TOKEN or LINKEDIN_CONVERSION_ID not configured' };
       } else {
         const userData_hashed: Record<string, any> = {};
-        if (userData?.email) userData_hashed.email = await sha256(userData.email);
+        if (resolvedUserData?.email) userData_hashed.email = await sha256(resolvedUserData.email);
 
         const payload = {
           conversion: `urn:lla:llaPartnerConversion:${conversionId}`,
@@ -191,24 +216,34 @@ serve(async (req) => {
     if (platform === 'webhook') {
       const url = body.webhookUrl;
       const method = body.webhookMethod || 'POST';
-      const extraParams = body.webhookParams || {}; // { key: value } flat object
 
       if (!url) {
         results.webhook = { skipped: true, reason: 'No URL configured on the node' };
       } else {
-        const payload = {
-          event_id: eventId,
-          form_id: formId,
-          timestamp: new Date().toISOString(),
-          answers,
-          variables,
-          source_url: sourceUrl,
-          ...extraParams,
+        // Use the pre-built structured payload if provided, otherwise build a basic one
+        const outPayload = webhookPayload || {
+          event: {
+            id: eventId,
+            form_id: resolvedFormId,
+            landed_at: new Date().toISOString(),
+            submitted_at: new Date().toISOString(),
+          },
+          respondent: {
+            ip: body.respondentIp ?? null,
+            user_agent: body.userAgent ?? null,
+            geolocation: null,
+          },
+          answers: answers || {},
+          answers_raw: answers || {},
+          variables: resolvedVariables,
+          query_params: body.queryParams || {},
+          meta: Object.keys(body.webhookParams || {}).length > 0 ? body.webhookParams : undefined,
         };
+
         const res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
-          body: method !== 'GET' ? JSON.stringify(payload) : undefined,
+          body: method !== 'GET' ? JSON.stringify(outPayload) : undefined,
         });
         results.webhook = { ok: res.ok, status: res.status };
       }

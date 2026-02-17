@@ -317,6 +317,11 @@ export interface PageElement {
   loadingStroke?: number;
   /** Variable ID that this field's answer should be stored into */
   variableId?: string;
+  /**
+   * Semantic identifier for this field in webhook payloads and integrations.
+   * e.g. "email", "phone", "full_name". Falls back to element.id if not set.
+   */
+  fieldName?: string;
   style?: PageElementStyle;
 }
 
