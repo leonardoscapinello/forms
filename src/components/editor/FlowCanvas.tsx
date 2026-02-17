@@ -34,7 +34,7 @@ import VariableOpNode from './VariableOpNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
-
+import DeletableEdge from './DeletableEdge';
 
 const NODE_SPACING = 350;
 
@@ -46,11 +46,16 @@ const nodeTypes = {
   variableOpNode: VariableOpNode,
 };
 
+const edgeTypes = {
+  deletable: DeletableEdge,
+};
+
 const defaultEdgeOptions = {
-  type: 'default',
+  type: 'deletable',
   style: { stroke: 'hsl(var(--border))', strokeWidth: 2 },
   markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))' },
 };
+
 
 interface Props {
   form: FormDataType;
@@ -216,7 +221,11 @@ function FlowCanvasInner({
     return n;
   }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete]);
 
+  // Ref-based stable handler to avoid declaration-order issues
+  const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
+
   const buildEdges = useCallback((): Edge[] => {
+    const edgeData = { onDelete: (id: string) => handleEdgeDeleteRef.current(id) };
     if (form.flowEdges && form.flowEdges.length > 0) {
       return form.flowEdges.map(fe => ({
         id: fe.id,
@@ -225,16 +234,19 @@ function FlowCanvasInner({
         target: fe.target,
         label: fe.label,
         ...defaultEdgeOptions,
+        data: edgeData,
       }));
     }
     const e: Edge[] = [];
     pages.forEach((page, i) => {
       const nodeId = `p-${page.id}`;
       const prevId = i === 0 ? 'start' : `p-${pages[i - 1].id}`;
-      e.push({ id: `e-${prevId}-${nodeId}`, source: prevId, target: nodeId, ...defaultEdgeOptions });
+      e.push({ id: `e-${prevId}-${nodeId}`, source: prevId, target: nodeId, ...defaultEdgeOptions, data: edgeData });
     });
     return e;
   }, [form.flowEdges, pages]);
+
+
 
   const [nodes, setNodes, onNodesChangeBase] = useNodesState(buildNodes());
   const [edges, setEdges, onEdgesChangeBase] = useEdgesState(buildEdges());
@@ -283,6 +295,17 @@ function FlowCanvasInner({
     }));
     onFormUpdate({ flowEdges });
   }, [onFormUpdate]);
+
+  // Wire up the stable ref after saveEdges is defined
+  handleEdgeDeleteRef.current = (edgeId: string) => {
+    setEdges(prev => {
+      const updated = prev.filter(e => e.id !== edgeId);
+      saveEdges(updated);
+      return updated;
+    });
+  };
+
+
 
   const onNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
     const removeChanges = changes.filter(c => c.type === 'remove');
@@ -414,7 +437,9 @@ function FlowCanvasInner({
         onConnectEnd={onConnectEnd}
         onEdgesDelete={onEdgeDelete}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.2}
