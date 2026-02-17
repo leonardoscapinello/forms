@@ -223,11 +223,17 @@ export interface ConditionNodeData {
 
 export type VariableOpType = 'set' | 'add' | 'subtract' | 'multiply' | 'divide';
 
+export type VariableOperandType = 'literal' | 'field';
+
 export interface VariableOperation {
   id: string;
   variableId: string;
   op: VariableOpType;
-  /** Value operand — can be a literal number/string or {{var}} reference */
+  /** 'literal' = typed value or {{var}}; 'field' = read from a page field answer */
+  operandType?: VariableOperandType;
+  /** When operandType === 'field': the page element ID to read the answer from */
+  operandFieldId?: string;
+  /** Value operand — literal string/number or {{var}} reference */
   operand: string;
 }
 

@@ -170,8 +170,14 @@ export default function FormPreview() {
         const currentRaw = updated[storeKey] ?? updated[variable.sourceElementId || ''] ?? variable.defaultValue ?? '0';
         const currentNum = parseFloat(String(currentRaw)) || 0;
 
-        // Resolve operand (may be a literal or {{var}} reference)
-        const resolvedOperand = interpolateText(op.operand || '0', form.variables || [], updated);
+        // Resolve operand: field answer or literal/{{var}}
+        let resolvedOperand: string;
+        if (op.operandType === 'field' && op.operandFieldId) {
+          const fieldVal = updated[op.operandFieldId];
+          resolvedOperand = fieldVal !== undefined && fieldVal !== null ? String(fieldVal) : '0';
+        } else {
+          resolvedOperand = interpolateText(op.operand || '0', form.variables || [], updated);
+        }
         const operandNum = parseFloat(resolvedOperand) || 0;
 
         let result: string;

@@ -1,16 +1,23 @@
 import { memo, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Variable, Plus, Trash2, Equal, Plus as PlusIcon, Minus, X, Divide } from 'lucide-react';
-import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType } from '@/types/form';
+import { Variable, Plus, Trash2 } from 'lucide-react';
+import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface InputElement {
+  elementId: string;
+  elementLabel: string;
+  pageTitle: string;
+}
 
 interface VariableOpNodeProps {
   nodeId: string;
   label: string;
   operations: VariableOperation[];
   variables: FormVariable[];
+  allInputElements: InputElement[];
   onChange: (patch: Partial<VariableOpNodeData>) => void;
   onDelete: () => void;
 }
@@ -24,7 +31,7 @@ const OP_OPTIONS: { value: VariableOpType; label: string; symbol: string }[] = [
 ];
 
 function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps }) {
-  const { label, operations, variables, onChange, onDelete } = data;
+  const { label, operations, variables, allInputElements = [], onChange, onDelete } = data;
 
   const addOp = useCallback(() => {
     if (variables.length === 0) return;
@@ -32,6 +39,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
       id: crypto.randomUUID(),
       variableId: variables[0].id,
       op: 'set',
+      operandType: 'literal',
       operand: '',
     };
     onChange({ operations: [...operations, newOp] });
@@ -95,15 +103,23 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
           operations.map(op => {
             const variable = variables.find(v => v.id === op.variableId);
             const opDef = OP_OPTIONS.find(o => o.value === op.op);
+            const operandType = op.operandType ?? 'literal';
+            const selectedField = allInputElements.find(e => e.elementId === op.operandFieldId);
+
+            // Preview label for operand
+            const operandPreview = operandType === 'field'
+              ? (selectedField ? selectedField.elementLabel : '?')
+              : (op.operand || '?');
+
             return (
               <div key={op.id} className="bg-muted/30 rounded-lg border border-border/60 p-2 space-y-1.5">
-                {/* Row: var = operand */}
+                {/* Summary row */}
                 <div className="flex items-center gap-1.5 text-xs font-mono">
                   <span className="text-node-variable-op-accent font-semibold px-1 bg-node-variable-op rounded text-[10px]">
                     {variable ? `{{${variable.name}}}` : '—'}
                   </span>
                   <span className="text-muted-foreground font-bold">{opDef?.symbol}</span>
-                  <span className="text-foreground truncate max-w-[80px]">{op.operand || '?'}</span>
+                  <span className="text-foreground truncate max-w-[80px]">{operandPreview}</span>
                   <button
                     onClick={() => removeOp(op.id)}
                     className="ml-auto p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors"
@@ -139,13 +155,55 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                   </SelectContent>
                 </Select>
 
-                {/* Operand */}
-                <Input
-                  value={op.operand}
-                  onChange={e => updateOp(op.id, { operand: e.target.value })}
-                  placeholder={op.op === 'set' ? 'Valor ou {{var}}...' : 'Número ou {{var}}...'}
-                  className="h-6 text-[11px]"
-                />
+                {/* Operand source type toggle */}
+                <div className="flex gap-1">
+                  {(['literal', 'field'] as VariableOperandType[]).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => updateOp(op.id, { operandType: t, operand: '', operandFieldId: undefined })}
+                      className={`flex-1 text-[10px] py-0.5 rounded border transition-colors ${
+                        operandType === t
+                          ? 'bg-node-variable-op-accent text-card border-node-variable-op-accent'
+                          : 'border-border text-muted-foreground hover:border-node-variable-op-accent/50'
+                      }`}
+                    >
+                      {t === 'literal' ? 'Valor livre' : 'Campo'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Operand value */}
+                {operandType === 'field' ? (
+                  allInputElements.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground text-center py-1">
+                      Nenhum campo de entrada encontrado nas páginas
+                    </p>
+                  ) : (
+                    <Select
+                      value={op.operandFieldId || ''}
+                      onValueChange={val => updateOp(op.id, { operandFieldId: val })}
+                    >
+                      <SelectTrigger className="h-6 text-[11px]">
+                        <SelectValue placeholder="Selecionar campo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allInputElements.map(el => (
+                          <SelectItem key={el.elementId} value={el.elementId} className="text-xs">
+                            <span>{el.elementLabel}</span>
+                            <span className="ml-1.5 text-muted-foreground text-[10px]">({el.pageTitle})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                ) : (
+                  <Input
+                    value={op.operand}
+                    onChange={e => updateOp(op.id, { operand: e.target.value })}
+                    placeholder={op.op === 'set' ? 'Valor ou {{var}}...' : 'Número ou {{var}}...'}
+                    className="h-6 text-[11px]"
+                  />
+                )}
               </div>
             );
           })
