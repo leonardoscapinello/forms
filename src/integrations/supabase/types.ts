@@ -94,10 +94,13 @@ export type Database = {
       }
       form_page_events: {
         Row: {
+          answer_char_count: number | null
           created_at: string
           event_type: string
           form_id: string
+          hesitation_ms: number | null
           id: string
+          interaction_count: number | null
           page_id: string | null
           page_index: number | null
           page_title: string | null
@@ -106,10 +109,13 @@ export type Database = {
           time_on_page_ms: number | null
         }
         Insert: {
+          answer_char_count?: number | null
           created_at?: string
           event_type: string
           form_id: string
+          hesitation_ms?: number | null
           id?: string
+          interaction_count?: number | null
           page_id?: string | null
           page_index?: number | null
           page_title?: string | null
@@ -118,16 +124,55 @@ export type Database = {
           time_on_page_ms?: number | null
         }
         Update: {
+          answer_char_count?: number | null
           created_at?: string
           event_type?: string
           form_id?: string
+          hesitation_ms?: number | null
           id?: string
+          interaction_count?: number | null
           page_id?: string | null
           page_index?: number | null
           page_title?: string | null
           response_id?: string
           session_id?: string | null
           time_on_page_ms?: number | null
+        }
+        Relationships: []
+      }
+      form_responses: {
+        Row: {
+          answers: Json
+          created_at: string
+          form_id: string
+          id: string
+          metadata: Json | null
+          pages_visited: number | null
+          response_id: string
+          session_id: string | null
+          total_time_ms: number | null
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          form_id: string
+          id?: string
+          metadata?: Json | null
+          pages_visited?: number | null
+          response_id: string
+          session_id?: string | null
+          total_time_ms?: number | null
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          form_id?: string
+          id?: string
+          metadata?: Json | null
+          pages_visited?: number | null
+          response_id?: string
+          session_id?: string | null
+          total_time_ms?: number | null
         }
         Relationships: []
       }
