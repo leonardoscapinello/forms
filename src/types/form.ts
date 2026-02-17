@@ -247,6 +247,35 @@ export interface VariableOpNodeData {
   operations: VariableOperation[];
 }
 
+// ── Integration Nodes ────────────────────────────────────────────────────────
+
+export type IntegrationPlatform = 'webhook' | 'meta_pixel' | 'google_analytics' | 'tiktok_pixel' | 'linkedin_pixel';
+
+export type PixelEventType =
+  | 'Lead'
+  | 'Purchase'
+  | 'ViewContent'
+  | 'CompleteRegistration'
+  | 'InitiateCheckout'
+  | 'AddToCart'
+  | 'Search'
+  | 'Contact'
+  | 'SubmitApplication'
+  | 'custom';
+
+export interface IntegrationNodeData {
+  id: string;
+  platform: IntegrationPlatform;
+  /** Pixel event to fire (for pixel platforms) */
+  eventType?: PixelEventType;
+  /** Custom event name when eventType === 'custom' */
+  customEventName?: string;
+  /** For webhook: override URL (falls back to global settings) */
+  webhookUrlOverride?: string;
+  /** HTTP method override for webhook */
+  webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+}
+
 export interface FlowEdge {
   id: string;
   source: string;
@@ -339,6 +368,7 @@ export interface FormData {
   thankYouPage?: FunnelPage;
   conditions?: ConditionNodeData[];
   variableOpNodes?: VariableOpNodeData[];
+  integrationNodes?: IntegrationNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
   /** Form variables for dynamic content and logic */

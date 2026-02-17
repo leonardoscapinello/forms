@@ -8,9 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import {
   HardDrive, Save, TestTube, Loader2, CheckCircle2, XCircle, Eye, EyeOff,
-  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail,
+  Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail, Radio,
 } from 'lucide-react';
 import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
+import PixelIntegrationsCard from '@/components/settings/PixelIntegrationsCard';
 import EmailValidationsTab from '@/components/settings/EmailValidationsTab';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'general', label: 'Geral', icon: Settings2 },
   { id: 'users', label: 'Usuários', icon: Users },
   { id: 'integrations', label: 'Integrações', icon: Plug },
+  { id: 'pixels', label: 'Pixels & Webhooks', icon: Radio },
   { id: 'validations', label: 'Validações', icon: Mail },
   { id: 'security', label: 'Segurança', icon: Shield },
 ] as const;
@@ -62,6 +64,7 @@ export default function Settings() {
               {tab === 'general' && 'Informações gerais do sistema.'}
               {tab === 'users' && 'Gerencie usuários e permissões.'}
               {tab === 'integrations' && 'Configure integrações externas.'}
+              {tab === 'pixels' && 'Configure pixels de rastreamento e webhooks para o Workflow.'}
               {tab === 'validations' && 'Consulte e gerencie validações de e-mail.'}
               {tab === 'security' && 'Políticas de segurança e sessões.'}
             </p>
@@ -70,6 +73,7 @@ export default function Settings() {
           {tab === 'general' && <GeneralTab />}
           {tab === 'users' && <UsersTab />}
           {tab === 'integrations' && <IntegrationsTab />}
+          {tab === 'pixels' && <PixelIntegrationsCard />}
           {tab === 'validations' && <EmailValidationsTab />}
           {tab === 'security' && <SecurityTab />}
         </div>
