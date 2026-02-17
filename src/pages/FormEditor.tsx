@@ -16,7 +16,8 @@ import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, ChevronRight, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, ChevronRight, Cloud, CloudOff, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect, useCallback, useState } from 'react';
 
 type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings' | 'analytics';
@@ -352,26 +353,34 @@ export default function FormEditor() {
           </div>
 
           {/* View switcher */}
-          <div className="flex items-center gap-1 ml-6">
-          {(['pages', 'workflow', 'responses', 'share', 'analytics', 'settings'] as const).map(view => (
-              <button
-                key={view}
-                onClick={() => setEditorView(view)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  editorView === view
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {view === 'pages' ? 'Páginas'
-                  : view === 'workflow' ? 'Workflow'
-                  : view === 'responses' ? 'Respostas'
-                  : view === 'share' ? 'Compartilhar'
-                  : view === 'analytics' ? 'Análiticas'
-                  : 'Configurações'}
-              </button>
-            ))}
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center gap-0.5 ml-6 border border-border rounded-lg p-0.5 bg-muted/40">
+              {([
+                { view: 'pages', icon: LayoutPanelLeft, label: 'Páginas' },
+                { view: 'workflow', icon: GitBranch, label: 'Workflow' },
+                { view: 'responses', icon: MessageSquare, label: 'Respostas' },
+                { view: 'share', icon: Share2, label: 'Compartilhar' },
+                { view: 'analytics', icon: BarChart2, label: 'Análises' },
+                { view: 'settings', icon: Settings, label: 'Configurações' },
+              ] as const).map(({ view, icon: Icon, label }) => (
+                <Tooltip key={view}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setEditorView(view)}
+                      className={`h-7 w-7 flex items-center justify-center rounded-md transition-colors ${
+                        editorView === view
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
 
           <div className="ml-auto flex items-center gap-4">
             {/* Online collaborators */}
