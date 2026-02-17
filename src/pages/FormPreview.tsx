@@ -167,35 +167,31 @@ export default function FormPreview() {
     if (!edges.length) return { nextNodeId: null, updatedAnswers: currentAnswers };
 
     // Apply operations from a single variable-op node
-    const applyVopNode = (vopId: string, answers: Record<string, any>): Record<string, any> => {
+    const applyVopNode = (vopId: string, ans: Record<string, any>): Record<string, any> => {
       const vop = f?.variableOpNodes?.find(v => v.id === vopId);
-      if (!vop || !vop.operations?.length) return answers;
-      const updated = { ...answers };
+      if (!vop || !vop.operations?.length) return ans;
+      const updated = { ...ans };
       for (const op of vop.operations) {
         const variable = f?.variables?.find(v => v.id === op.variableId);
         if (!variable) continue;
         const storeKey = `__var_${variable.name}`;
 
-        // Resolve the operand value
         const operandType = op.operandType ?? 'literal';
         let resolvedOperand: string;
         if (operandType === 'field') {
-          if (!op.operandFieldId) continue; // skip — no field selected
+          if (!op.operandFieldId) continue;
           const fieldVal = updated[op.operandFieldId];
-          if (fieldVal === undefined || fieldVal === null) continue; // skip — field not answered yet
+          if (fieldVal === undefined || fieldVal === null) continue;
           resolvedOperand = String(fieldVal);
         } else {
-          // literal — support {{var}} interpolation
           resolvedOperand = interpolateText(op.operand ?? '', f?.variables || [], updated);
         }
 
-        // For 'set', store the string as-is (preserves text values)
         if (op.op === 'set') {
           updated[storeKey] = resolvedOperand;
           continue;
         }
 
-        // Arithmetic ops need numbers
         const currentRaw = updated[storeKey] ?? variable.defaultValue ?? '0';
         const currentNum = parseFloat(String(currentRaw)) || 0;
         const operandNum = parseFloat(resolvedOperand) || 0;
@@ -285,7 +281,10 @@ export default function FormPreview() {
     setDirection(1);
 
     const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
-    const hasWorkflow = (formRef.current?.flowEdges?.length ?? 0) > 0;
+    const allEdges = formRef.current?.flowEdges || [];
+
+    // Check if the current node has any outgoing edges defined in the workflow
+    const currentNodeHasOutEdges = allEdges.some(e => e.source === fromNodeId);
 
     // Walk workflow: resolves next page AND applies variable ops in one pass
     const { nextNodeId, updatedAnswers } = walkWorkflow(fromNodeId, answers);
@@ -306,14 +305,15 @@ export default function FormPreview() {
       }
     }
 
-    // If a workflow is defined but no outgoing connection found → end of form
-    if (hasWorkflow) {
+    // If current node has outgoing edges but walk found no valid next page → end of form
+    // (intentional dead-end or broken connection that should stop navigation)
+    // If current node has NO outgoing edges → fallback to sequential navigation
+    if (currentNodeHasOutEdges) {
       setFinished(true);
       return;
     }
 
-
-    // Fallback: sequential navigation (only when no workflow is configured)
+    // Fallback: sequential navigation when current node has no workflow edges
     if (currentPageIndex === null) {
       if (pages.length > 0) {
         const nextPage = pages[0];
