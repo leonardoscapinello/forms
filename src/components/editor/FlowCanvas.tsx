@@ -21,7 +21,7 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { FunnelPage, FormData as FormDataType, FlowEdge, ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup } from '@/types/form';
+import { FunnelPage, FormData as FormDataType, FlowEdge, ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup, FormVariable } from '@/types/form';
 import PageNode from './PageNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
@@ -69,6 +69,24 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
   const { screenToFlowPosition } = useReactFlow();
 
   const pages = form.pages || [];
+  const variables = form.variables || [];
+
+  // Build list of all input elements across all pages for the field picker
+  const allInputElements = useMemo(() => {
+    const result: { elementId: string; elementLabel: string; pageTitle: string }[] = [];
+    for (const page of pages) {
+      for (const el of page.elements || []) {
+        if (el.type.startsWith('input_')) {
+          result.push({
+            elementId: el.id,
+            elementLabel: el.label || el.type.replace('input_', ''),
+            pageTitle: page.title,
+          });
+        }
+      }
+    }
+    return result;
+  }, [pages]);
 
   const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
@@ -92,6 +110,8 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
           onChange: (patch: Partial<FunnelPage>) => onPageChange(page.id, patch),
           onDelete: () => onPageDelete(page.id),
           onSelect: () => onPageSelect(page.id),
+          variables,
+          allInputElements,
         },
       });
     });
@@ -114,7 +134,7 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
     });
 
     return n;
-  }, [form, pages, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete]);
+  }, [form, pages, variables, allInputElements, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete]);
 
   const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {

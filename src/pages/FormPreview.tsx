@@ -23,7 +23,7 @@ import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
-import { FormVariable } from '@/types/form';
+import { FormVariable, VariableAssignment } from '@/types/form';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -122,6 +122,26 @@ export default function FormPreview() {
     return true;
   }, [currentPage, answers]);
 
+  /** Apply variableAssignments for a given page when entering it */
+  const applyPageVariableAssignments = useCallback((page: import('@/types/form').FunnelPage, currentAnswers: Record<string, any>) => {
+    if (!page.variableAssignments?.length || !form?.variables?.length) return currentAnswers;
+    const updated = { ...currentAnswers };
+    for (const assignment of page.variableAssignments) {
+      const variable = form.variables?.find(v => v.id === assignment.variableId);
+      if (!variable) continue;
+      if (assignment.sourceType === 'field' && assignment.sourceElementId) {
+        const val = currentAnswers[assignment.sourceElementId];
+        if (val !== undefined && val !== null) {
+          updated[`__var_${variable.name}`] = String(val);
+        }
+      } else if (assignment.sourceType === 'free') {
+        const resolved = interpolateText(assignment.value || '', form.variables || [], currentAnswers);
+        updated[`__var_${variable.name}`] = resolved;
+      }
+    }
+    return updated;
+  }, [form]);
+
   const goNext = useCallback(async () => {
     if (isPageBlocked) return;
 
@@ -142,6 +162,8 @@ export default function FormPreview() {
     setDirection(1);
     if (currentPageIndex === null) {
       if (pages.length > 0) {
+        const nextPage = pages[0];
+        setAnswers(prev => applyPageVariableAssignments(nextPage, prev));
         setCurrentPageIndex(0);
       } else {
         setFinished(true);
@@ -149,11 +171,13 @@ export default function FormPreview() {
       return;
     }
     if (currentPageIndex < pages.length - 1) {
+      const nextPage = pages[currentPageIndex + 1];
+      setAnswers(prev => applyPageVariableAssignments(nextPage, prev));
       setCurrentPageIndex(currentPageIndex + 1);
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages.length, isPageBlocked, currentPage, areRequiredFieldsFilled]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
