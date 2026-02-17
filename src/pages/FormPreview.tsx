@@ -150,18 +150,38 @@ export default function FormPreview() {
   ): Record<string, any> => {
     if (!form?.variableOpNodes?.length || !form?.flowEdges?.length || !form?.variables?.length) return currentAnswers;
 
-    // Find all vo- nodes that sit on the path between fromNodeId and toNodeId
-    // Simple approach: find vo-* nodes that have an incoming edge from fromNodeId and outgoing edge to toNodeId
     const edges = form.flowEdges;
     let updated = { ...currentAnswers };
 
-    const voNodes = form.variableOpNodes;
-    for (const vop of voNodes) {
-      const voNodeId = `vo-${vop.id}`;
-      const hasIncoming = edges.some(e => e.source === fromNodeId && e.target === voNodeId);
-      const hasOutgoing = edges.some(e => e.source === voNodeId && e.target === toNodeId);
-      if (!hasIncoming || !hasOutgoing) continue;
+    // Collect all vo-* nodes reachable from fromNodeId that eventually lead to toNodeId
+    // BFS traversal through vo- nodes only
+    const voNodesToApply: typeof form.variableOpNodes = [];
+    const visited = new Set<string>();
+    const queue: string[] = [fromNodeId];
 
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      // Find all outgoing edges from current node
+      for (const edge of edges) {
+        if (edge.source !== current) continue;
+        const nextId = edge.target;
+        if (nextId === toNodeId) continue; // reached destination, stop this branch
+        if (!nextId.startsWith('vo-')) continue; // only traverse vo- nodes
+        const voId = nextId.replace('vo-', '');
+        const vop = form.variableOpNodes?.find(v => v.id === voId);
+        // Only include if this vo-node has a path to toNodeId
+        const leadsToTarget = edges.some(e => e.source === nextId && e.target === toNodeId);
+        if (vop && leadsToTarget && !visited.has(nextId)) {
+          voNodesToApply.push(vop);
+          queue.push(nextId);
+        }
+      }
+    }
+
+    for (const vop of voNodesToApply) {
       for (const op of vop.operations) {
         const variable = form.variables?.find(v => v.id === op.variableId);
         if (!variable) continue;
