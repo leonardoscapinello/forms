@@ -451,6 +451,8 @@ function FlowCanvasInner({
         snapGrid={[20, 20]}
         deleteKeyCode={['Backspace', 'Delete']}
         nodesDraggable
+        edgesFocusable
+        selectNodesOnDrag={false}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
