@@ -24,7 +24,7 @@ import '@xyflow/react/dist/style.css';
 import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
-  VariableOpNodeData, IntegrationNodeData,
+  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData,
 } from '@/types/form';
 import PageNode from './PageNode';
 import StartNode from './StartNode';
@@ -32,6 +32,7 @@ import EndNode from './EndNode';
 import ConditionNode from './ConditionNode';
 import VariableOpNode from './VariableOpNode';
 import IntegrationNode from './IntegrationNode';
+import AnalyticsNode from './AnalyticsNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
@@ -46,6 +47,7 @@ const nodeTypes = {
   conditionNode: ConditionNode,
   variableOpNode: VariableOpNode,
   integrationNode: IntegrationNode,
+  analyticsNode: AnalyticsNode,
 };
 
 const edgeTypes = {
@@ -73,6 +75,9 @@ interface Props {
   onIntegrationAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onIntegrationChange: (nodeId: string, patch: Partial<IntegrationNodeData>) => void;
   onIntegrationDelete: (nodeId: string) => void;
+  onAnalyticsAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onAnalyticsChange: (nodeId: string, patch: Partial<AnalyticsNodeData>) => void;
+  onAnalyticsDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
 }
@@ -87,6 +92,7 @@ function FlowCanvasInner({
   onConditionAddAtPosition, onConditionChange, onConditionDelete,
   onVariableOpAddAtPosition, onVariableOpChange, onVariableOpDelete,
   onIntegrationAddAtPosition, onIntegrationChange, onIntegrationDelete,
+  onAnalyticsAddAtPosition, onAnalyticsChange, onAnalyticsDelete,
   onFormUpdate, onPageSelect,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,6 +110,7 @@ function FlowCanvasInner({
   const variables = form.variables || [];
   const variableOpNodes = form.variableOpNodes || [];
   const integrationNodes = form.integrationNodes || [];
+  const analyticsNodes = form.analyticsNodes || [];
 
   // Build a grouped structure of input elements per page
   const inputElementsByPage = useMemo(() => {
@@ -238,8 +245,22 @@ function FlowCanvasInner({
       });
     });
 
+    analyticsNodes.forEach((an, i) => {
+      const nodeId = `an-${an.id}`;
+      n.push({
+        id: nodeId,
+        type: 'analyticsNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 4) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: an,
+          onChange: (patch: Partial<AnalyticsNodeData>) => onAnalyticsChange(an.id, patch),
+          onDelete: () => onAnalyticsDelete(an.id),
+        },
+      });
+    });
+
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -279,10 +300,12 @@ function FlowCanvasInner({
     const pagesChanged = prev.pages !== form.pages;
     const conditionsChanged = prev.conditions !== form.conditions;
     const varOpsChanged = prev.variableOpNodes !== form.variableOpNodes;
+    const analyticsChanged = prev.analyticsNodes !== form.analyticsNodes;
+    const intgChanged = prev.integrationNodes !== form.integrationNodes;
     const varsChanged = prev.variables !== form.variables;
     const edgesChanged = prev.flowEdges !== form.flowEdges;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || varsChanged || edgesChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || varsChanged || edgesChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
@@ -362,6 +385,8 @@ function FlowCanvasInner({
         onVariableOpDelete(nodeId.replace('vo-', ''));
       } else if (nodeId.startsWith('int-')) {
         onIntegrationDelete(nodeId.replace('int-', ''));
+      } else if (nodeId.startsWith('an-')) {
+        onAnalyticsDelete(nodeId.replace('an-', ''));
       }
     }
 
@@ -453,6 +478,12 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onIntegrationAddAtPosition]);
 
+  const handleDropAddAnalytics = useCallback(() => {
+    if (!dropMenu) return;
+    onAnalyticsAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onAnalyticsAddAtPosition]);
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -467,7 +498,6 @@ function FlowCanvasInner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.2}
@@ -493,6 +523,8 @@ function FlowCanvasInner({
             if (node.data?.hasError) return 'hsl(var(--destructive))';
             if (node.type === 'conditionNode') return 'hsl(var(--node-condition-accent))';
             if (node.type === 'variableOpNode') return 'hsl(var(--node-variable-op-accent))';
+            if (node.type === 'integrationNode') return 'hsl(var(--node-webhook-accent))';
+            if (node.type === 'analyticsNode') return 'hsl(var(--node-analytics-accent))';
             if (node.type === 'pageNode') return 'hsl(var(--muted-foreground))';
             return 'hsl(var(--muted))';
           }}
@@ -500,7 +532,6 @@ function FlowCanvasInner({
           pannable
           zoomable
         />
-
       </ReactFlow>
 
       {dropMenu && (
@@ -510,6 +541,7 @@ function FlowCanvasInner({
           onAddCondition={handleDropAddCondition}
           onAddVariableOp={handleDropAddVariableOp}
           onAddIntegration={handleDropAddIntegration}
+          onAddAnalytics={handleDropAddAnalytics}
           onClose={() => setDropMenu(null)}
         />
       )}
