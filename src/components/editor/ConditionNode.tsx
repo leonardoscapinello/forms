@@ -1,7 +1,7 @@
 import { memo, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GitBranch, Plus, Trash2 } from 'lucide-react';
-import { ConditionBranch, ConditionGroup, Question, createDefaultConditionGroup } from '@/types/form';
+import { ConditionBranch, ConditionGroup, Question, FormVariable, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ConditionGroupEditor from './ConditionGroupEditor';
@@ -11,12 +11,13 @@ interface ConditionNodeDataProps {
   label: string;
   branches: ConditionBranch[];
   questions: Question[];
+  variables?: FormVariable[];
   onChange: (patch: { label?: string; branches?: ConditionBranch[] }) => void;
   onDelete: () => void;
 }
 
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
-  const { label, branches, questions, onChange, onDelete } = data;
+  const { label, branches, questions, variables = [], onChange, onDelete } = data;
 
   const addBranch = useCallback(() => {
     const newBranch: ConditionBranch = {
@@ -111,6 +112,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
               <ConditionGroupEditor
                 group={group}
                 questions={questions}
+                variables={variables}
                 onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
               />
             </div>

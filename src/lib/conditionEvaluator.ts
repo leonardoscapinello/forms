@@ -1,11 +1,28 @@
-import { ConditionGroup, ConditionRule, ConditionBranch, ConditionNodeData, FormData } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionBranch, ConditionNodeData, FormData, FormVariable } from '@/types/form';
+
+/**
+ * Resolves the subject value for a rule — either a question answer or a variable value.
+ */
+function resolveSubjectValue(rule: ConditionRule, answers: Record<string, any>, variables?: FormVariable[]): string {
+  if (rule.subjectType === 'variable' && rule.variableId && variables) {
+    const variable = variables.find(v => v.id === rule.variableId);
+    if (variable) {
+      const storeKey = `__var_${variable.name}`;
+      const val = answers[storeKey] ?? answers[variable.sourceElementId || ''] ?? variable.defaultValue ?? '';
+      return String(val);
+    }
+    return '';
+  }
+  // Default: question answer
+  const answer = answers[rule.questionId];
+  return answer !== undefined && answer !== null ? String(answer) : '';
+}
 
 /**
  * Evaluates a single condition rule against the current answers.
  */
-function evaluateRule(rule: ConditionRule, answers: Record<string, any>): boolean {
-  const answer = answers[rule.questionId];
-  const answerStr = answer !== undefined && answer !== null ? String(answer) : '';
+function evaluateRule(rule: ConditionRule, answers: Record<string, any>, variables?: FormVariable[]): boolean {
+  const answerStr = resolveSubjectValue(rule, answers, variables);
   const ruleValue = rule.value ?? '';
 
   switch (rule.operator) {
@@ -22,9 +39,9 @@ function evaluateRule(rule: ConditionRule, answers: Record<string, any>): boolea
     case 'less_than':
       return parseFloat(answerStr) < parseFloat(ruleValue);
     case 'is_empty':
-      return answerStr === '' || answer === undefined || answer === null || (Array.isArray(answer) && answer.length === 0);
+      return answerStr === '' || answerStr === undefined;
     case 'is_not_empty':
-      return answerStr !== '' && answer !== undefined && answer !== null && !(Array.isArray(answer) && answer.length === 0);
+      return answerStr !== '' && answerStr !== undefined;
     default:
       return false;
   }
@@ -33,28 +50,25 @@ function evaluateRule(rule: ConditionRule, answers: Record<string, any>): boolea
 /**
  * Evaluates a condition group (with nested groups) against the current answers.
  */
-function evaluateGroup(group: ConditionGroup, answers: Record<string, any>): boolean {
-  // Build results from rules
+function evaluateGroup(group: ConditionGroup, answers: Record<string, any>, variables?: FormVariable[]): boolean {
   const items: { result: boolean; logic: 'and' | 'or' }[] = [];
 
   for (const rule of group.rules) {
     items.push({
-      result: evaluateRule(rule, answers),
+      result: evaluateRule(rule, answers, variables),
       logic: rule.logicWithPrev || 'and',
     });
   }
 
-  // Add nested groups
   for (const sub of group.groups) {
     items.push({
-      result: evaluateGroup(sub, answers),
+      result: evaluateGroup(sub, answers, variables),
       logic: sub.logic || 'and',
     });
   }
 
   if (items.length === 0) return true;
 
-  // Combine items: first item's result starts, then apply logic
   let combined = items[0].result;
   for (let i = 1; i < items.length; i++) {
     if (items[i].logic === 'and') {
@@ -70,9 +84,9 @@ function evaluateGroup(group: ConditionGroup, answers: Record<string, any>): boo
 /**
  * Evaluates a condition branch.
  */
-export function evaluateBranch(branch: ConditionBranch, answers: Record<string, any>): boolean {
+export function evaluateBranch(branch: ConditionBranch, answers: Record<string, any>, variables?: FormVariable[]): boolean {
   if (branch.conditionGroup) {
-    return evaluateGroup(branch.conditionGroup, answers);
+    return evaluateGroup(branch.conditionGroup, answers, variables);
   }
   // Legacy fallback
   if (branch.questionId && branch.operator) {
@@ -81,7 +95,7 @@ export function evaluateBranch(branch: ConditionBranch, answers: Record<string, 
       questionId: branch.questionId,
       operator: branch.operator,
       value: branch.value || '',
-    }, answers);
+    }, answers, variables);
   }
   return false;
 }
@@ -93,9 +107,10 @@ export function evaluateBranch(branch: ConditionBranch, answers: Record<string, 
 export function resolveConditionBranch(
   condition: ConditionNodeData,
   answers: Record<string, any>,
+  variables?: FormVariable[],
 ): string {
   for (const branch of condition.branches) {
-    if (evaluateBranch(branch, answers)) {
+    if (evaluateBranch(branch, answers, variables)) {
       return branch.id;
     }
   }
@@ -111,8 +126,9 @@ export function resolveConditionNextNode(
   condition: ConditionNodeData,
   answers: Record<string, any>,
   flowEdges: { source: string; sourceHandle?: string; target: string }[],
+  variables?: FormVariable[],
 ): string | null {
-  const matchedBranchId = resolveConditionBranch(condition, answers);
+  const matchedBranchId = resolveConditionBranch(condition, answers, variables);
   const handleId = `branch-${matchedBranchId}`;
   
   const edge = flowEdges.find(e =>

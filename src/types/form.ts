@@ -185,10 +185,14 @@ export type ConditionOperator =
 
 export type LogicOperator = 'and' | 'or';
 
-/** A single rule: "question X operator value" */
+/** A single rule: "question/variable X operator value" */
 export interface ConditionRule {
   id: string;
+  /** 'question' = compare a form question answer; 'variable' = compare a form variable value */
+  subjectType?: 'question' | 'variable';
   questionId: string;
+  /** When subjectType === 'variable': the variable ID to compare */
+  variableId?: string;
   operator: ConditionOperator;
   value: string;
   /** How this rule connects to the previous item (ignored for the first rule) */
