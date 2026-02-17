@@ -221,6 +221,22 @@ export interface ConditionNodeData {
   branches: ConditionBranch[];
 }
 
+export type VariableOpType = 'set' | 'add' | 'subtract' | 'multiply' | 'divide';
+
+export interface VariableOperation {
+  id: string;
+  variableId: string;
+  op: VariableOpType;
+  /** Value operand — can be a literal number/string or {{var}} reference */
+  operand: string;
+}
+
+export interface VariableOpNodeData {
+  id: string;
+  label: string;
+  operations: VariableOperation[];
+}
+
 export interface FlowEdge {
   id: string;
   source: string;
@@ -310,6 +326,7 @@ export interface FormData {
   /** The welcome screen page (editable via page builder) */
   welcomePage?: FunnelPage;
   conditions?: ConditionNodeData[];
+  variableOpNodes?: VariableOpNodeData[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
   /** Form variables for dynamic content and logic */

@@ -73,6 +73,8 @@ img.emoji {
     --node-other-accent: 340 45% 55%;
     --node-condition: 200 70% 93%;
     --node-condition-accent: 200 60% 45%;
+    --node-variable-op: 142 60% 93%;
+    --node-variable-op-accent: 142 55% 40%;
     --node-ending: 220 10% 93%;
     --node-ending-accent: 220 10% 45%;
     --node-integration: 145 60% 92%;
@@ -125,6 +127,8 @@ img.emoji {
     --node-other-accent: 340 40% 60%;
     --node-condition: 200 35% 20%;
     --node-condition-accent: 200 50% 60%;
+    --node-variable-op: 142 35% 18%;
+    --node-variable-op-accent: 142 50% 55%;
     --node-ending: 220 10% 20%;
     --node-ending-accent: 220 10% 60%;
     --node-integration: 145 30% 18%;

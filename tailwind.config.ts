@@ -78,6 +78,8 @@ export default {
           "other-accent": "hsl(var(--node-other-accent))",
           condition: "hsl(var(--node-condition))",
           "condition-accent": "hsl(var(--node-condition-accent))",
+          "variable-op": "hsl(var(--node-variable-op))",
+          "variable-op-accent": "hsl(var(--node-variable-op-accent))",
           ending: "hsl(var(--node-ending))",
           "ending-accent": "hsl(var(--node-ending-accent))",
           integration: "hsl(var(--node-integration))",

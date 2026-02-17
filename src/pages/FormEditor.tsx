@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import FlowCanvas from '@/components/editor/FlowCanvas';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
@@ -163,6 +163,48 @@ export default function FormEditor() {
   const handleFormUpdate = useCallback((patch: Partial<FormData>) => {
     if (!form) return;
     updateForm(form.id, patch);
+  }, [form, updateForm]);
+
+  // ---- VariableOpNode CRUD ----
+
+  const handleVariableOpAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const vop: VariableOpNodeData = {
+      id: crypto.randomUUID(),
+      label: 'Operação',
+      operations: [],
+    };
+    const nodeId = `vo-${vop.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, {
+      variableOpNodes: [...(form.variableOpNodes || []), vop],
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
+  const handleVariableOpChange = useCallback((nodeId: string, patch: Partial<VariableOpNodeData>) => {
+    if (!form) return;
+    const variableOpNodes = (form.variableOpNodes || []).map(v =>
+      v.id === nodeId ? { ...v, ...patch } : v
+    );
+    updateForm(form.id, { variableOpNodes });
+  }, [form, updateForm]);
+
+  const handleVariableOpDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `vo-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(
+      e => e.source !== rfNodeId && e.target !== rfNodeId
+    );
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, {
+      variableOpNodes: (form.variableOpNodes || []).filter(v => v.id !== nodeId),
+      flowEdges,
+      nodePositions,
+    });
   }, [form, updateForm]);
 
   // ---- Variables CRUD ----
@@ -366,6 +408,9 @@ export default function FormEditor() {
               onConditionAddAtPosition={handleConditionAddAtPosition}
               onConditionChange={handleConditionChange}
               onConditionDelete={handleConditionDelete}
+              onVariableOpAddAtPosition={handleVariableOpAddAtPosition}
+              onVariableOpChange={handleVariableOpChange}
+              onVariableOpDelete={handleVariableOpDelete}
               onFormUpdate={handleFormUpdate}
               onPageSelect={handlePageSelectFromWorkflow}
             />
