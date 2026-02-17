@@ -1,13 +1,13 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Webhook, Facebook, BarChart3, Music2, Linkedin, Trash2, ChevronDown } from 'lucide-react';
-import { IntegrationNodeData, IntegrationPlatform, PixelEventType } from '@/types/form';
+import { Webhook, Facebook, BarChart3, Music2, Linkedin, Trash2, Plus, X } from 'lucide-react';
+import { IntegrationNodeData, IntegrationPlatform, PixelEventType, WebhookParam } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -181,18 +181,18 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
             </div>
           )}
 
-          {/* Webhook: URL override + method */}
+          {/* Webhook: URL + method + extra params */}
           {!isPixel && (
             <>
               <div className="space-y-1">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  URL <span className="normal-case font-normal">(opcional — sobrescreve global)</span>
+                  URL de destino <span className="text-destructive">*</span>
                 </span>
                 <Input
-                  value={nodeData.webhookUrlOverride || ''}
-                  onChange={e => onChange({ webhookUrlOverride: e.target.value })}
-                  placeholder="https://... (usa config global se vazio)"
-                  className="h-8 text-xs"
+                  value={nodeData.webhookUrl || ''}
+                  onChange={e => onChange({ webhookUrl: e.target.value })}
+                  placeholder="https://hooks.example.com/..."
+                  className={`h-8 text-xs ${!nodeData.webhookUrl ? 'border-destructive/50' : ''}`}
                 />
               </div>
               <div className="space-y-1">
@@ -210,6 +210,57 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Extra params */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Parâmetros extras</span>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-5 w-5 text-muted-foreground"
+                    onClick={() => {
+                      const newParam: WebhookParam = { id: crypto.randomUUID(), key: '', value: '' };
+                      onChange({ webhookParams: [...(nodeData.webhookParams || []), newParam] });
+                    }}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+                {(nodeData.webhookParams || []).map((param, idx) => (
+                  <div key={param.id} className="flex items-center gap-1">
+                    <Input
+                      value={param.key}
+                      onChange={e => {
+                        const updated = [...(nodeData.webhookParams || [])];
+                        updated[idx] = { ...updated[idx], key: e.target.value };
+                        onChange({ webhookParams: updated });
+                      }}
+                      placeholder="chave"
+                      className="h-7 text-xs w-0 flex-1 font-mono"
+                    />
+                    <Input
+                      value={param.value}
+                      onChange={e => {
+                        const updated = [...(nodeData.webhookParams || [])];
+                        updated[idx] = { ...updated[idx], value: e.target.value };
+                        onChange({ webhookParams: updated });
+                      }}
+                      placeholder="valor"
+                      className="h-7 text-xs w-0 flex-1"
+                    />
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        const updated = (nodeData.webhookParams || []).filter((_, i) => i !== idx);
+                        onChange({ webhookParams: updated });
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </>
           )}
