@@ -483,23 +483,49 @@ export default function FormPreview() {
 
             {/* Thank You */}
             {isThankYou && (
-              <div className="text-center space-y-4 md:space-y-5">
-                <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
-                  <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
+              form.thankYouPage?.elements?.length ? (
+                <div className="space-y-5 md:space-y-8">
+                  {form.thankYouPage.elements.map((el, elIdx) => {
+                    const isField = el.type.startsWith('input_');
+                    const fieldIndex = isField
+                      ? form.thankYouPage!.elements.slice(0, elIdx + 1).filter(e => e.type.startsWith('input_')).length
+                      : elIdx + 1;
+                    return (
+                      <InteractiveElement
+                        key={el.id}
+                        element={el}
+                        value={answers[el.id]}
+                        onChange={v => setAnswer(el.id, v)}
+                        stepNumber={fieldIndex}
+                        letterOffset={0}
+                        onBlockedChange={blocked => setElementBlocked(el.id, blocked)}
+                        registerValidator={validator => registerValidator(el.id, validator)}
+                        onNavigate={handleButtonNavigate}
+                        variables={form.variables || []}
+                        answers={answers}
+                      />
+                    );
+                  })}
                 </div>
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                  {form.thankYouTitle || 'Obrigado!'}
-                </h1>
-                <p className="text-base md:text-lg text-muted-foreground">
-                  {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
-                </p>
-                {totalScore > 0 && (
-                  <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
-                    <p className="text-sm text-muted-foreground">Sua pontuação</p>
-                    <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
+              ) : (
+                <div className="text-center space-y-4 md:space-y-5">
+                  <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
+                    <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
                   </div>
-                )}
-              </div>
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                    {form.thankYouTitle || 'Obrigado!'}
+                  </h1>
+                  <p className="text-base md:text-lg text-muted-foreground">
+                    {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
+                  </p>
+                  {totalScore > 0 && (
+                    <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
+                      <p className="text-sm text-muted-foreground">Sua pontuação</p>
+                      <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
+                    </div>
+                  )}
+                </div>
+              )
             )}
 
             {/* Page content */}

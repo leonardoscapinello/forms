@@ -1,5 +1,5 @@
 import { FunnelPage, FormVariable, FormVariableType } from '@/types/form';
-import { Plus, FileText, Trash2, Home, Variable, ChevronDown, ChevronRight, Pencil, Check, X, Copy, Braces } from 'lucide-react';
+import { Plus, FileText, Trash2, Home, Variable, ChevronDown, ChevronRight, Pencil, Check, X, Copy, Braces, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ interface Props {
   onToggleWelcomeScreen?: (enabled: boolean) => void;
   isWelcomeSelected?: boolean;
   onSelectWelcome?: () => void;
+  isThankYouSelected?: boolean;
+  onSelectThankYou?: () => void;
   // Variables
   variables?: FormVariable[];
   onAddVariable?: () => void;
@@ -37,6 +39,7 @@ const VARIABLE_TYPE_LABELS: Record<FormVariableType, string> = {
 export default function PageListPanel({
   pages, selectedPageId, onSelectPage, onAddPage, onDeletePage, onRenamePage,
   showWelcomeScreen, onToggleWelcomeScreen, isWelcomeSelected, onSelectWelcome,
+  isThankYouSelected, onSelectThankYou,
   variables = [], onAddVariable, onUpdateVariable, onDeleteVariable,
 }: Props) {
   const [pagesOpen, setPagesOpen] = useState(true);
@@ -171,6 +174,27 @@ export default function PageListPanel({
               </div>
             ))
           )}
+
+          {/* Thank you page — fixed, non-removable */}
+          <div className="px-3 py-2 rounded-lg border border-border/50 mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Tela de obrigado</span>
+              </div>
+            </div>
+            <button
+              className={`mt-2 w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                isThankYouSelected
+                  ? 'bg-primary/10 text-primary'
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => onSelectThankYou?.()}
+            >
+              <CheckCircle className="h-3 w-3" />
+              <span className="font-medium">Editar tela de obrigado</span>
+            </button>
+          </div>
         </div>
       )}
 
