@@ -51,7 +51,7 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
               <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
-              <Route path="/preview/:id" element={<ProtectedRoute><FormPreview /></ProtectedRoute>} />
+              <Route path="/preview/:id" element={<FormPreview />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
