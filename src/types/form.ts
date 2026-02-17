@@ -434,6 +434,8 @@ export interface FormData {
   updatedAt: string;
   responseCount: number;
   completionRate: number;
+  /** Folder this form belongs to */
+  folderId?: string | null;
 }
 
 export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {

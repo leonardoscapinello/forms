@@ -14,6 +14,7 @@ interface DbForm {
   status: string;
   created_at: string;
   updated_at: string;
+  folder_id?: string | null;
 }
 
 function dbToForm(row: DbForm): FormData {
@@ -25,6 +26,7 @@ function dbToForm(row: DbForm): FormData {
     status: row.status as FormData['status'],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    folderId: row.folder_id ?? null,
   };
 }
 
@@ -42,12 +44,13 @@ function formToDb(form: FormData, userId: string) {
 interface FormStoreContextType {
   forms: FormData[];
   loaded: boolean;
-  createForm: () => Promise<FormData | null>;
+  createForm: (folderId?: string | null) => Promise<FormData | null>;
   updateForm: (id: string, patch: Partial<FormData>) => void;
   deleteForm: (id: string) => Promise<void>;
   getForm: (id: string) => FormData | undefined;
   getSaveStatus: (id: string) => 'saved' | 'saving' | 'idle';
   getLastSavedAt: (id: string) => string | null;
+  moveFormToFolder: (formId: string, folderId: string | null) => Promise<void>;
 }
 
 const FormStoreContext = createContext<FormStoreContextType | null>(null);
@@ -161,7 +164,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     debounceTimers.current.set(id, timer);
   }, [flushUpdate]);
 
-  const createForm = useCallback(async (): Promise<FormData | null> => {
+  const createForm = useCallback(async (folderId: string | null = null): Promise<FormData | null> => {
     if (!user) return null;
     const now = new Date().toISOString();
     const form: FormData = {
@@ -184,15 +187,16 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       completionRate: 0,
     };
 
-    const row = formToDb(form, user.id);
+    const row = { ...formToDb(form, user.id), folder_id: folderId };
     const { error } = await supabase.from('forms').insert(row);
     if (error) {
       console.error('Error creating form:', error);
       return null;
     }
 
-    setForms(prev => [...prev, form]);
-    return form;
+    const formWithFolder = { ...form, folderId };
+    setForms(prev => [...prev, formWithFolder]);
+    return formWithFolder;
   }, [user]);
 
   const deleteForm = useCallback(async (id: string) => {
@@ -217,7 +221,12 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return lastSavedTimes.get(id) || null;
   }, [lastSavedTimes]);
 
-  const value = { forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt };
+  const moveFormToFolder = useCallback(async (formId: string, folderId: string | null) => {
+    setForms(prev => prev.map(f => f.id === formId ? { ...f, folderId: folderId ?? undefined } : f));
+    await supabase.from('forms').update({ folder_id: folderId }).eq('id', formId);
+  }, []);
+
+  const value = { forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder };
 
   return React.createElement(FormStoreContext.Provider, { value }, children);
 }
