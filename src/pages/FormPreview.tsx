@@ -444,7 +444,7 @@ export default function FormPreview() {
 
         return (
           <div
-            className="flex-1 overflow-auto"
+            className="flex-1 overflow-auto flex items-center justify-center"
             style={{ backgroundColor: bgColor, fontFamily }}
           >
             <AnimatePresence mode="wait" custom={direction}>
@@ -457,7 +457,7 @@ export default function FormPreview() {
                 exit="exit"
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="w-full mx-auto"
-                style={isDefaultScreen ? { maxWidth: 672 } : {
+                style={isDefaultScreen ? { maxWidth: 672, padding: '32px 24px' } : {
                   maxWidth: 672 + paddingX * 2,
                   paddingLeft: paddingX,
                   paddingRight: paddingX,
@@ -467,19 +467,17 @@ export default function FormPreview() {
               >
                 {/* Default welcome (no custom elements) */}
                 {showDefaultWelcome && (
-                  <div className="flex items-center justify-center min-h-[60vh] px-4 md:px-8">
-                    <div className="text-center space-y-4 md:space-y-5 max-w-2xl w-full">
-                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                        {form.welcomeTitle || form.title}
-                      </h1>
-                      <p className="text-base md:text-lg text-muted-foreground">
-                        {form.welcomeDescription || form.description || 'Clique em começar para iniciar.'}
-                      </p>
-                      <Button size="lg" onClick={goNext} className="mt-6 md:mt-8 text-base px-6 md:px-8 py-3 h-auto">
-                        Começar
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
-                    </div>
+                  <div className="text-center space-y-4 md:space-y-5">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                      {form.welcomeTitle || form.title}
+                    </h1>
+                    <p className="text-base md:text-lg text-muted-foreground">
+                      {form.welcomeDescription || form.description || 'Clique em começar para iniciar.'}
+                    </p>
+                    <Button size="lg" onClick={goNext} className="mt-6 md:mt-8 text-base px-6 md:px-8 py-3 h-auto">
+                      Começar
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
                   </div>
                 )}
 
@@ -512,24 +510,22 @@ export default function FormPreview() {
 
                 {/* Default thank you (no custom elements) */}
                 {showDefaultThankYou && (
-                  <div className="flex items-center justify-center min-h-[60vh] px-4 md:px-8">
-                    <div className="text-center space-y-4 md:space-y-5 max-w-2xl w-full">
-                      <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
-                        <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
-                      </div>
-                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                        {form.thankYouTitle || 'Obrigado!'}
-                      </h1>
-                      <p className="text-base md:text-lg text-muted-foreground">
-                        {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
-                      </p>
-                      {totalScore > 0 && (
-                        <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
-                          <p className="text-sm text-muted-foreground">Sua pontuação</p>
-                          <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
-                        </div>
-                      )}
+                  <div className="text-center space-y-4 md:space-y-5">
+                    <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
+                      <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
                     </div>
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                      {form.thankYouTitle || 'Obrigado!'}
+                    </h1>
+                    <p className="text-base md:text-lg text-muted-foreground">
+                      {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
+                    </p>
+                    {totalScore > 0 && (
+                      <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
+                        <p className="text-sm text-muted-foreground">Sua pontuação</p>
+                        <p className="text-3xl md:text-4xl font-bold text-primary">{totalScore}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
