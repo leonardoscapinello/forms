@@ -9,7 +9,7 @@ interface Props {
   form: FormData;
 }
 
-const PUBLISHED_BASE = 'https://nodecraft-forms.lovable.app';
+const PUBLISHED_BASE = 'https://twobrain.lovable.app';
 
 function CopyField({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -66,7 +66,7 @@ export default function FormShare({ form }: Props) {
   allow="clipboard-write"
 ></iframe>`;
 
-  const scriptCode = `<div id="nodecraft-form-${form.id}"></div>
+  const scriptCode = `<div id="twobrain-form-${form.id}"></div>
 <script>
   (function() {
     var iframe = document.createElement('iframe');
@@ -76,7 +76,7 @@ export default function FormShare({ form }: Props) {
     iframe.frameBorder = '0';
     iframe.style.borderRadius = '12px';
     iframe.style.overflow = 'hidden';
-    document.getElementById('nodecraft-form-${form.id}').appendChild(iframe);
+    document.getElementById('twobrain-form-${form.id}').appendChild(iframe);
   })();
 </script>`;
 

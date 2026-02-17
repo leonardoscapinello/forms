@@ -90,7 +90,7 @@ function GeneralTab() {
         <h2 className="text-base font-semibold text-foreground">Informações do sistema</h2>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Nome do sistema</Label>
-          <Input defaultValue="FormFlow" className="text-sm max-w-sm" />
+          <Input defaultValue="twobrain" className="text-sm max-w-sm" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Descrição</Label>
