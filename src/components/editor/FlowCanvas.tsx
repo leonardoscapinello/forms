@@ -163,6 +163,7 @@ function FlowCanvasInner({
           label: vop.label,
           operations: vop.operations,
           variables,
+          allInputElements,
           onChange: (patch: Partial<VariableOpNodeData>) => onVariableOpChange(vop.id, patch),
           onDelete: () => onVariableOpDelete(vop.id),
         },
