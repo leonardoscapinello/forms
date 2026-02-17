@@ -106,32 +106,26 @@ export default function PageListPanel({
 
       {pagesOpen && (
         <div className="overflow-auto p-2 space-y-1">
-          {/* Welcome screen toggle */}
-          <div className="px-3 py-2 rounded-lg border border-border/50 mb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Home className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Tela de início</span>
-              </div>
-              <Switch
-                checked={!!showWelcomeScreen}
-                onCheckedChange={(checked) => onToggleWelcomeScreen?.(checked)}
-                className="scale-75"
-              />
+          {/* Welcome screen — same style as pages, with switch */}
+          <div
+            className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+              isWelcomeSelected
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'hover:bg-muted border border-transparent'
+            }`}
+            onClick={() => showWelcomeScreen && onSelectWelcome?.()}
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-xs text-muted-foreground font-mono w-5 text-center flex-shrink-0 opacity-0 select-none">0</span>
+              <Home className="h-4 w-4 flex-shrink-0" />
+              <span className={`text-sm font-medium truncate ${!showWelcomeScreen ? 'opacity-40' : ''}`}>Tela de início</span>
             </div>
-            {showWelcomeScreen && (
-              <button
-                className={`mt-2 w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
-                  isWelcomeSelected
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => onSelectWelcome?.()}
-              >
-                <Home className="h-3 w-3" />
-                <span className="font-medium">Editar tela de início</span>
-              </button>
-            )}
+            <Switch
+              checked={!!showWelcomeScreen}
+              onCheckedChange={(checked) => { onToggleWelcomeScreen?.(checked); }}
+              className="scale-75 flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
 
           {pages.length === 0 ? (
@@ -175,25 +169,20 @@ export default function PageListPanel({
             ))
           )}
 
-          {/* Thank you page — fixed, non-removable */}
-          <div className="px-3 py-2 rounded-lg border border-border/50 mt-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Tela de obrigado</span>
-              </div>
+          {/* Thank you page — same style as pages, non-removable */}
+          <div
+            className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+              isThankYouSelected
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'hover:bg-muted border border-transparent'
+            }`}
+            onClick={() => onSelectThankYou?.()}
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-xs text-muted-foreground font-mono w-5 text-center flex-shrink-0 opacity-0 select-none">0</span>
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium truncate">Tela de obrigado</span>
             </div>
-            <button
-              className={`mt-2 w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
-                isThankYouSelected
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => onSelectThankYou?.()}
-            >
-              <CheckCircle className="h-3 w-3" />
-              <span className="font-medium">Editar tela de obrigado</span>
-            </button>
           </div>
         </div>
       )}
