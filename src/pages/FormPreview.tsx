@@ -25,6 +25,7 @@ import LoadingPreview from '@/components/preview/LoadingPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable, VariableAssignment, VariableOpNodeData } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
+import DebugPanel from '@/components/preview/DebugPanel';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -426,8 +427,25 @@ export default function FormPreview() {
     exit: (d: number) => ({ y: d > 0 ? -40 : 40, opacity: 0 }),
   };
 
+  const hasVariables = (form.variables?.length ?? 0) > 0;
+
+  // Build variable debug entries
+  const variableDebugEntries = (form.variables || []).map(v => ({
+    name: v.name,
+    type: v.type,
+    value: answers[`__var_${v.name}`] ?? v.defaultValue ?? '',
+  }));
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative">
+      {/* Debug panel — only shown when form has variables */}
+      {hasVariables && (
+        <DebugPanel
+          entries={variableDebugEntries}
+          currentPage={currentPage?.title ?? (isWelcome ? 'Boas-vindas' : 'Concluído')}
+        />
+      )}
+
       {/* Close */}
       <div className="absolute top-4 right-4 z-20">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/editor/${id}`)}>
