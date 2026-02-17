@@ -9,6 +9,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import PageListPanel from '@/components/editor/PageListPanel';
 import FormResponses from '@/components/editor/FormResponses';
 import FormShare from '@/components/editor/FormShare';
+import FormSettings from '@/components/editor/FormSettings';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
@@ -17,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, ChevronRight, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import { useEffect, useCallback, useState } from 'react';
 
-type EditorView = 'pages' | 'workflow' | 'responses' | 'share';
+type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
@@ -351,7 +352,7 @@ export default function FormEditor() {
 
           {/* View switcher */}
           <div className="flex items-center gap-1 ml-6">
-            {(['pages', 'workflow', 'responses', 'share'] as const).map(view => (
+            {(['pages', 'workflow', 'responses', 'share', 'settings'] as const).map(view => (
               <button
                 key={view}
                 onClick={() => setEditorView(view)}
@@ -361,7 +362,11 @@ export default function FormEditor() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                {view === 'pages' ? 'Páginas' : view === 'workflow' ? 'Workflow' : view === 'responses' ? 'Respostas' : 'Compartilhar'}
+                {view === 'pages' ? 'Páginas'
+                  : view === 'workflow' ? 'Workflow'
+                  : view === 'responses' ? 'Respostas'
+                  : view === 'share' ? 'Compartilhar'
+                  : 'Configurações'}
               </button>
             ))}
           </div>
@@ -543,6 +548,11 @@ export default function FormEditor() {
         {/* Share view */}
         {editorView === 'share' && (
           <FormShare form={form} />
+        )}
+
+        {/* Settings view */}
+        {editorView === 'settings' && (
+          <FormSettings form={form} onUpdate={(patch) => updateForm(form.id, patch)} />
         )}
       </div>
     </div>

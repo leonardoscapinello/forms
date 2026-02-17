@@ -292,6 +292,15 @@ export interface AnalyticsNodeData {
   customEventName?: string;
 }
 
+/** A pixel event fired automatically when the form loads */
+export interface FormPixelEvent {
+  id: string;
+  platform: AnalyticsPlatform;
+  /** 'PageView' is default; use PixelEventType for others */
+  eventType: PixelEventType | 'PageView';
+  customEventName?: string;
+}
+
 export interface FlowEdge {
   id: string;
   source: string;
@@ -386,6 +395,8 @@ export interface FormData {
   variableOpNodes?: VariableOpNodeData[];
   integrationNodes?: IntegrationNodeData[];
   analyticsNodes?: AnalyticsNodeData[];
+  /** Pixel events fired automatically when the form is loaded */
+  pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];
   flowEdges?: FlowEdge[];
   /** Form variables for dynamic content and logic */

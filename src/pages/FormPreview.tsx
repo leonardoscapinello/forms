@@ -92,6 +92,56 @@ export default function FormPreview() {
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fire pixel load events once the form is ready
+  useEffect(() => {
+    if (!form?.id) return;
+    const loadEvents = form.pixelLoadEvents || [];
+    if (loadEvents.length === 0) return;
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+    for (const evt of loadEvents) {
+      const eventName = evt.eventType === 'custom'
+        ? (evt.customEventName || 'CustomEvent')
+        : evt.eventType; // 'PageView', 'Lead', etc.
+      const eventId = `${form.id}_load_${evt.id}_${Date.now()}`;
+
+      // Client-side script (non-blocking)
+      if (typeof window !== 'undefined') {
+        try {
+          if (evt.platform === 'meta_pixel' && (window as any).fbq)
+            (window as any).fbq('track', eventName, {}, { eventID: eventId });
+          if (evt.platform === 'google_analytics' && (window as any).gtag)
+            (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId });
+          if (evt.platform === 'tiktok_pixel' && (window as any).ttq)
+            (window as any).ttq.track(eventName, {}, { event_id: eventId });
+          if (evt.platform === 'linkedin_pixel' && (window as any).lintrk)
+            (window as any).lintrk('track', { conversion_id: eventId });
+        } catch (_) {}
+      }
+
+      // Server-side API (non-blocking)
+      if (projectId && anonKey) {
+        fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
+          body: JSON.stringify({
+            platform: evt.platform,
+            eventName,
+            eventId,
+            formId: form.id,
+            answers: {},
+            variables: {},
+            userData: {},
+            sourceUrl,
+          }),
+        }).catch(() => {});
+      }
+    }
+  }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
   useEffect(() => { formRef.current = form; }, [form]);
