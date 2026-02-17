@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,38 +14,65 @@ async function sha256(value: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Save event log to database
+async function saveEventLog(supabaseAdmin: ReturnType<typeof createClient>, logEntry: {
+  form_id: string;
+  response_id?: string;
+  platform: string;
+  event_name: string;
+  event_id?: string;
+  trigger_type: string;
+  fired_client: boolean;
+  fired_server: boolean;
+  server_response?: Record<string, any>;
+  source_url?: string;
+  user_agent?: string;
+  custom_params?: Record<string, any>;
+}) {
+  try {
+    await supabaseAdmin.from('pixel_events_log').insert(logEntry);
+  } catch (e) {
+    console.error('Failed to save pixel event log:', e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Supabase admin client for logging
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     const body = await req.json();
     const {
       platform,
       eventName,
-      eventId,       // deduplication ID (same as client-side)
+      eventId,
       formId,
-      // New rich payload (from buildWebhookPayload)
+      triggerType = 'flow_node', // 'load_event' | 'flow_node'
+      firedClient = false,        // was client-side already fired?
+      responseId,
       webhookPayload,
-      // Legacy flat fields (kept for backward compat)
       answers,
       variables,
-      userData,      // { email?, phone? } — raw, will be hashed
+      userData,
       sourceUrl,
-      customParams,  // { [key]: value } — extra params per platform
+      userAgent,
+      customParams,
     } = body;
 
     const results: Record<string, any> = {};
+    let serverFired = false;
 
-    // Resolve fields from new structured payload or legacy flat payload
-    const resolvedSourceUrl = webhookPayload?.event
-      ? (sourceUrl || '')
-      : (sourceUrl || '');
+    // Resolve fields
+    const resolvedSourceUrl = sourceUrl || '';
     const resolvedFormId = formId || webhookPayload?.event?.form_id || '';
     const resolvedVariables = variables || webhookPayload?.variables || {};
     const resolvedUserData = userData || (() => {
-      // Try to extract email/phone from typed answers in new payload
       const ans = webhookPayload?.answers || {};
       let email: string | undefined;
       let phone: string | undefined;
@@ -68,16 +96,13 @@ serve(async (req) => {
         const userData_hashed: Record<string, string> = {};
         if (resolvedUserData?.email) userData_hashed.em = await sha256(resolvedUserData.email);
         if (resolvedUserData?.phone) {
-          const phoneClean = resolvedUserData.phone.replace(/\D/g, '');
-          userData_hashed.ph = await sha256(phoneClean);
+          userData_hashed.ph = await sha256(resolvedUserData.phone.replace(/\D/g, ''));
         }
 
         const customData: Record<string, any> = {
           form_id: resolvedFormId,
           ...(customParams || {}),
-          ...Object.fromEntries(
-            Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])
-          ),
+          ...Object.fromEntries(Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])),
         };
 
         const payload = {
@@ -98,6 +123,7 @@ serve(async (req) => {
         );
         const data = await res.json();
         results.meta = { ok: res.ok, data };
+        if (res.ok) serverFired = true;
       }
     }
 
@@ -118,9 +144,7 @@ serve(async (req) => {
               form_id: resolvedFormId,
               event_dedup_id: eventId,
               ...(customParams || {}),
-              ...Object.fromEntries(
-                Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])
-              ),
+              ...Object.fromEntries(Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])),
             },
           }],
         };
@@ -130,6 +154,7 @@ serve(async (req) => {
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
         );
         results.ga4 = { ok: res.ok, status: res.status };
+        if (res.ok) serverFired = true;
       }
     }
 
@@ -144,8 +169,7 @@ serve(async (req) => {
         const userData_hashed: Record<string, string> = {};
         if (resolvedUserData?.email) userData_hashed.email = await sha256(resolvedUserData.email);
         if (resolvedUserData?.phone) {
-          const phoneClean = resolvedUserData.phone.replace(/\D/g, '');
-          userData_hashed.phone_number = await sha256(phoneClean);
+          userData_hashed.phone_number = await sha256(resolvedUserData.phone.replace(/\D/g, ''));
         }
 
         const payload = {
@@ -160,22 +184,18 @@ serve(async (req) => {
           properties: {
             contents: [{ content_id: resolvedFormId }],
             ...(customParams || {}),
-            ...Object.fromEntries(
-              Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])
-            ),
+            ...Object.fromEntries(Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])),
           },
         };
 
         const res = await fetch('https://business-api.tiktok.com/open_api/v1.3/event/track/', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Token': accessToken,
-          },
+          headers: { 'Content-Type': 'application/json', 'Access-Token': accessToken },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
         results.tiktok = { ok: res.ok, data };
+        if (res.ok) serverFired = true;
       }
     }
 
@@ -209,6 +229,7 @@ serve(async (req) => {
           body: JSON.stringify(payload),
         });
         results.linkedin = { ok: res.ok, status: res.status };
+        if (res.ok) serverFired = true;
       }
     }
 
@@ -220,7 +241,6 @@ serve(async (req) => {
       if (!url) {
         results.webhook = { skipped: true, reason: 'No URL configured on the node' };
       } else {
-        // Use the pre-built structured payload if provided, otherwise build a basic one
         const outPayload = webhookPayload || {
           event: {
             id: eventId,
@@ -230,7 +250,7 @@ serve(async (req) => {
           },
           respondent: {
             ip: body.respondentIp ?? null,
-            user_agent: body.userAgent ?? null,
+            user_agent: userAgent ?? null,
             geolocation: null,
           },
           answers: answers || {},
@@ -246,7 +266,47 @@ serve(async (req) => {
           body: method !== 'GET' ? JSON.stringify(outPayload) : undefined,
         });
         results.webhook = { ok: res.ok, status: res.status };
+        serverFired = res.ok;
+
+        // Log webhook fires as analytics event too
+        await saveEventLog(supabaseAdmin, {
+          form_id: resolvedFormId,
+          response_id: responseId,
+          platform: 'webhook',
+          event_name: 'webhook_fired',
+          event_id: eventId,
+          trigger_type: triggerType,
+          fired_client: firedClient,
+          fired_server: serverFired,
+          server_response: results,
+          source_url: resolvedSourceUrl,
+          user_agent: userAgent,
+          custom_params: customParams,
+        });
+
+        return new Response(JSON.stringify({ success: true, results }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
+    }
+
+    // ── Save pixel event log ──────────────────────────────────────────────────
+    if (platform !== 'webhook') {
+      await saveEventLog(supabaseAdmin, {
+        form_id: resolvedFormId,
+        response_id: responseId,
+        platform,
+        event_name: eventName,
+        event_id: eventId,
+        trigger_type: triggerType,
+        fired_client: firedClient,
+        fired_server: serverFired,
+        server_response: results,
+        source_url: resolvedSourceUrl,
+        user_agent: userAgent,
+        custom_params: customParams,
+      });
     }
 
     return new Response(JSON.stringify({ success: true, results }), {

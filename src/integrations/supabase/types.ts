@@ -152,6 +152,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pixel_events_log: {
+        Row: {
+          created_at: string
+          custom_params: Json | null
+          event_id: string | null
+          event_name: string
+          fired_client: boolean | null
+          fired_server: boolean | null
+          form_id: string
+          id: string
+          platform: string
+          response_id: string | null
+          server_response: Json | null
+          source_url: string | null
+          trigger_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_params?: Json | null
+          event_id?: string | null
+          event_name: string
+          fired_client?: boolean | null
+          fired_server?: boolean | null
+          form_id: string
+          id?: string
+          platform: string
+          response_id?: string | null
+          server_response?: Json | null
+          source_url?: string | null
+          trigger_type?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_params?: Json | null
+          event_id?: string | null
+          event_name?: string
+          fired_client?: boolean | null
+          fired_server?: boolean | null
+          form_id?: string
+          id?: string
+          platform?: string
+          response_id?: string | null
+          server_response?: Json | null
+          source_url?: string | null
+          trigger_type?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

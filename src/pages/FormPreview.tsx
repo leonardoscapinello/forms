@@ -112,28 +112,39 @@ export default function FormPreview() {
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const { responseId } = sessionMetaRef.current;
 
     for (const evt of loadEvents) {
       const eventName = evt.eventType === 'custom'
         ? (evt.customEventName || 'CustomEvent')
-        : evt.eventType; // 'PageView', 'Lead', etc.
+        : evt.eventType;
       const eventId = `${form.id}_load_${evt.id}_${Date.now()}`;
 
       // Client-side script (non-blocking)
+      let firedClient = false;
       if (typeof window !== 'undefined') {
         try {
-          if (evt.platform === 'meta_pixel' && (window as any).fbq)
+          if (evt.platform === 'meta_pixel' && (window as any).fbq) {
             (window as any).fbq('track', eventName, {}, { eventID: eventId });
-          if (evt.platform === 'google_analytics' && (window as any).gtag)
+            firedClient = true;
+          }
+          if (evt.platform === 'google_analytics' && (window as any).gtag) {
             (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId });
-          if (evt.platform === 'tiktok_pixel' && (window as any).ttq)
+            firedClient = true;
+          }
+          if (evt.platform === 'tiktok_pixel' && (window as any).ttq) {
             (window as any).ttq.track(eventName, {}, { event_id: eventId });
-          if (evt.platform === 'linkedin_pixel' && (window as any).lintrk)
+            firedClient = true;
+          }
+          if (evt.platform === 'linkedin_pixel' && (window as any).lintrk) {
             (window as any).lintrk('track', { conversion_id: eventId });
+            firedClient = true;
+          }
         } catch (_) {}
       }
 
-      // Server-side API (non-blocking)
+      // Server-side API (non-blocking) — always called to log the event
       if (projectId && anonKey) {
         fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
           method: 'POST',
@@ -143,10 +154,14 @@ export default function FormPreview() {
             eventName,
             eventId,
             formId: form.id,
+            responseId,
+            triggerType: 'load_event',
+            firedClient,
             answers: {},
             variables: {},
             userData: {},
             sourceUrl,
+            userAgent,
           }),
         }).catch(() => {});
       }
@@ -439,20 +454,29 @@ export default function FormPreview() {
             );
 
             // Client-side script
+            let firedClient = false;
             if (typeof window !== 'undefined') {
               try {
-                if (entry.platform === 'meta_pixel' && (window as any).fbq)
+                if (entry.platform === 'meta_pixel' && (window as any).fbq) {
                   (window as any).fbq('track', eventName, extraParams, { eventID: eventId });
-                if (entry.platform === 'google_analytics' && (window as any).gtag)
+                  firedClient = true;
+                }
+                if (entry.platform === 'google_analytics' && (window as any).gtag) {
                   (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), { event_dedup_id: eventId, ...extraParams });
-                if (entry.platform === 'tiktok_pixel' && (window as any).ttq)
+                  firedClient = true;
+                }
+                if (entry.platform === 'tiktok_pixel' && (window as any).ttq) {
                   (window as any).ttq.track(eventName, extraParams, { event_id: eventId });
-                if (entry.platform === 'linkedin_pixel' && (window as any).lintrk)
+                  firedClient = true;
+                }
+                if (entry.platform === 'linkedin_pixel' && (window as any).lintrk) {
                   (window as any).lintrk('track', { conversion_id: eventId, ...extraParams });
+                  firedClient = true;
+                }
               } catch (_) {}
             }
 
-            // Server-side API (non-blocking)
+            // Server-side API (non-blocking) — always called to log the event
             if (projectId && anonKey) {
               fetch(`https://${projectId}.supabase.co/functions/v1/pixel-event`, {
                 method: 'POST',
@@ -462,6 +486,9 @@ export default function FormPreview() {
                   eventName,
                   eventId,
                   formId: f?.id,
+                  responseId: sessionMetaRef.current.responseId,
+                  triggerType: 'flow_node',
+                  firedClient,
                   answers: currentAns,
                   variables,
                   customParams: extraParams,
@@ -470,6 +497,7 @@ export default function FormPreview() {
                     phone: phoneVal ? phoneVal[1] : undefined,
                   },
                   sourceUrl,
+                  userAgent: sessionMetaRef.current.userAgent,
                 }),
               }).catch(() => {});
             }
