@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Check, X, Star, CheckSquare, Loader2, AlertCircl
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
 import BeforeAfterSlider from '@/components/preview/BeforeAfterSlider';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FunnelPage } from '@/types/form';
+import { FunnelPage, FormData as AppFormData } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
@@ -27,35 +27,70 @@ import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import DebugPanel from '@/components/preview/DebugPanel';
 
+function buildDefaults(form: AppFormData | null) {
+  if (!form) return {};
+  const defaults: Record<string, any> = {};
+  for (const page of form.pages || []) {
+    for (const el of page.elements || []) {
+      if (el.defaultValue !== undefined && el.defaultValue !== '') {
+        defaults[el.id] = el.defaultValue;
+      }
+    }
+  }
+  return defaults;
+}
+
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getForm } = useFormStore();
-  const form = getForm(id!);
 
-  const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(() => {
-    // Skip welcome screen if disabled
-    if (form && !form.showWelcomeScreen) return 0;
-    return null; // null = welcome
-  });
-  const [answers, setAnswers] = useState<Record<string, any>>(() => {
-    if (!form) return {};
-    const defaults: Record<string, any> = {};
-    for (const page of form.pages || []) {
-      for (const el of page.elements || []) {
-        if (el.defaultValue !== undefined && el.defaultValue !== '') {
-          defaults[el.id] = el.defaultValue;
-        }
-      }
-    }
-    return defaults;
-  });
+  // Try to get form from store first (when editor is open), otherwise fetch publicly
+  const storeForm = getForm(id!);
+  const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
+  const [publicLoading, setPublicLoading] = useState(!storeForm);
+
+  useEffect(() => {
+    if (storeForm || !id) return;
+    setPublicLoading(true);
+    supabase
+      .from('forms')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) { setPublicLoading(false); return; }
+        const d = data.data as Record<string, unknown>;
+        const form: AppFormData = {
+          ...(d as unknown as AppFormData),
+          id: data.id,
+          title: data.title,
+          status: data.status as AppFormData['status'],
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+        };
+        setPublicForm(form);
+        setPublicLoading(false);
+      });
+  }, [id, storeForm]);
+
+  const form = storeForm || publicForm;
+
+  const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  // Initialise answers and page index once form is loaded
+  useEffect(() => {
+    if (!form) return;
+    setAnswers(buildDefaults(form));
+    setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
+  }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
@@ -494,7 +529,19 @@ export default function FormPreview() {
     return () => window.removeEventListener('keydown', handler);
   }, [goNext, goBack]);
 
-  if (!form) return null;
+  if (publicLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!form) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <p className="text-muted-foreground text-sm">Formulário não encontrado.</p>
+    </div>
+  );
 
   const variants = {
     enter: (d: number) => ({ y: d > 0 ? 40 : -40, opacity: 0 }),
