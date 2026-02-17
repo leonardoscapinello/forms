@@ -138,9 +138,11 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           {['input_text', 'input_email', 'input_phone', 'input_address', 'input_select', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight'].includes(element.type) && (
             <div className="space-y-2">
               <Label>Placeholder</Label>
-              <Input
+              <VariableInput
                 value={element.placeholder || ''}
-                onChange={e => onChange({ placeholder: e.target.value })}
+                onChange={v => onChange({ placeholder: v })}
+                variables={variables}
+                placeholder="Texto de exemplo..."
               />
             </div>
           )}
