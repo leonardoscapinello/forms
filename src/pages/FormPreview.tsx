@@ -503,7 +503,7 @@ export default function FormPreview() {
             )}
 
             {/* Page content */}
-            {currentPage && (
+            {currentPage && !isThankYou && (
               <div className="space-y-5 md:space-y-8">
                 {currentPage.elements.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">Página sem elementos</p>
