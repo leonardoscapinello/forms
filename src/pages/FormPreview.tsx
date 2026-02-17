@@ -1274,9 +1274,9 @@ function InteractiveElement({
             <input
               type="text"
               inputMode="email"
-              value={value || ''}
+              value={t(value) || ''}
               onChange={e => handleEmailChange(e.target.value)}
-              placeholder={element.placeholder || 'seu@email.com'}
+              placeholder={t(element.placeholder) || 'seu@email.com'}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -1347,9 +1347,9 @@ function InteractiveElement({
       return withFieldHeader(
         <input
           type="text"
-          value={value || ''}
+          value={t(value) || ''}
           onChange={e => onChange(e.target.value)}
-          placeholder={element.placeholder || 'Digite aqui...'}
+          placeholder={t(element.placeholder) || 'Digite aqui...'}
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
           autoFocus
         />
@@ -1359,9 +1359,9 @@ function InteractiveElement({
       return withFieldHeader(
         <input
           type="number"
-          value={value || ''}
+          value={t(value) || ''}
           onChange={e => onChange(e.target.value)}
-          placeholder={element.placeholder || '0'}
+          placeholder={t(element.placeholder) || '0'}
           min={element.min}
           max={element.max}
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -1372,9 +1372,9 @@ function InteractiveElement({
     case 'input_textarea':
       return withFieldHeader(
         <textarea
-          value={value || ''}
+          value={t(value) || ''}
           onChange={e => onChange(e.target.value)}
-          placeholder={element.placeholder || 'Digite sua mensagem...'}
+          placeholder={t(element.placeholder) || 'Digite sua mensagem...'}
           rows={3}
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
           autoFocus
@@ -1388,7 +1388,7 @@ function InteractiveElement({
           onChange={onChange}
           dateMode={element.dateMode}
           dateFormat={element.dateFormat}
-          placeholder={element.placeholder}
+          placeholder={t(element.placeholder)}
         />
       );
 
@@ -1581,8 +1581,8 @@ function InteractiveElement({
             })}
           </div>
           <div className="flex justify-between text-xs text-muted-foreground px-1">
-            <span>{element.npsLowLabel || 'Nada provável'}</span>
-            <span>{element.npsHighLabel || 'Muito provável'}</span>
+            <span>{t(element.npsLowLabel) || 'Nada provável'}</span>
+            <span>{t(element.npsHighLabel) || 'Muito provável'}</span>
           </div>
         </div>
       );
