@@ -1,5 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath, useReactFlow } from '@xyflow/react';
-import { X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 interface DeletableEdgeData {
   onDelete?: (id: string) => void;
@@ -21,9 +21,7 @@ export default function DeletableEdge({
     e.stopPropagation();
     const edgeToDelete = getEdges().find(edge => edge.id === id);
     if (edgeToDelete) {
-      // Trigger onEdgesDelete by removing from state — ReactFlow fires the event
       setEdges(edges => edges.filter(edge => edge.id !== id));
-      // Also call custom handler if provided (for saveEdges)
       data?.onDelete?.(id);
     }
   };
@@ -44,13 +42,13 @@ export default function DeletableEdge({
               bg-background border border-border
               text-muted-foreground hover:text-destructive hover:border-destructive hover:bg-destructive/5
               shadow-sm transition-all duration-150
-              opacity-40
+              opacity-0
               [.react-flow__edge:hover_&]:opacity-100
               [.react-flow__edge.selected_&]:opacity-100
             "
             title="Remover conexão"
           >
-            <X className="h-3 w-3" />
+            <Trash2 className="h-3 w-3" />
           </button>
         </div>
       </EdgeLabelRenderer>
