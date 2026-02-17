@@ -1,6 +1,6 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { GitBranch, Plus, Trash2 } from 'lucide-react';
+import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { ConditionBranch, ConditionGroup, Question, FormVariable, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ interface ConditionNodeDataProps {
 
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
   const { label, branches, questions, variables = [], onChange, onDelete } = data;
+  const [expandedBranch, setExpandedBranch] = useState<string | null>(branches[0]?.id ?? null);
 
   const addBranch = useCallback(() => {
     const newBranch: ConditionBranch = {
@@ -26,25 +27,26 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
       conditionGroup: createDefaultConditionGroup(questions[0]?.id || ''),
     };
     onChange({ branches: [...branches, newBranch] });
+    setExpandedBranch(newBranch.id);
   }, [branches, questions, onChange]);
 
   const updateBranch = useCallback((branchId: string, patch: Partial<ConditionBranch>) => {
-    onChange({
-      branches: branches.map(b => (b.id === branchId ? { ...b, ...patch } : b)),
-    });
+    onChange({ branches: branches.map(b => (b.id === branchId ? { ...b, ...patch } : b)) });
   }, [branches, onChange]);
 
   const removeBranch = useCallback((branchId: string) => {
-    onChange({ branches: branches.filter(b => b.id !== branchId) });
-  }, [branches, onChange]);
+    const next = branches.filter(b => b.id !== branchId);
+    onChange({ branches: next });
+    if (expandedBranch === branchId) setExpandedBranch(next[0]?.id ?? null);
+  }, [branches, onChange, expandedBranch]);
 
   return (
     <div
       className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-        selected ? 'border-primary shadow-md ring-2 ring-primary/10' : 'border-border'
+        selected ? 'border-node-condition-accent shadow-md ring-2 ring-node-condition-accent/20' : 'border-border'
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card" />
 
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-node-condition-accent/30 bg-node-condition rounded-t-xl">
@@ -60,19 +62,18 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
       </div>
 
       {/* Label */}
-      <div className="px-3 pt-2.5">
+      <div className="px-3 pt-2.5 pb-1">
         <Input
           value={label}
           onChange={e => onChange({ label: e.target.value })}
-          placeholder="Nome da condição"
+          placeholder="Nome do nó"
           className="text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent h-8"
         />
       </div>
 
       {/* Branches */}
-      <div className="p-3 space-y-3">
+      <div className="px-3 pb-3 space-y-1.5">
         {branches.map((branch, idx) => {
-          // Migrate old branches that don't have conditionGroup
           const group: ConditionGroup = branch.conditionGroup || {
             id: crypto.randomUUID(),
             logic: 'and',
@@ -85,42 +86,63 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
             groups: [],
           };
 
+          const isExpanded = expandedBranch === branch.id;
+
           return (
-            <div key={branch.id} className="relative border border-border rounded-lg p-2.5 space-y-1.5 bg-muted/20">
+            <div key={branch.id} className="relative rounded-lg border border-border bg-muted/20 overflow-hidden">
+              {/* Branch output handle — positioned on the right side of header */}
               <Handle
                 type="source"
                 position={Position.Right}
                 id={`branch-${branch.id}`}
-                className="!w-3 !h-3 !bg-primary !border-2 !border-card"
-                style={{ top: 'auto', right: -6 }}
+                className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card"
+                style={{ top: 'auto', right: -6, bottom: 'auto' }}
               />
 
-              <div className="flex items-center justify-between">
+              {/* Branch header — collapsible */}
+              <div
+                className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+                onClick={() => setExpandedBranch(isExpanded ? null : branch.id)}
+              >
+                {isExpanded
+                  ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  : <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                }
+                <span className="text-[11px] font-medium text-node-condition-accent flex-shrink-0 w-5">{idx + 1}.</span>
                 <Input
                   value={branch.label}
-                  onChange={e => updateBranch(branch.id, { label: e.target.value })}
-                  className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent"
+                  onChange={e => { e.stopPropagation(); updateBranch(branch.id, { label: e.target.value }); }}
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent flex-1"
                   placeholder={`Caminho ${idx + 1}`}
                 />
                 {branches.length > 1 && (
-                  <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => removeBranch(branch.id)}>
+                  <button
+                    onClick={e => { e.stopPropagation(); removeBranch(branch.id); }}
+                    className="p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                  >
                     <Trash2 className="h-2.5 w-2.5" />
-                  </Button>
+                  </button>
                 )}
               </div>
 
-              <ConditionGroupEditor
-                group={group}
-                questions={questions}
-                variables={variables}
-                onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
-              />
+              {/* Branch conditions — shown when expanded */}
+              {isExpanded && (
+                <div className="px-2.5 pb-2.5">
+                  <ConditionGroupEditor
+                    group={group}
+                    questions={questions}
+                    variables={variables}
+                    onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
 
         {/* Default/else output */}
-        <div className="relative flex items-center gap-2 text-[11px] text-muted-foreground px-2 py-1.5 rounded border border-dashed border-border">
+        <div className="relative flex items-center gap-2 text-xs text-muted-foreground px-2.5 py-1.5 rounded-lg border border-dashed border-border">
           <Handle
             type="source"
             position={Position.Right}
@@ -128,10 +150,15 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
             className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card"
             style={{ top: 'auto', right: -6 }}
           />
-          <span>Padrão (else)</span>
+          <span className="italic">Padrão (else)</span>
         </div>
 
-        <Button variant="ghost" size="sm" className="w-full text-[11px] h-7 text-muted-foreground border border-dashed border-border" onClick={addBranch}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs h-7 text-muted-foreground border border-dashed border-border"
+          onClick={addBranch}
+        >
           <Plus className="mr-1 h-3 w-3" />
           Adicionar caminho
         </Button>
