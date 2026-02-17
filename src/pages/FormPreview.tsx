@@ -23,7 +23,7 @@ import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
-import { FormVariable, VariableAssignment, VariableOpNodeData } from '@/types/form';
+import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import DebugPanel from '@/components/preview/DebugPanel';
 
@@ -130,10 +130,11 @@ export default function FormPreview() {
 
   /** Apply variableAssignments for a given page when entering it */
   const applyPageVariableAssignments = useCallback((page: import('@/types/form').FunnelPage, currentAnswers: Record<string, any>) => {
-    if (!page.variableAssignments?.length || !form?.variables?.length) return currentAnswers;
+    const f = formRef.current;
+    if (!page.variableAssignments?.length || !f?.variables?.length) return currentAnswers;
     const updated = { ...currentAnswers };
     for (const assignment of page.variableAssignments) {
-      const variable = form.variables?.find(v => v.id === assignment.variableId);
+      const variable = f.variables?.find(v => v.id === assignment.variableId);
       if (!variable) continue;
       if (assignment.sourceType === 'field' && assignment.sourceElementId) {
         const val = currentAnswers[assignment.sourceElementId];
@@ -141,69 +142,49 @@ export default function FormPreview() {
           updated[`__var_${variable.name}`] = String(val);
         }
       } else if (assignment.sourceType === 'free') {
-        const resolved = interpolateText(assignment.value || '', form.variables || [], currentAnswers);
+        const resolved = interpolateText(assignment.value || '', f.variables || [], currentAnswers);
         updated[`__var_${variable.name}`] = resolved;
       }
     }
     return updated;
-  }, [form]);
+  }, []);
 
-  /** Apply variableOpNode operations: arithmetic/assignment on variables */
-  const applyVariableOpNodes = useCallback((
+  /**
+   * Walk the workflow graph from `fromNodeId`, evaluating conditions and collecting
+   * variable-op nodes along the way.
+   *
+   * Returns: { nextNodeId, updatedAnswers }
+   *   - nextNodeId: 'p-<id>', 'end', or null (no connection)
+   *   - updatedAnswers: answers after applying all variable operations in the path
+   */
+  const walkWorkflow = useCallback((
     fromNodeId: string,
-    toNodeId: string,
     currentAnswers: Record<string, any>,
-  ): Record<string, any> => {
+  ): { nextNodeId: string | null; updatedAnswers: Record<string, any> } => {
     const f = formRef.current;
-    if (!f?.variableOpNodes?.length || !f?.flowEdges?.length || !f?.variables?.length) return currentAnswers;
+    const edges = f?.flowEdges || [];
 
-    const edges = f.flowEdges;
-    let updated = { ...currentAnswers };
+    if (!edges.length) return { nextNodeId: null, updatedAnswers: currentAnswers };
 
-    // BFS: collect all vo-* nodes on a path from fromNodeId to toNodeId
-    const voNodesToApply: typeof f.variableOpNodes = [];
-    const visited = new Set<string>();
-    const queue: string[] = [fromNodeId];
-
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (visited.has(current)) continue;
-      visited.add(current);
-
-      for (const edge of edges) {
-        if (edge.source !== current) continue;
-        const nextId = edge.target;
-        if (nextId === toNodeId) continue; // reached destination, stop branch
-        if (!nextId.startsWith('vo-')) continue;
-        const voId = nextId.replace('vo-', '');
-        const vop = f.variableOpNodes?.find(v => v.id === voId);
-        // Only include if this vo-node eventually connects to toNodeId
-        const leadsToTarget = edges.some(e => e.source === nextId && e.target === toNodeId);
-        if (vop && leadsToTarget && !visited.has(nextId)) {
-          voNodesToApply.push(vop);
-          queue.push(nextId);
-        }
-      }
-    }
-
-    for (const vop of voNodesToApply) {
+    // Apply operations from a single variable-op node
+    const applyVopNode = (vopId: string, answers: Record<string, any>): Record<string, any> => {
+      const vop = f?.variableOpNodes?.find(v => v.id === vopId);
+      if (!vop || !vop.operations?.length) return answers;
+      const updated = { ...answers };
       for (const op of vop.operations) {
-        const variable = f.variables?.find(v => v.id === op.variableId);
+        const variable = f?.variables?.find(v => v.id === op.variableId);
         if (!variable) continue;
-
         const storeKey = `__var_${variable.name}`;
         const currentRaw = updated[storeKey] ?? variable.defaultValue ?? '0';
         const currentNum = parseFloat(String(currentRaw)) || 0;
-
         let resolvedOperand: string;
         if (op.operandType === 'field' && op.operandFieldId) {
           const fieldVal = updated[op.operandFieldId];
           resolvedOperand = fieldVal !== undefined && fieldVal !== null ? String(fieldVal) : '0';
         } else {
-          resolvedOperand = interpolateText(op.operand || '0', f.variables || [], updated);
+          resolvedOperand = interpolateText(op.operand || '0', f?.variables || [], updated);
         }
         const operandNum = parseFloat(resolvedOperand) || 0;
-
         let result: string;
         switch (op.op) {
           case 'set':      result = resolvedOperand; break;
@@ -215,74 +196,68 @@ export default function FormPreview() {
         }
         updated[storeKey] = result;
       }
-    }
-    return updated;
-  }, []);
+      return updated;
+    };
 
-  /**
-   * Resolve the next node ID from the workflow graph.
-   * Handles: page → condition → page chains, page → page direct edges,
-   * and variable-op nodes in between.
-   */
-  const resolveNextNodeId = useCallback((fromNodeId: string, currentAnswersSnapshot: Record<string, any>): string | null => {
-    const f = formRef.current;
-    if (!f?.flowEdges?.length) return null;
-    const edges = f.flowEdges;
-
-    // Walk edges, skipping through condition (c-) and variable-op (vo-) nodes
-    // until we land on a page node (p-) or the 'end' node.
-    const walkFrom = (nodeId: string, visited = new Set<string>()): string | null => {
+    // DFS walk: returns { target, answers } or null
+    const walk = (
+      nodeId: string,
+      answers: Record<string, any>,
+      visited = new Set<string>(),
+    ): { nextNodeId: string; updatedAnswers: Record<string, any> } | null => {
       if (visited.has(nodeId)) return null;
       visited.add(nodeId);
 
       const outEdges = edges.filter(e => e.source === nodeId);
-      if (!outEdges.length) return null;
 
       for (const edge of outEdges) {
         const target = edge.target;
 
-        // Condition node — prefix is "c-" (set in FlowCanvas)
+        // Condition node (prefix "c-")
         if (target.startsWith('c-')) {
           const condId = target.replace('c-', '');
-          const condData = f.conditions?.find(c => c.id === condId);
+          const condData = f?.conditions?.find(c => c.id === condId);
           if (!condData) continue;
-          const matchedBranchId = resolveConditionBranch(condData, currentAnswersSnapshot, f.variables);
+          const matchedBranchId = resolveConditionBranch(condData, answers, f?.variables);
           const handleId = `branch-${matchedBranchId}`;
           const branchEdge = edges.find(e => e.source === target && e.sourceHandle === handleId);
           if (branchEdge) {
-            const result = walkFrom(branchEdge.target, visited);
-            if (result !== null) return result;
+            const result = walk(branchEdge.target, answers, visited);
+            if (result) return result;
           }
           continue;
         }
 
-        // Variable-op node — walk through it, operations will be applied separately
+        // Variable-op node — apply operations then continue walking
         if (target.startsWith('vo-')) {
-          const result = walkFrom(target, visited);
-          if (result !== null) return result;
+          const vopId = target.replace('vo-', '');
+          const answersAfterOp = applyVopNode(vopId, answers);
+          const result = walk(target, answersAfterOp, visited);
+          if (result) return result;
           continue;
         }
 
-        // Page node — destination found
-        if (target.startsWith('p-')) return target;
+        // Page node — destination
+        if (target.startsWith('p-')) return { nextNodeId: target, updatedAnswers: answers };
 
         // End node
-        if (target === 'end') return 'end';
+        if (target === 'end') return { nextNodeId: 'end', updatedAnswers: answers };
       }
 
       return null;
     };
 
-    return walkFrom(fromNodeId);
+    const result = walk(fromNodeId, currentAnswers);
+    return result ?? { nextNodeId: null, updatedAnswers: currentAnswers };
   }, []);
+
+
 
   const goNext = useCallback(async () => {
     if (isPageBlocked) return;
-
-    // Validate required fields
     if (!areRequiredFieldsFilled()) return;
 
-    // Run all async validators for current page elements
+    // Run async validators for current page
     if (currentPage) {
       const validators = currentPage.elements
         .map(el => validatorsRef.current[el.id])
@@ -295,44 +270,10 @@ export default function FormPreview() {
 
     setDirection(1);
 
-    if (currentPageIndex === null) {
-      // Coming from welcome screen — try workflow first
-      const fromNodeId = 'start';
-      let nextAnswers = answers;
+    const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
 
-      const nextNodeId = resolveNextNodeId(fromNodeId, nextAnswers);
-      if (nextNodeId && nextNodeId !== 'end') {
-        const pageId = nextNodeId.replace('p-', '');
-        const targetIndex = pages.findIndex(p => p.id === pageId);
-        if (targetIndex !== -1) {
-          const nextPage = pages[targetIndex];
-          const toNodeId = `p-${nextPage.id}`;
-          setAnswers(prev => {
-            const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
-            return applyPageVariableAssignments(nextPage, afterOps);
-          });
-          setCurrentPageIndex(targetIndex);
-          return;
-        }
-      }
-      // Fallback: first page sequentially or finish
-      if (pages.length > 0) {
-        const nextPage = pages[0];
-        const toNodeId = `p-${nextPage.id}`;
-        setAnswers(prev => {
-          const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
-          return applyPageVariableAssignments(nextPage, afterOps);
-        });
-        setCurrentPageIndex(0);
-      } else {
-        setFinished(true);
-      }
-      return;
-    }
-
-    // From a page — resolve via workflow
-    const fromNodeId = `p-${pages[currentPageIndex].id}`;
-    const nextNodeId = resolveNextNodeId(fromNodeId, answers);
+    // Walk workflow: resolves next page AND applies variable ops in one pass
+    const { nextNodeId, updatedAnswers } = walkWorkflow(fromNodeId, answers);
 
     if (nextNodeId === 'end') {
       setFinished(true);
@@ -344,29 +285,29 @@ export default function FormPreview() {
       const targetIndex = pages.findIndex(p => p.id === pageId);
       if (targetIndex !== -1) {
         const nextPage = pages[targetIndex];
-        const toNodeId = `p-${nextPage.id}`;
-        setAnswers(prev => {
-          const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
-          return applyPageVariableAssignments(nextPage, afterOps);
-        });
+        setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
         setCurrentPageIndex(targetIndex);
         return;
       }
     }
 
-    // Fallback: sequential navigation
-    if (currentPageIndex < pages.length - 1) {
+    // Fallback: sequential navigation (no workflow connection)
+    if (currentPageIndex === null) {
+      if (pages.length > 0) {
+        const nextPage = pages[0];
+        setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
+        setCurrentPageIndex(0);
+      } else {
+        setFinished(true);
+      }
+    } else if (currentPageIndex < pages.length - 1) {
       const nextPage = pages[currentPageIndex + 1];
-      const toNodeId = `p-${nextPage.id}`;
-      setAnswers(prev => {
-        const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
-        return applyPageVariableAssignments(nextPage, afterOps);
-      });
+      setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
       setCurrentPageIndex(currentPageIndex + 1);
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, applyVariableOpNodes, resolveNextNodeId, answers]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, answers]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
