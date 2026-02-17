@@ -24,6 +24,7 @@ import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable, VariableAssignment, VariableOpNodeData } from '@/types/form';
+import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -215,6 +216,61 @@ export default function FormPreview() {
     return updated;
   }, [form]);
 
+  /**
+   * Resolve the next node ID from the workflow graph.
+   * Handles: page → condition → page chains, page → page direct edges,
+   * and variable-op nodes in between.
+   */
+  const resolveNextNodeId = useCallback((fromNodeId: string, currentAnswersSnapshot: Record<string, any>): string | null => {
+    if (!form?.flowEdges?.length) return null;
+    const edges = form.flowEdges;
+
+    // Walk edges, skipping through condition and vo- nodes until we land on a page or 'end'
+    const walkFrom = (nodeId: string, visited = new Set<string>()): string | null => {
+      if (visited.has(nodeId)) return null;
+      visited.add(nodeId);
+
+      // Find direct outgoing edges
+      const outEdges = edges.filter(e => e.source === nodeId);
+      if (!outEdges.length) return null;
+
+      for (const edge of outEdges) {
+        const target = edge.target;
+
+        // If it's a condition node, resolve the correct branch
+        if (target.startsWith('cond-')) {
+          const condId = target.replace('cond-', '');
+          const condData = form.conditions?.find(c => c.id === condId);
+          if (!condData) continue;
+          const matchedBranchId = resolveConditionBranch(condData, currentAnswersSnapshot, form.variables);
+          const handleId = `branch-${matchedBranchId}`;
+          const branchEdge = edges.find(e => e.source === target && e.sourceHandle === handleId);
+          if (branchEdge) {
+            const result = walkFrom(branchEdge.target, visited);
+            if (result !== null) return result;
+          }
+          continue;
+        }
+
+        // If it's a variable-op node, pass through and continue walking
+        if (target.startsWith('vo-')) {
+          const result = walkFrom(target, visited);
+          if (result !== null) return result;
+        }
+
+        // If it's a page node, that's our destination
+        if (target.startsWith('p-')) return target;
+
+        // 'end' node
+        if (target === 'end') return 'end';
+      }
+
+      return null;
+    };
+
+    return walkFrom(fromNodeId);
+  }, [form]);
+
   const goNext = useCallback(async () => {
     if (isPageBlocked) return;
 
@@ -233,10 +289,30 @@ export default function FormPreview() {
     }
 
     setDirection(1);
+
     if (currentPageIndex === null) {
+      // Coming from welcome screen — try workflow first
+      const fromNodeId = 'start';
+      let nextAnswers = answers;
+
+      const nextNodeId = resolveNextNodeId(fromNodeId, nextAnswers);
+      if (nextNodeId && nextNodeId !== 'end') {
+        const pageId = nextNodeId.replace('p-', '');
+        const targetIndex = pages.findIndex(p => p.id === pageId);
+        if (targetIndex !== -1) {
+          const nextPage = pages[targetIndex];
+          const toNodeId = `p-${nextPage.id}`;
+          setAnswers(prev => {
+            const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
+            return applyPageVariableAssignments(nextPage, afterOps);
+          });
+          setCurrentPageIndex(targetIndex);
+          return;
+        }
+      }
+      // Fallback: first page sequentially or finish
       if (pages.length > 0) {
         const nextPage = pages[0];
-        const fromNodeId = 'start';
         const toNodeId = `p-${nextPage.id}`;
         setAnswers(prev => {
           const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
@@ -248,9 +324,34 @@ export default function FormPreview() {
       }
       return;
     }
+
+    // From a page — resolve via workflow
+    const fromNodeId = `p-${pages[currentPageIndex].id}`;
+    const nextNodeId = resolveNextNodeId(fromNodeId, answers);
+
+    if (nextNodeId === 'end') {
+      setFinished(true);
+      return;
+    }
+
+    if (nextNodeId && nextNodeId.startsWith('p-')) {
+      const pageId = nextNodeId.replace('p-', '');
+      const targetIndex = pages.findIndex(p => p.id === pageId);
+      if (targetIndex !== -1) {
+        const nextPage = pages[targetIndex];
+        const toNodeId = `p-${nextPage.id}`;
+        setAnswers(prev => {
+          const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
+          return applyPageVariableAssignments(nextPage, afterOps);
+        });
+        setCurrentPageIndex(targetIndex);
+        return;
+      }
+    }
+
+    // Fallback: sequential navigation
     if (currentPageIndex < pages.length - 1) {
       const nextPage = pages[currentPageIndex + 1];
-      const fromNodeId = `p-${pages[currentPageIndex].id}`;
       const toNodeId = `p-${nextPage.id}`;
       setAnswers(prev => {
         const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
@@ -260,7 +361,7 @@ export default function FormPreview() {
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, applyVariableOpNodes]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, applyVariableOpNodes, resolveNextNodeId, answers]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
