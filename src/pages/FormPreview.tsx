@@ -23,7 +23,7 @@ import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
-import { FormVariable, VariableAssignment } from '@/types/form';
+import { FormVariable, VariableAssignment, VariableOpNodeData } from '@/types/form';
 
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
@@ -142,6 +142,53 @@ export default function FormPreview() {
     return updated;
   }, [form]);
 
+  /** Apply variableOpNode operations: arithmetic/assignment on variables */
+  const applyVariableOpNodes = useCallback((
+    fromNodeId: string,
+    toNodeId: string,
+    currentAnswers: Record<string, any>,
+  ): Record<string, any> => {
+    if (!form?.variableOpNodes?.length || !form?.flowEdges?.length || !form?.variables?.length) return currentAnswers;
+
+    // Find all vo- nodes that sit on the path between fromNodeId and toNodeId
+    // Simple approach: find vo-* nodes that have an incoming edge from fromNodeId and outgoing edge to toNodeId
+    const edges = form.flowEdges;
+    let updated = { ...currentAnswers };
+
+    const voNodes = form.variableOpNodes;
+    for (const vop of voNodes) {
+      const voNodeId = `vo-${vop.id}`;
+      const hasIncoming = edges.some(e => e.source === fromNodeId && e.target === voNodeId);
+      const hasOutgoing = edges.some(e => e.source === voNodeId && e.target === toNodeId);
+      if (!hasIncoming || !hasOutgoing) continue;
+
+      for (const op of vop.operations) {
+        const variable = form.variables?.find(v => v.id === op.variableId);
+        if (!variable) continue;
+
+        const storeKey = `__var_${variable.name}`;
+        const currentRaw = updated[storeKey] ?? updated[variable.sourceElementId || ''] ?? variable.defaultValue ?? '0';
+        const currentNum = parseFloat(String(currentRaw)) || 0;
+
+        // Resolve operand (may be a literal or {{var}} reference)
+        const resolvedOperand = interpolateText(op.operand || '0', form.variables || [], updated);
+        const operandNum = parseFloat(resolvedOperand) || 0;
+
+        let result: string;
+        switch (op.op) {
+          case 'set':      result = resolvedOperand; break;
+          case 'add':      result = String(currentNum + operandNum); break;
+          case 'subtract': result = String(currentNum - operandNum); break;
+          case 'multiply': result = String(currentNum * operandNum); break;
+          case 'divide':   result = operandNum !== 0 ? String(currentNum / operandNum) : String(currentNum); break;
+          default:         result = resolvedOperand;
+        }
+        updated[storeKey] = result;
+      }
+    }
+    return updated;
+  }, [form]);
+
   const goNext = useCallback(async () => {
     if (isPageBlocked) return;
 
@@ -163,7 +210,12 @@ export default function FormPreview() {
     if (currentPageIndex === null) {
       if (pages.length > 0) {
         const nextPage = pages[0];
-        setAnswers(prev => applyPageVariableAssignments(nextPage, prev));
+        const fromNodeId = 'start';
+        const toNodeId = `p-${nextPage.id}`;
+        setAnswers(prev => {
+          const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
+          return applyPageVariableAssignments(nextPage, afterOps);
+        });
         setCurrentPageIndex(0);
       } else {
         setFinished(true);
@@ -172,12 +224,17 @@ export default function FormPreview() {
     }
     if (currentPageIndex < pages.length - 1) {
       const nextPage = pages[currentPageIndex + 1];
-      setAnswers(prev => applyPageVariableAssignments(nextPage, prev));
+      const fromNodeId = `p-${pages[currentPageIndex].id}`;
+      const toNodeId = `p-${nextPage.id}`;
+      setAnswers(prev => {
+        const afterOps = applyVariableOpNodes(fromNodeId, toNodeId, prev);
+        return applyPageVariableAssignments(nextPage, afterOps);
+      });
       setCurrentPageIndex(currentPageIndex + 1);
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, applyVariableOpNodes]);
 
   const goBack = useCallback(() => {
     setDirection(-1);

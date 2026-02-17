@@ -21,11 +21,16 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { FunnelPage, FormData as FormDataType, FlowEdge, ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup, FormVariable } from '@/types/form';
+import {
+  FunnelPage, FormData as FormDataType, FlowEdge,
+  ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
+  VariableOpNodeData,
+} from '@/types/form';
 import PageNode from './PageNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
 import ConditionNode from './ConditionNode';
+import VariableOpNode from './VariableOpNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 
@@ -36,6 +41,7 @@ const nodeTypes = {
   startNode: StartNode,
   endNode: EndNode,
   conditionNode: ConditionNode,
+  variableOpNode: VariableOpNode,
 };
 
 const defaultEdgeOptions = {
@@ -52,6 +58,9 @@ interface Props {
   onConditionAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onConditionChange: (cId: string, patch: Partial<ConditionNodeData>) => void;
   onConditionDelete: (cId: string) => void;
+  onVariableOpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onVariableOpChange: (nodeId: string, patch: Partial<VariableOpNodeData>) => void;
+  onVariableOpDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
 }
@@ -61,17 +70,27 @@ function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number
   return stored ? { x: stored.x, y: stored.y } : { x: fallbackX, y: fallbackY };
 }
 
-function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition, onConditionAddAtPosition, onConditionChange, onConditionDelete, onFormUpdate, onPageSelect }: Props) {
+function FlowCanvasInner({
+  form, onPageChange, onPageDelete, onPageAddAtPosition,
+  onConditionAddAtPosition, onConditionChange, onConditionDelete,
+  onVariableOpAddAtPosition, onVariableOpChange, onVariableOpDelete,
+  onFormUpdate, onPageSelect,
+}: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectStartRef = useRef<{ nodeId: string; handleId?: string | null } | null>(null);
-  const [dropMenu, setDropMenu] = useState<{ screenPos: { x: number; y: number }; flowPos: { x: number; y: number }; sourceNodeId: string; sourceHandle?: string } | null>(null);
+  const [dropMenu, setDropMenu] = useState<{
+    screenPos: { x: number; y: number };
+    flowPos: { x: number; y: number };
+    sourceNodeId: string;
+    sourceHandle?: string;
+  } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
   const { screenToFlowPosition } = useReactFlow();
 
   const pages = form.pages || [];
   const variables = form.variables || [];
+  const variableOpNodes = form.variableOpNodes || [];
 
-  // Build list of all input elements across all pages for the field picker
   const allInputElements = useMemo(() => {
     const result: { elementId: string; elementLabel: string; pageTitle: string }[] = [];
     for (const page of pages) {
@@ -133,8 +152,25 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
       });
     });
 
+    variableOpNodes.forEach((vop, i) => {
+      const nodeId = `vo-${vop.id}`;
+      n.push({
+        id: nodeId,
+        type: 'variableOpNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 2) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeId: vop.id,
+          label: vop.label,
+          operations: vop.operations,
+          variables,
+          onChange: (patch: Partial<VariableOpNodeData>) => onVariableOpChange(vop.id, patch),
+          onDelete: () => onVariableOpDelete(vop.id),
+        },
+      });
+    });
+
     return n;
-  }, [form, pages, variables, allInputElements, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete]);
+  }, [form, pages, variables, allInputElements, variableOpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete]);
 
   const buildEdges = useCallback((): Edge[] => {
     if (form.flowEdges && form.flowEdges.length > 0) {
@@ -147,7 +183,6 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
         ...defaultEdgeOptions,
       }));
     }
-    // Default: linear flow start -> p1 -> p2 -> ...
     const e: Edge[] = [];
     pages.forEach((page, i) => {
       const nodeId = `p-${page.id}`;
@@ -167,8 +202,10 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
 
     const pagesChanged = prev.pages !== form.pages;
     const conditionsChanged = prev.conditions !== form.conditions;
+    const varOpsChanged = prev.variableOpNodes !== form.variableOpNodes;
+    const varsChanged = prev.variables !== form.variables;
 
-    if (pagesChanged || conditionsChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || varsChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
@@ -234,6 +271,8 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
         onPageDelete(nodeId.replace('p-', ''));
       } else if (nodeId.startsWith('c-')) {
         onConditionDelete(nodeId.replace('c-', ''));
+      } else if (nodeId.startsWith('vo-')) {
+        onVariableOpDelete(nodeId.replace('vo-', ''));
       }
     }
 
@@ -246,7 +285,7 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
 
     onNodesChangeBase(nodeIds.map(id => ({ type: 'remove' as const, id })));
     setDeleteConfirm(null);
-  }, [deleteConfirm, onPageDelete, onConditionDelete, setEdges, saveEdges, onNodesChangeBase]);
+  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, setEdges, saveEdges, onNodesChangeBase]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
@@ -258,13 +297,10 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
   const onConnect: OnConnect = useCallback((connection: Connection) => {
     const sourceHandle = connection.sourceHandle;
     const sourceNodeId = connection.source;
-
-    // For condition branch handles, allow per-branch connections
     const isBranchHandle = sourceHandle?.startsWith('branch-');
     if (!isBranchHandle) {
       setEdges(prev => prev.filter(e => !(e.source === sourceNodeId && e.sourceHandle === (sourceHandle || undefined))));
     }
-
     setEdges(prev => {
       const updated = addEdge({ ...connection, ...defaultEdgeOptions }, prev);
       saveEdges(updated);
@@ -316,6 +352,12 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
     setDropMenu(null);
   }, [dropMenu, onConditionAddAtPosition]);
 
+  const handleDropAddVariableOp = useCallback(() => {
+    if (!dropMenu) return;
+    onVariableOpAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onVariableOpAddAtPosition]);
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -360,6 +402,7 @@ function FlowCanvasInner({ form, onPageChange, onPageDelete, onPageAddAtPosition
           position={dropMenu.screenPos}
           onAddPage={handleDropAddPage}
           onAddCondition={handleDropAddCondition}
+          onAddVariableOp={handleDropAddVariableOp}
           onClose={() => setDropMenu(null)}
         />
       )}
