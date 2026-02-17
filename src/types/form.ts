@@ -273,6 +273,15 @@ export interface WebhookParam {
   value: string;
 }
 
+/** Maps a JSON path in the webhook response body to a form variable */
+export interface WebhookResponseMapping {
+  id: string;
+  /** Dot-notation path in the response JSON. E.g. "data.user.id" or "token" */
+  responsePath: string;
+  /** The form variable ID to store the value into */
+  variableId: string;
+}
+
 export interface IntegrationNodeData {
   id: string;
   platform: IntegrationPlatform; // always 'webhook'
@@ -282,6 +291,8 @@ export interface IntegrationNodeData {
   webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
   /** Additional static params merged into the webhook body */
   webhookParams?: WebhookParam[];
+  /** Map response fields back to form variables */
+  responseMappings?: WebhookResponseMapping[];
 }
 
 /** A single platform config inside an analytics node */

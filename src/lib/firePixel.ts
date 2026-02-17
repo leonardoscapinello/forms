@@ -66,6 +66,36 @@ export async function firePixel(opts: FirePixelOptions): Promise<void> {
 }
 
 /**
+ * Dispara webhook e retorna o body da resposta JSON (para mapeamento de variáveis).
+ * Faz até 3 tentativas. Em caso de falha, retorna null.
+ */
+export async function fireWebhookWithResponse(opts: FirePixelOptions): Promise<Record<string, any> | null> {
+  const MAX_ATTEMPTS = 3;
+  const BACKOFF_BASE = 800;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, BACKOFF_BASE * attempt));
+    try {
+      const res = await fetch(EDGE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${ANON_KEY}`,
+        },
+        body: JSON.stringify(opts),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        // Edge function returns { success, results, webhookResponseBody }
+        return json?.webhookResponseBody ?? null;
+      }
+    } catch { /* retry */ }
+  }
+  return null;
+}
+
+/**
  * Tenta client-side (para deduplicação nos ad managers) e garante server-side.
  * Client-side é best-effort — não bloqueia se ausente/bloqueado.
  */
