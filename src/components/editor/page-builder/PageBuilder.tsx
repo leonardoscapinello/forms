@@ -381,7 +381,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
       {/* Center — Preview canvas */}
       <div
-        className={`flex-1 overflow-auto transition-colors duration-200 ${
+        className={`flex-1 overflow-auto flex flex-col transition-colors duration-200 ${
           isExternalDragOver ? 'bg-primary/[0.03]' : 'bg-muted/30'
         }`}
         onClick={() => { setSelectedId(null); unlockElement?.(); }}
@@ -431,13 +431,13 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         )}
 
         <div
-          className="mx-auto w-full"
+          className="mx-auto w-full flex-1 flex flex-col justify-center"
           style={{
-            maxWidth: 672 + (effectiveStyle.paddingX || 0) * 2, /* content 672px + padding */
+            maxWidth: 672 + (effectiveStyle.paddingX || 0) * 2,
             paddingLeft: effectiveStyle.paddingX,
             paddingRight: effectiveStyle.paddingX,
-            paddingTop: effectiveStyle.paddingY,
-            paddingBottom: effectiveStyle.paddingY,
+            paddingTop: effectiveStyle.paddingY ?? 32,
+            paddingBottom: effectiveStyle.paddingY ?? 32,
           }}
         >
           <DndContext
