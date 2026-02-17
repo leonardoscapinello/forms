@@ -240,8 +240,9 @@ function FlowCanvasInner({
     const conditionsChanged = prev.conditions !== form.conditions;
     const varOpsChanged = prev.variableOpNodes !== form.variableOpNodes;
     const varsChanged = prev.variables !== form.variables;
+    const edgesChanged = prev.flowEdges !== form.flowEdges;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || varsChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || varsChanged || edgesChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
@@ -251,7 +252,6 @@ function FlowCanvasInner({
       });
     }
 
-    const edgesChanged = prev.flowEdges !== form.flowEdges;
     if (edgesChanged || pagesChanged) {
       setEdges(buildEdges());
     }
