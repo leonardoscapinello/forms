@@ -336,8 +336,14 @@ export default function FormPreview() {
                   phone: phoneVal ? phoneVal[1] : undefined,
                 },
                 sourceUrl,
-                webhookUrlOverride: intgNode.webhookUrlOverride,
+                webhookUrl: intgNode.webhookUrl,
                 webhookMethod: intgNode.webhookMethod,
+                // flatten extra params into a single key/value object
+                webhookParams: Object.fromEntries(
+                  (intgNode.webhookParams || [])
+                    .filter(p => p.key)
+                    .map(p => [p.key, p.value])
+                ),
               }),
             }).catch(() => { /* non-blocking */ });
           }

@@ -185,12 +185,12 @@ serve(async (req) => {
 
     // ── Webhook ───────────────────────────────────────────────────────────────
     if (platform === 'webhook') {
-      const globalUrl = Deno.env.get('WEBHOOK_DEFAULT_URL');
-      const url = body.webhookUrlOverride || globalUrl;
+      const url = body.webhookUrl;
       const method = body.webhookMethod || 'POST';
+      const extraParams = body.webhookParams || {}; // { key: value } flat object
 
       if (!url) {
-        results.webhook = { skipped: true, reason: 'No URL configured' };
+        results.webhook = { skipped: true, reason: 'No URL configured on the node' };
       } else {
         const payload = {
           event_id: eventId,
@@ -199,6 +199,7 @@ serve(async (req) => {
           answers,
           variables,
           source_url: sourceUrl,
+          ...extraParams,
         };
         const res = await fetch(url, {
           method,

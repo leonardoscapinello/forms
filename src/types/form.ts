@@ -263,6 +263,13 @@ export type PixelEventType =
   | 'SubmitApplication'
   | 'custom';
 
+/** Extra key/value param to merge into webhook body */
+export interface WebhookParam {
+  id: string;
+  key: string;
+  value: string;
+}
+
 export interface IntegrationNodeData {
   id: string;
   platform: IntegrationPlatform;
@@ -270,10 +277,12 @@ export interface IntegrationNodeData {
   eventType?: PixelEventType;
   /** Custom event name when eventType === 'custom' */
   customEventName?: string;
-  /** For webhook: override URL (falls back to global settings) */
-  webhookUrlOverride?: string;
-  /** HTTP method override for webhook */
+  /** For webhook: destination URL (required, no global fallback) */
+  webhookUrl?: string;
+  /** HTTP method for webhook */
   webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+  /** Additional static params merged into the webhook body */
+  webhookParams?: WebhookParam[];
 }
 
 export interface FlowEdge {
