@@ -28,6 +28,7 @@ export default function FormEditor() {
   const [editorView, setEditorView] = useState<EditorView>('pages');
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingWelcome, setEditingWelcome] = useState(false);
+  const [editingThankYou, setEditingThankYou] = useState(false);
 
   const {
     collaborators,
@@ -46,18 +47,26 @@ export default function FormEditor() {
 
   // Auto-select first page when switching to pages tab
   useEffect(() => {
-    if (editorView === 'pages' && !editingPageId && !editingWelcome && form?.pages?.length) {
+    if (editorView === 'pages' && !editingPageId && !editingWelcome && !editingThankYou && form?.pages?.length) {
       setEditingPageId(form.pages[0].id);
     }
-  }, [editorView, editingPageId, editingWelcome, form?.pages]);
+  }, [editorView, editingPageId, editingWelcome, editingThankYou, form?.pages]);
 
-  const editingPage = editingWelcome ? null : (form?.pages?.find(p => p.id === editingPageId) || null);
+  const editingPage = (editingWelcome || editingThankYou) ? null : (form?.pages?.find(p => p.id === editingPageId) || null);
   const editingPageIndex = form?.pages?.findIndex(p => p.id === editingPageId) ?? -1;
 
   // Welcome page data
   const welcomePage = form?.welcomePage || {
     id: 'welcome',
     title: 'Tela de início',
+    elements: [],
+    pageStyle: form?.globalPageStyle,
+  };
+
+  // Thank you page data
+  const thankYouPage = form?.thankYouPage || {
+    id: 'thank-you',
+    title: 'Tela de obrigado',
     elements: [],
     pageStyle: form?.globalPageStyle,
   };
@@ -322,8 +331,8 @@ export default function FormEditor() {
           <>
             <PageListPanel
               pages={form.pages || []}
-              selectedPageId={editingWelcome ? null : editingPageId}
-              onSelectPage={(id) => { setEditingWelcome(false); setEditingPageId(id); }}
+              selectedPageId={editingWelcome || editingThankYou ? null : editingPageId}
+              onSelectPage={(id) => { setEditingWelcome(false); setEditingThankYou(false); setEditingPageId(id); }}
               onAddPage={handleAddPage}
               onDeletePage={handleDeletePage}
               onRenamePage={handleRenamePage}
@@ -349,7 +358,9 @@ export default function FormEditor() {
                 updateForm(form.id, patch);
               }}
               isWelcomeSelected={editingWelcome}
-              onSelectWelcome={() => { setEditingWelcome(true); setEditingPageId(null); }}
+              onSelectWelcome={() => { setEditingWelcome(true); setEditingThankYou(false); setEditingPageId(null); }}
+              isThankYouSelected={editingThankYou}
+              onSelectThankYou={() => { setEditingThankYou(true); setEditingWelcome(false); setEditingPageId(null); }}
               variables={form.variables || []}
               onAddVariable={handleAddVariable}
               onUpdateVariable={handleUpdateVariable}
@@ -360,6 +371,23 @@ export default function FormEditor() {
                 elements={welcomePage.elements || []}
                 onChange={(elements: PageElement[]) => {
                   updateForm(form.id, { welcomePage: { ...welcomePage, elements } });
+                }}
+                pageStyle={form.globalPageStyle}
+                onPageStyleChange={(patch: Partial<FunnelPageStyle>) => {
+                  const current = form.globalPageStyle || {};
+                  updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
+                }}
+                pages={form.pages || []}
+                variables={form.variables || []}
+                lockElement={lockElement}
+                unlockElement={unlockElement}
+                isLockedByOther={isLockedByOther}
+              />
+            ) : editingThankYou ? (
+              <PageBuilder
+                elements={thankYouPage.elements || []}
+                onChange={(elements: PageElement[]) => {
+                  updateForm(form.id, { thankYouPage: { ...thankYouPage, elements } });
                 }}
                 pageStyle={form.globalPageStyle}
                 onPageStyleChange={(patch: Partial<FunnelPageStyle>) => {

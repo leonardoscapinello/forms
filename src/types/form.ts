@@ -335,6 +335,8 @@ export interface FormData {
   showWelcomeScreen?: boolean;
   /** The welcome screen page (editable via page builder) */
   welcomePage?: FunnelPage;
+  /** The thank you / end screen page (editable via page builder, always shown) */
+  thankYouPage?: FunnelPage;
   conditions?: ConditionNodeData[];
   variableOpNodes?: VariableOpNodeData[];
   nodePositions?: NodePosition[];
