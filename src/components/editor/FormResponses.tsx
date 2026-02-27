@@ -124,18 +124,19 @@ export default function FormResponses({ form }: Props) {
   }, [rows]);
 
   const exportCSV = useCallback(() => {
-    const headers = ['#', 'Status', 'Data', 'Duração', ...fields.map(f => f.label)];
+    const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label)];
     const csvRows = [headers.join(',')];
     filtered.forEach((row, idx) => {
       const status = row.metadata?.status === 'complete' ? 'Completa' : 'Parcial';
-      const date = formatDate(row.created_at);
+      const entrada = formatDate(row.metadata?.landed_at || row.created_at);
+      const envio = row.metadata?.submitted_at ? formatDate(row.metadata.submitted_at) : '—';
       const duration = formatDuration(row.total_time_ms);
       const fieldVals = fields.map(f => {
         const raw = formatCellValue(row.answers?.[f.id], f.type);
         // Escape CSV
         return `"${raw.replace(/"/g, '""')}"`;
       });
-      csvRows.push([idx + 1, status, `"${date}"`, `"${duration}"`, ...fieldVals].join(','));
+      csvRows.push([idx + 1, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals].join(','));
     });
     const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -229,7 +230,8 @@ export default function FormResponses({ form }: Props) {
               <TableRow className="bg-muted/50">
                 <TableHead className="w-12 text-center sticky left-0 bg-muted/50 z-10">#</TableHead>
                 <TableHead className="w-24 sticky left-12 bg-muted/50 z-10">Status</TableHead>
-                <TableHead className="w-36">Data</TableHead>
+                <TableHead className="w-36">Entrada</TableHead>
+                <TableHead className="w-36">Envio</TableHead>
                 <TableHead className="w-20">Duração</TableHead>
                 {fields.map(f => (
                   <TableHead key={f.id} className="min-w-[160px] max-w-[280px]">
@@ -255,7 +257,10 @@ export default function FormResponses({ form }: Props) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(row.created_at)}
+                      {formatDate(row.metadata?.landed_at || row.created_at)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {row.metadata?.submitted_at ? formatDate(row.metadata.submitted_at) : '—'}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatDuration(row.total_time_ms)}
