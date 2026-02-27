@@ -114,7 +114,7 @@ function FlowCanvasInner({
     nodeId: string;
   } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter, getZoom } = useReactFlow();
 
   const pages = form.pages || [];
   const variables = form.variables || [];
@@ -621,6 +621,12 @@ function FlowCanvasInner({
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
         onPaneClick={() => { setContextMenu(null); setNodeContextMenu(null); }}
+        onNodeClick={(_, node) => {
+          const x = (node.position?.x ?? 0) + ((node.measured?.width ?? node.width ?? 200) / 2);
+          const y = (node.position?.y ?? 0) + ((node.measured?.height ?? node.height ?? 100) / 2);
+          const zoom = Math.min(Math.max(getZoom(), 0.85), 1.2);
+          setCenter(x, y, { zoom, duration: 400 });
+        }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
