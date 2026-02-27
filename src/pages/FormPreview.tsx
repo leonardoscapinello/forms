@@ -66,7 +66,7 @@ export default function FormPreview() {
   const storeForm = store?.getForm(id!) ?? null;
   const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
   const [publicLoading, setPublicLoading] = useState(!storeForm);
-  const [showPublicSkeleton, setShowPublicSkeleton] = useState(false);
+  const [showPublicSkeleton, setShowPublicSkeleton] = useState(true);
 
   useEffect(() => {
     if (storeForm || !id) return;
@@ -108,14 +108,8 @@ export default function FormPreview() {
   const form = storeForm || publicForm;
   const isEditorPreview = !!storeForm; // true when opened from within the editor
 
-  // Avoid skeleton flicker: only show if loading lasts >120ms
   useEffect(() => {
-    if (!publicLoading) {
-      setShowPublicSkeleton(false);
-      return;
-    }
-    const t = window.setTimeout(() => setShowPublicSkeleton(true), 120);
-    return () => window.clearTimeout(t);
+    if (!publicLoading) setShowPublicSkeleton(false);
   }, [publicLoading]);
 
   const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null);
