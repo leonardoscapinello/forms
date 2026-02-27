@@ -228,7 +228,12 @@ export default function FormPreview() {
   useEffect(() => {
     if (!form?.id) return;
     const { responseId, userAgent, queryParams, referrer } = sessionMetaRef.current;
+    const generatedSessionId = crypto.randomUUID();
+    sessionDbIdRef.current = generatedSessionId;
+
+    // IMPORTANT: do not request returning rows here (public respondents don't have SELECT on form_sessions)
     ;(supabase as any).from('form_sessions').insert({
+      id: generatedSessionId,
       form_id: form.id,
       response_id: responseId,
       status: 'active',
@@ -237,8 +242,11 @@ export default function FormPreview() {
       referrer: referrer || null,
       user_agent: userAgent,
       query_params: queryParams,
-    }).select('id').single().then(({ data }: any) => {
-      if (data?.id) sessionDbIdRef.current = data.id;
+    }).then(({ error }: any) => {
+      if (error) {
+        console.error('Erro ao criar sessão do formulário:', error);
+        sessionDbIdRef.current = null;
+      }
     });
 
     // Insert form_start page event
