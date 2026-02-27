@@ -384,6 +384,13 @@ export interface PageElement {
   ratingInactiveColor?: string;
   npsLowLabel?: string;
   npsHighLabel?: string;
+  npsDetractorLabel?: string;
+  npsPassiveLabel?: string;
+  npsPromoterLabel?: string;
+  npsDetractorColor?: string;
+  npsPassiveColor?: string;
+  npsPromoterColor?: string;
+  npsDragHint?: string;
   // Loading element properties
   loadingStyle?: LoadingStyle;
   loadingDuration?: number;

@@ -698,6 +698,43 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 <Label>Rótulo superior</Label>
                 <Input value={element.npsHighLabel || ''} onChange={e => onChange({ npsHighLabel: e.target.value })} placeholder="Muito provável" />
               </div>
+              <div className="border-t border-border my-2" />
+              <Label className="text-xs font-medium text-muted-foreground">Textos das faixas</Label>
+              <div className="space-y-2">
+                <Input value={element.npsDetractorLabel || ''} onChange={e => onChange({ npsDetractorLabel: e.target.value })} placeholder="😟 Detrator" />
+              </div>
+              <div className="space-y-2">
+                <Input value={element.npsPassiveLabel || ''} onChange={e => onChange({ npsPassiveLabel: e.target.value })} placeholder="😐 Neutro" />
+              </div>
+              <div className="space-y-2">
+                <Input value={element.npsPromoterLabel || ''} onChange={e => onChange({ npsPromoterLabel: e.target.value })} placeholder="😍 Promotor" />
+              </div>
+              <div className="space-y-2">
+                <Label>Dica de arrastar (mobile)</Label>
+                <Input value={element.npsDragHint || ''} onChange={e => onChange({ npsDragHint: e.target.value })} placeholder="Arraste para escolher sua nota" />
+              </div>
+              <div className="border-t border-border my-2" />
+              <Label className="text-xs font-medium text-muted-foreground">Cores das faixas</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <ColorPickerField
+                  label="Detrator"
+                  value={element.npsDetractorColor || '#ef4444'}
+                  onChange={v => onChange({ npsDetractorColor: v })}
+                  allowTransparent={false}
+                />
+                <ColorPickerField
+                  label="Neutro"
+                  value={element.npsPassiveColor || '#f59e0b'}
+                  onChange={v => onChange({ npsPassiveColor: v })}
+                  allowTransparent={false}
+                />
+                <ColorPickerField
+                  label="Promotor"
+                  value={element.npsPromoterColor || '#22c55e'}
+                  onChange={v => onChange({ npsPromoterColor: v })}
+                  allowTransparent={false}
+                />
+              </div>
             </>
           )}
 
@@ -2223,13 +2260,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
               />
 
               {/* Rating/NPS colors */}
-              {(element.type === 'input_rating' || element.type === 'input_nps') && (
+              {(element.type === 'input_rating') && (
                 <div className="space-y-3">
                   <Label className="text-xs font-medium text-muted-foreground">Cores da avaliação</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <ColorPickerField
                       label="Ativo"
-                      value={element.ratingActiveColor || (element.type === 'input_nps' ? '#22c55e' : '#facc15')}
+                      value={element.ratingActiveColor || '#facc15'}
                       onChange={v => onChange({ ratingActiveColor: v })}
                       allowTransparent={false}
                     />
