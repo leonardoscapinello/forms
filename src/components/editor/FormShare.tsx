@@ -3,12 +3,16 @@ import { FormData } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Check, Copy, Link, ExternalLink, Globe, Loader2, CheckCircle2,
-  Unplug, Sheet, Webhook, ChevronDown,
+  Check, Copy, ExternalLink, Globe, Loader2, CheckCircle2,
+  Unplug, Sheet, Webhook, ChevronDown, Link2, X,
 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 interface Props {
   form: FormData;
@@ -16,6 +20,8 @@ interface Props {
 }
 
 const PUBLISHED_BASE = 'https://nodecraft-forms.lovable.app';
+
+/* ── Helpers ── */
 
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -28,16 +34,14 @@ function CopyField({ label, value }: { label: string; value: string }) {
   };
   return (
     <div className="flex gap-2">
-      <Input readOnly value={value} className="flex-1 bg-muted border-border text-sm text-foreground" />
+      <Input readOnly value={value} className="flex-1 bg-muted border-border text-sm text-foreground font-mono" />
       <Button variant="outline" size="sm" onClick={copy} className="shrink-0 gap-1.5">
         {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-        Copiar
       </Button>
     </div>
   );
 }
 
-/** Extract input fields from pages — same logic as FormResponses */
 function extractFieldHeaders(form: FormData): string[] {
   const headers: string[] = [];
   for (const page of form.pages || []) {
@@ -46,9 +50,7 @@ function extractFieldHeaders(form: FormData): string[] {
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
         if (subKeys && subKeys.length > 0) {
           const parentLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
-          for (const sub of subKeys) {
-            headers.push(`${parentLabel} — ${sub.label}`);
-          }
+          for (const sub of subKeys) headers.push(`${parentLabel} — ${sub.label}`);
         } else {
           headers.push(el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '));
         }
@@ -58,6 +60,16 @@ function extractFieldHeaders(form: FormData): string[] {
   return headers;
 }
 
+/* ── Integration card type ── */
+interface IntegrationDef {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  color: string; // tailwind bg class token
+  comingSoon?: boolean;
+}
+
+/* ── Main component ── */
 export default function FormShare({ form, onUpdate }: Props) {
   const previewUrl = `${PUBLISHED_BASE}/preview/${form.id}`;
   const isPublished = form.status === 'published';
@@ -66,8 +78,8 @@ export default function FormShare({ form, onUpdate }: Props) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleOAuthReady, setGoogleOAuthReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [openModal, setOpenModal] = useState<string | null>(null);
 
-  // Check if Google OAuth is configured
   useEffect(() => {
     supabase
       .from('integration_settings')
@@ -82,28 +94,20 @@ export default function FormShare({ form, onUpdate }: Props) {
       });
   }, []);
 
+  /* ── Google Sheets handlers ── */
   const handleConnectSheet = useCallback(async () => {
     setGoogleLoading(true);
     try {
       const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...extractFieldHeaders(form)];
       const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-        body: {
-          action: 'create',
-          formId: form.id,
-          formTitle: form.title,
-          headers,
-        },
+        body: { action: 'create', formId: form.id, formTitle: form.title, headers },
       });
       if (error || !data?.spreadsheetId) {
         toast({ title: 'Erro', description: data?.error || 'Falha ao criar planilha.', variant: 'destructive' });
-        setGoogleLoading(false);
-        return;
+      } else {
+        onUpdate({ googleSheetId: data.spreadsheetId, googleSheetUrl: data.spreadsheetUrl });
+        toast({ title: 'Planilha criada!', description: 'Google Sheets conectado.' });
       }
-      onUpdate({
-        googleSheetId: data.spreadsheetId,
-        googleSheetUrl: data.spreadsheetUrl,
-      });
-      toast({ title: 'Planilha criada!', description: 'Google Sheets conectado com sucesso.' });
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -115,12 +119,7 @@ export default function FormShare({ form, onUpdate }: Props) {
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-        body: {
-          action: 'sync',
-          formId: form.id,
-          formTitle: form.title,
-          spreadsheetId: form.googleSheetId,
-        },
+        body: { action: 'sync', formId: form.id, formTitle: form.title, spreadsheetId: form.googleSheetId },
       });
       if (error || !data?.success) {
         toast({ title: 'Erro', description: data?.error || 'Falha ao sincronizar.', variant: 'destructive' });
@@ -135,13 +134,12 @@ export default function FormShare({ form, onUpdate }: Props) {
 
   const handleDisconnectSheet = useCallback(() => {
     onUpdate({ googleSheetId: undefined, googleSheetUrl: undefined });
-    toast({ title: 'Desconectado', description: 'Google Sheets desconectado deste formulário.' });
+    toast({ description: 'Google Sheets desconectado.' });
+    setOpenModal(null);
   }, [onUpdate, toast]);
 
-  const isSheetConnected = !!form.googleSheetId;
+  /* ── Webhook payload preview ── */
   const [showPayload, setShowPayload] = useState(false);
-
-  // Build example webhook payload for preview
   const examplePayload = useMemo(() => {
     const fields: any[] = [];
     for (const page of form.pages || []) {
@@ -152,51 +150,73 @@ export default function FormShare({ form, onUpdate }: Props) {
           field_name: el.fieldName || el.id,
           type: el.type.replace('input_', ''),
           label: el.label || null,
-          placeholder: el.placeholder || null,
           required: el.required ?? false,
-          value: '<valor respondido>',
-          raw_value: '<valor bruto>',
+          value: '<valor>',
         });
       }
     }
     return {
-      event: {
-        id: '<response_uuid>',
-        form_id: form.id,
-        form_name: form.title,
-        form_status: form.status,
-        total_pages: (form.pages || []).length,
-        landed_at: '2025-01-01T12:00:00.000Z',
-        submitted_at: '2025-01-01T12:05:30.000Z',
-        total_time_ms: 330000,
-        total_time_seconds: 330,
-      },
-      respondent: {
-        ip: null,
-        user_agent: 'Mozilla/5.0 ...',
-        geolocation: null,
-      },
-      navigation: {
-        source_url: 'https://example.com/page',
-        referrer: 'https://google.com',
-        query_params: { utm_source: 'email', utm_campaign: 'test' },
-      },
+      event: { form_id: form.id, form_name: form.title, submitted_at: '2025-01-01T12:05:30Z', total_time_seconds: 330 },
+      navigation: { source_url: 'https://...', query_params: { utm_source: 'email' } },
       fields,
       answers: Object.fromEntries(fields.map(f => [f.field_name, '<valor>'])),
-      answers_raw: Object.fromEntries(fields.map(f => [f.field_id, '<valor bruto>'])),
       variables: Object.fromEntries((form.variables || []).map(v => [v.name, '<valor>'])),
-      meta: undefined,
     };
   }, [form]);
 
+  /* ── Status flags ── */
+  const isSheetConnected = !!form.googleSheetId;
+  const isWebhookConnected = !!form.completionWebhookUrl;
+
+  /* ── Integration definitions ── */
+  const integrations: IntegrationDef[] = [
+    {
+      id: 'link',
+      label: 'Link público',
+      color: 'bg-blue-500/10',
+      icon: <Link2 className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      id: 'google_sheets',
+      label: 'Google Sheets',
+      color: 'bg-emerald-500/10',
+      icon: (
+        <svg className="h-6 w-6" viewBox="0 0 48 48">
+          <path fill="#43A047" d="M37 45H11c-1.66 0-3-1.34-3-3V6c0-1.66 1.34-3 3-3h17l12 12v27c0 1.66-1.34 3-3 3z" />
+          <path fill="#C8E6C9" d="M40 15H28V3z" />
+          <path fill="#2E7D32" d="M40 15H28V3l12 12z" opacity=".3" />
+          <path fill="#E8F5E9" d="M14 19h20v18H14z" />
+          <path fill="#43A047" d="M34 19v18H14V19h20m0-1H14c-.55 0-1 .45-1 1v18c0 .55.45 1 1 1h20c.55 0 1-.45 1-1V19c0-.55-.45-1-1-1z" />
+          <path fill="#43A047" d="M14 23h20v1H14zm0 4h20v1H14zm0 4h20v1H14zm7-12h1v18h-1zm6 0h1v18h-1z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'webhook',
+      label: 'Webhook',
+      color: 'bg-orange-500/10',
+      icon: <Webhook className="h-6 w-6 text-orange-500" />,
+    },
+    { id: 'whatsapp', label: 'WhatsApp', color: 'bg-green-500/10', icon: <span className="text-2xl">💬</span>, comingSoon: true },
+    { id: 'slack', label: 'Slack', color: 'bg-purple-500/10', icon: <span className="text-2xl">📨</span>, comingSoon: true },
+    { id: 'zapier', label: 'Zapier', color: 'bg-amber-500/10', icon: <span className="text-2xl">⚡</span>, comingSoon: true },
+  ];
+
+  function isConnected(id: string) {
+    if (id === 'link') return isPublished;
+    if (id === 'google_sheets') return isSheetConnected;
+    if (id === 'webhook') return isWebhookConnected;
+    return false;
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-background">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Compartilhar</h2>
+          <h2 className="text-lg font-semibold text-foreground">Conexões</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Distribua seu formulário e conecte integrações.
+            Gerencie links, integrações e webhooks do formulário.
           </p>
         </div>
 
@@ -205,127 +225,138 @@ export default function FormShare({ form, onUpdate }: Props) {
           <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-4 py-3">
             <Globe className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <p className="text-sm text-amber-700 dark:text-amber-300">
-              O formulário está em rascunho. <strong>Publique</strong> para que o link funcione publicamente.
+              O formulário está em rascunho. <strong>Publique</strong> para que o link funcione.
             </p>
           </div>
         )}
 
-        {/* ── Section: Link ── */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Seus links do formulário</h3>
-          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-            <CopyField label="Link público" value={previewUrl} />
+        {/* ── Cards grid ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {integrations.map((integ) => {
+            const connected = isConnected(integ.id);
+            const disabled = integ.comingSoon;
+
+            return (
+              <button
+                key={integ.id}
+                disabled={disabled}
+                onClick={() => !disabled && setOpenModal(integ.id)}
+                className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border p-6 transition-all aspect-square
+                  ${connected
+                    ? 'border-emerald-500/40 bg-emerald-500/5 shadow-sm'
+                    : disabled
+                      ? 'border-dashed border-border bg-muted/20 opacity-40 cursor-not-allowed'
+                      : 'border-border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer'
+                  }`}
+              >
+                {connected && (
+                  <div className="absolute top-2.5 right-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  </div>
+                )}
+                <div className={`h-12 w-12 rounded-xl ${integ.color} flex items-center justify-center`}>
+                  {integ.icon}
+                </div>
+                <span className="text-sm font-medium text-foreground">{integ.label}</span>
+                {connected && <span className="text-[10px] font-medium text-emerald-600">Conectado</span>}
+                {disabled && <span className="text-[10px] text-muted-foreground">Em breve</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {!googleOAuthReady && (
+          <p className="text-xs text-muted-foreground">
+            Configure o <strong>Google OAuth2</strong> em{' '}
+            <a href="/settings" className="text-primary underline">Configurações → Integrações</a>{' '}
+            para conectar o Google Sheets.
+          </p>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════ */}
+      {/* ── Modal: Link público ── */}
+      <Dialog open={openModal === 'link'} onOpenChange={(o) => !o && setOpenModal(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-blue-500" /> Link público
+            </DialogTitle>
+            <DialogDescription>Compartilhe o link do formulário.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <CopyField label="Link" value={previewUrl} />
             <Button variant="outline" size="sm" asChild>
               <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                Abrir em nova aba
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Abrir em nova aba
               </a>
             </Button>
           </div>
-        </div>
+        </DialogContent>
+      </Dialog>
 
-        {/* ── Section: Integrations grid ── */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Integrações</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {/* Google Sheets card */}
-            <button
-              onClick={isSheetConnected ? undefined : handleConnectSheet}
-              disabled={googleLoading || !googleOAuthReady}
-              className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border bg-card p-6 transition-all hover:shadow-sm ${
-                isSheetConnected
-                  ? 'border-emerald-500/40 bg-emerald-500/5'
-                  : googleOAuthReady
-                    ? 'border-border hover:border-primary/40 cursor-pointer'
-                    : 'border-border opacity-50 cursor-not-allowed'
-              }`}
-            >
-              {isSheetConnected && (
-                <div className="absolute top-2 right-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      {/* ── Modal: Google Sheets ── */}
+      <Dialog open={openModal === 'google_sheets'} onOpenChange={(o) => !o && setOpenModal(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sheet className="h-4 w-4 text-emerald-500" /> Google Sheets
+            </DialogTitle>
+            <DialogDescription>Sincronize respostas automaticamente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {isSheetConnected ? (
+              <>
+                <div className="flex items-center gap-2 text-sm text-emerald-600">
+                  <CheckCircle2 className="h-4 w-4" /> Planilha conectada
                 </div>
-              )}
-              {googleLoading ? (
-                <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-              ) : (
-                <svg className="h-10 w-10" viewBox="0 0 48 48">
-                  <path fill="#43A047" d="M37 45H11c-1.66 0-3-1.34-3-3V6c0-1.66 1.34-3 3-3h17l12 12v27c0 1.66-1.34 3-3 3z" />
-                  <path fill="#C8E6C9" d="M40 15H28V3z" />
-                  <path fill="#2E7D32" d="M40 15H28V3l12 12z" opacity=".3" />
-                  <path fill="#E8F5E9" d="M14 19h20v18H14z" />
-                  <path fill="#43A047" d="M34 19v18H14V19h20m0-1H14c-.55 0-1 .45-1 1v18c0 .55.45 1 1 1h20c.55 0 1-.45 1-1V19c0-.55-.45-1-1-1z" />
-                  <path fill="#43A047" d="M14 23h20v1H14zm0 4h20v1H14zm0 4h20v1H14zm7-12h1v18h-1zm6 0h1v18h-1z" />
-                </svg>
-              )}
-              <span className="text-sm font-medium text-foreground">Google Sheets</span>
-            </button>
-
-            {/* Placeholder cards for future */}
-            {['WhatsApp', 'Slack'].map(name => (
-              <div
-                key={name}
-                className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-6 opacity-40"
-              >
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                  <span className="text-lg">📌</span>
+                {form.googleSheetUrl && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={form.googleSheetUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Abrir planilha
+                    </a>
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={syncing} className="gap-1.5">
+                    {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sheet className="h-3.5 w-3.5" />}
+                    Sincronizar agora
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleDisconnectSheet} className="gap-1.5 text-muted-foreground hover:text-destructive">
+                    <Unplug className="h-3.5 w-3.5" /> Desconectar
+                  </Button>
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">{name}</span>
-                <span className="text-[10px] text-muted-foreground">Em breve</span>
-              </div>
-            ))}
-          </div>
-
-          {!googleOAuthReady && (
-            <p className="text-xs text-muted-foreground">
-              Configure o <strong>Google OAuth2</strong> em{' '}
-              <a href="/settings" className="text-primary underline">Configurações → Integrações</a>{' '}
-              para conectar o Google Sheets.
-            </p>
-          )}
-        </div>
-
-        {/* ── Connected Sheet details ── */}
-        {isSheetConnected && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              <span className="text-sm font-semibold text-foreground">Google Sheets conectado</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              As respostas serão sincronizadas para a planilha com as mesmas colunas da aba Respostas.
-            </p>
-            {form.googleSheetUrl && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={form.googleSheetUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                  Abrir planilha
-                </a>
-              </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Crie uma planilha vinculada para receber todas as respostas automaticamente.
+                </p>
+                <Button onClick={handleConnectSheet} disabled={googleLoading || !googleOAuthReady} className="gap-1.5">
+                  {googleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sheet className="h-3.5 w-3.5" />}
+                  Criar e conectar planilha
+                </Button>
+                {!googleOAuthReady && (
+                  <p className="text-xs text-destructive">Configure o Google OAuth nas Configurações primeiro.</p>
+                )}
+              </>
             )}
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={syncing} className="gap-1.5">
-                {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sheet className="h-3.5 w-3.5" />}
-                Sincronizar agora
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleDisconnectSheet} className="gap-1.5 text-muted-foreground hover:text-destructive">
-                <Unplug className="h-3.5 w-3.5" />
-                Desconectar
-              </Button>
-            </div>
           </div>
-        )}
+        </DialogContent>
+      </Dialog>
 
-        {/* ── Section: Webhook ── */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Webhook className="h-4 w-4 text-muted-foreground" />
-            Webhook de conclusão
-          </h3>
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Receba um POST com todos os dados da resposta sempre que alguém completar o formulário.
-            </p>
+      {/* ── Modal: Webhook ── */}
+      <Dialog open={openModal === 'webhook'} onOpenChange={(o) => !o && setOpenModal(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Webhook className="h-4 w-4 text-orange-500" /> Webhook
+            </DialogTitle>
+            <DialogDescription>Receba um POST com todos os dados ao completar o formulário.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">URL do webhook</Label>
               <Input
                 value={form.completionWebhookUrl || ''}
                 onChange={e => onUpdate({ completionWebhookUrl: e.target.value })}
@@ -333,14 +364,11 @@ export default function FormShare({ form, onUpdate }: Props) {
                 className="text-sm font-mono"
               />
             </div>
-            {form.completionWebhookUrl && (
+            {isWebhookConnected && (
               <div className="flex items-center gap-1.5 text-xs text-emerald-600">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Ativo — será disparado ao completar o formulário
+                <CheckCircle2 className="h-3.5 w-3.5" /> Ativo — será disparado ao completar
               </div>
             )}
-
-            {/* Payload preview */}
             <div>
               <button
                 onClick={() => setShowPayload(!showPayload)}
@@ -350,15 +378,14 @@ export default function FormShare({ form, onUpdate }: Props) {
                 Ver modelo do payload ({examplePayload.fields.length} campos)
               </button>
               {showPayload && (
-                <pre className="mt-2 rounded-lg bg-muted p-4 text-[11px] font-mono overflow-x-auto max-h-96 overflow-y-auto text-foreground/80 whitespace-pre-wrap">
+                <pre className="mt-2 rounded-lg bg-muted p-4 text-[11px] font-mono overflow-x-auto max-h-64 overflow-y-auto text-foreground/80 whitespace-pre-wrap">
                   {JSON.stringify(examplePayload, null, 2)}
                 </pre>
               )}
             </div>
           </div>
-        </div>
-
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
