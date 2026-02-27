@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormData } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Download, ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -119,9 +119,9 @@ export default function FormResponses({ form }: Props) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const fetchResponses = useCallback(() => {
     setLoading(true);
     (supabase as any)
       .from('form_responses')
@@ -130,12 +130,18 @@ export default function FormResponses({ form }: Props) {
       .order('created_at', { ascending: false })
       .limit(500)
       .then(({ data }: any) => {
-        if (!active) return;
         setRows((data || []) as ResponseRow[]);
         setLoading(false);
+        setRefreshing(false);
       });
-    return () => { active = false; };
   }, [form.id]);
+
+  useEffect(() => { fetchResponses(); }, [fetchResponses]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchResponses();
+  }, [fetchResponses]);
 
   const fields = useMemo(() => extractInputFields(form), [form]);
 
@@ -241,6 +247,12 @@ export default function FormResponses({ form }: Props) {
           >
             {sortDir === 'desc' ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
             {sortDir === 'desc' ? 'Mais recentes' : 'Mais antigas'}
+          </Button>
+
+          {/* Refresh */}
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-1.5">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
           </Button>
 
           {/* Export */}
