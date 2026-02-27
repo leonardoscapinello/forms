@@ -127,30 +127,26 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                     {/* Dot */}
                     <circle cx={cx} cy={cy} r={4} fill={ds.color} stroke="white" strokeWidth={2} />
                     {/* Floating badge — shown on every point that has a tooltip */}
-                    {showBadge && (
-                      <g>
-                        <rect
-                          x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW))}
-                          y={Math.max(6, cy - badgeH - 10)}
-                          width={badgeW}
-                          height={badgeH}
-                          rx={badgeH / 2}
-                          fill={badgeColor}
-                          filter="url(#cmpBadgeShadow)"
-                        />
-                        <text
-                          x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW)) + badgeW / 2}
-                          y={cy - badgeH / 2 - 10 + 1}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fontSize={9}
-                          fontWeight={700}
-                          fill="white"
-                        >
-                          {tipText}
-                        </text>
-                      </g>
-                    )}
+                    {showBadge && (() => {
+                      const bx = cx - badgeW / 2;
+                      const by = cy - badgeH - 10;
+                      return (
+                        <g>
+                          <rect
+                            x={bx} y={by} width={badgeW} height={badgeH}
+                            rx={badgeH / 2} fill={badgeColor}
+                            filter="url(#cmpBadgeShadow)"
+                          />
+                          <text
+                            x={bx + badgeW / 2} y={by + badgeH / 2 + 1}
+                            textAnchor="middle" dominantBaseline="middle"
+                            fontSize={9} fontWeight={700} fill="white"
+                          >
+                            {tipText}
+                          </text>
+                        </g>
+                      );
+                    })()}
                   </g>
                 );
               }}
@@ -208,30 +204,26 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                 const badgeW = Math.max(tipText.length * 6 + 14, 40);
                 const badgeH = 22;
                 const cx = x + bw / 2;
-                return (
-                  <g key={`bar-tip-${ds.id}-${index}`}>
-                    <rect
-                      x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW))}
-                      y={Math.max(6, y - badgeH - 6)}
-                      width={badgeW}
-                      height={badgeH}
-                      rx={badgeH / 2}
-                      fill={badgeColor}
-                      filter="url(#cmpBarBadgeShadow)"
-                    />
-                    <text
-                      x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW)) + badgeW / 2}
-                      y={y - badgeH / 2 - 6 + 1}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize={9}
-                      fontWeight={700}
-                      fill="white"
-                    >
-                      {tipText}
-                    </text>
-                  </g>
-                );
+                return (() => {
+                  const bx = cx - badgeW / 2;
+                  const by = y - badgeH - 6;
+                  return (
+                    <g key={`bar-tip-${ds.id}-${index}`}>
+                      <rect
+                        x={bx} y={by} width={badgeW} height={badgeH}
+                        rx={badgeH / 2} fill={badgeColor}
+                        filter="url(#cmpBarBadgeShadow)"
+                      />
+                      <text
+                        x={bx + badgeW / 2} y={by + badgeH / 2 + 1}
+                        textAnchor="middle" dominantBaseline="middle"
+                        fontSize={9} fontWeight={700} fill="white"
+                      >
+                        {tipText}
+                      </text>
+                    </g>
+                  );
+                })();
               }}
             />
           ))}
