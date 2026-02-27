@@ -138,6 +138,17 @@ function resolveTypedAnswer(
   }
 }
 
+export interface PixelEventRecord {
+  platform: string;
+  event_name: string;
+  event_id: string;
+  trigger_type: string;
+  fired_client: boolean;
+  fired_server: boolean;
+  fired_at: string;
+  custom_params?: Record<string, any>;
+}
+
 export interface BuildWebhookPayloadOptions {
   form: AppFormData;
   answers: Record<string, any>;          // raw answers keyed by elementId
@@ -149,6 +160,7 @@ export interface BuildWebhookPayloadOptions {
   queryParams?: Record<string, string>;  // URL search params
   sourceUrl?: string;
   referrer?: string;
+  pixelEvents?: PixelEventRecord[];      // all pixel events fired during this session
 }
 
 export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
@@ -279,6 +291,21 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
 
       /** Form variables at submission time */
       variables,
+
+      /** Pixel/analytics events fired during this session */
+      pixel_events: opts.pixelEvents && opts.pixelEvents.length > 0 ? {
+        total_fired: opts.pixelEvents.length,
+        events: opts.pixelEvents.map(pe => ({
+          platform: pe.platform,
+          event_name: pe.event_name,
+          event_id: pe.event_id,
+          trigger_type: pe.trigger_type,
+          fired_client: pe.fired_client,
+          fired_server: pe.fired_server,
+          fired_at: pe.fired_at,
+          custom_params: pe.custom_params || undefined,
+        })),
+      } : undefined,
 
       /** Static extra params configured on the webhook node */
       meta: Object.keys(extraParams).length > 0 ? extraParams : undefined,

@@ -12,7 +12,7 @@ import Twemoji from '@/components/Twemoji';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
-import { buildWebhookPayload } from '@/lib/webhookPayload';
+import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
 import { consumePrefetchedForm } from '@/lib/formPrefetch';
@@ -128,6 +128,9 @@ export default function FormPreview() {
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  // Track all pixel events fired during this session
+  const pixelEventsRef = useRef<PixelEventRecord[]>([]);
 
   // Capture session metadata once on mount
   const sessionMetaRef = useRef({
@@ -367,6 +370,7 @@ export default function FormPreview() {
         userData: {},
         sourceUrl,
         userAgent,
+        onFired: (rec) => pixelEventsRef.current.push(rec),
       });
     }
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -445,6 +449,7 @@ export default function FormPreview() {
           respondent: {
             user_agent: sessionMetaRef.current.userAgent,
           },
+          pixelEvents: pixelEventsRef.current,
         });
         fetch(form.completionWebhookUrl, {
           method: 'POST',
@@ -735,6 +740,7 @@ export default function FormPreview() {
             submittedAt: new Date().toISOString(),
             extraParams,
             queryParams: sessionMetaRef.current.queryParams,
+            pixelEvents: pixelEventsRef.current,
           });
 
           // Fire webhook and capture response (for variable mapping)
@@ -835,6 +841,7 @@ export default function FormPreview() {
               },
               sourceUrl,
               userAgent: sessionMetaRef.current.userAgent,
+              onFired: (rec) => pixelEventsRef.current.push(rec),
             });
           }
         }

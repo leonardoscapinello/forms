@@ -168,6 +168,13 @@ export default function FormShare({ form, onUpdate }: Props) {
       navigation: { source_url: 'https://...', query_params: { utm_source: 'email' } },
       fields,
       variables: Object.fromEntries((form.variables || []).map(v => [v.name, '<valor>'])),
+      pixel_events: {
+        total_fired: 2,
+        events: [
+          { platform: 'meta_pixel', event_name: 'Lead', event_id: 'abc123_dedup', trigger_type: 'flow_node', fired_client: true, fired_server: true, fired_at: '2025-01-01T12:05:29Z' },
+          { platform: 'google_analytics', event_name: 'generate_lead', event_id: 'xyz789_dedup', trigger_type: 'load_event', fired_client: false, fired_server: true, fired_at: '2025-01-01T12:00:01Z' },
+        ],
+      },
     };
   }, [form]);
 
