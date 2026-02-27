@@ -88,6 +88,7 @@ export default function FormPreview() {
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -267,6 +268,11 @@ export default function FormPreview() {
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
   useEffect(() => { formRef.current = form; }, [form]);
+
+  // Scroll to top on page change
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [currentPageIndex, finished]);
 
 
   const pages = form?.pages || [];
@@ -803,6 +809,7 @@ export default function FormPreview() {
 
         return (
           <div
+            ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col"
             style={{ backgroundColor: bgColor, fontFamily }}
           >
