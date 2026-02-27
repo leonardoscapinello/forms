@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { FormData } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Check, Copy, Link, ExternalLink, Globe, Loader2, CheckCircle2,
-  Unplug, Sheet,
+  Unplug, Sheet, Webhook, ChevronDown,
 } from 'lucide-react';
 
 interface Props {
@@ -139,6 +139,55 @@ export default function FormShare({ form, onUpdate }: Props) {
   }, [onUpdate, toast]);
 
   const isSheetConnected = !!form.googleSheetId;
+  const [showPayload, setShowPayload] = useState(false);
+
+  // Build example webhook payload for preview
+  const examplePayload = useMemo(() => {
+    const fields: any[] = [];
+    for (const page of form.pages || []) {
+      for (const el of (page.elements || []) as PageElement[]) {
+        if (!el.type.startsWith('input_')) continue;
+        fields.push({
+          field_id: el.id,
+          field_name: el.fieldName || el.id,
+          type: el.type.replace('input_', ''),
+          label: el.label || null,
+          placeholder: el.placeholder || null,
+          required: el.required ?? false,
+          value: '<valor respondido>',
+          raw_value: '<valor bruto>',
+        });
+      }
+    }
+    return {
+      event: {
+        id: '<response_uuid>',
+        form_id: form.id,
+        form_name: form.title,
+        form_status: form.status,
+        total_pages: (form.pages || []).length,
+        landed_at: '2025-01-01T12:00:00.000Z',
+        submitted_at: '2025-01-01T12:05:30.000Z',
+        total_time_ms: 330000,
+        total_time_seconds: 330,
+      },
+      respondent: {
+        ip: null,
+        user_agent: 'Mozilla/5.0 ...',
+        geolocation: null,
+      },
+      navigation: {
+        source_url: 'https://example.com/page',
+        referrer: 'https://google.com',
+        query_params: { utm_source: 'email', utm_campaign: 'test' },
+      },
+      fields,
+      answers: Object.fromEntries(fields.map(f => [f.field_name, '<valor>'])),
+      answers_raw: Object.fromEntries(fields.map(f => [f.field_id, '<valor bruto>'])),
+      variables: Object.fromEntries((form.variables || []).map(v => [v.name, '<valor>'])),
+      meta: undefined,
+    };
+  }, [form]);
 
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-background">
@@ -265,6 +314,50 @@ export default function FormShare({ form, onUpdate }: Props) {
             </div>
           </div>
         )}
+
+        {/* ── Section: Webhook ── */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Webhook className="h-4 w-4 text-muted-foreground" />
+            Webhook de conclusão
+          </h3>
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Receba um POST com todos os dados da resposta sempre que alguém completar o formulário.
+            </p>
+            <div className="space-y-1.5">
+              <Input
+                value={form.completionWebhookUrl || ''}
+                onChange={e => onUpdate({ completionWebhookUrl: e.target.value })}
+                placeholder="https://hooks.exemplo.com/webhook"
+                className="text-sm font-mono"
+              />
+            </div>
+            {form.completionWebhookUrl && (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Ativo — será disparado ao completar o formulário
+              </div>
+            )}
+
+            {/* Payload preview */}
+            <div>
+              <button
+                onClick={() => setShowPayload(!showPayload)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showPayload ? 'rotate-180' : ''}`} />
+                Ver modelo do payload ({examplePayload.fields.length} campos)
+              </button>
+              {showPayload && (
+                <pre className="mt-2 rounded-lg bg-muted p-4 text-[11px] font-mono overflow-x-auto max-h-96 overflow-y-auto text-foreground/80 whitespace-pre-wrap">
+                  {JSON.stringify(examplePayload, null, 2)}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
