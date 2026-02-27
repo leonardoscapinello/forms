@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.google-sheets-sync]
 verify_jwt = false
+
+[functions.webhook-test]
+verify_jwt = false
