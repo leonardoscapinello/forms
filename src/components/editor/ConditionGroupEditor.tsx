@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question, FormVariable } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Group } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -27,9 +27,13 @@ interface Props {
   questions: Question[];
   variables?: FormVariable[];
   onChange: (group: ConditionGroup) => void;
+  /** Depth level for nested rendering (0 = root) */
+  depth?: number;
+  /** Called when this sub-group should be removed (only for non-root) */
+  onRemove?: () => void;
 }
 
-export default function ConditionGroupEditor({ group, questions, variables = [], onChange }: Props) {
+export default function ConditionGroupEditor({ group, questions, variables = [], onChange, depth = 0, onRemove }: Props) {
   const updateRule = useCallback((ruleId: string, patch: Partial<ConditionRule>) => {
     onChange({ ...group, rules: group.rules.map(r => (r.id === ruleId ? { ...r, ...patch } : r)) });
   }, [group, onChange]);
@@ -45,10 +49,34 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
       questionId: questions[0]?.id || '',
       operator: 'equals',
       value: '',
-      logicWithPrev: 'and',
+      logicWithPrev: group.rules.length > 0 || group.groups.length > 0 ? 'and' : undefined,
     };
     onChange({ ...group, rules: [...group.rules, rule] });
   }, [group, questions, onChange]);
+
+  const addSubGroup = useCallback(() => {
+    const subGroup: ConditionGroup = {
+      id: crypto.randomUUID(),
+      logic: 'or', // default sub-group logic to OR (common use case: group OR conditions together)
+      rules: [{
+        id: crypto.randomUUID(),
+        subjectType: 'question',
+        questionId: questions[0]?.id || '',
+        operator: 'equals',
+        value: '',
+      }],
+      groups: [],
+    };
+    onChange({ ...group, groups: [...group.groups, subGroup] });
+  }, [group, questions, onChange]);
+
+  const updateSubGroup = useCallback((subGroupId: string, updatedSubGroup: ConditionGroup) => {
+    onChange({ ...group, groups: group.groups.map(g => g.id === subGroupId ? updatedSubGroup : g) });
+  }, [group, onChange]);
+
+  const removeSubGroup = useCallback((subGroupId: string) => {
+    onChange({ ...group, groups: group.groups.filter(g => g.id !== subGroupId) });
+  }, [group, onChange]);
 
   const toggleLogic = useCallback((ruleId: string, current: LogicOperator) => {
     onChange({
@@ -57,16 +85,57 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
     });
   }, [group, onChange]);
 
+  const toggleGroupLogic = useCallback(() => {
+    onChange({ ...group, logic: group.logic === 'and' ? 'or' : 'and' });
+  }, [group, onChange]);
+
+  // Total items count (rules + sub-groups) for determining if we show connectors
+  const totalItems = group.rules.length + group.groups.length;
+
+  // Determine the connector logic between rules and sub-groups at this level
+  // For root: each rule has its own logicWithPrev
+  // For sub-groups connecting to previous items: use the sub-group's logic property
+  const isRoot = depth === 0;
+
   return (
-    <div className="space-y-1.5">
+    <div className={`space-y-1.5 ${depth > 0 ? 'pl-2 border-l-2 border-primary/20 ml-1' : ''}`}>
+      {/* Sub-group header for non-root */}
+      {depth > 0 && (
+        <div className="flex items-center gap-1.5 mb-1">
+          <button
+            onClick={toggleGroupLogic}
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full select-none cursor-pointer transition-colors ${
+              group.logic === 'and'
+                ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                : 'bg-warning/15 text-warning hover:bg-warning/25'
+            }`}
+          >
+            Grupo {group.logic === 'and' ? 'E' : 'OU'}
+          </button>
+          <span className="text-[9px] text-muted-foreground">
+            {group.logic === 'and' ? 'Todas devem ser verdadeiras' : 'Pelo menos uma deve ser verdadeira'}
+          </span>
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              className="ml-auto p-0.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Rules */}
       {group.rules.map((rule, idx) => {
         const subjectType = rule.subjectType ?? 'question';
         const logic = rule.logicWithPrev ?? 'and';
+        const showConnector = idx > 0;
 
         return (
           <div key={rule.id}>
             {/* Logic connector between rules */}
-            {idx > 0 && (
+            {showConnector && (
               <div className="flex items-center gap-2 py-1">
                 <div className="flex-1 h-px bg-border" />
                 <button
@@ -134,7 +203,7 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
                     </SelectContent>
                   </Select>
                 )}
-                {group.rules.length > 1 && (
+                {totalItems > 1 && (
                   <button
                     onClick={() => removeRule(rule.id)}
                     className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
@@ -170,15 +239,62 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
         );
       })}
 
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 text-[10px] text-muted-foreground px-2 hover:text-foreground w-full border border-dashed border-border"
-        onClick={addRule}
-      >
-        <Plus className="mr-1 h-2.5 w-2.5" />
-        Adicionar regra
-      </Button>
+      {/* Nested sub-groups */}
+      {group.groups.map((subGroup, idx) => {
+        const showConnector = group.rules.length > 0 || idx > 0;
+        return (
+          <div key={subGroup.id}>
+            {showConnector && (
+              <div className="flex items-center gap-2 py-1">
+                <div className="flex-1 h-px bg-border" />
+                <button
+                  onClick={() => updateSubGroup(subGroup.id, { ...subGroup, logic: subGroup.logic === 'and' ? 'or' : 'and' })}
+                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full select-none cursor-pointer transition-colors ${
+                    subGroup.logic === 'and'
+                      ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                      : 'bg-warning/15 text-warning hover:bg-warning/25'
+                  }`}
+                >
+                  {subGroup.logic === 'and' ? 'E' : 'OU'}
+                </button>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
+            <ConditionGroupEditor
+              group={subGroup}
+              questions={questions}
+              variables={variables}
+              onChange={updated => updateSubGroup(subGroup.id, updated)}
+              depth={depth + 1}
+              onRemove={() => removeSubGroup(subGroup.id)}
+            />
+          </div>
+        );
+      })}
+
+      {/* Action buttons */}
+      <div className="flex gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 text-[10px] text-muted-foreground px-2 hover:text-foreground flex-1 border border-dashed border-border"
+          onClick={addRule}
+        >
+          <Plus className="mr-1 h-2.5 w-2.5" />
+          Regra
+        </Button>
+        {depth < 2 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] text-muted-foreground px-2 hover:text-foreground flex-1 border border-dashed border-border"
+            onClick={addSubGroup}
+          >
+            <Group className="mr-1 h-2.5 w-2.5" />
+            Sub-grupo
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
