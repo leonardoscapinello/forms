@@ -103,6 +103,10 @@ function FlowCanvasInner({
     sourceNodeId: string;
     sourceHandle?: string;
   } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    screenPos: { x: number; y: number };
+    flowPos: { x: number; y: number };
+  } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
   const { screenToFlowPosition } = useReactFlow();
 
@@ -485,6 +489,46 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onAnalyticsAddAtPosition]);
 
+  const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    setContextMenu({
+      screenPos: { x: event.clientX, y: event.clientY },
+      flowPos,
+    });
+  }, [screenToFlowPosition]);
+
+  const handleCtxAddPage = useCallback(() => {
+    if (!contextMenu) return;
+    const page = createDefaultFunnelPage();
+    onPageAddAtPosition(page, contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onPageAddAtPosition]);
+
+  const handleCtxAddCondition = useCallback(() => {
+    if (!contextMenu) return;
+    onConditionAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onConditionAddAtPosition]);
+
+  const handleCtxAddVariableOp = useCallback(() => {
+    if (!contextMenu) return;
+    onVariableOpAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onVariableOpAddAtPosition]);
+
+  const handleCtxAddIntegration = useCallback(() => {
+    if (!contextMenu) return;
+    onIntegrationAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onIntegrationAddAtPosition]);
+
+  const handleCtxAddAnalytics = useCallback(() => {
+    if (!contextMenu) return;
+    onAnalyticsAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onAnalyticsAddAtPosition]);
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -514,6 +558,8 @@ function FlowCanvasInner({
         selectNodesOnDrag={false}
         panOnScroll
         zoomOnPinch
+        onPaneContextMenu={onPaneContextMenu}
+        onPaneClick={() => setContextMenu(null)}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
@@ -546,6 +592,18 @@ function FlowCanvasInner({
           onAddIntegration={handleDropAddIntegration}
           onAddAnalytics={handleDropAddAnalytics}
           onClose={() => setDropMenu(null)}
+        />
+      )}
+
+      {contextMenu && (
+        <ConnectDropMenu
+          position={contextMenu.screenPos}
+          onAddPage={handleCtxAddPage}
+          onAddCondition={handleCtxAddCondition}
+          onAddVariableOp={handleCtxAddVariableOp}
+          onAddIntegration={handleCtxAddIntegration}
+          onAddAnalytics={handleCtxAddAnalytics}
+          onClose={() => setContextMenu(null)}
         />
       )}
 
