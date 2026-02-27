@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
 import AppLayout from "./components/AppLayout";
@@ -38,6 +39,19 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ScrollToTop() {
+  const { pathname, search, hash } = useLocation();
+
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname, search, hash]);
+
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -46,6 +60,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
               <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
