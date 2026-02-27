@@ -13,10 +13,11 @@ interface PageNodeData {
   onSelect: () => void;
   variables?: FormVariable[];
   allInputElements?: InputElementGroup[];
+  isDisconnected?: boolean;
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange, variables = [], allInputElements = [] } = data;
+  const { page, index, onSelect, onChange, variables = [], allInputElements = [], isDisconnected = false } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
   const [varPopoverOpen, setVarPopoverOpen] = useState(false);
@@ -45,7 +46,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
   return (
     <div
       className={`w-72 rounded-xl border bg-card shadow-sm transition-all cursor-pointer hover:shadow-md ${
-        selected ? 'border-primary shadow-md ring-2 ring-primary/10' : 'border-border'
+        selected ? 'border-primary shadow-md ring-2 ring-primary/10' : isDisconnected ? 'border-destructive/50 opacity-60' : 'border-border'
       }`}
       onDoubleClick={onSelect}
     >
