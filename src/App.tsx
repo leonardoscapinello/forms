@@ -77,10 +77,10 @@ function LegacyPreviewRedirect() {
   return <Navigate to={id ? `/f/${id}` : "/"} replace />;
 }
 
-// Lightweight wrapper for public form — skips AuthProvider/FormStoreProvider
+// Lightweight wrapper for public form — no extra loader (FormPreview handles its own)
 function PublicFormRoute() {
   return (
-    <Suspense fallback={<PageLoader />}>
+    <Suspense fallback={null}>
       <FormPreview />
     </Suspense>
   );
