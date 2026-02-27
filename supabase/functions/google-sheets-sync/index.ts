@@ -227,6 +227,18 @@ Deno.serve(async (req) => {
       // Extract variables
       const formVariables: { name: string }[] = (formData?.variables || []).map((v: any) => ({ name: v.name }));
 
+      // Extract tracked params (default UTMs if not configured)
+      const defaultParams = [
+        { key: 'utm_source', label: 'UTM Source', enabled: true },
+        { key: 'utm_medium', label: 'UTM Medium', enabled: true },
+        { key: 'utm_campaign', label: 'UTM Campaign', enabled: true },
+        { key: 'utm_content', label: 'UTM Content', enabled: true },
+        { key: 'utm_term', label: 'UTM Term', enabled: true },
+      ];
+      const trackedParams: { key: string; label: string }[] = (formData?.trackedParams || defaultParams)
+        .filter((p: any) => p.enabled && p.key)
+        .map((p: any) => ({ key: p.key, label: p.label || p.key }));
+
       // Fetch responses
       const { data: responses } = await supabase
         .from("form_responses")
@@ -259,7 +271,6 @@ Deno.serve(async (req) => {
       // Build header row
       const headerRow = [
         "#",
-        "#",
         "ID",
         "Status",
         "Entrada",
@@ -267,6 +278,7 @@ Deno.serve(async (req) => {
         "Duração",
         ...inputElements.map((f) => f.label),
         ...formVariables.map((v) => `⚡ ${v.name}`),
+        ...trackedParams.map((p) => `🔗 ${p.label}`),
       ];
 
       // Build data rows
@@ -289,6 +301,10 @@ Deno.serve(async (req) => {
           ),
           ...formVariables.map((v) => {
             const val = row.answers?.[`__var_${v.name}`];
+            return val !== undefined && val !== null ? String(val) : '';
+          }),
+          ...trackedParams.map((p) => {
+            const val = row.answers?.[`__param_${p.key}`];
             return val !== undefined && val !== null ? String(val) : '';
           }),
         ];

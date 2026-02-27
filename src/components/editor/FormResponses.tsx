@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { FormData } from '@/types/form';
+import { FormData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw } from 'lucide-react';
@@ -154,6 +154,15 @@ export default function FormResponses({ form }: Props) {
     }));
   }, [form.variables]);
 
+  // Extract tracked GET params as columns
+  const paramColumns = useMemo(() => {
+    const params: TrackedParam[] = form.trackedParams || DEFAULT_TRACKED_PARAMS;
+    return params.filter(p => p.enabled && p.key).map(p => ({
+      key: `__param_${p.key}`,
+      label: p.label || p.key,
+    }));
+  }, [form.trackedParams]);
+
   const filtered = useMemo(() => {
     let list = rows;
     if (statusFilter === 'complete') list = list.filter(r => r.metadata?.status === 'complete' || !!r.metadata?.submitted_at);
@@ -169,7 +178,7 @@ export default function FormResponses({ form }: Props) {
   }, [rows]);
 
   const exportCSV = useCallback(() => {
-    const headers = ['#', 'ID', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label)];
+    const headers = ['#', 'ID', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label), ...paramColumns.map(p => `🔗 ${p.label}`)];
     const csvRows = [headers.join(',')];
     filtered.forEach((row, idx) => {
       const hash = row.metadata?.response_hash || row.response_id?.slice(0, 8).toUpperCase() || '';
@@ -185,7 +194,11 @@ export default function FormResponses({ form }: Props) {
         const val = row.answers?.[v.key];
         return `"${formatCellValue(val, v.type).replace(/"/g, '""')}"`;
       });
-      csvRows.push([idx + 1, hash, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals, ...varVals].join(','));
+      const paramVals = paramColumns.map(p => {
+        const val = row.answers?.[p.key];
+        return `"${(val !== undefined && val !== null ? String(val) : '—').replace(/"/g, '""')}"`;
+      });
+      csvRows.push([idx + 1, hash, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals, ...varVals, ...paramVals].join(','));
     });
     const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -299,6 +312,11 @@ export default function FormResponses({ form }: Props) {
                     <span className="truncate block text-primary/80">{v.label}</span>
                   </TableHead>
                 ))}
+                {paramColumns.map(p => (
+                  <TableHead key={p.key} className="min-w-[120px] max-w-[200px]">
+                    <span className="truncate block text-muted-foreground">🔗 {p.label}</span>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -340,6 +358,13 @@ export default function FormResponses({ form }: Props) {
                       <TableCell key={v.key} className="text-sm max-w-[200px]">
                         <span className="truncate block" title={formatCellValue(row.answers?.[v.key], v.type)}>
                           {formatCellValue(row.answers?.[v.key], v.type)}
+                        </span>
+                      </TableCell>
+                    ))}
+                    {paramColumns.map(p => (
+                      <TableCell key={p.key} className="text-sm max-w-[200px]">
+                        <span className="truncate block" title={row.answers?.[p.key] ?? '—'}>
+                          {row.answers?.[p.key] || '—'}
                         </span>
                       </TableCell>
                     ))}
