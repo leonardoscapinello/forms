@@ -17,7 +17,7 @@ import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings } from 'lucide-react';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 
 type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings' | 'analytics';
 
@@ -32,6 +32,36 @@ export default function FormEditor() {
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingWelcome, setEditingWelcome] = useState(false);
   const [editingThankYou, setEditingThankYou] = useState(false);
+
+  // Compute disconnected page IDs (pages not reachable from 'start' node)
+  const disconnectedPageIds = useMemo(() => {
+    const edges = form?.flowEdges || [];
+    const pages = form?.pages || [];
+    if (pages.length === 0) return new Set<string>();
+    
+    // BFS from 'start'
+    const visited = new Set<string>();
+    const queue = ['start'];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      for (const edge of edges) {
+        if (edge.source === current && !visited.has(edge.target)) {
+          queue.push(edge.target);
+        }
+      }
+    }
+    
+    // Pages whose node ID (p-{id}) was not visited
+    const disconnected = new Set<string>();
+    for (const page of pages) {
+      if (!visited.has(`p-${page.id}`)) {
+        disconnected.add(page.id);
+      }
+    }
+    return disconnected;
+  }, [form?.flowEdges, form?.pages]);
 
   const {
     collaborators,
@@ -459,6 +489,7 @@ export default function FormEditor() {
               onAddVariable={handleAddVariable}
               onUpdateVariable={handleUpdateVariable}
               onDeleteVariable={handleDeleteVariable}
+              disconnectedPageIds={disconnectedPageIds}
             />
             {editingWelcome ? (
               <PageBuilder

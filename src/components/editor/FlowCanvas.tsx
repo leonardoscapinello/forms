@@ -168,6 +168,24 @@ function FlowCanvasInner({
     return inputElementsByPage.filter(p => upstreamPageIds.includes(p.pageId));
   }, [form.flowEdges, inputElementsByPage]);
 
+  // Compute reachable nodes from 'start'
+  const reachableNodeIds = useMemo(() => {
+    const edges = form.flowEdges || [];
+    const visited = new Set<string>();
+    const queue = ['start'];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      for (const edge of edges) {
+        if (edge.source === current && !visited.has(edge.target)) {
+          queue.push(edge.target);
+        }
+      }
+    }
+    return visited;
+  }, [form.flowEdges]);
+
   const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
 
@@ -194,6 +212,7 @@ function FlowCanvasInner({
           onSelect: () => onPageSelect(page.id),
           variables,
           allInputElements: prevElements,
+          isDisconnected: !reachableNodeIds.has(nodeId),
         },
       });
     });

@@ -1,5 +1,5 @@
 import { FunnelPage, FormVariable, FormVariableType } from '@/types/form';
-import { Plus, FileText, Trash2, Home, Variable, Pencil, Check, X, Copy, Braces, CheckCircle, Settings2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Trash2, Home, Variable, Pencil, Check, X, Copy, Braces, CheckCircle, Settings2, ChevronDown, ChevronRight, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ interface Props {
   onAddVariable?: () => void;
   onUpdateVariable?: (id: string, patch: Partial<FormVariable>) => void;
   onDeleteVariable?: (id: string) => void;
+  disconnectedPageIds?: Set<string>;
 }
 
 const VARIABLE_TYPE_LABELS: Record<FormVariableType, string> = {
@@ -85,6 +86,7 @@ export default function PageListPanel({
   showWelcomeScreen, onToggleWelcomeScreen, isWelcomeSelected, onSelectWelcome,
   isThankYouSelected, onSelectThankYou,
   variables = [], onAddVariable, onUpdateVariable, onDeleteVariable,
+  disconnectedPageIds = new Set(),
 }: Props) {
   const [pagesOpen, setPagesOpen] = useState(true);
   const [varsOpen, setVarsOpen] = useState(false);
@@ -179,21 +181,30 @@ export default function PageListPanel({
                 <p className="text-xs">Nenhuma página</p>
               </div>
             ) : (
-              pages.map((page, index) => (
+              pages.map((page, index) => {
+                const isDisconnected = disconnectedPageIds.has(page.id);
+                return (
                 <div
                   key={page.id}
                   className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
                     selectedPageId === page.id
                       ? 'bg-primary/10 text-primary border border-primary/20'
-                      : 'hover:bg-muted border border-transparent'
+                      : isDisconnected
+                        ? 'hover:bg-muted border border-destructive/30 bg-destructive/5'
+                        : 'hover:bg-muted border border-transparent'
                   }`}
                   onClick={() => onSelectPage(page.id)}
+                  title={isDisconnected ? 'Esta página não está conectada ao fluxo e não será exibida' : undefined}
                 >
                   <span className="text-[10px] text-muted-foreground font-mono w-4 text-center flex-shrink-0">
                     {index + 1}
                   </span>
-                  <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="text-xs font-medium truncate flex-1">{page.title || 'Sem título'}</span>
+                  {isDisconnected ? (
+                    <Unplug className="h-3.5 w-3.5 flex-shrink-0 text-destructive/70" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                  )}
+                  <span className={`text-xs font-medium truncate flex-1 ${isDisconnected ? 'text-destructive/70' : ''}`}>{page.title || 'Sem título'}</span>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <span className="text-[10px] text-muted-foreground">{page.elements?.length || 0}</span>
                     {pages.length > 1 && (
@@ -206,7 +217,8 @@ export default function PageListPanel({
                     )}
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
 
             {/* Thank you page */}
