@@ -407,7 +407,24 @@ export default function FormPreview() {
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
 
-  /** Compute total score from all selection/quiz answers */
+
+  // Auto-complete when user reaches a true terminal page (no inputs/buttons and no outgoing flow)
+  useEffect(() => {
+    if (!form || finished || currentPageIndex === null) return;
+
+    const page = pages[currentPageIndex];
+    if (!page) return;
+
+    const hasInputFields = page.elements?.some(el => el.type.startsWith('input_'));
+    const hasActionButtons = page.elements?.some(el => el.type === 'button');
+    const hasOutgoingFlow = (form.flowEdges || []).some(edge => edge.source === `p-${page.id}`);
+    const isLastPage = currentPageIndex === pages.length - 1;
+
+    if (!hasInputFields && !hasActionButtons && !hasOutgoingFlow && isLastPage) {
+      setFinished(true);
+    }
+  }, [form, finished, currentPageIndex, pages]);
+
   const totalScore = useMemo(() => {
     if (!form) return 0;
     let score = 0;
