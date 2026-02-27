@@ -114,7 +114,26 @@ function FlowCanvasInner({
     nodeId: string;
   } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
-  const { screenToFlowPosition, setCenter, getZoom } = useReactFlow();
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const { screenToFlowPosition, setCenter, getZoom, getNodes } = useReactFlow();
+
+  const focusNode = useCallback((nodeId: string) => {
+    const allNodes = getNodes();
+    const node = allNodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const x = (node.position?.x ?? 0) + ((node.measured?.width ?? (node as any).width ?? 200) / 2);
+    const y = (node.position?.y ?? 0) + ((node.measured?.height ?? (node as any).height ?? 100) / 2);
+    setCenter(x, y, { zoom: 1.5, duration: 400 });
+    setFocusedNodeId(nodeId);
+  }, [getNodes, setCenter]);
+
+  const navigateNode = useCallback((dir: -1 | 1) => {
+    const allNodes = getNodes().sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+    if (!allNodes.length) return;
+    const idx = allNodes.findIndex(n => n.id === focusedNodeId);
+    const next = idx === -1 ? 0 : Math.max(0, Math.min(allNodes.length - 1, idx + dir));
+    focusNode(allNodes[next].id);
+  }, [focusedNodeId, getNodes, focusNode]);
 
   const pages = form.pages || [];
   const variables = form.variables || [];
@@ -620,13 +639,8 @@ function FlowCanvasInner({
         zoomOnPinch
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
-        onPaneClick={() => { setContextMenu(null); setNodeContextMenu(null); }}
-        onNodeClick={(_, node) => {
-          const x = (node.position?.x ?? 0) + ((node.measured?.width ?? node.width ?? 200) / 2);
-          const y = (node.position?.y ?? 0) + ((node.measured?.height ?? node.height ?? 100) / 2);
-          const zoom = 1.5;
-          setCenter(x, y, { zoom, duration: 400 });
-        }}
+        onPaneClick={() => { setContextMenu(null); setNodeContextMenu(null); setFocusedNodeId(null); }}
+        onNodeClick={(_, node) => focusNode(node.id)}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
@@ -649,6 +663,37 @@ function FlowCanvasInner({
           zoomable
         />
       </ReactFlow>
+
+      {/* Node navigation bar */}
+      {focusedNodeId && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-full shadow-lg px-1.5 py-1 z-50">
+          <button
+            onClick={() => navigateNode(-1)}
+            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span className="text-xs text-muted-foreground px-2 select-none">
+            {(() => {
+              const sorted = [...nodes].sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+              const idx = sorted.findIndex(n => n.id === focusedNodeId);
+              return `${idx + 1} / ${sorted.length}`;
+            })()}
+          </span>
+          <button
+            onClick={() => navigateNode(1)}
+            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button
+            onClick={() => setFocusedNodeId(null)}
+            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground ml-0.5"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      )}
 
       {dropMenu && (
         <ConnectDropMenu
