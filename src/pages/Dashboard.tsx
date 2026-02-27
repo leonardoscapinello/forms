@@ -148,8 +148,8 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)]">
-      {/* ── Folder sidebar ── */}
-      <aside className="w-56 flex-shrink-0 border-r border-border bg-muted/20 flex flex-col">
+      {/* ── Folder sidebar — hidden on mobile ── */}
+      <aside className="hidden md:flex w-56 flex-shrink-0 border-r border-border bg-muted/20 flex-col">
         <FolderTree
           selectedFolderId={selectedFolderId}
           onSelectFolder={setSelectedFolderId}
@@ -159,7 +159,7 @@ export default function Dashboard() {
 
       {/* ── Main content ── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
