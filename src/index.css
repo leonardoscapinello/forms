@@ -247,31 +247,84 @@ img.emoji {
   }
 }
 
-/* ─── NPS Mobile Slider Thumb ─── */
+/* ─── NPS Mobile Slider ─── */
+.nps-mobile-slider {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+}
+
+/* Thumb — WebKit (Chrome, Safari, Edge) */
 .nps-mobile-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: white;
-  border: 3px solid currentColor;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: 3.5px solid currentColor;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18), 0 0 0 4px rgba(0,0,0,0.04);
   cursor: pointer;
+  margin-top: -10px;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
+.nps-mobile-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 14px rgba(0,0,0,0.22), 0 0 0 6px rgba(0,0,0,0.06);
+}
+
+/* Thumb — Firefox */
 .nps-mobile-slider::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: white;
-  border: 3px solid currentColor;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: 3.5px solid currentColor;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18), 0 0 0 4px rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.nps-mobile-slider:active::-moz-range-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 14px rgba(0,0,0,0.22), 0 0 0 6px rgba(0,0,0,0.06);
+}
+
+/* Thumb — IE/Edge Legacy */
+.nps-mobile-slider::-ms-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  border: 3.5px solid currentColor;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
   cursor: pointer;
 }
+
+/* Track — WebKit */
 .nps-mobile-slider::-webkit-slider-runnable-track {
   height: 12px;
   border-radius: 9999px;
+  background: transparent;
 }
+
+/* Track — Firefox */
 .nps-mobile-slider::-moz-range-track {
   height: 12px;
+  border-radius: 9999px;
+  background: transparent;
+  border: none;
+}
+
+/* Track — IE/Edge Legacy */
+.nps-mobile-slider::-ms-track {
+  height: 12px;
+  border-radius: 9999px;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+.nps-mobile-slider::-ms-fill-lower,
+.nps-mobile-slider::-ms-fill-upper {
   border-radius: 9999px;
 }
