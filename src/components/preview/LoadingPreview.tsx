@@ -154,19 +154,24 @@ export default function LoadingPreview({
         </div>
       )}
       <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: trackColor }}>
-        <motion.div
-          className="h-full rounded-full"
-          style={{
-            backgroundColor: color,
-            width: interactive ? `${percent}%` : '40%',
-            transition: interactive ? 'width 0.1s linear' : undefined,
-          }}
-          {...(!interactive && {
-            initial: { width: '0%' },
-            animate: { width: '40%' },
-            transition: { duration: 1 },
-          })}
-        />
+        {interactive ? (
+          <div
+            className="h-full rounded-full"
+            style={{
+              backgroundColor: color,
+              width: `${percent}%`,
+              transition: 'width 0.1s linear',
+            }}
+          />
+        ) : (
+          <motion.div
+            className="h-full rounded-full"
+            style={{ backgroundColor: color }}
+            initial={{ width: '0%' }}
+            animate={{ width: '40%' }}
+            transition={{ duration: 1 }}
+          />
+        )}
       </div>
     </div>
   );
