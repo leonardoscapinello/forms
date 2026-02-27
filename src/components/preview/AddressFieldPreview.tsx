@@ -5,6 +5,18 @@ const BR_STATES = [
   'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
 ];
 
+const BR_STATE_NAME_TO_UF: Record<string, string> = {
+  'acre': 'AC', 'alagoas': 'AL', 'amapá': 'AP', 'amapa': 'AP', 'amazonas': 'AM',
+  'bahia': 'BA', 'ceará': 'CE', 'ceara': 'CE', 'distrito federal': 'DF',
+  'espírito santo': 'ES', 'espirito santo': 'ES', 'goiás': 'GO', 'goias': 'GO',
+  'maranhão': 'MA', 'maranhao': 'MA', 'mato grosso': 'MT', 'mato grosso do sul': 'MS',
+  'minas gerais': 'MG', 'pará': 'PA', 'para': 'PA', 'paraíba': 'PB', 'paraiba': 'PB',
+  'paraná': 'PR', 'parana': 'PR', 'pernambuco': 'PE', 'piauí': 'PI', 'piaui': 'PI',
+  'rio de janeiro': 'RJ', 'rio grande do norte': 'RN', 'rio grande do sul': 'RS',
+  'rondônia': 'RO', 'rondonia': 'RO', 'roraima': 'RR', 'santa catarina': 'SC',
+  'são paulo': 'SP', 'sao paulo': 'SP', 'sergipe': 'SE', 'tocantins': 'TO',
+};
+
 const COUNTRIES = [
   { code: 'BR', flag: '🇧🇷', name: 'Brasil', hasCep: true },
   { code: 'US', flag: '🇺🇸', name: 'Estados Unidos', hasCep: false },
@@ -99,12 +111,11 @@ export default function AddressFieldPreview({ value, onChange, geoSuggestion }: 
 
     if (geoSuggestion.city) patch.city = geoSuggestion.city;
     if (geoSuggestion.state) {
-      // For Brazil, try to match UF
       if ((patch.country || addr.country) === 'BR') {
-        const uf = BR_STATES.find(s => 
-          geoSuggestion.state!.toUpperCase().includes(s) ||
-          s === geoSuggestion.state!.toUpperCase().slice(0, 2)
-        );
+        const normalized = geoSuggestion.state.toLowerCase().trim();
+        const uf = BR_STATE_NAME_TO_UF[normalized]
+          || BR_STATES.find(s => s === normalized.toUpperCase())
+          || BR_STATES.find(s => s === normalized.toUpperCase().slice(0, 2));
         if (uf) patch.state = uf;
       } else {
         patch.state = geoSuggestion.state;
