@@ -31,7 +31,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
   const addBranch = useCallback(() => {
     const newBranch: ConditionBranch = {
       id: crypto.randomUUID(),
-      label: `Caminho ${branches.length + 1}`,
+      label: `Se ${branches.length + 1}`,
       conditionGroup: createDefaultConditionGroup(firstElementId),
     };
     onChange({ branches: [...branches, newBranch] });
@@ -65,7 +65,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
         <div className="flex items-center gap-2 px-3 py-2 border-b border-node-condition-accent/30 bg-node-condition rounded-t-xl">
           <GitBranch className="h-3.5 w-3.5 text-node-condition-accent" />
           <span className="text-[11px] font-medium uppercase tracking-wide text-node-condition-accent">
-            Condicional
+            Condição
           </span>
           <div className="ml-auto flex items-center gap-1">
             {!validation.isValid && (
@@ -156,7 +156,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                     onChange={e => { e.stopPropagation(); updateBranch(branch.id, { label: e.target.value }); }}
                     onClick={e => e.stopPropagation()}
                     className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent flex-1"
-                    placeholder={`Caminho ${idx + 1}`}
+                    placeholder={`Se ${idx + 1}`}
                   />
                   {branchHasError && (
                     <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
@@ -196,7 +196,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
               className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card !absolute !right-[-18px]"
               style={{ top: '50%', transform: 'translateY(-50%)', position: 'absolute' }}
             />
-            <span className="italic">Padrão (else)</span>
+            <span className="italic text-[11px]">Senão</span>
           </div>
 
           <Button
@@ -206,7 +206,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
             onClick={addBranch}
           >
             <Plus className="mr-1 h-3 w-3" />
-            Adicionar caminho
+            Novo caminho
           </Button>
         </div>
       </div>
