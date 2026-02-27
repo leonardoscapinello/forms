@@ -10,6 +10,14 @@ function getNestedValue(obj: any, path: string): any {
  * Resolves the subject value for a rule — either a question answer, variable value, or webhook response field.
  */
 function resolveSubjectValue(rule: ConditionRule, answers: Record<string, any>, variables?: FormVariable[]): string {
+  if (rule.subjectType === 'context' && rule.contextKey) {
+    const val = answers[`__ctx_${rule.contextKey}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  }
+  if (rule.subjectType === 'param' && rule.paramKey) {
+    const val = answers[`__param_${rule.paramKey}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  }
   if (rule.subjectType === 'webhook_response' && rule.webhookNodeId && rule.webhookResponsePath) {
     const webhookData = answers[`__webhook_${rule.webhookNodeId}`];
     if (webhookData) {

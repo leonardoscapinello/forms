@@ -30,6 +30,18 @@ export function interpolateText(
     return '';
   });
 
+  // Handle context references: {{ctx.device}}, {{ctx.browser}}, etc.
+  result = result.replace(/\{\{ctx\.(\w+)\}\}/g, (_match, key: string) => {
+    const val = answers[`__ctx_${key}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+
+  // Handle GET param references: {{param.utm_source}}, etc.
+  result = result.replace(/\{\{param\.(\w+)\}\}/g, (_match, key: string) => {
+    const val = answers[`__param_${key}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+
   // Then handle variable references: {{varName}}
   if (variables.length === 0) return result;
 

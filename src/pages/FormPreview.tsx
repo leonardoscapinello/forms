@@ -32,6 +32,7 @@ import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import DebugPanel from '@/components/preview/DebugPanel';
 import { buildWebhookPayload } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
+import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
 
 function buildDefaults(form: AppFormData | null) {
   if (!form) return {};
@@ -105,11 +106,24 @@ export default function FormPreview() {
   const maxPageVisitedRef = useRef<number>(-1);
   const pageEnteredAtRef = useRef<number>(Date.now());
 
-  // Initialise answers and page index once form is loaded
+  // Initialise answers, page index, and session context once form is loaded
   useEffect(() => {
     if (!form) return;
-    setAnswers(buildDefaults(form));
+    const ctx = captureSessionContext();
+    const ctxAnswers = contextToAnswers(ctx);
+    setAnswers({ ...buildDefaults(form), ...ctxAnswers });
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
+
+    // Request geolocation asynchronously
+    requestGeolocation().then(({ latitude, longitude }) => {
+      if (latitude && longitude) {
+        setAnswers(prev => ({
+          ...prev,
+          __ctx_latitude: latitude,
+          __ctx_longitude: longitude,
+        }));
+      }
+    });
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Insert session record on form load
