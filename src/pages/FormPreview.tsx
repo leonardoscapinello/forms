@@ -161,40 +161,46 @@ export default function FormPreview() {
     if (!form?.id || finished) return;
     if (currentPageIndex === null) return;
 
-    // Save to localStorage for resume
-    if (form.allowResume) {
-      const storageKey = `form_resume_${form.id}`;
-      try {
-        localStorage.setItem(storageKey, JSON.stringify({
-          answers: answersRef.current,
-          pageIndex: currentPageIndex,
-          maxPage: maxPageVisitedRef.current,
-          updatedAt: new Date().toISOString(),
-        }));
-      } catch { /* quota exceeded */ }
-    }
+    const timer = window.setTimeout(() => {
+      // Save to localStorage for resume
+      if (form.allowResume) {
+        const storageKey = `form_resume_${form.id}`;
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({
+            answers: answersRef.current,
+            pageIndex: currentPageIndex,
+            maxPage: maxPageVisitedRef.current,
+            updatedAt: new Date().toISOString(),
+          }));
+        } catch { /* quota exceeded */ }
+      }
 
-    // Save partial response to DB
-    if (form.savePartialResponses !== false) {
-      const { responseId } = sessionMetaRef.current;
-      const sessionId = sessionDbIdRef.current;
-      ;(supabase as any).from('form_responses').upsert({
-        form_id: form.id,
-        response_id: responseId,
-        session_id: sessionId,
-        answers: answersRef.current,
-        metadata: {
-          status: 'partial',
-          user_agent: sessionMetaRef.current.userAgent,
-          referrer: sessionMetaRef.current.referrer,
-          query_params: sessionMetaRef.current.queryParams,
-          landed_at: sessionMetaRef.current.landedAt,
-          last_page_index: currentPageIndex,
-        },
-        pages_visited: maxPageVisitedRef.current + 1,
-      }, { onConflict: 'form_id,response_id' }).then(() => {});
-    }
-  }, [currentPageIndex, form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
+      // Save partial response to DB
+      if (form.savePartialResponses !== false) {
+        const { responseId } = sessionMetaRef.current;
+        const sessionId = sessionDbIdRef.current;
+        ;(supabase as any).from('form_responses').upsert({
+          form_id: form.id,
+          response_id: responseId,
+          session_id: sessionId,
+          answers: answersRef.current,
+          metadata: {
+            status: 'partial',
+            user_agent: sessionMetaRef.current.userAgent,
+            referrer: sessionMetaRef.current.referrer,
+            query_params: sessionMetaRef.current.queryParams,
+            landed_at: sessionMetaRef.current.landedAt,
+            last_page_index: currentPageIndex,
+          },
+          pages_visited: maxPageVisitedRef.current + 1,
+        }, { onConflict: 'form_id,response_id' }).then(({ error }: any) => {
+          if (error) console.error('Erro ao salvar resposta parcial:', error);
+        });
+      }
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [answers, currentPageIndex, form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save partial on beforeunload
   useEffect(() => {
