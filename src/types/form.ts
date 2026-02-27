@@ -307,6 +307,16 @@ export interface IntegrationNodeData {
   lastTestResponse?: any;
 }
 
+/** Mapping of lead data fields to specific form element IDs */
+export interface UserDataMapping {
+  /** Element ID for the email field (auto-detected if not set) */
+  emailElementId?: string;
+  /** Element ID for the phone field (auto-detected if not set) */
+  phoneElementId?: string;
+  /** Element ID for the name/first_name field */
+  nameElementId?: string;
+}
+
 /** A single platform config inside an analytics node */
 export interface AnalyticsPlatformEntry {
   id: string;
@@ -316,6 +326,8 @@ export interface AnalyticsPlatformEntry {
   /** Extra key/value params sent in server-side API payload */
   customParams?: { id: string; key: string; value: string }[];
   enabled: boolean;
+  /** Map lead data fields to specific form elements */
+  userDataMapping?: UserDataMapping;
 }
 
 /** Analytics / Pixel node — supports multiple platforms simultaneously */
@@ -338,6 +350,8 @@ export interface FormPixelEvent {
   /** 'PageView' is default; use PixelEventType for others */
   eventType: PixelEventType | 'PageView';
   customEventName?: string;
+  /** Map lead data fields to specific form elements */
+  userDataMapping?: UserDataMapping;
 }
 
 export interface FlowEdge {

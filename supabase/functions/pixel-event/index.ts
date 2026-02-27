@@ -89,13 +89,14 @@ serve(async (req) => {
       const ans = webhookPayload?.answers || {};
       let email: string | undefined;
       let phone: string | undefined;
+      let name: string | undefined;
       for (const val of Object.values(ans)) {
-        if (typeof val === 'string' && val.includes('@')) email = val;
+        if (typeof val === 'string' && val.includes('@') && !email) email = val;
         if (typeof val === 'object' && val !== null && (val as any).full_number) {
           phone = (val as any).full_number;
         }
       }
-      return { email, phone };
+      return { email, phone, name };
     })();
 
     // ── Meta Conversions API ──────────────────────────────────────────────────
@@ -107,10 +108,18 @@ serve(async (req) => {
       if (!enabled || !pixelId || !accessToken) {
         results.meta = { skipped: true, reason: !enabled ? 'Meta Pixel disabled in settings' : 'Pixel ID or CAPI Token not configured in Settings → Integrations' };
       } else {
-        const userData_hashed: Record<string, string> = {};
+        const userData_hashed: Record<string, any> = {};
         if (resolvedUserData?.email) userData_hashed.em = [await sha256(resolvedUserData.email)];
         if (resolvedUserData?.phone) {
           userData_hashed.ph = [await sha256(resolvedUserData.phone.replace(/\D/g, ''))];
+        }
+        if (resolvedUserData?.name) {
+          // Meta CAPI expects fn (first name) hashed
+          const nameParts = resolvedUserData.name.trim().split(/\s+/);
+          userData_hashed.fn = [await sha256(nameParts[0])];
+          if (nameParts.length > 1) {
+            userData_hashed.ln = [await sha256(nameParts[nameParts.length - 1])];
+          }
         }
 
         // Meta CAPI requires at least client_ip_address + client_user_agent

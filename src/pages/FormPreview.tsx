@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FunnelPage, FormData as AppFormData } from '@/types/form';
+import { FunnelPage, FormData as AppFormData, UserDataMapping } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
@@ -61,6 +61,49 @@ function buildDefaults(form: AppFormData | null) {
     }
   }
   return defaults;
+}
+
+/** Resolve userData (email, phone, name) from a UserDataMapping and current answers */
+function resolveUserData(
+  mapping: UserDataMapping | undefined,
+  answers: Record<string, any>,
+  form: AppFormData,
+): { email?: string; phone?: string; name?: string } {
+  const result: { email?: string; phone?: string; name?: string } = {};
+
+  // Helper: find first element of given type across all pages
+  const findFirstElement = (type: string): string | undefined => {
+    for (const page of form.pages || []) {
+      for (const el of page.elements || []) {
+        if (el.type === type) return el.id;
+      }
+    }
+    return undefined;
+  };
+
+  // Email
+  const emailId = mapping?.emailElementId === '__none__' ? undefined
+    : (mapping?.emailElementId || findFirstElement('input_email'));
+  if (emailId && answers[emailId]) {
+    result.email = String(answers[emailId]);
+  }
+
+  // Phone
+  const phoneId = mapping?.phoneElementId === '__none__' ? undefined
+    : (mapping?.phoneElementId || findFirstElement('input_phone'));
+  if (phoneId && answers[phoneId]) {
+    const val = answers[phoneId];
+    result.phone = typeof val === 'object' && val?.full_number ? val.full_number : String(val);
+  }
+
+  // Name
+  const nameId = mapping?.nameElementId === '__none__' ? undefined
+    : (mapping?.nameElementId || findFirstElement('input_short_text') || findFirstElement('input_text'));
+  if (nameId && answers[nameId]) {
+    result.name = String(answers[nameId]);
+  }
+
+  return result;
 }
 
 export default function FormPreview() {
@@ -366,6 +409,8 @@ export default function FormPreview() {
         : evt.eventType;
       const eventId = `${form.id}_load_${evt.id}_${Date.now()}`;
 
+      const userData = resolveUserData(evt.userDataMapping, answersRef.current, form);
+
       firePixelDual({
         platform: evt.platform,
         eventName,
@@ -373,9 +418,9 @@ export default function FormPreview() {
         formId: form.id,
         responseId,
         triggerType: 'load_event',
-        answers: {},
+        answers: answersRef.current,
         variables: {},
-        userData: {},
+        userData,
         sourceUrl,
         userAgent,
         onFired: (rec) => pixelEventsRef.current.push(rec),
@@ -803,18 +848,6 @@ export default function FormPreview() {
         const anId = target.replace('an-', '');
         const anNode = f?.analyticsNodes?.find(n => n.id === anId);
         if (anNode && f) {
-          const emailVal = Object.entries(currentAns).find(([k]) => {
-            for (const pg of f.pages || []) {
-              if ((pg.elements || []).find(e => e.id === k && e.type === 'input_email')) return true;
-            }
-            return false;
-          });
-          const phoneVal = Object.entries(currentAns).find(([k]) => {
-            for (const pg of f.pages || []) {
-              if ((pg.elements || []).find(e => e.id === k && e.type === 'input_phone')) return true;
-            }
-            return false;
-          });
           const variables: Record<string, any> = {};
           for (const [k, v] of Object.entries(currentAns)) {
             if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
@@ -835,6 +868,11 @@ export default function FormPreview() {
             const extraParams = Object.fromEntries(
               (entry.customParams || []).filter(p => p.key).map(p => [p.key, p.value])
             );
+            const userData = resolveUserData(
+              'userDataMapping' in entry ? (entry as any).userDataMapping : undefined,
+              currentAns,
+              f,
+            );
 
             firePixelDual({
               platform: entry.platform,
@@ -846,10 +884,7 @@ export default function FormPreview() {
               answers: currentAns,
               variables,
               customParams: extraParams,
-              userData: {
-                email: emailVal ? String(emailVal[1]) : undefined,
-                phone: phoneVal ? String((phoneVal[1] as any)?.full_number ?? phoneVal[1]) : undefined,
-              },
+              userData,
               sourceUrl,
               userAgent: sessionMetaRef.current.userAgent,
               onFired: (rec) => pixelEventsRef.current.push(rec),
