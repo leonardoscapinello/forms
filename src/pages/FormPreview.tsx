@@ -795,7 +795,7 @@ export default function FormPreview() {
 
         return (
           <div
-            className="flex-1 overflow-auto flex items-center justify-center"
+            className="flex-1 overflow-auto flex flex-col"
             style={{ backgroundColor: bgColor, fontFamily }}
           >
             <AnimatePresence mode="wait" custom={direction}>
@@ -807,7 +807,7 @@ export default function FormPreview() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="w-full mx-auto"
+                className="w-full mx-auto my-auto"
                 style={isDefaultScreen ? { maxWidth: 672, padding: '32px 24px' } : {
                   maxWidth: 672 + paddingX * 2,
                   paddingLeft: paddingX,
