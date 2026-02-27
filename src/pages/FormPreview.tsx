@@ -202,7 +202,7 @@ export default function FormPreview() {
     return () => window.clearTimeout(timer);
   }, [answers, currentPageIndex, form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save partial on beforeunload
+  // Save partial on beforeunload — use fetch keepalive with proper auth headers
   useEffect(() => {
     if (!form?.id) return;
     const handler = () => {
@@ -222,9 +222,22 @@ export default function FormPreview() {
         },
         pages_visited: maxPageVisitedRef.current + 1,
       });
-      // Use sendBeacon for reliability on page close
       const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/form_responses?on_conflict=form_id,response_id`;
-      navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' }));
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      // Use fetch with keepalive (works like sendBeacon but supports headers)
+      try {
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Prefer': 'resolution=merge-duplicates',
+          },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      } catch { /* ignore */ }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
@@ -340,7 +353,9 @@ export default function FormPreview() {
         },
         total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
         pages_visited: maxPageVisitedRef.current + 1,
-      }, { onConflict: 'form_id,response_id' }).then(() => {});
+      }, { onConflict: 'form_id,response_id' }).then(({ error }: any) => {
+        if (error) console.error('Erro ao salvar resposta completa:', error);
+      });
 
       // Clear resume data
       if (form.allowResume) {
