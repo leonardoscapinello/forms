@@ -260,6 +260,21 @@ export default function FormSettings({ form, onUpdate }: Props) {
                 onCheckedChange={v => onUpdate({ enableGeolocation: v })}
               />
             </div>
+
+            <div className="border-t border-border" />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm">Barra de progresso</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Exibe o progresso do respondente no topo do formulário.
+                </p>
+              </div>
+              <Switch
+                checked={form.showProgressBar !== false}
+                onCheckedChange={v => onUpdate({ showProgressBar: v })}
+              />
+            </div>
           </div>
         </div>
 
