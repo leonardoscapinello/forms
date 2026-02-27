@@ -128,8 +128,10 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                     <circle cx={cx} cy={cy} r={4} fill={ds.color} stroke="white" strokeWidth={2} />
                     {/* Floating badge — shown on every point that has a tooltip */}
                     {showBadge && (() => {
-                      const bx = cx + 10;
-                      const by = cy - badgeH / 2;
+                      const isFirst = index === 0;
+                      const isLast = index === labels.length - 1;
+                      const by = cy - badgeH - 10;
+                      const bx = isFirst ? cx : isLast ? cx - badgeW : cx - badgeW / 2;
                       return (
                         <g>
                           <rect
