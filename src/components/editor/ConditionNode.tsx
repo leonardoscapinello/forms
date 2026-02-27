@@ -128,17 +128,17 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
             return (
               <div
                 key={branch.id}
-                className={`relative rounded-lg border overflow-hidden transition-colors ${
+                className={`relative rounded-lg border transition-colors ${
                   branchHasError ? 'border-destructive/50 bg-destructive/5' : 'border-border bg-muted/20'
                 }`}
               >
-                {/* Branch output handle */}
+                {/* Branch output handle - positioned at the branch header row */}
                 <Handle
                   type="source"
                   position={Position.Right}
                   id={`branch-${branch.id}`}
-                  className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card"
-                  style={{ top: 'auto', right: -6, bottom: 'auto' }}
+                  className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card !absolute !right-[-18px]"
+                  style={{ top: 14, position: 'absolute' }}
                 />
 
                 {/* Branch header */}
@@ -193,8 +193,8 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
               type="source"
               position={Position.Right}
               id="branch-default"
-              className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card"
-              style={{ top: 'auto', right: -6 }}
+              className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card !absolute !right-[-18px]"
+              style={{ top: '50%', transform: 'translateY(-50%)', position: 'absolute' }}
             />
             <span className="italic">Padrão (else)</span>
           </div>
