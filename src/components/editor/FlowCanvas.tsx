@@ -24,7 +24,7 @@ import '@xyflow/react/dist/style.css';
 import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
-  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData,
+  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, FormVariable,
 } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
@@ -82,6 +82,7 @@ interface Props {
   onAnalyticsDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function getStoredPosition(form: FormDataType, nodeId: string, fallbackX: number, fallbackY: number) {
@@ -95,7 +96,7 @@ function FlowCanvasInner({
   onVariableOpAddAtPosition, onVariableOpChange, onVariableOpDelete,
   onIntegrationAddAtPosition, onIntegrationChange, onIntegrationDelete,
   onAnalyticsAddAtPosition, onAnalyticsChange, onAnalyticsDelete,
-  onFormUpdate, onPageSelect,
+  onFormUpdate, onPageSelect, onCreateVariable,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectStartRef = useRef<{ nodeId: string; handleId?: string | null } | null>(null);
@@ -245,6 +246,7 @@ function FlowCanvasInner({
           variables,
           allInputElements: prevElements,
           isDisconnected: !reachableNodeIds.has(nodeId),
+          onCreateVariable,
         },
       });
     });
@@ -268,6 +270,7 @@ function FlowCanvasInner({
           hasError: !validation.isValid,
           onChange: (patch: Partial<ConditionNodeData>) => onConditionChange(cond.id, patch),
           onDelete: () => onConditionDelete(cond.id),
+          onCreateVariable,
         },
       });
     });
@@ -289,6 +292,7 @@ function FlowCanvasInner({
           hasError: !validation.isValid,
           onChange: (patch: Partial<VariableOpNodeData>) => onVariableOpChange(vop.id, patch),
           onDelete: () => onVariableOpDelete(vop.id),
+          onCreateVariable,
         },
       });
     });

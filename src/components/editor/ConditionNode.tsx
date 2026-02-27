@@ -18,10 +18,11 @@ interface ConditionNodeDataProps {
   integrationNodes?: IntegrationNodeData[];
   onChange: (patch: { label?: string; branches?: ConditionBranch[] }) => void;
   onDelete: () => void;
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
-  const { label, branches, allInputElements = [], variables = [], integrationNodes = [], onChange, onDelete } = data;
+  const { label, branches, allInputElements = [], variables = [], integrationNodes = [], onChange, onDelete, onCreateVariable } = data;
   const [expandedBranch, setExpandedBranch] = useState<string | null>(branches[0]?.id ?? null);
 
   const validation = useMemo(() => validateConditionNode(branches, variables), [branches, variables]);
@@ -180,6 +181,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                       variables={variables}
                       integrationNodes={integrationNodes}
                       onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
+                      onCreateVariable={onCreateVariable}
                     />
                   </div>
                 )}

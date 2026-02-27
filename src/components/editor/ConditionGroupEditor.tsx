@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, FormVariable, IntegrationNodeData } from '@/types/form';
+import VariableSelect from './shared/VariableSelect';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Group } from 'lucide-react';
@@ -34,9 +35,10 @@ interface Props {
   onChange: (group: ConditionGroup) => void;
   depth?: number;
   onRemove?: () => void;
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
-export default function ConditionGroupEditor({ group, allInputElements = [], variables = [], integrationNodes = [], onChange, depth = 0, onRemove }: Props) {
+export default function ConditionGroupEditor({ group, allInputElements = [], variables = [], integrationNodes = [], onChange, depth = 0, onRemove, onCreateVariable }: Props) {
   // Webhook nodes that have response fields from a successful test
   const webhookNodesWithFields = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
 
@@ -46,7 +48,8 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
     { value: 'context', label: 'Contexto' },
     { value: 'param', label: 'Parâmetro' },
   ];
-  if (variables.length > 0) subjectTypes.push({ value: 'variable', label: 'Variável' });
+  // Always show 'variable' option since user can create inline
+  subjectTypes.push({ value: 'variable', label: 'Variável' });
   if (webhookNodesWithFields.length > 0) subjectTypes.push({ value: 'webhook_response', label: 'Webhook' });
 
   const updateRule = useCallback((ruleId: string, patch: Partial<ConditionRule>) => {
@@ -228,19 +231,14 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                     })()}
                   </div>
                 ) : subjectType === 'variable' ? (
-                  <Select value={rule.variableId || ''} onValueChange={v => updateRule(rule.id, { variableId: v })}>
-                    <SelectTrigger className="h-7 text-xs flex-1">
-                      <SelectValue placeholder="Escolha a variável..." />
-                    </SelectTrigger>
-                    <SelectContent className="z-[200]">
-                      {variables.map(v => (
-                        <SelectItem key={v.id} value={v.id} className="text-xs">
-                          <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
-                          <span className="ml-1.5 text-muted-foreground">({v.type})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <VariableSelect
+                    value={rule.variableId || ''}
+                    variables={variables}
+                    onValueChange={v => updateRule(rule.id, { variableId: v })}
+                    onCreateVariable={onCreateVariable}
+                    placeholder="Escolha a variável..."
+                    accentClass="text-node-variable-op-accent"
+                  />
                 ) : subjectType === 'context' ? (
                   <Select value={rule.contextKey || ''} onValueChange={v => updateRule(rule.id, { contextKey: v })}>
                     <SelectTrigger className="h-7 text-xs flex-1">
@@ -351,6 +349,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
               onChange={updated => updateSubGroup(subGroup.id, updated)}
               depth={depth + 1}
               onRemove={() => removeSubGroup(subGroup.id)}
+              onCreateVariable={onCreateVariable}
             />
           </div>
         );
