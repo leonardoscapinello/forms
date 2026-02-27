@@ -145,6 +145,15 @@ export default function FormResponses({ form }: Props) {
 
   const fields = useMemo(() => extractInputFields(form), [form]);
 
+  // Extract variables as extra columns
+  const variableColumns = useMemo(() => {
+    return (form.variables || []).map(v => ({
+      key: `__var_${v.name}`,
+      label: `⚡ ${v.name}`,
+      type: v.type,
+    }));
+  }, [form.variables]);
+
   const filtered = useMemo(() => {
     let list = rows;
     if (statusFilter === 'complete') list = list.filter(r => r.metadata?.status === 'complete' || !!r.metadata?.submitted_at);
@@ -160,7 +169,7 @@ export default function FormResponses({ form }: Props) {
   }, [rows]);
 
   const exportCSV = useCallback(() => {
-    const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label)];
+    const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label)];
     const csvRows = [headers.join(',')];
     filtered.forEach((row, idx) => {
       const status = (row.metadata?.status === 'complete' || !!row.metadata?.submitted_at) ? 'Completa' : 'Parcial';
@@ -171,7 +180,11 @@ export default function FormResponses({ form }: Props) {
         const raw = resolveCellValue(row.answers, f);
         return `"${raw.replace(/"/g, '""')}"`;
       });
-      csvRows.push([idx + 1, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals].join(','));
+      const varVals = variableColumns.map(v => {
+        const val = row.answers?.[v.key];
+        return `"${formatCellValue(val, v.type).replace(/"/g, '""')}"`;
+      });
+      csvRows.push([idx + 1, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals, ...varVals].join(','));
     });
     const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -279,6 +292,11 @@ export default function FormResponses({ form }: Props) {
                     <span className="truncate block">{f.label}</span>
                   </TableHead>
                 ))}
+                {variableColumns.map(v => (
+                  <TableHead key={v.key} className="min-w-[120px] max-w-[200px]">
+                    <span className="truncate block text-primary/80">{v.label}</span>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -310,6 +328,13 @@ export default function FormResponses({ form }: Props) {
                       <TableCell key={`${f.id}-${f.subKey || fi}`} className="text-sm max-w-[280px]">
                         <span className="truncate block" title={resolveCellValue(row.answers, f)}>
                           {resolveCellValue(row.answers, f)}
+                        </span>
+                      </TableCell>
+                    ))}
+                    {variableColumns.map(v => (
+                      <TableCell key={v.key} className="text-sm max-w-[200px]">
+                        <span className="truncate block" title={formatCellValue(row.answers?.[v.key], v.type)}>
+                          {formatCellValue(row.answers?.[v.key], v.type)}
                         </span>
                       </TableCell>
                     ))}
