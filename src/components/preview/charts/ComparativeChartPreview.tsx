@@ -71,7 +71,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   return (
     <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={data} margin={{ top: 48, right: 44, left: 8, bottom: 8 }} style={{ overflow: 'visible' }}>
+        <AreaChart data={data} margin={{ top: 48, right: 16, left: 8, bottom: 8 }} style={{ overflow: 'visible' }}>
           <defs>
             <filter id="cmpBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
@@ -170,7 +170,7 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   return (
     <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 48, right: 44, left: -12, bottom: 8 }} style={{ overflow: 'visible' }}>
+        <BarChart data={data} margin={{ top: 48, right: 16, left: -12, bottom: 8 }} style={{ overflow: 'visible' }}>
           <defs>
             <filter id="cmpBarBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
