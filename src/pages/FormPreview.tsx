@@ -114,13 +114,21 @@ export default function FormPreview() {
     setAnswers({ ...buildDefaults(form), ...ctxAnswers });
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
 
-    // Request geolocation asynchronously
-    requestGeolocation().then(({ latitude, longitude }) => {
-      if (latitude && longitude) {
+    // Request geolocation asynchronously (GPS → reverse geocode, or IP fallback)
+    requestGeolocation().then((geo) => {
+      if (geo.source !== 'none') {
         setAnswers(prev => ({
           ...prev,
-          __ctx_latitude: latitude,
-          __ctx_longitude: longitude,
+          __ctx_latitude: geo.latitude,
+          __ctx_longitude: geo.longitude,
+          __ctx_geoCity: geo.geoCity,
+          __ctx_geoState: geo.geoState,
+          __ctx_geoCountry: geo.geoCountry,
+          __ctx_geoCountryCode: geo.geoCountryCode,
+          __ctx_geoNeighborhood: geo.geoNeighborhood,
+          __ctx_geoStreet: geo.geoStreet,
+          __ctx_geoCep: geo.geoCep,
+          __ctx_geoSource: geo.source,
         }));
       }
     });
@@ -1426,6 +1434,16 @@ function InteractiveElement({
         <AddressFieldPreview
           value={value as any}
           onChange={onChange}
+          geoSuggestion={{
+            city: answers['__ctx_geoCity'] || '',
+            state: answers['__ctx_geoState'] || '',
+            country: answers['__ctx_geoCountry'] || '',
+            countryCode: answers['__ctx_geoCountryCode'] || '',
+            neighborhood: answers['__ctx_geoNeighborhood'] || '',
+            street: answers['__ctx_geoStreet'] || '',
+            cep: answers['__ctx_geoCep'] || '',
+            source: answers['__ctx_geoSource'] || '',
+          }}
         />
       );
 
