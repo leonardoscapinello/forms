@@ -386,14 +386,6 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
 export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'sections';
 
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
-  layout: {
-    label: 'Layout',
-    types: ['columns', 'spacer', 'divider'],
-  },
-  content: {
-    label: 'Conteúdo',
-    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert', 'notification'],
-  },
   fields_text: {
     label: 'Campos de entrada',
     types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_address', 'input_document', 'input_company', 'input_height', 'input_weight'],
@@ -401,6 +393,14 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   fields_choice: {
     label: 'Campos de escolha',
     types: ['input_checkbox', 'input_select', 'input_radio', 'input_rating', 'input_nps', 'input_yes_no', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'],
+  },
+  layout: {
+    label: 'Layout',
+    types: ['columns', 'spacer', 'divider'],
+  },
+  content: {
+    label: 'Conteúdo',
+    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert', 'notification'],
   },
   data: {
     label: 'Dados e métricas',
