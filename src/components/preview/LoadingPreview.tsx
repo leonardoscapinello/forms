@@ -89,8 +89,7 @@ export default function LoadingPreview({
 
   if (style === 'circular') {
     const radius = (size - stroke) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (percent / 100) * circumference;
+    const progressOffset = 100 - percent;
 
     return (
       <div className="flex flex-col items-center gap-3">
@@ -112,9 +111,9 @@ export default function LoadingPreview({
               stroke={resolvedColor}
               strokeWidth={stroke}
               strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={interactive ? offset : circumference * 0.6}
-              style={{ transition: 'stroke-dashoffset 0.1s linear' }}
+              pathLength={100}
+              strokeDasharray={100}
+              strokeDashoffset={interactive ? progressOffset : 60}
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
