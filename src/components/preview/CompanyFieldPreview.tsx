@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { ALL_COMPANY_FIELDS, CompanyFieldKey, COMPANY_FIELD_LABELS } from '@/types/pageElements';
 
 export interface CompanyValue {
   cnpj: string;
@@ -40,17 +41,23 @@ function formatCNPJ(digits: string): string {
 interface Props {
   value: CompanyValue | undefined;
   onChange: (value: CompanyValue) => void;
+  visibleFields?: CompanyFieldKey[];
+  editableFields?: CompanyFieldKey[];
 }
 
 const inputClass = "w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-lg py-2 mt-1 text-foreground placeholder:text-muted-foreground/40 transition-colors";
 const readonlyClass = "w-full bg-muted/30 border-0 border-b-2 border-border/50 outline-none text-lg py-2 mt-1 text-foreground/80 transition-colors cursor-default";
 const labelClass = "text-sm font-medium text-muted-foreground uppercase tracking-wider";
 
-export default function CompanyFieldPreview({ value, onChange }: Props) {
+export default function CompanyFieldPreview({ value, onChange, visibleFields, editableFields = [] }: Props) {
   const company = value && typeof value === 'object' && 'cnpj' in value ? value : EMPTY_COMPANY;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [found, setFound] = useState(false);
+
+  const visible = visibleFields || ALL_COMPANY_FIELDS;
+  const isVisible = (key: CompanyFieldKey) => visible.includes(key);
+  const isEditable = (key: CompanyFieldKey) => editableFields.includes(key);
 
   const fetchCNPJ = useCallback(async (cnpj: string) => {
     const clean = cnpj.replace(/\D/g, '');
@@ -67,9 +74,7 @@ export default function CompanyFieldPreview({ value, onChange }: Props) {
       }
       const data = await res.json();
 
-      const cnaePrincipal = data.cnae_fiscal
-        ? `${data.cnae_fiscal}`
-        : '';
+      const cnaePrincipal = data.cnae_fiscal ? `${data.cnae_fiscal}` : '';
       const cnaeDesc = data.cnae_fiscal_descricao || '';
 
       onChange({
@@ -108,7 +113,32 @@ export default function CompanyFieldPreview({ value, onChange }: Props) {
     if (digits.length === 14) fetchCNPJ(formatted);
   }, [company, onChange, fetchCNPJ]);
 
+  const handleFieldChange = (key: CompanyFieldKey, val: string) => {
+    onChange({ ...company, [key]: val });
+  };
+
   const hasData = found || company.razao_social;
+
+  /** Render a single field row */
+  const renderField = (key: CompanyFieldKey, displayValue?: string) => {
+    if (!isVisible(key)) return null;
+    const val = displayValue ?? (company as any)[key];
+    if (!val && !isEditable(key)) return null;
+
+    const editable = isEditable(key);
+    return (
+      <div key={key}>
+        <label className={labelClass}>{COMPANY_FIELD_LABELS[key]}</label>
+        <input
+          value={val || ''}
+          readOnly={!editable}
+          onChange={editable ? e => handleFieldChange(key, e.target.value) : undefined}
+          placeholder={editable ? `Digite ${COMPANY_FIELD_LABELS[key].toLowerCase()}...` : undefined}
+          className={editable ? inputClass : readonlyClass}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -134,104 +164,63 @@ export default function CompanyFieldPreview({ value, onChange }: Props) {
         {found && <p className="text-xs text-emerald-500 mt-1">✓ Empresa encontrada</p>}
       </div>
 
-      {/* Auto-filled data */}
+      {/* Company data fields */}
       {hasData && (
         <>
-          {/* Razão Social */}
-          <div>
-            <label className={labelClass}>Razão Social</label>
-            <input value={company.razao_social} readOnly className={readonlyClass} />
-          </div>
+          {renderField('razao_social')}
+          {renderField('nome_fantasia')}
 
-          {/* Nome Fantasia */}
-          {company.nome_fantasia && (
+          {/* Situação badge (special rendering) */}
+          {isVisible('situacao') && company.situacao && (
             <div>
-              <label className={labelClass}>Nome Fantasia</label>
-              <input value={company.nome_fantasia} readOnly className={readonlyClass} />
+              <label className={labelClass}>Situação</label>
+              <div className="mt-1">
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                  company.situacao.toLowerCase().includes('ativa')
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {company.situacao}
+                </span>
+              </div>
             </div>
           )}
 
-          {/* Situação + Porte */}
-          <div className="grid grid-cols-2 gap-4">
-            {company.situacao && (
-              <div>
-                <label className={labelClass}>Situação</label>
-                <div className="mt-1">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                    company.situacao.toLowerCase().includes('ativa')
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {company.situacao}
-                  </span>
-                </div>
-              </div>
-            )}
-            {company.porte && (
-              <div>
-                <label className={labelClass}>Porte</label>
-                <input value={company.porte} readOnly className={readonlyClass} />
-              </div>
-            )}
-          </div>
+          {renderField('porte')}
+          {renderField('natureza_juridica')}
 
-          {/* Natureza Jurídica */}
-          {company.natureza_juridica && (
-            <div>
-              <label className={labelClass}>Natureza Jurídica</label>
-              <input value={company.natureza_juridica} readOnly className={readonlyClass} />
-            </div>
-          )}
-
-          {/* CNAE */}
-          {company.cnae_principal && (
+          {/* CNAE (combined display) */}
+          {isVisible('cnae_principal') && company.cnae_principal && (
             <div>
               <label className={labelClass}>CNAE Principal</label>
-              <input value={`${company.cnae_principal}${company.cnae_descricao ? ` - ${company.cnae_descricao}` : ''}`} readOnly className={readonlyClass} />
-            </div>
-          )}
-
-          {/* Abertura */}
-          {company.abertura && (
-            <div>
-              <label className={labelClass}>Data de Abertura</label>
-              <input value={company.abertura} readOnly className={readonlyClass} />
-            </div>
-          )}
-
-          {/* Endereço */}
-          {company.logradouro && (
-            <div>
-              <label className={labelClass}>Endereço</label>
               <input
-                value={[
-                  company.logradouro,
-                  company.numero,
-                  company.complemento,
-                  company.bairro,
-                  `${company.municipio}/${company.uf}`,
-                  company.cep,
-                ].filter(Boolean).join(', ')}
-                readOnly
-                className={readonlyClass}
+                value={`${company.cnae_principal}${company.cnae_descricao ? ` - ${company.cnae_descricao}` : ''}`}
+                readOnly={!isEditable('cnae_principal')}
+                onChange={isEditable('cnae_principal') ? e => handleFieldChange('cnae_principal', e.target.value) : undefined}
+                className={isEditable('cnae_principal') ? inputClass : readonlyClass}
               />
             </div>
           )}
 
-          {/* Contato */}
+          {renderField('abertura')}
+
+          {/* Address fields */}
+          {renderField('logradouro')}
           <div className="grid grid-cols-2 gap-4">
-            {company.telefone && (
-              <div>
-                <label className={labelClass}>Telefone</label>
-                <input value={company.telefone} readOnly className={readonlyClass} />
-              </div>
-            )}
-            {company.email && (
-              <div>
-                <label className={labelClass}>E-mail</label>
-                <input value={company.email} readOnly className={readonlyClass} />
-              </div>
-            )}
+            {renderField('numero')}
+            {renderField('complemento')}
+          </div>
+          {renderField('bairro')}
+          <div className="grid grid-cols-2 gap-4">
+            {renderField('municipio')}
+            {renderField('uf')}
+          </div>
+          {renderField('cep')}
+
+          {/* Contact */}
+          <div className="grid grid-cols-2 gap-4">
+            {renderField('telefone')}
+            {renderField('email')}
           </div>
         </>
       )}

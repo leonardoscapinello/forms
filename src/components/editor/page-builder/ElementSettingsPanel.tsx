@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType, ALL_COMPANY_FIELDS, COMPANY_FIELD_LABELS, CompanyFieldKey } from '@/types/pageElements';
 import { FunnelPage, FormVariable } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -180,7 +180,60 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
-          {/* ─── Date field settings ─── */}
+          {/* ─── Company field: visible & editable fields ─── */}
+          {element.type === 'input_company' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Campos visíveis</Label>
+                <p className="text-[11px] text-muted-foreground">Escolha quais campos aparecem em tela. Todos os dados são enviados.</p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {ALL_COMPANY_FIELDS.map(key => {
+                    const visible = element.companyVisibleFields || ALL_COMPANY_FIELDS;
+                    const checked = visible.includes(key);
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <Label className="font-normal text-xs">{COMPANY_FIELD_LABELS[key]}</Label>
+                        <Switch
+                          checked={checked}
+                          className="scale-[0.7]"
+                          onCheckedChange={v => {
+                            let next = v ? [...visible, key] : visible.filter(k => k !== key);
+                            if (next.length === 0) next = [key];
+                            onChange({ companyVisibleFields: next as CompanyFieldKey[] });
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Campos editáveis manualmente</Label>
+                <p className="text-[11px] text-muted-foreground">Permite ao usuário editar estes campos mesmo após busca automática.</p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {ALL_COMPANY_FIELDS.map(key => {
+                    const editable = element.companyEditableFields || [];
+                    const checked = editable.includes(key);
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <Label className="font-normal text-xs">{COMPANY_FIELD_LABELS[key]}</Label>
+                        <Switch
+                          checked={checked}
+                          className="scale-[0.7]"
+                          onCheckedChange={v => {
+                            const next = v ? [...editable, key] : editable.filter(k => k !== key);
+                            onChange({ companyEditableFields: next as CompanyFieldKey[] });
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {element.type === 'input_date' && (
             <>
               <div className="space-y-2">
