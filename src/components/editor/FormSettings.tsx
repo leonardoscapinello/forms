@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw } from 'lucide-react';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin } from 'lucide-react';
 
 interface Props {
   form: FormData;
@@ -240,6 +240,24 @@ export default function FormSettings({ form, onUpdate }: Props) {
               <Switch
                 checked={form.allowResume ?? false}
                 onCheckedChange={v => onUpdate({ allowResume: v })}
+              />
+            </div>
+
+            <div className="border-t border-border" />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Capturar geolocalização</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Detecta cidade, estado e país do respondente via IP ou GPS.
+                </p>
+              </div>
+              <Switch
+                checked={form.enableGeolocation ?? true}
+                onCheckedChange={v => onUpdate({ enableGeolocation: v })}
               />
             </div>
           </div>

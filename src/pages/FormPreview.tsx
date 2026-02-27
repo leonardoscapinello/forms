@@ -157,23 +157,25 @@ export default function FormPreview() {
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
 
     // Request geolocation asynchronously (GPS → reverse geocode, or IP fallback)
-    requestGeolocation().then((geo) => {
-      if (geo.source !== 'none') {
-        setAnswers(prev => ({
-          ...prev,
-          __ctx_latitude: geo.latitude,
-          __ctx_longitude: geo.longitude,
-          __ctx_geoCity: geo.geoCity,
-          __ctx_geoState: geo.geoState,
-          __ctx_geoCountry: geo.geoCountry,
-          __ctx_geoCountryCode: geo.geoCountryCode,
-          __ctx_geoNeighborhood: geo.geoNeighborhood,
-          __ctx_geoStreet: geo.geoStreet,
-          __ctx_geoCep: geo.geoCep,
-          __ctx_geoSource: geo.source,
-        }));
-      }
-    });
+    if (form.enableGeolocation !== false) {
+      requestGeolocation().then((geo) => {
+        if (geo.source !== 'none') {
+          setAnswers(prev => ({
+            ...prev,
+            __ctx_latitude: geo.latitude,
+            __ctx_longitude: geo.longitude,
+            __ctx_geoCity: geo.geoCity,
+            __ctx_geoState: geo.geoState,
+            __ctx_geoCountry: geo.geoCountry,
+            __ctx_geoCountryCode: geo.geoCountryCode,
+            __ctx_geoNeighborhood: geo.geoNeighborhood,
+            __ctx_geoStreet: geo.geoStreet,
+            __ctx_geoCep: geo.geoCep,
+            __ctx_geoSource: geo.source,
+          }));
+        }
+      });
+    }
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save session for resume + partial responses

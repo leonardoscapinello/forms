@@ -454,6 +454,8 @@ export interface FormData {
   allowResume?: boolean;
   /** Save partial (incomplete) responses */
   savePartialResponses?: boolean;
+  /** Enable geolocation capture for respondents */
+  enableGeolocation?: boolean;
 }
 
 export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {
