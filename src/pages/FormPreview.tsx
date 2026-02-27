@@ -2012,34 +2012,86 @@ function InteractiveElement({
               );
             })}
           </div>
-          {/* Mobile: slider */}
-          <div className="flex sm:hidden flex-col gap-3">
-            <div className="flex items-center justify-center">
-              <span
-                className="text-4xl font-bold tabular-nums transition-colors"
-                style={{ color: current >= 0 ? npsSliderColor : 'hsl(var(--muted-foreground))' }}
+          {/* Mobile: slider com visual aprimorado */}
+          <div className="flex sm:hidden flex-col gap-1">
+            {/* Valor grande com emoji e animação */}
+            <div className="flex flex-col items-center gap-1 py-3">
+              <motion.div
+                key={current}
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative"
               >
-                {current >= 0 ? current : '–'}
-              </span>
+                <span
+                  className="text-5xl font-extrabold tabular-nums transition-colors"
+                  style={{ color: current >= 0 ? npsSliderColor : 'hsl(var(--muted-foreground))' }}
+                >
+                  {current >= 0 ? current : '–'}
+                </span>
+              </motion.div>
+              {current >= 0 && (
+                <motion.span
+                  key={`label-${current}`}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs font-medium"
+                  style={{ color: npsSliderColor }}
+                >
+                  {current / max <= 0.6 ? '😟 Detrator' : current / max <= 0.8 ? '😐 Neutro' : '😍 Promotor'}
+                </motion.span>
+              )}
             </div>
-            <input
-              type="range"
-              min={0}
-              max={max}
-              value={current >= 0 ? current : 0}
-              onChange={e => onChange(Number(e.target.value))}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer"
-              style={{
-                background: current >= 0
-                  ? `linear-gradient(to right, ${npsSliderColor} ${(current / max) * 100}%, hsl(var(--border)) ${(current / max) * 100}%)`
-                  : 'hsl(var(--border))',
-                accentColor: npsSliderColor,
-              }}
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums px-0.5">
-              <span>0</span>
-              <span>{max}</span>
+
+            {/* Trilho colorido com marcadores */}
+            <div className="relative px-1">
+              {/* Gradient track background */}
+              <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-3 rounded-full overflow-hidden"
+                style={{ background: 'linear-gradient(to right, #ef4444 0%, #ef4444 60%, #f59e0b 60%, #f59e0b 80%, #22c55e 80%, #22c55e 100%)' , opacity: 0.2 }}
+              />
+              <input
+                type="range"
+                min={0}
+                max={max}
+                value={current >= 0 ? current : Math.round(max / 2)}
+                onChange={e => onChange(Number(e.target.value))}
+                className="nps-mobile-slider relative w-full h-8 appearance-none cursor-pointer bg-transparent z-10"
+                style={{
+                  WebkitAppearance: 'none',
+                  color: npsSliderColor,
+                }}
+              />
+              {/* Custom track overlay */}
+              <div
+                className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-3 rounded-full pointer-events-none"
+                style={{
+                  background: current >= 0
+                    ? `linear-gradient(to right, ${npsSliderColor} ${(current / max) * 100}%, transparent ${(current / max) * 100}%)`
+                    : 'transparent',
+                }}
+              />
             </div>
+
+            {/* Escala numérica */}
+            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums px-1">
+              {Array.from({ length: max + 1 }).map((_, i) => (
+                <span key={i} className={`${current === i ? 'font-bold' : 'opacity-50'}`}
+                  style={current === i ? { color: npsSliderColor } : {}}
+                >{i}</span>
+              ))}
+            </div>
+
+            {/* Dica animada — some ao interagir */}
+            {current < 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: [0, 1, 1, 0.7], y: [8, 0, 0, 0], x: [0, 0, 10, -10] }}
+                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1 }}
+                className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-2"
+              >
+                <span>👆</span>
+                <span>Arraste para escolher sua nota</span>
+              </motion.div>
+            )}
           </div>
           <div className="flex justify-between text-xs text-muted-foreground px-1">
             <span>{t(element.npsLowLabel) || 'Nada provável'}</span>

@@ -246,3 +246,32 @@ img.emoji {
     transform: scale(1.5);
   }
 }
+
+/* ─── NPS Mobile Slider Thumb ─── */
+.nps-mobile-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid currentColor;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+.nps-mobile-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid currentColor;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+.nps-mobile-slider::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 9999px;
+}
+.nps-mobile-slider::-moz-range-track {
+  height: 12px;
+  border-radius: 9999px;
+}
