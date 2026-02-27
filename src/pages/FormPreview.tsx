@@ -192,6 +192,25 @@ export default function FormPreview() {
         event_type: 'form_complete',
         time_on_page_ms: timeOnPage > 0 ? timeOnPage : null,
       }).then(() => {});
+
+      // Save form responses
+      const latestAnswers = answersRef.current;
+      ;(supabase as any).from('form_responses').insert({
+        form_id: form.id,
+        response_id: responseId,
+        session_id: sessionId,
+        answers: latestAnswers,
+        metadata: {
+          user_agent: sessionMetaRef.current.userAgent,
+          referrer: sessionMetaRef.current.referrer,
+          query_params: sessionMetaRef.current.queryParams,
+          landed_at: sessionMetaRef.current.landedAt,
+          submitted_at: now,
+        },
+        total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
+        pages_visited: maxPageVisitedRef.current + 1,
+      }).then(() => {});
+
       return;
     }
 
@@ -473,7 +492,8 @@ export default function FormPreview() {
               if (!mapping.responsePath || !mapping.variableId) continue;
               const value = getNestedValue(responseBody, mapping.responsePath);
               if (value !== undefined) {
-                const varKey = `__var_${mapping.variableId}`;
+                const mappedVar = f?.variables?.find(v => v.id === mapping.variableId);
+                const varKey = mappedVar ? `__var_${mappedVar.name}` : `__var_${mapping.variableId}`;
                 currentAns = { ...currentAns, [varKey]: String(value) };
               }
             }
