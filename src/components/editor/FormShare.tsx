@@ -1,111 +1,153 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { FormData } from '@/types/form';
+import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Check, Copy, Link, Code2, Globe, Mail, QrCode, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Check, Copy, Link, ExternalLink, Globe, Loader2, CheckCircle2,
+  Unplug, Sheet,
+} from 'lucide-react';
 
 interface Props {
   form: FormData;
+  onUpdate: (patch: Partial<FormData>) => void;
 }
 
 const PUBLISHED_BASE = 'https://nodecraft-forms.lovable.app';
 
-function CopyField({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
+function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
-
   const copy = () => {
     navigator.clipboard.writeText(value);
     setCopied(true);
     toast({ description: `${label} copiado!` });
     setTimeout(() => setCopied(false), 2000);
   };
-
   return (
     <div className="flex gap-2">
-      <Input
-        readOnly
-        value={value}
-        className={`flex-1 bg-muted border-border text-sm ${mono ? 'font-mono' : ''} text-foreground`}
-      />
-      <Button variant="outline" size="icon" onClick={copy} className="shrink-0">
-        {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+      <Input readOnly value={value} className="flex-1 bg-muted border-border text-sm text-foreground" />
+      <Button variant="outline" size="sm" onClick={copy} className="shrink-0 gap-1.5">
+        {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+        Copiar
       </Button>
     </div>
   );
 }
 
-function SectionCard({ icon: Icon, title, color, children }: {
-  icon: React.ElementType;
-  title: string;
-  color: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className={`flex items-center gap-3 px-5 py-3.5 border-b border-border ${color}`}>
-        <Icon className="h-4 w-4" />
-        <span className="text-sm font-semibold">{title}</span>
-      </div>
-      <div className="p-5 space-y-4">{children}</div>
-    </div>
-  );
+/** Extract input fields from pages — same logic as FormResponses */
+function extractFieldHeaders(form: FormData): string[] {
+  const headers: string[] = [];
+  for (const page of form.pages || []) {
+    for (const el of (page.elements || []) as PageElement[]) {
+      if (el.type.startsWith('input_')) {
+        const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
+        if (subKeys && subKeys.length > 0) {
+          const parentLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
+          for (const sub of subKeys) {
+            headers.push(`${parentLabel} — ${sub.label}`);
+          }
+        } else {
+          headers.push(el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '));
+        }
+      }
+    }
+  }
+  return headers;
 }
 
-export default function FormShare({ form }: Props) {
+export default function FormShare({ form, onUpdate }: Props) {
   const previewUrl = `${PUBLISHED_BASE}/preview/${form.id}`;
   const isPublished = form.status === 'published';
+  const { toast } = useToast();
 
-  const iframeCode = `<iframe
-  src="${previewUrl}"
-  width="100%"
-  height="600"
-  frameborder="0"
-  style="border-radius: 12px; overflow: hidden;"
-  allow="clipboard-write"
-></iframe>`;
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleOAuthReady, setGoogleOAuthReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
-  const scriptCode = `<div id="twobrain-form-${form.id}"></div>
-<script>
-  (function() {
-    var iframe = document.createElement('iframe');
-    iframe.src = '${previewUrl}';
-    iframe.width = '100%';
-    iframe.height = '600';
-    iframe.frameBorder = '0';
-    iframe.style.borderRadius = '12px';
-    iframe.style.overflow = 'hidden';
-    document.getElementById('twobrain-form-${form.id}').appendChild(iframe);
-  })();
-</script>`;
+  // Check if Google OAuth is configured
+  useEffect(() => {
+    supabase
+      .from('integration_settings')
+      .select('config, is_active')
+      .eq('integration_type', 'google_oauth')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.is_active) {
+          const cfg = data.config as any;
+          setGoogleOAuthReady(!!cfg?.accessToken);
+        }
+      });
+  }, []);
 
-  const popupCode = `<!-- Trigger button -->
-<button onclick="document.getElementById('nf-overlay-${form.id}').style.display='flex'" 
-  style="padding:12px 24px;background:#000;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">
-  Abrir formulário
-</button>
+  const handleConnectSheet = useCallback(async () => {
+    setGoogleLoading(true);
+    try {
+      const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...extractFieldHeaders(form)];
+      const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
+        body: {
+          action: 'create',
+          formId: form.id,
+          formTitle: form.title,
+          headers,
+        },
+      });
+      if (error || !data?.spreadsheetId) {
+        toast({ title: 'Erro', description: data?.error || 'Falha ao criar planilha.', variant: 'destructive' });
+        setGoogleLoading(false);
+        return;
+      }
+      onUpdate({
+        googleSheetId: data.spreadsheetId,
+        googleSheetUrl: data.spreadsheetUrl,
+      });
+      toast({ title: 'Planilha criada!', description: 'Google Sheets conectado com sucesso.' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+    setGoogleLoading(false);
+  }, [form, onUpdate, toast]);
 
-<!-- Overlay -->
-<div id="nf-overlay-${form.id}" 
-  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;"
-  onclick="if(event.target===this)this.style.display='none'">
-  <div style="width:90%;max-width:560px;height:85vh;border-radius:16px;overflow:hidden;position:relative;">
-    <iframe src="${previewUrl}" width="100%" height="100%" frameborder="0"></iframe>
-    <button onclick="document.getElementById('nf-overlay-${form.id}').style.display='none'"
-      style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px;">×</button>
-  </div>
-</div>`;
+  const handleSyncNow = useCallback(async () => {
+    if (!form.googleSheetId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
+        body: {
+          action: 'sync',
+          formId: form.id,
+          formTitle: form.title,
+          spreadsheetId: form.googleSheetId,
+        },
+      });
+      if (error || !data?.success) {
+        toast({ title: 'Erro', description: data?.error || 'Falha ao sincronizar.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Sincronizado!', description: `${data.rowsWritten || 0} respostas enviadas.` });
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+    setSyncing(false);
+  }, [form, toast]);
+
+  const handleDisconnectSheet = useCallback(() => {
+    onUpdate({ googleSheetId: undefined, googleSheetUrl: undefined });
+    toast({ title: 'Desconectado', description: 'Google Sheets desconectado deste formulário.' });
+  }, [onUpdate, toast]);
+
+  const isSheetConnected = !!form.googleSheetId;
 
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-background">
       <div className="max-w-2xl mx-auto space-y-6">
-
         {/* Header */}
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Compartilhar formulário</h2>
+          <h2 className="text-lg font-semibold text-foreground">Compartilhar</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Distribua seu formulário por link direto ou incorpore em qualquer site.
+            Distribua seu formulário e conecte integrações.
           </p>
         </div>
 
@@ -119,106 +161,110 @@ export default function FormShare({ form }: Props) {
           </div>
         )}
 
-        {/* Link público */}
-        <SectionCard icon={Link} title="Link público" color="bg-primary/5 text-primary">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Compartilhe diretamente com seus respondentes.</p>
-            <CopyField label="Link público" value={previewUrl} mono={false} />
-            <Button variant="outline" size="sm" asChild className="mt-1">
+        {/* ── Section: Link ── */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Seus links do formulário</h3>
+          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+            <CopyField label="Link público" value={previewUrl} />
+            <Button variant="outline" size="sm" asChild>
               <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                 Abrir em nova aba
               </a>
             </Button>
           </div>
-        </SectionCard>
+        </div>
 
-        {/* Incorporar — iFrame */}
-        <SectionCard icon={Code2} title="Incorporar no site (iFrame)" color="bg-sky-500/5 text-sky-600 dark:text-sky-400">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Cole este código HTML onde quiser exibir o formulário inline — Framer, Webflow, WordPress, etc.
-            </p>
-            <CopyField label="Código iFrame" value={iframeCode} />
-            <details className="mt-1">
-              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
-                Ver prévia do código
-              </summary>
-              <pre className="mt-2 rounded-lg bg-muted p-3 text-xs overflow-x-auto text-foreground font-mono whitespace-pre-wrap">
-                {iframeCode}
-              </pre>
-            </details>
-          </div>
-        </SectionCard>
+        {/* ── Section: Integrations grid ── */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Integrações</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {/* Google Sheets card */}
+            <button
+              onClick={isSheetConnected ? undefined : handleConnectSheet}
+              disabled={googleLoading || !googleOAuthReady}
+              className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border bg-card p-6 transition-all hover:shadow-sm ${
+                isSheetConnected
+                  ? 'border-emerald-500/40 bg-emerald-500/5'
+                  : googleOAuthReady
+                    ? 'border-border hover:border-primary/40 cursor-pointer'
+                    : 'border-border opacity-50 cursor-not-allowed'
+              }`}
+            >
+              {isSheetConnected && (
+                <div className="absolute top-2 right-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </div>
+              )}
+              {googleLoading ? (
+                <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+              ) : (
+                <svg className="h-10 w-10" viewBox="0 0 48 48">
+                  <path fill="#43A047" d="M37 45H11c-1.66 0-3-1.34-3-3V6c0-1.66 1.34-3 3-3h17l12 12v27c0 1.66-1.34 3-3 3z" />
+                  <path fill="#C8E6C9" d="M40 15H28V3z" />
+                  <path fill="#2E7D32" d="M40 15H28V3l12 12z" opacity=".3" />
+                  <path fill="#E8F5E9" d="M14 19h20v18H14z" />
+                  <path fill="#43A047" d="M34 19v18H14V19h20m0-1H14c-.55 0-1 .45-1 1v18c0 .55.45 1 1 1h20c.55 0 1-.45 1-1V19c0-.55-.45-1-1-1z" />
+                  <path fill="#43A047" d="M14 23h20v1H14zm0 4h20v1H14zm0 4h20v1H14zm7-12h1v18h-1zm6 0h1v18h-1z" />
+                </svg>
+              )}
+              <span className="text-sm font-medium text-foreground">Google Sheets</span>
+            </button>
 
-        {/* Incorporar — Script */}
-        <SectionCard icon={Code2} title="Incorporar via JavaScript" color="bg-violet-500/5 text-violet-600 dark:text-violet-400">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Incorporação dinâmica sem iFrame fixo no HTML — ideal para landing pages com múltiplas seções.
-            </p>
-            <CopyField label="Código Script" value={scriptCode} />
-            <details className="mt-1">
-              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
-                Ver prévia do código
-              </summary>
-              <pre className="mt-2 rounded-lg bg-muted p-3 text-xs overflow-x-auto text-foreground font-mono whitespace-pre-wrap">
-                {scriptCode}
-              </pre>
-            </details>
-          </div>
-        </SectionCard>
-
-        {/* Popup / Overlay */}
-        <SectionCard icon={Globe} title="Popup / Overlay" color="bg-emerald-500/5 text-emerald-600 dark:text-emerald-400">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Abre o formulário em uma janela modal ao clicar num botão — sem redirecionar o usuário.
-            </p>
-            <CopyField label="Código Popup" value={popupCode} />
-            <details className="mt-1">
-              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
-                Ver prévia do código
-              </summary>
-              <pre className="mt-2 rounded-lg bg-muted p-3 text-xs overflow-x-auto text-foreground font-mono whitespace-pre-wrap">
-                {popupCode}
-              </pre>
-            </details>
-          </div>
-        </SectionCard>
-
-        {/* E-mail */}
-        <SectionCard icon={Mail} title="Compartilhar por e-mail" color="bg-orange-500/5 text-orange-600 dark:text-orange-400">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Abre seu cliente de e-mail com o link já preenchido.
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={`mailto:?subject=${encodeURIComponent(`Responda: ${form.title}`)}&body=${encodeURIComponent(`Olá! Você foi convidado para responder ao formulário "${form.title}".\n\nAcesse aqui: ${previewUrl}`)}`}
+            {/* Placeholder cards for future */}
+            {['WhatsApp', 'Slack'].map(name => (
+              <div
+                key={name}
+                className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-6 opacity-40"
               >
-                <Mail className="h-3.5 w-3.5 mr-1.5" />
-                Abrir e-mail
-              </a>
-            </Button>
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <span className="text-lg">📌</span>
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">{name}</span>
+                <span className="text-[10px] text-muted-foreground">Em breve</span>
+              </div>
+            ))}
           </div>
-        </SectionCard>
 
-        {/* QR Code (placeholder) */}
-        <SectionCard icon={QrCode} title="QR Code" color="bg-muted/60 text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <div className="h-24 w-24 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
-              <QrCode className="h-10 w-10 text-muted-foreground/40" />
+          {!googleOAuthReady && (
+            <p className="text-xs text-muted-foreground">
+              Configure o <strong>Google OAuth2</strong> em{' '}
+              <a href="/settings" className="text-primary underline">Configurações → Integrações</a>{' '}
+              para conectar o Google Sheets.
+            </p>
+          )}
+        </div>
+
+        {/* ── Connected Sheet details ── */}
+        {isSheetConnected && (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              <span className="text-sm font-semibold text-foreground">Google Sheets conectado</span>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Em breve</p>
-              <p className="text-xs text-muted-foreground">
-                Geração de QR Code para uso em materiais impressos e apresentações.
-              </p>
+            <p className="text-xs text-muted-foreground">
+              As respostas serão sincronizadas para a planilha com as mesmas colunas da aba Respostas.
+            </p>
+            {form.googleSheetUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={form.googleSheetUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Abrir planilha
+                </a>
+              </Button>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={handleSyncNow} disabled={syncing} className="gap-1.5">
+                {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sheet className="h-3.5 w-3.5" />}
+                Sincronizar agora
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleDisconnectSheet} className="gap-1.5 text-muted-foreground hover:text-destructive">
+                <Unplug className="h-3.5 w-3.5" />
+                Desconectar
+              </Button>
             </div>
           </div>
-        </SectionCard>
-
+        )}
       </div>
     </div>
   );

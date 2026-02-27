@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.google-oauth-callback]
 verify_jwt = false
+
+[functions.google-sheets-sync]
+verify_jwt = false

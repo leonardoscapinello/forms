@@ -583,7 +583,7 @@ export default function FormEditor() {
 
         {/* Share view */}
         {editorView === 'share' && (
-          <FormShare form={form} />
+          <FormShare form={form} onUpdate={patch => updateForm(form.id, patch)} />
         )}
 
         {/* Analytics view */}
