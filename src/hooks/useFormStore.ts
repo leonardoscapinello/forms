@@ -164,6 +164,31 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     debounceTimers.current.set(id, timer);
   }, [flushUpdate]);
 
+  // Flush pending debounced saves when user leaves/changes tab to avoid losing structural edits
+  useEffect(() => {
+    const flushAllPending = () => {
+      for (const [id, timer] of debounceTimers.current.entries()) {
+        clearTimeout(timer);
+        debounceTimers.current.delete(id);
+        pendingUpdates.current.delete(id);
+        flushUpdate(id);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushAllPending();
+    };
+
+    window.addEventListener('pagehide', flushAllPending);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pagehide', flushAllPending);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      flushAllPending();
+    };
+  }, [flushUpdate]);
+
   const createForm = useCallback(async (folderId: string | null = null): Promise<FormData | null> => {
     if (!user) return null;
     const now = new Date().toISOString();
