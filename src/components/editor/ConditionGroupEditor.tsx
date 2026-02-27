@@ -1,15 +1,18 @@
 import { useCallback } from 'react';
-import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question, FormVariable, IntegrationNodeData } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, FormVariable, IntegrationNodeData } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Group } from 'lucide-react';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { InputElementGroup } from './VariableAssignPanel';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: 'equals',      label: 'igual a' },
@@ -24,17 +27,15 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
 
 interface Props {
   group: ConditionGroup;
-  questions: Question[];
+  allInputElements: InputElementGroup[];
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   onChange: (group: ConditionGroup) => void;
-  /** Depth level for nested rendering (0 = root) */
   depth?: number;
-  /** Called when this sub-group should be removed (only for non-root) */
   onRemove?: () => void;
 }
 
-export default function ConditionGroupEditor({ group, questions, variables = [], integrationNodes = [], onChange, depth = 0, onRemove }: Props) {
+export default function ConditionGroupEditor({ group, allInputElements = [], variables = [], integrationNodes = [], onChange, depth = 0, onRemove }: Props) {
   // Webhook nodes that have response fields from a successful test
   const webhookNodesWithFields = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
 
@@ -51,33 +52,35 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
     onChange({ ...group, rules: group.rules.filter(r => r.id !== ruleId) });
   }, [group, onChange]);
 
+  const firstElementId = allInputElements[0]?.elements[0]?.elementId || '';
+
   const addRule = useCallback(() => {
     const rule: ConditionRule = {
       id: crypto.randomUUID(),
       subjectType: 'question',
-      questionId: questions[0]?.id || '',
+      questionId: firstElementId,
       operator: 'equals',
       value: '',
       logicWithPrev: group.rules.length > 0 || group.groups.length > 0 ? 'and' : undefined,
     };
     onChange({ ...group, rules: [...group.rules, rule] });
-  }, [group, questions, onChange]);
+  }, [group, firstElementId, onChange]);
 
   const addSubGroup = useCallback(() => {
     const subGroup: ConditionGroup = {
       id: crypto.randomUUID(),
-      logic: 'or', // default sub-group logic to OR (common use case: group OR conditions together)
+      logic: 'or',
       rules: [{
         id: crypto.randomUUID(),
         subjectType: 'question',
-        questionId: questions[0]?.id || '',
+        questionId: firstElementId,
         operator: 'equals',
         value: '',
       }],
       groups: [],
     };
     onChange({ ...group, groups: [...group.groups, subGroup] });
-  }, [group, questions, onChange]);
+  }, [group, firstElementId, onChange]);
 
   const updateSubGroup = useCallback((subGroupId: string, updatedSubGroup: ConditionGroup) => {
     onChange({ ...group, groups: group.groups.map(g => g.id === subGroupId ? updatedSubGroup : g) });
@@ -242,10 +245,15 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
                       <SelectValue placeholder="Escolha o campo..." />
                     </SelectTrigger>
                     <SelectContent className="z-[200]">
-                      {questions.map(q => (
-                        <SelectItem key={q.id} value={q.id} className="text-xs">
-                          {q.title || 'Sem título'}
-                        </SelectItem>
+                      {allInputElements.map(pg => (
+                        <SelectGroup key={pg.pageId}>
+                          <SelectLabel className="text-[9px] uppercase tracking-wider text-muted-foreground">{pg.pageTitle}</SelectLabel>
+                          {pg.elements.map(el => (
+                            <SelectItem key={el.elementId} value={el.elementId} className="text-xs">
+                              {el.elementLabel}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
@@ -309,7 +317,7 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
             )}
             <ConditionGroupEditor
               group={subGroup}
-              questions={questions}
+              allInputElements={allInputElements}
               variables={variables}
               integrationNodes={integrationNodes}
               onChange={updated => updateSubGroup(subGroup.id, updated)}

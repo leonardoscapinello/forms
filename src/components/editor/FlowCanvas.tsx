@@ -201,6 +201,7 @@ function FlowCanvasInner({
 
     (form.conditions || []).forEach((cond, i) => {
       const nodeId = `c-${cond.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
       const validation = validateConditionNode(cond.branches, variables);
       n.push({
         id: nodeId,
@@ -210,7 +211,7 @@ function FlowCanvasInner({
           conditionId: cond.id,
           label: cond.label,
           branches: cond.branches,
-          questions: form.questions || [],
+          allInputElements: prevElements,
           variables,
           integrationNodes,
           hasError: !validation.isValid,

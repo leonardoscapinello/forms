@@ -1,18 +1,19 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { ConditionBranch, ConditionGroup, Question, FormVariable, IntegrationNodeData, createDefaultConditionGroup } from '@/types/form';
+import { ConditionBranch, ConditionGroup, FormVariable, IntegrationNodeData, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ConditionGroupEditor from './ConditionGroupEditor';
 import { validateConditionNode } from './nodeValidation';
+import { InputElementGroup } from './VariableAssignPanel';
 
 interface ConditionNodeDataProps {
   conditionId: string;
   label: string;
   branches: ConditionBranch[];
-  questions: Question[];
+  allInputElements: InputElementGroup[];
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   onChange: (patch: { label?: string; branches?: ConditionBranch[] }) => void;
@@ -20,20 +21,22 @@ interface ConditionNodeDataProps {
 }
 
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
-  const { label, branches, questions, variables = [], integrationNodes = [], onChange, onDelete } = data;
+  const { label, branches, allInputElements = [], variables = [], integrationNodes = [], onChange, onDelete } = data;
   const [expandedBranch, setExpandedBranch] = useState<string | null>(branches[0]?.id ?? null);
 
   const validation = useMemo(() => validateConditionNode(branches, variables), [branches, variables]);
+
+  const firstElementId = allInputElements[0]?.elements[0]?.elementId || '';
 
   const addBranch = useCallback(() => {
     const newBranch: ConditionBranch = {
       id: crypto.randomUUID(),
       label: `Caminho ${branches.length + 1}`,
-      conditionGroup: createDefaultConditionGroup(questions[0]?.id || ''),
+      conditionGroup: createDefaultConditionGroup(firstElementId),
     };
     onChange({ branches: [...branches, newBranch] });
     setExpandedBranch(newBranch.id);
-  }, [branches, questions, onChange]);
+  }, [branches, firstElementId, onChange]);
 
   const updateBranch = useCallback((branchId: string, patch: Partial<ConditionBranch>) => {
     onChange({ branches: branches.map(b => (b.id === branchId ? { ...b, ...patch } : b)) });
@@ -103,7 +106,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
               logic: 'and',
               rules: [{
                 id: crypto.randomUUID(),
-                questionId: branch.questionId || questions[0]?.id || '',
+                questionId: branch.questionId || firstElementId,
                 operator: branch.operator || 'equals',
                 value: branch.value || '',
               }],
@@ -173,7 +176,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                   <div className="px-2.5 pb-2.5">
                     <ConditionGroupEditor
                       group={group}
-                      questions={questions}
+                      allInputElements={allInputElements}
                       variables={variables}
                       integrationNodes={integrationNodes}
                       onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
