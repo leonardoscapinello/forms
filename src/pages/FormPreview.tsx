@@ -66,6 +66,7 @@ export default function FormPreview() {
   const storeForm = store?.getForm(id!) ?? null;
   const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
   const [publicLoading, setPublicLoading] = useState(!storeForm);
+  const [showPublicSkeleton, setShowPublicSkeleton] = useState(false);
 
   useEffect(() => {
     if (storeForm || !id) return;
@@ -106,6 +107,16 @@ export default function FormPreview() {
 
   const form = storeForm || publicForm;
   const isEditorPreview = !!storeForm; // true when opened from within the editor
+
+  // Avoid skeleton flicker: only show if loading lasts >120ms
+  useEffect(() => {
+    if (!publicLoading) {
+      setShowPublicSkeleton(false);
+      return;
+    }
+    const t = window.setTimeout(() => setShowPublicSkeleton(true), 120);
+    return () => window.clearTimeout(t);
+  }, [publicLoading]);
 
   const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -1036,29 +1047,28 @@ export default function FormPreview() {
     return () => window.removeEventListener('keydown', handler);
   }, [goNext, goBack]);
 
-  if (publicLoading) {
+  if (publicLoading && showPublicSkeleton) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 gap-8">
-        <div className="w-full max-w-lg flex flex-col gap-6 animate-pulse">
-          {/* Title skeleton */}
+        <div className="w-full max-w-lg flex flex-col gap-6">
           <div className="h-7 w-3/5 rounded-lg bg-muted" />
-          {/* Subtitle skeleton */}
           <div className="h-4 w-4/5 rounded bg-muted/70" />
-          {/* Input field skeleton */}
           <div className="flex flex-col gap-2 mt-2">
             <div className="h-3.5 w-24 rounded bg-muted/60" />
             <div className="h-12 w-full rounded-xl bg-muted/50" />
           </div>
-          {/* Second field skeleton */}
           <div className="flex flex-col gap-2">
             <div className="h-3.5 w-32 rounded bg-muted/60" />
             <div className="h-12 w-full rounded-xl bg-muted/50" />
           </div>
-          {/* Button skeleton */}
           <div className="h-11 w-full rounded-xl bg-muted/40 mt-2" />
         </div>
       </div>
     );
+  }
+
+  if (publicLoading && !showPublicSkeleton) {
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!form) return (
