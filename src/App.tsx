@@ -72,9 +72,9 @@ function ScrollToTop() {
   return null;
 }
 
-function LegacyFormRouteRedirect() {
+function LegacyPreviewRedirect() {
   const { id } = useParams();
-  return <Navigate to={id ? `/preview/${id}` : "/"} replace />;
+  return <Navigate to={id ? `/f/${id}` : "/"} replace />;
 }
 
 const App = () => (
@@ -92,8 +92,9 @@ const App = () => (
                 <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
                 <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
-                <Route path="/preview/:id" element={<FormPreview />} />
-                <Route path="/forms/:id" element={<LegacyFormRouteRedirect />} />
+                <Route path="/f/:id" element={<FormPreview />} />
+                <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
+                <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
