@@ -212,6 +212,7 @@ function FlowCanvasInner({
           branches: cond.branches,
           questions: form.questions || [],
           variables,
+          integrationNodes,
           hasError: !validation.isValid,
           onChange: (patch: Partial<ConditionNodeData>) => onConditionChange(cond.id, patch),
           onDelete: () => onConditionDelete(cond.id),

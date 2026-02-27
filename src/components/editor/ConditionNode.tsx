@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { ConditionBranch, ConditionGroup, Question, FormVariable, createDefaultConditionGroup } from '@/types/form';
+import { ConditionBranch, ConditionGroup, Question, FormVariable, IntegrationNodeData, createDefaultConditionGroup } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,12 +14,13 @@ interface ConditionNodeDataProps {
   branches: ConditionBranch[];
   questions: Question[];
   variables?: FormVariable[];
+  integrationNodes?: IntegrationNodeData[];
   onChange: (patch: { label?: string; branches?: ConditionBranch[] }) => void;
   onDelete: () => void;
 }
 
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
-  const { label, branches, questions, variables = [], onChange, onDelete } = data;
+  const { label, branches, questions, variables = [], integrationNodes = [], onChange, onDelete } = data;
   const [expandedBranch, setExpandedBranch] = useState<string | null>(branches[0]?.id ?? null);
 
   const validation = useMemo(() => validateConditionNode(branches, variables), [branches, variables]);
@@ -114,6 +115,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
             // Check if this specific branch has errors
             const branchRules = branch.conditionGroup?.rules ?? [];
             const branchHasError = branchRules.length === 0 || branchRules.some(r => {
+              if (r.subjectType === 'webhook_response') return !r.webhookNodeId || !r.webhookResponsePath;
               if (r.subjectType === 'variable') return !r.variableId;
               if (!r.questionId) return true;
               const needsValue = r.operator !== 'is_empty' && r.operator !== 'is_not_empty';
@@ -173,6 +175,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                       group={group}
                       questions={questions}
                       variables={variables}
+                      integrationNodes={integrationNodes}
                       onChange={updatedGroup => updateBranch(branch.id, { conditionGroup: updatedGroup })}
                     />
                   </div>

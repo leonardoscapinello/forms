@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question, FormVariable } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, Question, FormVariable, IntegrationNodeData } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Group } from 'lucide-react';
@@ -26,6 +26,7 @@ interface Props {
   group: ConditionGroup;
   questions: Question[];
   variables?: FormVariable[];
+  integrationNodes?: IntegrationNodeData[];
   onChange: (group: ConditionGroup) => void;
   /** Depth level for nested rendering (0 = root) */
   depth?: number;
@@ -33,7 +34,15 @@ interface Props {
   onRemove?: () => void;
 }
 
-export default function ConditionGroupEditor({ group, questions, variables = [], onChange, depth = 0, onRemove }: Props) {
+export default function ConditionGroupEditor({ group, questions, variables = [], integrationNodes = [], onChange, depth = 0, onRemove }: Props) {
+  // Webhook nodes that have response fields from a successful test
+  const webhookNodesWithFields = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
+
+  // Build subject type options dynamically
+  const subjectTypes: { value: string; label: string }[] = [{ value: 'question', label: 'Campo' }];
+  if (variables.length > 0) subjectTypes.push({ value: 'variable', label: 'Variável' });
+  if (webhookNodesWithFields.length > 0) subjectTypes.push({ value: 'webhook_response', label: 'Webhook' });
+
   const updateRule = useCallback((ruleId: string, patch: Partial<ConditionRule>) => {
     onChange({ ...group, rules: group.rules.map(r => (r.id === ruleId ? { ...r, ...patch } : r)) });
   }, [group, onChange]);
@@ -154,20 +163,25 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
 
             {/* Rule card */}
             <div className="rounded-lg bg-background border border-border p-2 space-y-1.5">
-              {/* Subject: question or variable toggle */}
-              {variables.length > 0 && (
+              {/* Subject type selector */}
+              {(variables.length > 0 || webhookNodesWithFields.length > 0) && (
                 <div className="flex gap-1">
-                  {(['question', 'variable'] as const).map(t => (
+                  {subjectTypes.map(t => (
                     <button
-                      key={t}
-                      onClick={() => updateRule(rule.id, { subjectType: t, variableId: undefined })}
+                      key={t.value}
+                      onClick={() => updateRule(rule.id, {
+                        subjectType: t.value as any,
+                        variableId: undefined,
+                        webhookNodeId: undefined,
+                        webhookResponsePath: undefined,
+                      })}
                       className={`flex-1 text-[10px] py-0.5 rounded border transition-colors ${
-                        subjectType === t
+                        subjectType === t.value
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-muted-foreground hover:border-primary/50'
                       }`}
                     >
-                      {t === 'question' ? 'Campo' : 'Variável'}
+                      {t.label}
                     </button>
                   ))}
                 </div>
@@ -175,7 +189,40 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
 
               {/* Subject selector */}
               <div className="flex items-center gap-1.5">
-                {subjectType === 'variable' ? (
+                {subjectType === 'webhook_response' ? (
+                  <div className="flex-1 space-y-1">
+                    <Select value={rule.webhookNodeId || ''} onValueChange={v => updateRule(rule.id, { webhookNodeId: v, webhookResponsePath: '' })}>
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue placeholder="Webhook..." />
+                      </SelectTrigger>
+                      <SelectContent className="z-[200]">
+                        {webhookNodesWithFields.map(wn => (
+                          <SelectItem key={wn.id} value={wn.id} className="text-xs">
+                            <span className="font-mono text-node-webhook-accent">🔗 {wn.webhookUrl ? (() => { try { return new URL(wn.webhookUrl).hostname; } catch { return wn.id.slice(0, 8); } })() : wn.id.slice(0, 8)}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {rule.webhookNodeId && (() => {
+                      const wn = webhookNodesWithFields.find(w => w.id === rule.webhookNodeId);
+                      const fields = wn?.responseFields || [];
+                      return fields.length > 0 ? (
+                        <Select value={rule.webhookResponsePath || ''} onValueChange={v => updateRule(rule.id, { webhookResponsePath: v })}>
+                          <SelectTrigger className="h-7 text-xs font-mono">
+                            <SelectValue placeholder="Campo da resposta..." />
+                          </SelectTrigger>
+                          <SelectContent className="z-[200] max-h-48">
+                            {fields.map(f => (
+                              <SelectItem key={f} value={f} className="text-xs font-mono">{f}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-[9px] text-muted-foreground italic">Teste o webhook primeiro para ver os campos</p>
+                      );
+                    })()}
+                  </div>
+                ) : subjectType === 'variable' ? (
                   <Select value={rule.variableId || ''} onValueChange={v => updateRule(rule.id, { variableId: v })}>
                     <SelectTrigger className="h-7 text-xs flex-1">
                       <SelectValue placeholder="Escolha a variável..." />
@@ -264,6 +311,7 @@ export default function ConditionGroupEditor({ group, questions, variables = [],
               group={subGroup}
               questions={questions}
               variables={variables}
+              integrationNodes={integrationNodes}
               onChange={updated => updateSubGroup(subGroup.id, updated)}
               depth={depth + 1}
               onRemove={() => removeSubGroup(subGroup.id)}

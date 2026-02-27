@@ -2,18 +2,38 @@ import { FormVariable } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
 
+/** Get a value from an object using dot/bracket path */
+function getNestedValue(obj: any, path: string): any {
+  const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+  return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+}
+
 /**
- * Resolves all {{varName}} placeholders in a string using the current variable values.
+ * Resolves all {{varName}} and {{webhook:nodeId:path}} placeholders in a string.
  * Variable assignment overrides are stored in answers as `__var_<name>`.
+ * Webhook responses are stored in answers as `__webhook_<nodeId>`.
  */
 export function interpolateText(
   text: string,
   variables: FormVariable[],
   answers: Record<string, any>,
 ): string {
-  if (!text || variables.length === 0) return text;
+  if (!text) return text;
 
-  return text.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) => {
+  // First handle webhook references: {{webhook:nodeId:dotPath}}
+  let result = text.replace(/\{\{webhook:([^:}]+):([^}]+)\}\}/g, (_match, nodeId: string, path: string) => {
+    const webhookData = answers[`__webhook_${nodeId}`];
+    if (webhookData) {
+      const val = getNestedValue(webhookData, path);
+      return val !== undefined && val !== null ? String(val) : '';
+    }
+    return '';
+  });
+
+  // Then handle variable references: {{varName}}
+  if (variables.length === 0) return result;
+
+  return result.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) => {
     const variable = variables.find(v => v.name === varName);
     if (!variable) return `{{${varName}}}`;
 
