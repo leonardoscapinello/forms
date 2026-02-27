@@ -34,6 +34,7 @@ import VariableOpNode from './VariableOpNode';
 import IntegrationNode from './IntegrationNode';
 import AnalyticsNode from './AnalyticsNode';
 import ConnectDropMenu from './ConnectDropMenu';
+import { FileText, Trash2 } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
 import DeletableEdge from './DeletableEdge';
@@ -106,6 +107,10 @@ function FlowCanvasInner({
   const [contextMenu, setContextMenu] = useState<{
     screenPos: { x: number; y: number };
     flowPos: { x: number; y: number };
+  } | null>(null);
+  const [nodeContextMenu, setNodeContextMenu] = useState<{
+    screenPos: { x: number; y: number };
+    nodeId: string;
   } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -529,6 +534,30 @@ function FlowCanvasInner({
     setContextMenu(null);
   }, [contextMenu, onAnalyticsAddAtPosition]);
 
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    if (node.id === 'start') return; // Can't delete start node
+    setNodeContextMenu({
+      screenPos: { x: event.clientX, y: event.clientY },
+      nodeId: node.id,
+    });
+  }, []);
+
+  const handleNodeCtxDelete = useCallback(() => {
+    if (!nodeContextMenu) return;
+    setDeleteConfirm({ nodeIds: [nodeContextMenu.nodeId] });
+    setNodeContextMenu(null);
+  }, [nodeContextMenu]);
+
+  const handleNodeCtxSelect = useCallback(() => {
+    if (!nodeContextMenu) return;
+    const nodeId = nodeContextMenu.nodeId;
+    if (nodeId.startsWith('p-')) {
+      onPageSelect(nodeId.replace('p-', ''));
+    }
+    setNodeContextMenu(null);
+  }, [nodeContextMenu, onPageSelect]);
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -559,7 +588,8 @@ function FlowCanvasInner({
         panOnScroll
         zoomOnPinch
         onPaneContextMenu={onPaneContextMenu}
-        onPaneClick={() => setContextMenu(null)}
+        onNodeContextMenu={onNodeContextMenu}
+        onPaneClick={() => { setContextMenu(null); setNodeContextMenu(null); }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
@@ -605,6 +635,33 @@ function FlowCanvasInner({
           onAddAnalytics={handleCtxAddAnalytics}
           onClose={() => setContextMenu(null)}
         />
+      )}
+
+      {nodeContextMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setNodeContextMenu(null)} />
+          <div
+            className="fixed z-50 w-52 rounded-xl border border-border bg-popover shadow-xl py-1.5"
+            style={{ left: nodeContextMenu.screenPos.x, top: nodeContextMenu.screenPos.y }}
+          >
+            {nodeContextMenu.nodeId.startsWith('p-') && (
+              <button
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent text-left transition-colors text-foreground"
+                onClick={handleNodeCtxSelect}
+              >
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Editar página
+              </button>
+            )}
+            <button
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-destructive/10 text-left transition-colors text-destructive"
+              onClick={handleNodeCtxDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir
+            </button>
+          </div>
+        </>
       )}
 
       <DeleteConfirmDialog
