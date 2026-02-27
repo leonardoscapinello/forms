@@ -1057,23 +1057,9 @@ export default function FormPreview() {
 
   const hasVariables = (form.variables?.length ?? 0) > 0;
 
-  // Build variable debug entries
-  const variableDebugEntries = (form.variables || []).map(v => ({
-    name: v.name,
-    type: v.type,
-    value: answers[`__var_${v.name}`] ?? v.defaultValue ?? '',
-  }));
-
   return (
     <Suspense fallback={null}>
     <div className="min-h-screen bg-background flex flex-col relative">
-      {/* Debug panel — only shown when form has variables */}
-      {hasVariables && (
-        <DebugPanel
-          entries={variableDebugEntries}
-          currentPage={currentPage?.title ?? (isWelcome ? 'Boas-vindas' : 'Concluído')}
-        />
-      )}
 
       {/* Close — only visible when opened from the editor */}
       {isEditorPreview && (
