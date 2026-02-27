@@ -589,6 +589,10 @@ export default function FormEditor() {
               onAnalyticsDelete={handleAnalyticsDelete}
               onFormUpdate={handleFormUpdate}
               onPageSelect={handlePageSelectFromWorkflow}
+              onCreateVariable={(newVar) => {
+                if (!form) return;
+                updateForm(form.id, { variables: [...(form.variables || []), newVar] });
+              }}
             />
           </div>
         )}

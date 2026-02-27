@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Variable, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType } from '@/types/form';
+import VariableSelect from './shared/VariableSelect';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +19,7 @@ interface VariableOpNodeProps {
   allInputElements: InputElementGroup[];
   onChange: (patch: Partial<VariableOpNodeData>) => void;
   onDelete: () => void;
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 const OP_OPTIONS: { value: VariableOpType; label: string }[] = [
@@ -29,7 +31,7 @@ const OP_OPTIONS: { value: VariableOpType; label: string }[] = [
 ];
 
 function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps }) {
-  const { label, operations, variables, allInputElements = [], onChange, onDelete } = data;
+  const { label, operations, variables, allInputElements = [], onChange, onDelete, onCreateVariable } = data;
 
   const validation = useMemo(() => validateVariableOpNode(operations, variables), [operations, variables]);
 
@@ -127,19 +129,13 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
               <div key={op.id} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
                 {/* Row 1: Variable picker + delete */}
                 <div className="flex items-center gap-2">
-                  <Select value={op.variableId} onValueChange={val => updateOp(op.id, { variableId: val })}>
-                    <SelectTrigger className="h-7 text-xs flex-1">
-                      <SelectValue placeholder="Variável..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variables.map(v => (
-                        <SelectItem key={v.id} value={v.id} className="text-xs">
-                          <span className="font-mono text-node-variable-op-accent">{`{{${v.name}}}`}</span>
-                          <span className="ml-1.5 text-muted-foreground">({v.type})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <VariableSelect
+                    value={op.variableId}
+                    variables={variables}
+                    onValueChange={val => updateOp(op.id, { variableId: val })}
+                    onCreateVariable={onCreateVariable}
+                    accentClass="text-node-variable-op-accent"
+                  />
                   <button
                     onClick={() => removeOp(op.id)}
                     className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"

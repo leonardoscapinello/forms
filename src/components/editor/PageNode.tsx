@@ -14,10 +14,11 @@ interface PageNodeData {
   variables?: FormVariable[];
   allInputElements?: InputElementGroup[];
   isDisconnected?: boolean;
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange, variables = [], allInputElements = [], isDisconnected = false } = data;
+  const { page, index, onSelect, onChange, variables = [], allInputElements = [], isDisconnected = false, onCreateVariable } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
   const [varPopoverOpen, setVarPopoverOpen] = useState(false);
@@ -149,6 +150,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
                   variables={variables}
                   allInputElements={allInputElements}
                   onChange={assignments => onChange({ variableAssignments: assignments })}
+                  onCreateVariable={onCreateVariable}
                 />
               </div>
             </PopoverContent>

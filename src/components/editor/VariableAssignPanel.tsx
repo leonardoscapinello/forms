@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
+import VariableSelect from './shared/VariableSelect';
 
 export interface InputElementGroup {
   pageId: string;
@@ -18,6 +19,7 @@ interface Props {
   /** Input elements grouped by page, only including previous pages */
   allInputElements: InputElementGroup[];
   onChange: (assignments: VariableAssignment[]) => void;
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 const SOURCE_LABELS: Record<VariableAssignmentSource, string> = {
@@ -27,7 +29,7 @@ const SOURCE_LABELS: Record<VariableAssignmentSource, string> = {
   param: 'Parâmetro GET',
 };
 
-export default function VariableAssignPanel({ assignments, variables, allInputElements, onChange }: Props) {
+export default function VariableAssignPanel({ assignments, variables, allInputElements, onChange, onCreateVariable }: Props) {
   const [localAssignments, setLocalAssignments] = useState<VariableAssignment[]>(assignments);
 
   const commit = (next: VariableAssignment[]) => {
@@ -36,10 +38,10 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
   };
 
   const addAssignment = () => {
-    if (variables.length === 0) return;
+    if (variables.length === 0 && !onCreateVariable) return;
     const newA: VariableAssignment = {
       id: crypto.randomUUID(),
-      variableId: variables[0].id,
+      variableId: variables.length > 0 ? variables[0].id : '', // will be set after create
       sourceType: 'free',
       value: '',
     };
@@ -54,7 +56,7 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
     commit(localAssignments.filter(a => a.id !== id));
   };
 
-  if (variables.length === 0) {
+  if (variables.length === 0 && !onCreateVariable) {
     return (
       <div className="py-4 text-center text-xs text-muted-foreground">
         <Variable className="h-5 w-5 mx-auto mb-1.5 opacity-40" />
@@ -77,22 +79,12 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
               <div key={a.id} className="rounded-lg border border-border/70 p-2.5 space-y-2 bg-muted/20">
                 {/* Variable picker */}
                 <div className="flex items-center gap-2">
-                  <Select
+                  <VariableSelect
                     value={a.variableId}
+                    variables={variables}
                     onValueChange={val => update(a.id, { variableId: val })}
-                  >
-                    <SelectTrigger className="h-7 text-xs flex-1">
-                      <SelectValue placeholder="Variável..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variables.map(v => (
-                        <SelectItem key={v.id} value={v.id} className="text-xs">
-                          <span className="font-mono text-primary">{`{{${v.name}}}`}</span>
-                          <span className="ml-1.5 text-muted-foreground">({v.type})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onCreateVariable={onCreateVariable}
+                  />
                   <button
                     onClick={() => remove(a.id)}
                     className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
