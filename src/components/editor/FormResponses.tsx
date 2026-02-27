@@ -111,15 +111,15 @@ export default function FormResponses({ form }: Props) {
 
   const filtered = useMemo(() => {
     let list = rows;
-    if (statusFilter === 'complete') list = list.filter(r => r.metadata?.status === 'complete');
-    if (statusFilter === 'partial') list = list.filter(r => r.metadata?.status !== 'complete');
+    if (statusFilter === 'complete') list = list.filter(r => r.metadata?.status === 'complete' || !!r.metadata?.submitted_at);
+    if (statusFilter === 'partial') list = list.filter(r => r.metadata?.status !== 'complete' && !r.metadata?.submitted_at);
     if (sortDir === 'asc') list = [...list].reverse();
     return list;
   }, [rows, statusFilter, sortDir]);
 
   const { total, completed, partial } = useMemo(() => {
     const t = rows.length;
-    const c = rows.filter(r => r.metadata?.status === 'complete').length;
+    const c = rows.filter(r => r.metadata?.status === 'complete' || !!r.metadata?.submitted_at).length;
     return { total: t, completed: c, partial: Math.max(t - c, 0) };
   }, [rows]);
 
@@ -127,7 +127,7 @@ export default function FormResponses({ form }: Props) {
     const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label)];
     const csvRows = [headers.join(',')];
     filtered.forEach((row, idx) => {
-      const status = row.metadata?.status === 'complete' ? 'Completa' : 'Parcial';
+      const status = (row.metadata?.status === 'complete' || !!row.metadata?.submitted_at) ? 'Completa' : 'Parcial';
       const entrada = formatDate(row.metadata?.landed_at || row.created_at);
       const envio = row.metadata?.submitted_at ? formatDate(row.metadata.submitted_at) : '—';
       const duration = formatDuration(row.total_time_ms);
@@ -242,7 +242,7 @@ export default function FormResponses({ form }: Props) {
             </TableHeader>
             <TableBody>
               {filtered.map((row, idx) => {
-                const isComplete = row.metadata?.status === 'complete';
+                const isComplete = row.metadata?.status === 'complete' || !!row.metadata?.submitted_at;
                 return (
                   <TableRow key={row.id} className="group hover:bg-muted/30">
                     <TableCell className="text-center text-xs text-muted-foreground sticky left-0 bg-background group-hover:bg-muted/30 z-10">
