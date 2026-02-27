@@ -109,7 +109,8 @@ export default function FormPreview() {
   const maxPageVisitedRef = useRef<number>(-1);
   const pageEnteredAtRef = useRef<number>(Date.now());
 
-  const saveWithBackendFallback = useCallback(async (args: {
+  // PRIMARY save method — uses edge function with service role key (bypasses RLS)
+  const saveViaBackend = useCallback(async (args: {
     kind: 'response' | 'session';
     action: 'insert' | 'upsert' | 'update';
     payload: Record<string, any>;
@@ -117,12 +118,14 @@ export default function FormPreview() {
     match?: Record<string, any>;
   }) => {
     try {
-      const { error } = await supabase.functions.invoke('form-public-save', { body: args });
-      if (error) {
-        console.error('Fallback backend save falhou:', error);
+      const res = await supabase.functions.invoke('form-public-save', { body: args });
+      if (res.error) {
+        console.error('[form-public-save] invoke error:', res.error);
+      } else if (res.data && !(res.data as any).success) {
+        console.error('[form-public-save] server error:', (res.data as any).error);
       }
     } catch (e) {
-      console.error('Erro no fallback backend save:', e);
+      console.error('[form-public-save] network error:', e);
     }
   }, []);
 
@@ -196,43 +199,25 @@ export default function FormPreview() {
       if (form.savePartialResponses !== false) {
         const { responseId } = sessionMetaRef.current;
         const sessionId = sessionDbIdRef.current;
-        ;(supabase as any).from('form_responses').upsert({
-          form_id: form.id,
-          response_id: responseId,
-          session_id: sessionId,
-          answers: answersRef.current,
-          metadata: {
-            status: 'partial',
-            user_agent: sessionMetaRef.current.userAgent,
-            referrer: sessionMetaRef.current.referrer,
-            query_params: sessionMetaRef.current.queryParams,
-            landed_at: sessionMetaRef.current.landedAt,
-            last_page_index: currentPageIndex,
-          },
-          pages_visited: maxPageVisitedRef.current + 1,
-        }, { onConflict: 'form_id,response_id' }).then(async ({ error }: any) => {
-          if (!error) return;
-          console.error('Erro ao salvar resposta parcial:', error);
-          await saveWithBackendFallback({
-            kind: 'response',
-            action: 'upsert',
-            onConflict: 'form_id,response_id',
-            payload: {
-              form_id: form.id,
-              response_id: responseId,
-              session_id: sessionId,
-              answers: answersRef.current,
-              metadata: {
-                status: 'partial',
-                user_agent: sessionMetaRef.current.userAgent,
-                referrer: sessionMetaRef.current.referrer,
-                query_params: sessionMetaRef.current.queryParams,
-                landed_at: sessionMetaRef.current.landedAt,
-                last_page_index: currentPageIndex,
-              },
-              pages_visited: maxPageVisitedRef.current + 1,
+        saveViaBackend({
+          kind: 'response',
+          action: 'upsert',
+          onConflict: 'form_id,response_id',
+          payload: {
+            form_id: form.id,
+            response_id: responseId,
+            session_id: sessionId,
+            answers: answersRef.current,
+            metadata: {
+              status: 'partial',
+              user_agent: sessionMetaRef.current.userAgent,
+              referrer: sessionMetaRef.current.referrer,
+              query_params: sessionMetaRef.current.queryParams,
+              landed_at: sessionMetaRef.current.landedAt,
+              last_page_index: currentPageIndex,
             },
-          });
+            pages_visited: maxPageVisitedRef.current + 1,
+          },
         });
       }
     }, 700);
@@ -240,7 +225,7 @@ export default function FormPreview() {
     return () => window.clearTimeout(timer);
   }, [answers, currentPageIndex, form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save partial on beforeunload — use fetch keepalive with proper auth headers
+  // Save partial on beforeunload — use edge function via fetch keepalive
   useEffect(() => {
     if (!form?.id) return;
     const handler = () => {
@@ -248,21 +233,25 @@ export default function FormPreview() {
       if (finished) return;
       const { responseId } = sessionMetaRef.current;
       const sessionId = sessionDbIdRef.current;
-      const body = JSON.stringify({
-        form_id: form.id,
-        response_id: responseId,
-        session_id: sessionId,
-        answers: answersRef.current,
-        metadata: {
-          status: 'partial',
-          user_agent: sessionMetaRef.current.userAgent,
-          landed_at: sessionMetaRef.current.landedAt,
+      const edgeBody = JSON.stringify({
+        kind: 'response',
+        action: 'upsert',
+        onConflict: 'form_id,response_id',
+        payload: {
+          form_id: form.id,
+          response_id: responseId,
+          session_id: sessionId,
+          answers: answersRef.current,
+          metadata: {
+            status: 'partial',
+            user_agent: sessionMetaRef.current.userAgent,
+            landed_at: sessionMetaRef.current.landedAt,
+          },
+          pages_visited: maxPageVisitedRef.current + 1,
         },
-        pages_visited: maxPageVisitedRef.current + 1,
       });
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/form_responses?on_conflict=form_id,response_id`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/form-public-save`;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      // Use fetch with keepalive (works like sendBeacon but supports headers)
       try {
         fetch(url, {
           method: 'POST',
@@ -270,9 +259,8 @@ export default function FormPreview() {
             'Content-Type': 'application/json',
             'apikey': anonKey,
             'Authorization': `Bearer ${anonKey}`,
-            'Prefer': 'resolution=merge-duplicates',
           },
-          body,
+          body: edgeBody,
           keepalive: true,
         }).catch(() => {});
       } catch { /* ignore */ }
@@ -288,37 +276,21 @@ export default function FormPreview() {
     const generatedSessionId = crypto.randomUUID();
     sessionDbIdRef.current = generatedSessionId;
 
-    // IMPORTANT: do not request returning rows here (public respondents don't have SELECT on form_sessions)
-    ;(supabase as any).from('form_sessions').insert({
-      id: generatedSessionId,
-      form_id: form.id,
-      response_id: responseId,
-      status: 'active',
-      total_pages: form.pages?.length || 0,
-      source_url: typeof window !== 'undefined' ? window.location.href : '',
-      referrer: referrer || null,
-      user_agent: userAgent,
-      query_params: queryParams,
-    }).then(async ({ error }: any) => {
-      if (!error) return;
-      console.error('Erro ao criar sessão do formulário:', error);
-      sessionDbIdRef.current = null;
-      await saveWithBackendFallback({
-        kind: 'session',
-        action: 'insert',
-        payload: {
-          id: generatedSessionId,
-          form_id: form.id,
-          response_id: responseId,
-          status: 'active',
-          total_pages: form.pages?.length || 0,
-          source_url: typeof window !== 'undefined' ? window.location.href : '',
-          referrer: referrer || null,
-          user_agent: userAgent,
-          query_params: queryParams,
-        },
-      });
-      sessionDbIdRef.current = generatedSessionId;
+    // Use edge function for session insert (bypasses RLS for public users)
+    saveViaBackend({
+      kind: 'session',
+      action: 'insert',
+      payload: {
+        id: generatedSessionId,
+        form_id: form.id,
+        response_id: responseId,
+        status: 'active',
+        total_pages: form.pages?.length || 0,
+        source_url: typeof window !== 'undefined' ? window.location.href : '',
+        referrer: referrer || null,
+        user_agent: userAgent,
+        query_params: queryParams,
+      },
     });
 
     // Insert form_start page event
@@ -374,24 +346,16 @@ export default function FormPreview() {
 
     if (finished) {
       if (sessionId) {
-        ;(supabase as any).from('form_sessions').update({
-          status: 'completed',
-          completed_at: now,
-          last_seen_at: now,
-          pages_visited: maxPageVisitedRef.current + 1,
-        }).eq('id', sessionId).then(async ({ error }: any) => {
-          if (!error) return;
-          await saveWithBackendFallback({
-            kind: 'session',
-            action: 'update',
-            match: { id: sessionId },
-            payload: {
-              status: 'completed',
-              completed_at: now,
-              last_seen_at: now,
-              pages_visited: maxPageVisitedRef.current + 1,
-            },
-          });
+        saveViaBackend({
+          kind: 'session',
+          action: 'update',
+          match: { id: sessionId },
+          payload: {
+            status: 'completed',
+            completed_at: now,
+            last_seen_at: now,
+            pages_visited: maxPageVisitedRef.current + 1,
+          },
         });
       }
       ;(supabase as any).from('form_page_events').insert({
@@ -404,45 +368,26 @@ export default function FormPreview() {
 
       // Save/update form responses as complete
       const latestAnswers = answersRef.current;
-      ;(supabase as any).from('form_responses').upsert({
-        form_id: form.id,
-        response_id: responseId,
-        session_id: sessionId,
-        answers: latestAnswers,
-        metadata: {
-          status: 'complete',
-          user_agent: sessionMetaRef.current.userAgent,
-          referrer: sessionMetaRef.current.referrer,
-          query_params: sessionMetaRef.current.queryParams,
-          landed_at: sessionMetaRef.current.landedAt,
-          submitted_at: now,
-        },
-        total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
-        pages_visited: maxPageVisitedRef.current + 1,
-      }, { onConflict: 'form_id,response_id' }).then(async ({ error }: any) => {
-        if (!error) return;
-        console.error('Erro ao salvar resposta completa:', error);
-        await saveWithBackendFallback({
-          kind: 'response',
-          action: 'upsert',
-          onConflict: 'form_id,response_id',
-          payload: {
-            form_id: form.id,
-            response_id: responseId,
-            session_id: sessionId,
-            answers: latestAnswers,
-            metadata: {
-              status: 'complete',
-              user_agent: sessionMetaRef.current.userAgent,
-              referrer: sessionMetaRef.current.referrer,
-              query_params: sessionMetaRef.current.queryParams,
-              landed_at: sessionMetaRef.current.landedAt,
-              submitted_at: now,
-            },
-            total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
-            pages_visited: maxPageVisitedRef.current + 1,
+      saveViaBackend({
+        kind: 'response',
+        action: 'upsert',
+        onConflict: 'form_id,response_id',
+        payload: {
+          form_id: form.id,
+          response_id: responseId,
+          session_id: sessionId,
+          answers: latestAnswers,
+          metadata: {
+            status: 'complete',
+            user_agent: sessionMetaRef.current.userAgent,
+            referrer: sessionMetaRef.current.referrer,
+            query_params: sessionMetaRef.current.queryParams,
+            landed_at: sessionMetaRef.current.landedAt,
+            submitted_at: now,
           },
-        });
+          total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
+          pages_visited: maxPageVisitedRef.current + 1,
+        },
       });
 
       // Clear resume data

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.pixel-event]
 verify_jwt = false
+
+[functions.form-public-save]
+verify_jwt = false
