@@ -15,6 +15,7 @@ import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
+import { consumePrefetchedForm } from '@/lib/formPrefetch';
 
 // Lazy-loaded heavy preview components — only loaded when the form actually uses them
 const PhoneFieldPreview = lazy(() => import('@/components/preview/PhoneFieldPreview'));
@@ -68,25 +69,38 @@ export default function FormPreview() {
   useEffect(() => {
     if (storeForm || !id) return;
     setPublicLoading(true);
-    supabase
-      .from('forms')
-      .select('id, title, status, data, created_at, updated_at')
-      .eq('id', id)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data) { setPublicLoading(false); return; }
-        const d = data.data as Record<string, unknown>;
-        const form: AppFormData = {
-          ...(d as unknown as AppFormData),
-          id: data.id,
-          title: data.title,
-          status: data.status as AppFormData['status'],
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-        setPublicForm(form);
-        setPublicLoading(false);
-      });
+
+    const parseFormData = (data: any) => {
+      const d = data.data as Record<string, unknown>;
+      const form: AppFormData = {
+        ...(d as unknown as AppFormData),
+        id: data.id,
+        title: data.title,
+        status: data.status as AppFormData['status'],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+      setPublicForm(form);
+      setPublicLoading(false);
+    };
+
+    // Try to consume prefetched data first (started in main.tsx before React mounted)
+    consumePrefetchedForm(id).then((result) => {
+      if (result?.data && !result.error) {
+        parseFormData(result.data);
+      } else {
+        // Fallback: fetch normally if prefetch missed
+        supabase
+          .from('forms')
+          .select('id, title, status, data, created_at, updated_at')
+          .eq('id', id)
+          .single()
+          .then(({ data, error }) => {
+            if (error || !data) { setPublicLoading(false); return; }
+            parseFormData(data);
+          });
+      }
+    });
   }, [id, storeForm]);
 
   const form = storeForm || publicForm;
