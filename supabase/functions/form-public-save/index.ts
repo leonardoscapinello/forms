@@ -97,6 +97,9 @@ async function appendToSheet(supabase: any, formId: string, payload: Record<stri
       }
     }
 
+    // Extract variables
+    const formVariables: { name: string }[] = (formData?.variables || []).map((v: any) => ({ name: v.name }));
+
     // Count existing rows to get the row number
     const countRes = await fetch(`${SHEETS_API}/${sheetId}/values/Respostas!A:A`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -115,6 +118,10 @@ async function appendToSheet(supabase: any, formId: string, payload: Record<stri
       metadata?.submitted_at ? formatDate(metadata.submitted_at) : '',
       formatDuration(payload.total_time_ms as number | null),
       ...inputElements.map(f => resolveCellValue(answers, f.id)),
+      ...formVariables.map(v => {
+        const val = answers?.[`__var_${v.name}`];
+        return val !== undefined && val !== null ? String(val) : '';
+      }),
     ];
 
     await fetch(`${SHEETS_API}/${sheetId}/values/Respostas!A${rowNum + 1}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {

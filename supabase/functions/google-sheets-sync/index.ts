@@ -224,6 +224,9 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Extract variables
+      const formVariables: { name: string }[] = (formData?.variables || []).map((v: any) => ({ name: v.name }));
+
       // Fetch responses
       const { data: responses } = await supabase
         .from("form_responses")
@@ -261,6 +264,7 @@ Deno.serve(async (req) => {
         "Envio",
         "Duração",
         ...inputElements.map((f) => f.label),
+        ...formVariables.map((v) => `⚡ ${v.name}`),
       ];
 
       // Build data rows
@@ -279,6 +283,10 @@ Deno.serve(async (req) => {
           ...inputElements.map((f) =>
             resolveCellValue(row.answers, f.id)
           ),
+          ...formVariables.map((v) => {
+            const val = row.answers?.[`__var_${v.name}`];
+            return val !== undefined && val !== null ? String(val) : '';
+          }),
         ];
       });
 

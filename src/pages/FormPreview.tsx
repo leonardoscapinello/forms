@@ -54,6 +54,12 @@ function buildDefaults(form: AppFormData | null) {
       }
     }
   }
+  // Initialize variables with their default values
+  for (const v of form.variables || []) {
+    if (v.defaultValue !== undefined && v.defaultValue !== '') {
+      defaults[`__var_${v.name}`] = v.defaultValue;
+    }
+  }
   return defaults;
 }
 

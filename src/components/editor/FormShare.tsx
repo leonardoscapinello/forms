@@ -57,6 +57,10 @@ function extractFieldHeaders(form: FormData): string[] {
       }
     }
   }
+  // Add variables as columns
+  for (const v of form.variables || []) {
+    headers.push(`⚡ ${v.name}`);
+  }
   return headers;
 }
 
