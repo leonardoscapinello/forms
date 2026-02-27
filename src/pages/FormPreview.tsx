@@ -25,6 +25,7 @@ import LoadingPreview from '@/components/preview/LoadingPreview';
 import DocumentFieldPreview from '@/components/preview/DocumentFieldPreview';
 import CompanyFieldPreview from '@/components/preview/CompanyFieldPreview';
 import AddressFieldPreview from '@/components/preview/AddressFieldPreview';
+import ProgressBarColumn from '@/components/preview/ProgressBarColumn';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
@@ -1934,47 +1935,17 @@ function InteractiveElement({
       const disposition = element.progressBarDisposition || 'chart_legend';
       return wrapWithStyle(
         <div className={`grid ${cols === 3 ? 'grid-cols-3' : cols === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full`}>
-          {bars.map(bar => {
-            const barBg = bar.barBackground || 'rgba(0,0,0,0.08)';
-            const valColor = bar.valueColor || bar.color;
-            const lblColor = bar.labelColor || 'hsl(var(--foreground))';
-            const barContent = (
-              <div className="w-full max-w-[120px] h-48 rounded-xl overflow-hidden relative" style={{ backgroundColor: barBg }}>
-                <div
-                  className="absolute bottom-0 left-0 right-0 transition-all duration-500 rounded-xl"
-                  style={{ height: `${Math.min(100, Math.max(0, bar.value))}%`, backgroundColor: bar.color }}
-                />
-                <div className="absolute inset-0 flex items-start justify-center pt-3">
-                  <span
-                    className="text-base font-extrabold drop-shadow-sm"
-                    style={{ color: valColor }}
-                  >
-                    {bar.value}%
-                  </span>
-                </div>
-              </div>
-            );
-            const labelContent = (
-              <p
-                className="text-sm font-semibold text-center leading-snug"
-                style={{ color: lblColor }}
-              >
-                {bar.label}
-              </p>
-            );
-            const bw = element.progressBarColBorderWidth ?? 1;
-            const colBorderStyle: React.CSSProperties = {
-              borderWidth: bw,
-              borderStyle: bw > 0 ? (element.progressBarColBorderStyle || 'solid') : 'none',
-              borderColor: bw > 0 ? (element.progressBarColBorderColor || 'rgba(0,0,0,0.12)') : undefined,
-              borderRadius: element.progressBarColBorderRadius ?? 8,
-            };
-            return (
-              <div key={bar.id} className="flex flex-col items-center gap-3 p-3" style={colBorderStyle}>
-                {disposition === 'chart_legend' ? <>{barContent}{labelContent}</> : <>{labelContent}{barContent}</>}
-              </div>
-            );
-          })}
+          {bars.map(bar => (
+            <ProgressBarColumn
+              key={bar.id}
+              bar={bar}
+              disposition={disposition}
+              colBorderWidth={element.progressBarColBorderWidth}
+              colBorderStyle={element.progressBarColBorderStyle}
+              colBorderColor={element.progressBarColBorderColor}
+              colBorderRadius={element.progressBarColBorderRadius}
+            />
+          ))}
         </div>
       );
     }
