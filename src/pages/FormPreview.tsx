@@ -24,6 +24,7 @@ import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import DocumentFieldPreview from '@/components/preview/DocumentFieldPreview';
 import CompanyFieldPreview from '@/components/preview/CompanyFieldPreview';
+import AddressFieldPreview from '@/components/preview/AddressFieldPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
@@ -1383,7 +1384,6 @@ function InteractiveElement({
       );
 
     case 'input_text':
-    case 'input_address':
       return withFieldHeader(
         <input
           type="text"
@@ -1392,6 +1392,14 @@ function InteractiveElement({
           placeholder={t(element.placeholder) || 'Digite aqui...'}
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
           autoFocus
+        />
+      );
+
+    case 'input_address':
+      return withFieldHeader(
+        <AddressFieldPreview
+          value={value as any}
+          onChange={onChange}
         />
       );
 
