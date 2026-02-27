@@ -82,6 +82,7 @@ export default function FormPreview() {
   }, [id, storeForm]);
 
   const form = storeForm || publicForm;
+  const isEditorPreview = !!storeForm; // true when opened from within the editor
 
   const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -423,6 +424,12 @@ export default function FormPreview() {
   const totalSteps = pages.length;
   const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? (((currentPageIndex || 0) + 1) / totalSteps) * 100 : 0;
 
+  /** Check if a page has any meaningful elements for the respondent */
+  const isPageEmpty = useCallback((page: import('@/types/form').FunnelPage | undefined): boolean => {
+    if (!page) return true;
+    return !page.elements || page.elements.length === 0;
+  }, []);
+
   const isPageBlocked = useMemo(() => {
     if (!currentPage) return false;
     return currentPage.elements.some(el => blockedElements[el.id]);
@@ -763,6 +770,22 @@ export default function FormPreview() {
       const pageId = nextNodeId.replace('p-', '');
       const targetIndex = pages.findIndex(p => p.id === pageId);
       if (targetIndex !== -1) {
+        // Skip empty pages in workflow-resolved navigation
+        if (isPageEmpty(pages[targetIndex])) {
+          // Recursively navigate from this empty page
+          const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers);
+          if (n2 === 'end') { setFinished(true); return; }
+          if (n2 && n2.startsWith('p-')) {
+            const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
+            if (idx2 !== -1) {
+              setAnswers(applyPageVariableAssignments(pages[idx2], a2));
+              setCurrentPageIndex(idx2);
+              return;
+            }
+          }
+          setFinished(true);
+          return;
+        }
         const nextPage = pages[targetIndex];
         setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
         setCurrentPageIndex(targetIndex);
@@ -775,23 +798,34 @@ export default function FormPreview() {
       return;
     }
 
-    // Fallback: sequential navigation
+    // Fallback: sequential navigation — skip empty pages
+    const findNextNonEmpty = (startIdx: number): number => {
+      for (let i = startIdx; i < pages.length; i++) {
+        if (!isPageEmpty(pages[i])) return i;
+      }
+      return -1; // all remaining pages are empty
+    };
+
     if (currentPageIndex === null) {
-      if (pages.length > 0) {
-        const nextPage = pages[0];
-        setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
-        setCurrentPageIndex(0);
+      const idx = findNextNonEmpty(0);
+      if (idx !== -1) {
+        setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
+        setCurrentPageIndex(idx);
       } else {
         setFinished(true);
       }
     } else if (currentPageIndex < pages.length - 1) {
-      const nextPage = pages[currentPageIndex + 1];
-      setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
-      setCurrentPageIndex(currentPageIndex + 1);
+      const idx = findNextNonEmpty(currentPageIndex + 1);
+      if (idx !== -1) {
+        setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
+        setCurrentPageIndex(idx);
+      } else {
+        setFinished(true);
+      }
     } else {
       setFinished(true);
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, isPageEmpty]);
 
 
   const goBack = useCallback(() => {
@@ -802,11 +836,21 @@ export default function FormPreview() {
       return;
     }
     if (currentPageIndex !== null && currentPageIndex > 0) {
-      setCurrentPageIndex(currentPageIndex - 1);
+      // Skip empty pages going backwards
+      for (let i = currentPageIndex - 1; i >= 0; i--) {
+        if (!isPageEmpty(pages[i])) {
+          setCurrentPageIndex(i);
+          return;
+        }
+      }
+      // All previous pages are empty — go to welcome if available
+      if (form?.showWelcomeScreen) {
+        setCurrentPageIndex(null);
+      }
     } else if (currentPageIndex === 0 && form?.showWelcomeScreen) {
       setCurrentPageIndex(null);
     }
-  }, [currentPageIndex, finished]);
+  }, [currentPageIndex, finished, pages, isPageEmpty, form?.showWelcomeScreen]);
 
   const setAnswer = useCallback((elementId: string, value: any) => {
     // Clear field error when user provides a value
@@ -909,12 +953,14 @@ export default function FormPreview() {
         />
       )}
 
-      {/* Close */}
-      <div className="absolute top-4 right-4 z-20">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/editor/${id}`)}>
-          <X className="h-5 w-5" />
-        </Button>
-      </div>
+      {/* Close — only visible when opened from the editor */}
+      {isEditorPreview && (
+        <div className="absolute top-4 right-4 z-20">
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/editor/${id}`)}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
 
       {/* Progress */}
       {!isWelcome && !isThankYou && (
