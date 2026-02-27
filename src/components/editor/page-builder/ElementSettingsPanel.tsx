@@ -1493,23 +1493,45 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                               placeholder="0"
                             />
                           </div>
-                          <Input
-                            value={pt.tooltip || ''}
-                            onChange={e => {
-                              const datasets = (element.comparativeDatasets || []).map(d => {
-                                if (d.id !== ds.id) return d;
-                                return {
-                                  ...d,
-                                  points: d.points.map((p, j) =>
-                                    j === pi ? { ...p, tooltip: e.target.value || undefined } : p
-                                  ),
-                                };
-                              });
-                              onChange({ comparativeDatasets: datasets });
-                            }}
-                            className="h-6 text-[10px] ml-[74px]"
-                            placeholder="Tip (opcional)"
-                          />
+                          <div className="flex items-center gap-1 ml-[74px]">
+                            <Input
+                              value={pt.tooltip || ''}
+                              onChange={e => {
+                                const datasets = (element.comparativeDatasets || []).map(d => {
+                                  if (d.id !== ds.id) return d;
+                                  return {
+                                    ...d,
+                                    points: d.points.map((p, j) =>
+                                      j === pi ? { ...p, tooltip: e.target.value || undefined } : p
+                                    ),
+                                  };
+                                });
+                                onChange({ comparativeDatasets: datasets });
+                              }}
+                              className="h-6 text-[10px] flex-1"
+                              placeholder="Tip (opcional)"
+                            />
+                            {pt.tooltip && (
+                              <ColorPickerField
+                                label=""
+                                value={pt.tooltipColor || ''}
+                                onChange={v => {
+                                  const datasets = (element.comparativeDatasets || []).map(d => {
+                                    if (d.id !== ds.id) return d;
+                                    return {
+                                      ...d,
+                                      points: d.points.map((p, j) =>
+                                        j === pi ? { ...p, tooltipColor: v || undefined } : p
+                                      ),
+                                    };
+                                  });
+                                  onChange({ comparativeDatasets: datasets });
+                                }}
+                                defaultColor="#f59e0b"
+                                allowTransparent={false}
+                              />
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -244,6 +244,8 @@ export interface ComparativeDataPoint {
   color?: string;
   /** Tooltip badge text shown above this specific point */
   tooltip?: string;
+  /** Custom color for tooltip badge */
+  tooltipColor?: string;
 }
 
 /** A dataset (series) in a comparative chart */
