@@ -149,19 +149,44 @@ export interface PixelEventRecord {
   custom_params?: Record<string, any>;
 }
 
+export interface WhatsAppMessageRecord {
+  /** Unique ID for this message dispatch */
+  id: string;
+  /** Evolution API instance used */
+  instance_id: string;
+  instance_name: string;
+  /** Recipient phone (cleaned) */
+  recipient: string;
+  /** Message content sent */
+  message: string;
+  /** Whether media was attached */
+  has_media: boolean;
+  media_type?: 'image' | 'document' | 'video' | 'audio' | null;
+  media_url?: string | null;
+  /** Delivery status: 'sent' | 'failed' | 'pending' */
+  status: 'sent' | 'failed' | 'pending';
+  /** Error message if failed */
+  error?: string | null;
+  /** ISO timestamp of when the message was dispatched */
+  sent_at: string;
+  /** Node ID in the workflow that triggered this message */
+  node_id?: string | null;
+}
+
 export interface BuildWebhookPayloadOptions {
   form: AppFormData;
-  answers: Record<string, any>;          // raw answers keyed by elementId
+  answers: Record<string, any>;
   respondent?: WebhookRespondentInfo;
   responseId?: string;
-  responseHash?: string;                 // short unique hash for the response
-  landedAt?: string;                     // ISO timestamp
-  submittedAt?: string;                  // ISO timestamp
-  extraParams?: Record<string, any>;     // static params from node config
-  queryParams?: Record<string, string>;  // URL search params
+  responseHash?: string;
+  landedAt?: string;
+  submittedAt?: string;
+  extraParams?: Record<string, any>;
+  queryParams?: Record<string, string>;
   sourceUrl?: string;
   referrer?: string;
-  pixelEvents?: PixelEventRecord[];      // all pixel events fired during this session
+  pixelEvents?: PixelEventRecord[];
+  whatsappMessages?: WhatsAppMessageRecord[];
 }
 
 export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
@@ -306,6 +331,26 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
           fired_server: pe.fired_server,
           fired_at: pe.fired_at,
           custom_params: pe.custom_params || undefined,
+        })),
+      } : undefined,
+
+      /** WhatsApp messages dispatched during this workflow */
+      whatsapp_messages: opts.whatsappMessages && opts.whatsappMessages.length > 0 ? {
+        total_sent: opts.whatsappMessages.filter(m => m.status === 'sent').length,
+        total_failed: opts.whatsappMessages.filter(m => m.status === 'failed').length,
+        messages: opts.whatsappMessages.map(wm => ({
+          id: wm.id,
+          instance_id: wm.instance_id,
+          instance_name: wm.instance_name,
+          recipient: wm.recipient,
+          message: wm.message,
+          has_media: wm.has_media,
+          media_type: wm.media_type || undefined,
+          media_url: wm.media_url || undefined,
+          status: wm.status,
+          error: wm.error || undefined,
+          sent_at: wm.sent_at,
+          node_id: wm.node_id || undefined,
         })),
       } : undefined,
 
