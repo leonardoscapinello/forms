@@ -1038,8 +1038,25 @@ export default function FormPreview() {
 
   if (publicLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 gap-8">
+        <div className="w-full max-w-lg flex flex-col gap-6 animate-pulse">
+          {/* Title skeleton */}
+          <div className="h-7 w-3/5 rounded-lg bg-muted" />
+          {/* Subtitle skeleton */}
+          <div className="h-4 w-4/5 rounded bg-muted/70" />
+          {/* Input field skeleton */}
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="h-3.5 w-24 rounded bg-muted/60" />
+            <div className="h-12 w-full rounded-xl bg-muted/50" />
+          </div>
+          {/* Second field skeleton */}
+          <div className="flex flex-col gap-2">
+            <div className="h-3.5 w-32 rounded bg-muted/60" />
+            <div className="h-12 w-full rounded-xl bg-muted/50" />
+          </div>
+          {/* Button skeleton */}
+          <div className="h-11 w-full rounded-xl bg-muted/40 mt-2" />
+        </div>
       </div>
     );
   }
