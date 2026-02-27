@@ -113,7 +113,26 @@ export default function FormPreview() {
     if (!form) return;
     const ctx = captureSessionContext();
     const ctxAnswers = contextToAnswers(ctx);
-    setAnswers({ ...buildDefaults(form), ...ctxAnswers });
+    const defaults = { ...buildDefaults(form), ...ctxAnswers };
+
+    // Try to resume from saved session
+    if (form.allowResume && form.id) {
+      const storageKey = `form_resume_${form.id}`;
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.answers && typeof parsed.pageIndex === 'number') {
+            setAnswers({ ...defaults, ...parsed.answers });
+            setCurrentPageIndex(parsed.pageIndex);
+            maxPageVisitedRef.current = parsed.maxPage ?? parsed.pageIndex;
+            return;
+          }
+        }
+      } catch { /* ignore corrupt data */ }
+    }
+
+    setAnswers(defaults);
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
 
     // Request geolocation asynchronously (GPS → reverse geocode, or IP fallback)
@@ -135,6 +154,74 @@ export default function FormPreview() {
       }
     });
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save session for resume + partial responses
+  useEffect(() => {
+    if (!form?.id || finished) return;
+    if (currentPageIndex === null) return;
+
+    // Save to localStorage for resume
+    if (form.allowResume) {
+      const storageKey = `form_resume_${form.id}`;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          answers: answersRef.current,
+          pageIndex: currentPageIndex,
+          maxPage: maxPageVisitedRef.current,
+          updatedAt: new Date().toISOString(),
+        }));
+      } catch { /* quota exceeded */ }
+    }
+
+    // Save partial response to DB
+    if (form.savePartialResponses !== false) {
+      const { responseId } = sessionMetaRef.current;
+      const sessionId = sessionDbIdRef.current;
+      ;(supabase as any).from('form_responses').upsert({
+        form_id: form.id,
+        response_id: responseId,
+        session_id: sessionId,
+        answers: answersRef.current,
+        metadata: {
+          status: 'partial',
+          user_agent: sessionMetaRef.current.userAgent,
+          referrer: sessionMetaRef.current.referrer,
+          query_params: sessionMetaRef.current.queryParams,
+          landed_at: sessionMetaRef.current.landedAt,
+          last_page_index: currentPageIndex,
+        },
+        pages_visited: maxPageVisitedRef.current + 1,
+      }, { onConflict: 'form_id,response_id' }).then(() => {});
+    }
+  }, [currentPageIndex, form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save partial on beforeunload
+  useEffect(() => {
+    if (!form?.id) return;
+    const handler = () => {
+      if (form.savePartialResponses === false) return;
+      if (finished) return;
+      const { responseId } = sessionMetaRef.current;
+      const sessionId = sessionDbIdRef.current;
+      const body = JSON.stringify({
+        form_id: form.id,
+        response_id: responseId,
+        session_id: sessionId,
+        answers: answersRef.current,
+        metadata: {
+          status: 'partial',
+          user_agent: sessionMetaRef.current.userAgent,
+          landed_at: sessionMetaRef.current.landedAt,
+        },
+        pages_visited: maxPageVisitedRef.current + 1,
+      });
+      // Use sendBeacon for reliability on page close
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/form_responses?on_conflict=form_id,response_id`;
+      navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' }));
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Insert session record on form load
   useEffect(() => {
@@ -221,14 +308,15 @@ export default function FormPreview() {
         time_on_page_ms: timeOnPage > 0 ? timeOnPage : null,
       }).then(() => {});
 
-      // Save form responses
+      // Save/update form responses as complete
       const latestAnswers = answersRef.current;
-      ;(supabase as any).from('form_responses').insert({
+      ;(supabase as any).from('form_responses').upsert({
         form_id: form.id,
         response_id: responseId,
         session_id: sessionId,
         answers: latestAnswers,
         metadata: {
+          status: 'complete',
           user_agent: sessionMetaRef.current.userAgent,
           referrer: sessionMetaRef.current.referrer,
           query_params: sessionMetaRef.current.queryParams,
@@ -237,7 +325,32 @@ export default function FormPreview() {
         },
         total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
         pages_visited: maxPageVisitedRef.current + 1,
-      }).then(() => {});
+      }, { onConflict: 'form_id,response_id' }).then(() => {});
+
+      // Clear resume data
+      if (form.allowResume) {
+        try { localStorage.removeItem(`form_resume_${form.id}`); } catch {}
+      }
+
+      // Fire completion webhook
+      if (form.completionWebhookUrl) {
+        const { payload } = buildWebhookPayload({
+          form,
+          answers: latestAnswers,
+          responseId,
+          landedAt: sessionMetaRef.current.landedAt,
+          submittedAt: now,
+          queryParams: sessionMetaRef.current.queryParams as Record<string, string>,
+          respondent: {
+            user_agent: sessionMetaRef.current.userAgent,
+          },
+        });
+        fetch(form.completionWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(() => {}); // fire-and-forget
+      }
 
       return;
     }

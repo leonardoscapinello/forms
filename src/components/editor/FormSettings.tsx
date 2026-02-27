@@ -3,7 +3,9 @@ import { FormData, FormPixelEvent, AnalyticsPlatform, PixelEventType } from '@/t
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw } from 'lucide-react';
 
 interface Props {
   form: FormData;
@@ -195,6 +197,80 @@ export default function FormSettings({ form, onUpdate }: Props) {
               <strong>Configurações → Integrações</strong> com os IDs corretos para os eventos serem disparados.
             </p>
           )}
+        </div>
+
+        {/* ─── Respostas & Retomada ─── */}
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Save className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Respostas</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+              Controle como respostas completas e parciais são armazenadas.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm">Salvar respostas parciais</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Grava respostas mesmo que o respondente não finalize o formulário.
+                </p>
+              </div>
+              <Switch
+                checked={form.savePartialResponses ?? true}
+                onCheckedChange={v => onUpdate({ savePartialResponses: v })}
+              />
+            </div>
+
+            <div className="border-t border-border" />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Permitir retomada</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  O respondente pode continuar de onde parou se voltar ao formulário.
+                </p>
+              </div>
+              <Switch
+                checked={form.allowResume ?? false}
+                onCheckedChange={v => onUpdate({ allowResume: v })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Webhook de conclusão ─── */}
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-node-webhook-accent" />
+              <h3 className="text-sm font-semibold text-foreground">Webhook de conclusão</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+              Envia automaticamente um POST com todos os dados ao finalizar o formulário.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">URL do endpoint</Label>
+              <Input
+                value={form.completionWebhookUrl || ''}
+                onChange={e => onUpdate({ completionWebhookUrl: e.target.value })}
+                placeholder="https://api.exemplo.com/webhook"
+                className="text-xs font-mono h-9"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              O payload inclui respostas tipadas, variáveis, metadados do respondente e parâmetros de URL.
+            </p>
+          </div>
         </div>
       </div>
     </div>
