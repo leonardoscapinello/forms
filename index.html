@@ -5,9 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FormFlow — Criador de Formulários</title>
     <meta name="description" content="Crie formulários e quizzes interativos com um editor visual de nodes." />
+    <!-- DNS prefetch for critical origins -->
+    <link rel="dns-prefetch" href="https://mbryndcvumhfjgmogifs.supabase.co" />
+    <link rel="preconnect" href="https://mbryndcvumhfjgmogifs.supabase.co" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Non-blocking font load -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+    <!-- Inline critical skeleton to show instantly -->
+    <style>
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: hsl(0 0% 100%);
+      }
+      @media (prefers-color-scheme: dark) {
+        #root:empty { background: hsl(240 10% 4%); }
+      }
+      #root:empty::after {
+        content: '';
+        width: 24px;
+        height: 24px;
+        border: 2px solid hsl(0 0% 80%);
+        border-top-color: hsl(0 0% 40%);
+        border-radius: 50%;
+        animation: sp .6s linear infinite;
+      }
+      @keyframes sp { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
     <div id="root"></div>

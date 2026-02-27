@@ -17,12 +17,27 @@ const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AppLayout = lazy(() => import("./components/AppLayout"));
 
+// Prefetch critical routes after idle
+if (typeof window !== 'undefined') {
+  const prefetch = () => {
+    // Prefetch the preview chunk (public form) immediately
+    import("./pages/FormPreview");
+  };
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(prefetch, { timeout: 2000 });
+  } else {
+    setTimeout(prefetch, 100);
+  }
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 min — avoid refetching on every mount
+      staleTime: 1000 * 60 * 2,
       gcTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
+      retry: 1,
+      networkMode: 'offlineFirst',
     },
   },
 });
