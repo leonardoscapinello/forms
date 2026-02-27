@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 const COUNTRIES = [
   { code: 'BR', flag: '🇧🇷', name: 'Brasil', hasCep: true },
@@ -46,14 +46,18 @@ interface Props {
 }
 
 const inputClass = "w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 mt-1 text-foreground placeholder:text-muted-foreground/40 transition-colors";
+const readonlyClass = "w-full bg-muted/30 border-0 border-b-2 border-border/50 outline-none text-xl py-2 mt-1 text-foreground/80 transition-colors cursor-default";
 const labelClass = "text-sm font-medium text-muted-foreground uppercase tracking-wider";
 
 export default function AddressFieldPreview({ value, onChange }: Props) {
   const addr = value && typeof value === 'object' && 'country' in value ? value : EMPTY_ADDRESS;
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
+  const [cepFound, setCepFound] = useState(false);
 
-  const selectedCountry = COUNTRIES.find(c => c.code === addr.country) || COUNTRIES[0];
+  const numberRef = useRef<HTMLInputElement>(null);
+  const complementRef = useRef<HTMLInputElement>(null);
+
   const isBrazil = addr.country === 'BR';
 
   const update = useCallback((patch: Partial<AddressValue>) => {
@@ -67,6 +71,7 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
 
     setCepLoading(true);
     setCepError('');
+    setCepFound(false);
     try {
       const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
       const data = await res.json();
@@ -77,11 +82,16 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
       onChange({
         ...addr,
         cep,
-        street: data.logradouro || addr.street,
-        neighborhood: data.bairro || addr.neighborhood,
-        city: data.localidade || addr.city,
-        state: data.uf || addr.state,
+        street: data.logradouro || '',
+        neighborhood: data.bairro || '',
+        city: data.localidade || '',
+        state: data.uf || '',
+        number: '',
+        complement: '',
       });
+      setCepFound(true);
+      // Focus on número after auto-fill
+      setTimeout(() => numberRef.current?.focus(), 100);
     } catch {
       setCepError('Erro ao buscar CEP');
     } finally {
@@ -89,13 +99,27 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
     }
   }, [addr, onChange]);
 
-  // Format CEP as user types
   const handleCepChange = useCallback((raw: string) => {
     const digits = raw.replace(/\D/g, '').slice(0, 8);
     const formatted = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    // Reset cepFound if user clears/changes CEP
+    if (digits.length < 8) setCepFound(false);
     update({ cep: formatted });
     if (digits.length === 8) fetchCep(formatted);
   }, [update, fetchCep]);
+
+  // After filling number, focus complement
+  const handleNumberKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      if (!e.shiftKey) {
+        e.preventDefault();
+        complementRef.current?.focus();
+      }
+    }
+  }, []);
+
+  // Fields that are auto-filled and should be readonly when cepFound
+  const autoFilled = cepFound && isBrazil;
 
   return (
     <div className="space-y-5">
@@ -105,7 +129,10 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
         <div className="relative mt-1">
           <select
             value={addr.country}
-            onChange={e => update({ country: e.target.value, cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' })}
+            onChange={e => {
+              setCepFound(false);
+              update({ country: e.target.value, cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
+            }}
             className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 text-foreground transition-colors appearance-none cursor-pointer"
           >
             {COUNTRIES.map(c => (
@@ -129,6 +156,7 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
               placeholder="00000-000"
               className={inputClass}
               maxLength={9}
+              inputMode="numeric"
             />
             {cepLoading && (
               <div className="absolute right-0 top-1/2 -translate-y-1/2">
@@ -137,24 +165,44 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
             )}
           </div>
           {cepError && <p className="text-xs text-destructive mt-1">{cepError}</p>}
+          {cepFound && <p className="text-xs text-emerald-500 mt-1">✓ Endereço encontrado</p>}
         </div>
       )}
 
       {/* Street */}
       <div>
         <label className={labelClass}>{isBrazil ? 'Rua' : 'Endereço'}</label>
-        <input value={addr.street} onChange={e => update({ street: e.target.value })} placeholder={isBrazil ? 'Rua, Avenida...' : 'Street address'} className={inputClass} />
+        <input
+          value={addr.street}
+          onChange={autoFilled ? undefined : e => update({ street: e.target.value })}
+          readOnly={autoFilled}
+          placeholder={isBrazil ? 'Rua, Avenida...' : 'Street address'}
+          className={autoFilled ? readonlyClass : inputClass}
+        />
       </div>
 
-      {/* Number + Complement */}
+      {/* Number + Complement (always editable) */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Número</label>
-          <input value={addr.number} onChange={e => update({ number: e.target.value })} placeholder="123" className={inputClass} />
+          <input
+            ref={numberRef}
+            value={addr.number}
+            onChange={e => update({ number: e.target.value })}
+            onKeyDown={handleNumberKeyDown}
+            placeholder="123"
+            className={inputClass}
+          />
         </div>
         <div>
           <label className={labelClass}>Complemento</label>
-          <input value={addr.complement} onChange={e => update({ complement: e.target.value })} placeholder="Apto, Sala..." className={inputClass} />
+          <input
+            ref={complementRef}
+            value={addr.complement}
+            onChange={e => update({ complement: e.target.value })}
+            placeholder="Apto, Sala..."
+            className={inputClass}
+          />
         </div>
       </div>
 
@@ -162,7 +210,13 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
       {isBrazil && (
         <div>
           <label className={labelClass}>Bairro</label>
-          <input value={addr.neighborhood} onChange={e => update({ neighborhood: e.target.value })} placeholder="Bairro" className={inputClass} />
+          <input
+            value={addr.neighborhood}
+            onChange={autoFilled ? undefined : e => update({ neighborhood: e.target.value })}
+            readOnly={autoFilled}
+            placeholder="Bairro"
+            className={autoFilled ? readonlyClass : inputClass}
+          />
         </div>
       )}
 
@@ -170,11 +224,23 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Cidade</label>
-          <input value={addr.city} onChange={e => update({ city: e.target.value })} placeholder="Cidade" className={inputClass} />
+          <input
+            value={addr.city}
+            onChange={autoFilled ? undefined : e => update({ city: e.target.value })}
+            readOnly={autoFilled}
+            placeholder="Cidade"
+            className={autoFilled ? readonlyClass : inputClass}
+          />
         </div>
         <div>
           <label className={labelClass}>{isBrazil ? 'Estado' : 'Estado / Região'}</label>
-          <input value={addr.state} onChange={e => update({ state: e.target.value })} placeholder={isBrazil ? 'UF' : 'Estado'} className={inputClass} />
+          <input
+            value={addr.state}
+            onChange={autoFilled ? undefined : e => update({ state: e.target.value })}
+            readOnly={autoFilled}
+            placeholder={isBrazil ? 'UF' : 'Estado'}
+            className={autoFilled ? readonlyClass : inputClass}
+          />
         </div>
       </div>
     </div>
