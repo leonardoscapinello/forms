@@ -20,9 +20,9 @@ export default function LoadingPreview({
   duration = 5,
   targetPercent = 100,
   label = 'Carregando...',
-  color = '#6366f1',
-  trackColor = '#e5e7eb',
-  textColor = '#1a1a1a',
+  color = 'hsl(var(--primary))',
+  trackColor = 'hsl(var(--muted))',
+  textColor = 'hsl(var(--foreground))',
   size = 120,
   stroke = 10,
   onComplete,
@@ -32,6 +32,10 @@ export default function LoadingPreview({
   const completedRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onComplete);
+
+  const resolvedColor = color || 'hsl(var(--primary))';
+  const resolvedTrackColor = trackColor || 'hsl(var(--muted))';
+  const resolvedTextColor = textColor || 'hsl(var(--foreground))';
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -97,7 +101,7 @@ export default function LoadingPreview({
               cy={size / 2}
               r={radius}
               fill="none"
-              stroke={trackColor}
+              stroke={resolvedTrackColor}
               strokeWidth={stroke}
             />
             <circle
@@ -105,7 +109,7 @@ export default function LoadingPreview({
               cy={size / 2}
               r={radius}
               fill="none"
-              stroke={color}
+              stroke={resolvedColor}
               strokeWidth={stroke}
               strokeLinecap="round"
               strokeDasharray={circumference}
@@ -114,13 +118,13 @@ export default function LoadingPreview({
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xl font-bold" style={{ color: textColor }}>
+            <span className="text-xl font-bold" style={{ color: resolvedTextColor }}>
               {Math.round(percent)}%
             </span>
           </div>
         </div>
         {label && (
-          <span className="text-sm font-medium" style={{ color: textColor }}>{label}</span>
+          <span className="text-sm font-medium" style={{ color: resolvedTextColor }}>{label}</span>
         )}
       </div>
     );
@@ -129,16 +133,16 @@ export default function LoadingPreview({
   if (style === 'infinite') {
     return (
       <div className="flex flex-col items-center gap-3">
-        <div className="relative w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: trackColor }}>
+        <div className="relative w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: resolvedTrackColor }}>
           <motion.div
             className="absolute h-full rounded-full"
-            style={{ backgroundColor: color, width: '30%' }}
+            style={{ backgroundColor: resolvedColor, width: '30%' }}
             animate={{ x: ['0%', '233%', '0%'] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
         {label && (
-          <span className="text-sm font-medium" style={{ color: textColor }}>{label}</span>
+          <span className="text-sm font-medium" style={{ color: resolvedTextColor }}>{label}</span>
         )}
       </div>
     );
@@ -149,24 +153,25 @@ export default function LoadingPreview({
     <div className="flex flex-col gap-2 w-full">
       {label && (
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium" style={{ color: textColor }}>{label}</span>
-          <span className="text-sm font-bold" style={{ color: textColor }}>{Math.round(percent)}%</span>
+          <span className="text-sm font-medium" style={{ color: resolvedTextColor }}>{label}</span>
+          <span className="text-sm font-bold" style={{ color: resolvedTextColor }}>{Math.round(percent)}%</span>
         </div>
       )}
-      <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: trackColor }}>
+      <div className="w-full h-3 rounded-full overflow-hidden" style={{ backgroundColor: resolvedTrackColor }}>
         {interactive ? (
           <div
-            className="h-full rounded-full"
+            className="h-full rounded-full origin-left"
             style={{
-              backgroundColor: color,
-              width: `${percent}%`,
-              transition: 'width 0.1s linear',
+              backgroundColor: resolvedColor,
+              width: '100%',
+              transform: `scaleX(${Math.min(1, Math.max(0, percent / 100))})`,
+              transition: 'transform 0.1s linear',
             }}
           />
         ) : (
           <motion.div
             className="h-full rounded-full"
-            style={{ backgroundColor: color }}
+            style={{ backgroundColor: resolvedColor }}
             initial={{ width: '0%' }}
             animate={{ width: '40%' }}
             transition={{ duration: 1 }}
