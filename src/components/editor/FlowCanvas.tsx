@@ -35,7 +35,7 @@ import VariableOpNode from './VariableOpNode';
 import IntegrationNode from './IntegrationNode';
 import AnalyticsNode from './AnalyticsNode';
 import ConnectDropMenu from './ConnectDropMenu';
-import { FileText, Trash2 } from 'lucide-react';
+import { FileText, Trash2, LayoutGrid } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
 import DeletableEdge from './DeletableEdge';
@@ -134,6 +134,9 @@ function FlowCanvasInner({
     const next = idx === -1 ? 0 : Math.max(0, Math.min(allNodes.length - 1, idx + dir));
     focusNode(allNodes[next].id);
   }, [focusedNodeId, getNodes, focusNode]);
+
+  const handleAutoLayoutRef = useRef<() => void>(() => {});
+  const handleAutoLayout = useCallback(() => handleAutoLayoutRef.current(), []);
 
   const pages = form.pages || [];
   const variables = form.variables || [];
@@ -407,7 +410,65 @@ function FlowCanvasInner({
       return updated;
     });
   };
+  // Wire up auto-layout after setNodes is available
+  handleAutoLayoutRef.current = () => {
+    const allNodes = getNodes();
+    const edgeList = form.flowEdges || [];
+    if (allNodes.length === 0) return;
 
+    const X_GAP = 350;
+    const Y_GAP = 180;
+
+    // BFS to assign layers
+    const layers = new Map<string, number>();
+    const queue: string[] = ['start'];
+    layers.set('start', 0);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      const layer = layers.get(cur)!;
+      for (const e of edgeList) {
+        if (e.source === cur && !layers.has(e.target)) {
+          layers.set(e.target, layer + 1);
+          queue.push(e.target);
+        }
+      }
+    }
+
+    const layerGroups = new Map<number, string[]>();
+    let maxLayer = 0;
+    for (const node of allNodes) {
+      const l = layers.get(node.id) ?? -1;
+      if (l >= 0) {
+        maxLayer = Math.max(maxLayer, l);
+        if (!layerGroups.has(l)) layerGroups.set(l, []);
+        layerGroups.get(l)!.push(node.id);
+      }
+    }
+
+    let disconnectedLayer = maxLayer + 1;
+    for (const node of allNodes) {
+      if (!layers.has(node.id)) {
+        layers.set(node.id, disconnectedLayer);
+        if (!layerGroups.has(disconnectedLayer)) layerGroups.set(disconnectedLayer, []);
+        layerGroups.get(disconnectedLayer)!.push(node.id);
+        disconnectedLayer++;
+      }
+    }
+
+    const newPositions: { id: string; x: number; y: number }[] = [];
+    for (const [layer, nodeIds] of layerGroups) {
+      const totalHeight = (nodeIds.length - 1) * Y_GAP;
+      nodeIds.forEach((nid, i) => {
+        newPositions.push({ id: nid, x: layer * X_GAP, y: -totalHeight / 2 + i * Y_GAP });
+      });
+    }
+
+    setNodes(prev => prev.map(n => {
+      const pos = newPositions.find(p => p.id === n.id);
+      return pos ? { ...n, position: { x: pos.x, y: pos.y } } : n;
+    }));
+    onFormUpdate({ nodePositions: newPositions });
+  };
 
 
   const onNodesChange: OnNodesChange = useCallback((changes: NodeChange[]) => {
@@ -647,6 +708,17 @@ function FlowCanvasInner({
           showInteractive={false}
           className="!bg-card !border-border !rounded-lg !shadow-sm [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-muted"
         />
+        {/* Auto-layout button */}
+        <div className="absolute top-3 right-3 z-10">
+          <button
+            onClick={handleAutoLayout}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-card border border-border rounded-lg shadow-sm hover:bg-muted transition-colors text-foreground"
+            title="Organizar workflow"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Organizar
+          </button>
+        </div>
         <MiniMap
           className="!bg-card !border-border !rounded-lg !shadow-sm"
           nodeColor={(node) => {
