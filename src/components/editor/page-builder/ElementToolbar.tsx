@@ -2,7 +2,7 @@ import { PAGE_ELEMENT_LABELS, createDefaultPageElement, PageElement, ELEMENT_CAT
 import {
   Heading, Type, Image, MousePointerClick, Minus, Video, ArrowUpDown,
   Mail, Phone, MapPin, CheckSquare, ListFilter, CircleDot, Star, TextCursorInput,
-  Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus,
+  Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus, FileText,
   AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
   LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows, CircleDot as CircleProgress,
   ListOrdered, Gauge, Loader,
@@ -52,6 +52,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   input_multi_select: ListChecks,
   input_quiz_icon: Smile,
   input_quiz_image: ImagePlus,
+  input_document: FileText,
 };
 
 interface Props {
