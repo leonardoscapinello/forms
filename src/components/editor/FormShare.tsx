@@ -79,6 +79,9 @@ export default function FormShare({ form, onUpdate }: Props) {
   const [googleOAuthReady, setGoogleOAuthReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [openModal, setOpenModal] = useState<string | null>(null);
+  const [webhookTesting, setWebhookTesting] = useState(false);
+  const [webhookTestResult, setWebhookTestResult] = useState<null | { ok: boolean; status: number }>(null);
+  const [webhookDraftUrl, setWebhookDraftUrl] = useState(form.completionWebhookUrl || '');
 
   useEffect(() => {
     supabase
@@ -167,6 +170,41 @@ export default function FormShare({ form, onUpdate }: Props) {
   /* ── Status flags ── */
   const isSheetConnected = !!form.googleSheetId;
   const isWebhookConnected = !!form.completionWebhookUrl;
+
+  const handleWebhookTest = useCallback(async () => {
+    if (!webhookDraftUrl) return;
+    setWebhookTesting(true);
+    setWebhookTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('webhook-test', {
+        body: { url: webhookDraftUrl, payload: { ...examplePayload, _test: true } },
+      });
+      if (error) {
+        setWebhookTestResult({ ok: false, status: 0 });
+        toast({ title: 'Erro', description: 'Falha ao testar webhook.', variant: 'destructive' });
+      } else {
+        const result = { ok: data.ok, status: data.status };
+        setWebhookTestResult(result);
+        if (result.ok) {
+          onUpdate({ completionWebhookUrl: webhookDraftUrl });
+          toast({ title: 'Webhook conectado!', description: `Resposta ${result.status} — URL salva.` });
+        } else {
+          toast({ title: 'Falha no teste', description: `Status ${result.status || 'erro'} — URL não salva.`, variant: 'destructive' });
+        }
+      }
+    } catch (err: any) {
+      setWebhookTestResult({ ok: false, status: 0 });
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    }
+    setWebhookTesting(false);
+  }, [webhookDraftUrl, examplePayload, onUpdate, toast]);
+
+  const handleDisconnectWebhook = useCallback(() => {
+    onUpdate({ completionWebhookUrl: undefined });
+    setWebhookDraftUrl('');
+    setWebhookTestResult(null);
+    toast({ description: 'Webhook desconectado.' });
+  }, [onUpdate, toast]);
 
   /* ── Integration definitions ── */
   const integrations: IntegrationDef[] = [
@@ -346,7 +384,7 @@ export default function FormShare({ form, onUpdate }: Props) {
       </Dialog>
 
       {/* ── Modal: Webhook ── */}
-      <Dialog open={openModal === 'webhook'} onOpenChange={(o) => !o && setOpenModal(null)}>
+      <Dialog open={openModal === 'webhook'} onOpenChange={(o) => { if (!o) { setOpenModal(null); setWebhookTestResult(null); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -358,17 +396,46 @@ export default function FormShare({ form, onUpdate }: Props) {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">URL do webhook</Label>
               <Input
-                value={form.completionWebhookUrl || ''}
-                onChange={e => onUpdate({ completionWebhookUrl: e.target.value })}
+                value={webhookDraftUrl}
+                onChange={e => { setWebhookDraftUrl(e.target.value); setWebhookTestResult(null); }}
                 placeholder="https://hooks.exemplo.com/webhook"
                 className="text-sm font-mono"
               />
             </div>
-            {isWebhookConnected && (
+
+            {/* Test result feedback */}
+            {webhookTestResult && (
+              <div className={`flex items-center gap-1.5 text-xs ${webhookTestResult.ok ? 'text-emerald-600' : 'text-destructive'}`}>
+                {webhookTestResult.ok
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Conectado — status {webhookTestResult.status}</>
+                  : <><X className="h-3.5 w-3.5" /> Falhou — status {webhookTestResult.status || 'erro de rede'}</>
+                }
+              </div>
+            )}
+
+            {isWebhookConnected && !webhookTestResult && (
               <div className="flex items-center gap-1.5 text-xs text-emerald-600">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Ativo — será disparado ao completar
               </div>
             )}
+
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleWebhookTest}
+                disabled={webhookTesting || !webhookDraftUrl}
+                className="gap-1.5"
+              >
+                {webhookTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Webhook className="h-3.5 w-3.5" />}
+                Testar e conectar
+              </Button>
+              {isWebhookConnected && (
+                <Button variant="ghost" size="sm" onClick={handleDisconnectWebhook} className="gap-1.5 text-muted-foreground hover:text-destructive">
+                  <Unplug className="h-3.5 w-3.5" /> Desconectar
+                </Button>
+              )}
+            </div>
+
             <div>
               <button
                 onClick={() => setShowPayload(!showPayload)}
