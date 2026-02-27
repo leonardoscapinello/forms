@@ -114,7 +114,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                 const point = ds.points[index];
                 const grad = BADGE_GRADIENTS[di % BADGE_GRADIENTS.length];
                 const t = labels.length > 1 ? index / (labels.length - 1) : 0;
-                const badgeColor = lerpColor(grad[0], grad[1], t);
+                const badgeColor = point?.tooltipColor || lerpColor(grad[0], grad[1], t);
                 const tipText = point?.tooltip || '';
                 const showBadge = !!tipText;
                 const badgeW = Math.max(tipText.length * 6 + 14, 40);
@@ -202,7 +202,7 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                 if (!tipText) return null;
                 const grad = BADGE_GRADIENTS[di % BADGE_GRADIENTS.length];
                 const t = labels.length > 1 ? index / (labels.length - 1) : 0;
-                const badgeColor = lerpColor(grad[0], grad[1], t);
+                const badgeColor = point?.tooltipColor || lerpColor(grad[0], grad[1], t);
                 const badgeW = Math.max(tipText.length * 6 + 14, 40);
                 const badgeH = 22;
                 const cx = x + bw / 2;
