@@ -364,14 +364,14 @@ export default function FormEditor() {
               <button
                 key={view}
                 onClick={() => setEditorView(view)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                title={label}
+                className={`flex items-center justify-center p-1.5 rounded-md transition-colors ${
                   editorView === view
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>{label}</span>
+                <Icon className="h-4 w-4 flex-shrink-0" />
               </button>
             ))}
           </div>
