@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
 import AppLayout from "./components/AppLayout";
@@ -52,6 +52,11 @@ function ScrollToTop() {
   return null;
 }
 
+function LegacyFormRouteRedirect() {
+  const { id } = useParams();
+  return <Navigate to={id ? `/preview/${id}` : "/"} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -67,6 +72,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
               <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
               <Route path="/preview/:id" element={<FormPreview />} />
+              <Route path="/forms/:id" element={<LegacyFormRouteRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
