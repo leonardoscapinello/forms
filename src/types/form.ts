@@ -462,7 +462,26 @@ export interface FormData {
   googleSheetId?: string;
   /** Google Sheet URL for display */
   googleSheetUrl?: string;
+  /** GET parameters tracked as columns in responses table and Google Sheets */
+  trackedParams?: TrackedParam[];
 }
+
+/** A GET parameter mapped to appear in responses table / Google Sheets */
+export interface TrackedParam {
+  id: string;
+  key: string;
+  label?: string;
+  enabled: boolean;
+}
+
+/** Default tracked params for new forms */
+export const DEFAULT_TRACKED_PARAMS: TrackedParam[] = [
+  { id: 'utm_source', key: 'utm_source', label: 'UTM Source', enabled: true },
+  { id: 'utm_medium', key: 'utm_medium', label: 'UTM Medium', enabled: true },
+  { id: 'utm_campaign', key: 'utm_campaign', label: 'UTM Campaign', enabled: true },
+  { id: 'utm_content', key: 'utm_content', label: 'UTM Content', enabled: true },
+  { id: 'utm_term', key: 'utm_term', label: 'UTM Term', enabled: true },
+];
 
 export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {
   contact_info: {

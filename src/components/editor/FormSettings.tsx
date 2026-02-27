@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { FormData, FormPixelEvent, AnalyticsPlatform, PixelEventType } from '@/types/form';
+import { FormData, FormPixelEvent, AnalyticsPlatform, PixelEventType, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin } from 'lucide-react';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2 } from 'lucide-react';
 
 interface Props {
   form: FormData;
@@ -35,6 +35,7 @@ const LOAD_EVENTS: { value: PixelEventType | 'PageView'; label: string }[] = [
 
 export default function FormSettings({ form, onUpdate }: Props) {
   const events: FormPixelEvent[] = form.pixelLoadEvents || [];
+  const trackedParams: TrackedParam[] = form.trackedParams || DEFAULT_TRACKED_PARAMS;
 
   const addEvent = () => {
     const newEvent: FormPixelEvent = {
@@ -55,6 +56,33 @@ export default function FormSettings({ form, onUpdate }: Props) {
     onUpdate({ pixelLoadEvents: events.filter(e => e.id !== id) });
   };
 
+  // Tracked params helpers
+  const updateTrackedParams = (next: TrackedParam[]) => {
+    onUpdate({ trackedParams: next });
+  };
+
+  const toggleParam = (id: string) => {
+    updateTrackedParams(trackedParams.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
+  };
+
+  const removeParam = (id: string) => {
+    updateTrackedParams(trackedParams.filter(p => p.id !== id));
+  };
+
+  const addParam = () => {
+    const newParam: TrackedParam = {
+      id: crypto.randomUUID(),
+      key: '',
+      label: '',
+      enabled: true,
+    };
+    updateTrackedParams([...trackedParams, newParam]);
+  };
+
+  const updateParam = (id: string, patch: Partial<TrackedParam>) => {
+    updateTrackedParams(trackedParams.map(p => p.id === id ? { ...p, ...patch } : p));
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-8 bg-background">
       <div className="max-w-2xl mx-auto space-y-8">
@@ -65,6 +93,64 @@ export default function FormSettings({ form, onUpdate }: Props) {
           <p className="text-sm text-muted-foreground mt-1">
             Defina comportamentos globais aplicados a este formulário.
           </p>
+        </div>
+
+        {/* ─── Tracked GET Parameters ─── */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Parâmetros GET rastreados</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+                Parâmetros da URL capturados e exibidos na tabela de respostas e Google Sheets.
+                <br />
+                <span className="text-muted-foreground/70">O webhook e o banco de dados sempre recebem todos os parâmetros, independente desta configuração.</span>
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={addParam}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Adicionar
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            {trackedParams.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum parâmetro configurado.
+              </p>
+            ) : (
+              trackedParams.map(param => (
+                <div key={param.id} className="flex items-center gap-3 py-1.5">
+                  <Switch
+                    checked={param.enabled}
+                    onCheckedChange={() => toggleParam(param.id)}
+                    className="shrink-0"
+                  />
+                  <Input
+                    value={param.key}
+                    onChange={e => updateParam(param.id, { key: e.target.value })}
+                    placeholder="nome_do_parametro"
+                    className="h-8 text-xs font-mono flex-1 max-w-[200px]"
+                  />
+                  <Input
+                    value={param.label || ''}
+                    onChange={e => updateParam(param.id, { label: e.target.value })}
+                    placeholder="Label (opcional)"
+                    className="h-8 text-xs flex-1"
+                  />
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                    onClick={() => removeParam(param.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Pixel Load Events */}
@@ -126,7 +212,6 @@ export default function FormSettings({ form, onUpdate }: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      {/* Platform */}
                       <div className="space-y-1">
                         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Plataforma</span>
                         <Select
@@ -152,7 +237,6 @@ export default function FormSettings({ form, onUpdate }: Props) {
                         </Select>
                       </div>
 
-                      {/* Event type */}
                       <div className="space-y-1">
                         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Evento</span>
                         <Select
@@ -173,7 +257,6 @@ export default function FormSettings({ form, onUpdate }: Props) {
                       </div>
                     </div>
 
-                    {/* Custom event name */}
                     {event.eventType === 'custom' && (
                       <div className="space-y-1">
                         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Nome do evento</span>
