@@ -133,15 +133,21 @@ export default function FormPreview() {
   const pixelEventsRef = useRef<PixelEventRecord[]>([]);
 
   // Capture session metadata once on mount
-  const sessionMetaRef = useRef({
-    responseId: crypto.randomUUID(),
-    landedAt: new Date().toISOString(),
-    queryParams: typeof window !== 'undefined'
-      ? Object.fromEntries(new URLSearchParams(window.location.search).entries())
-      : {} as Record<string, string>,
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-    referrer: typeof document !== 'undefined' ? document.referrer : '',
-  });
+  const sessionMetaRef = useRef((() => {
+    const uuid = crypto.randomUUID();
+    // Short hash: base36 from first 12 hex chars of UUID → 8-char alphanumeric
+    const hash = parseInt(uuid.replace(/-/g, '').slice(0, 12), 16).toString(36).toUpperCase().slice(0, 8);
+    return {
+      responseId: uuid,
+      responseHash: hash,
+      landedAt: new Date().toISOString(),
+      queryParams: typeof window !== 'undefined'
+        ? Object.fromEntries(new URLSearchParams(window.location.search).entries())
+        : {} as Record<string, string>,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      referrer: typeof document !== 'undefined' ? document.referrer : '',
+    };
+  })());
   const sessionDbIdRef = useRef<string | null>(null);
   const maxPageVisitedRef = useRef<number>(-1);
   const pageEnteredAtRef = useRef<number>(Date.now());
@@ -249,6 +255,7 @@ export default function FormPreview() {
             answers: answersRef.current,
             metadata: {
               status: 'partial',
+              response_hash: sessionMetaRef.current.responseHash,
               user_agent: sessionMetaRef.current.userAgent,
               referrer: sessionMetaRef.current.referrer,
               query_params: sessionMetaRef.current.queryParams,
@@ -281,11 +288,12 @@ export default function FormPreview() {
           response_id: responseId,
           session_id: sessionId,
           answers: answersRef.current,
-          metadata: {
-            status: 'partial',
-            user_agent: sessionMetaRef.current.userAgent,
-            landed_at: sessionMetaRef.current.landedAt,
-          },
+           metadata: {
+              status: 'partial',
+              response_hash: sessionMetaRef.current.responseHash,
+              user_agent: sessionMetaRef.current.userAgent,
+              landed_at: sessionMetaRef.current.landedAt,
+            },
           pages_visited: maxPageVisitedRef.current + 1,
         },
       });
@@ -417,14 +425,15 @@ export default function FormPreview() {
           response_id: responseId,
           session_id: sessionId,
           answers: latestAnswers,
-          metadata: {
-            status: 'complete',
-            user_agent: sessionMetaRef.current.userAgent,
-            referrer: sessionMetaRef.current.referrer,
-            query_params: sessionMetaRef.current.queryParams,
-            landed_at: sessionMetaRef.current.landedAt,
-            submitted_at: now,
-          },
+            metadata: {
+              status: 'complete',
+              response_hash: sessionMetaRef.current.responseHash,
+              user_agent: sessionMetaRef.current.userAgent,
+              referrer: sessionMetaRef.current.referrer,
+              query_params: sessionMetaRef.current.queryParams,
+              landed_at: sessionMetaRef.current.landedAt,
+              submitted_at: now,
+            },
           total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
           pages_visited: maxPageVisitedRef.current + 1,
         },
@@ -441,6 +450,7 @@ export default function FormPreview() {
           form,
           answers: latestAnswers,
           responseId,
+          responseHash: sessionMetaRef.current.responseHash,
           landedAt: sessionMetaRef.current.landedAt,
           submittedAt: now,
           queryParams: sessionMetaRef.current.queryParams as Record<string, string>,
@@ -736,6 +746,7 @@ export default function FormPreview() {
             answers: currentAns,
             respondent: { user_agent: sessionMetaRef.current.userAgent },
             responseId: sessionMetaRef.current.responseId,
+            responseHash: sessionMetaRef.current.responseHash,
             landedAt: sessionMetaRef.current.landedAt,
             submittedAt: new Date().toISOString(),
             extraParams,

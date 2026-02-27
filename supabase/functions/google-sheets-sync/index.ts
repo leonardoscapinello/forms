@@ -259,6 +259,8 @@ Deno.serve(async (req) => {
       // Build header row
       const headerRow = [
         "#",
+        "#",
+        "ID",
         "Status",
         "Entrada",
         "Envio",
@@ -272,8 +274,10 @@ Deno.serve(async (req) => {
         const isComplete =
           row.metadata?.status === "complete" ||
           !!row.metadata?.submitted_at;
+        const responseHash = row.metadata?.response_hash || (row.response_id || '').slice(0, 8).toUpperCase();
         return [
           idx + 1,
+          responseHash,
           isComplete ? "Completa" : "Parcial",
           formatDate(row.metadata?.landed_at || row.created_at),
           row.metadata?.submitted_at

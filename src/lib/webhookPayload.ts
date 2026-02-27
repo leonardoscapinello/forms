@@ -154,6 +154,7 @@ export interface BuildWebhookPayloadOptions {
   answers: Record<string, any>;          // raw answers keyed by elementId
   respondent?: WebhookRespondentInfo;
   responseId?: string;
+  responseHash?: string;                 // short unique hash for the response
   landedAt?: string;                     // ISO timestamp
   submittedAt?: string;                  // ISO timestamp
   extraParams?: Record<string, any>;     // static params from node config
@@ -256,6 +257,7 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
       /** Event & form metadata */
       event: {
         id: responseId || crypto.randomUUID(),
+        hash: opts.responseHash || null,
         form_id: form.id,
         form_name: form.title,
         form_status: form.status,
