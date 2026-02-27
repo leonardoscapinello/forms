@@ -46,9 +46,9 @@ export async function consumePrefetchedForm(formId: string) {
   return result;
 }
 
-/** Auto-detect /preview/:id on page load */
+/** Auto-detect /f/:id on page load */
 export function autoDetectAndPrefetch() {
-  const match = window.location.pathname.match(/^\/preview\/([a-zA-Z0-9-]+)/);
+  const match = window.location.pathname.match(/^\/f\/([a-zA-Z0-9-]+)/);
   if (match?.[1]) {
     prefetchFormData(match[1]);
   }

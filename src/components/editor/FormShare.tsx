@@ -71,7 +71,7 @@ interface IntegrationDef {
 
 /* ── Main component ── */
 export default function FormShare({ form, onUpdate }: Props) {
-  const previewUrl = `${PUBLISHED_BASE}/preview/${form.id}`;
+  const previewUrl = `${PUBLISHED_BASE}/f/${form.id}`;
   const isPublished = form.status === 'published';
   const { toast } = useToast();
 

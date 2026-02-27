@@ -439,7 +439,7 @@ export default function FormEditor() {
               variant="outline"
               size="sm"
               className="hidden sm:flex"
-              onClick={() => navigate(`/preview/${form.id}`)}
+              onClick={() => navigate(`/f/${form.id}`)}
             >
               <Eye className="mr-2 h-4 w-4" />
               Visualizar
