@@ -699,39 +699,35 @@ function FlowCanvasInner({
         };
 
         return (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-card border border-border rounded-full shadow-lg px-2 py-1 z-50">
-            {/* Prev hint */}
-            {prevNode && (
-              <span className="text-[10px] text-muted-foreground/60 px-1.5 truncate max-w-[80px] select-none" title={nodeLabel(prevNode) || ''}>
-                {nodeIcon(prevNode)} {nodeLabel(prevNode)}
-              </span>
-            )}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center bg-card border border-border rounded-full shadow-lg px-2 py-1 z-50">
+            {/* Prev hint — fixed width */}
+            <span className="w-[80px] text-[10px] text-muted-foreground/60 truncate select-none text-right pr-1">
+              {prevNode ? `${nodeIcon(prevNode)} ${nodeLabel(prevNode)}` : ''}
+            </span>
             <button
               onClick={() => navigateNode(-1)}
               disabled={idx <= 0}
-              className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground disabled:opacity-30"
+              className="h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground disabled:opacity-30"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <span className="text-xs text-muted-foreground px-1.5 select-none font-medium">
+            <span className="text-xs text-muted-foreground px-2 select-none font-medium flex-shrink-0 tabular-nums">
               {idx + 1} / {sorted.length}
             </span>
             <button
               onClick={() => navigateNode(1)}
               disabled={idx >= sorted.length - 1}
-              className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground disabled:opacity-30"
+              className="h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground disabled:opacity-30"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
-            {/* Next hint */}
-            {nextNode && (
-              <span className="text-[10px] text-muted-foreground/60 px-1.5 truncate max-w-[80px] select-none" title={nodeLabel(nextNode) || ''}>
-                {nodeIcon(nextNode)} {nodeLabel(nextNode)}
-              </span>
-            )}
+            {/* Next hint — fixed width */}
+            <span className="w-[80px] text-[10px] text-muted-foreground/60 truncate select-none text-left pl-1">
+              {nextNode ? `${nodeIcon(nextNode)} ${nodeLabel(nextNode)}` : ''}
+            </span>
             <button
               onClick={() => setFocusedNodeId(null)}
-              className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground ml-0.5"
+              className="h-7 w-7 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground ml-0.5"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
