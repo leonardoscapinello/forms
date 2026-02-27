@@ -13,22 +13,23 @@ interface Props {
 function useAnimatedNumber(target: number, duration = 1000) {
   const [display, setDisplay] = useState(0);
   const rafRef = useRef<number>();
+  const startRef = useRef(0);
 
   useEffect(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const from = 0;
     setDisplay(0);
-    const startTime = performance.now();
-    let started = false;
 
-    const delay = setTimeout(() => {
-      started = true;
-      const tick = (now: number) => {
-        const elapsed = now - startTime - 80; // account for delay
-        const progress = Math.min(1, Math.max(0, elapsed / duration));
-        // match cubic-bezier(0.4, 0, 0.2, 1) approximation
+    const timer = setTimeout(() => {
+      startRef.current = performance.now();
+      const tick = () => {
+        const elapsed = performance.now() - startRef.current;
+        const progress = Math.min(1, elapsed / duration);
         const eased = progress < 0.5
           ? 4 * progress * progress * progress
           : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-        setDisplay(Math.round(eased * target));
+        const val = Math.round(from + (target - from) * eased);
+        setDisplay(val);
         if (progress < 1) {
           rafRef.current = requestAnimationFrame(tick);
         }
@@ -37,7 +38,7 @@ function useAnimatedNumber(target: number, duration = 1000) {
     }, 80);
 
     return () => {
-      clearTimeout(delay);
+      clearTimeout(timer);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [target, duration]);
