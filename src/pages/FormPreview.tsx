@@ -1986,9 +1986,11 @@ function InteractiveElement({
         if (ratio <= 0.8) return '#f59e0b';
         return '#22c55e';
       };
+      const npsSliderColor = current >= 0 ? getNpsColor(current, max) : 'hsl(var(--border))';
       return withFieldHeader(
         <div className="space-y-2">
-          <div className="flex gap-1">
+          {/* Desktop: blocos */}
+          <div className="hidden sm:flex gap-1">
             {Array.from({ length: max + 1 }).map((_, i) => {
               const isSelected = current === i;
               const color = getNpsColor(i, max);
@@ -2009,6 +2011,35 @@ function InteractiveElement({
                 </motion.button>
               );
             })}
+          </div>
+          {/* Mobile: slider */}
+          <div className="flex sm:hidden flex-col gap-3">
+            <div className="flex items-center justify-center">
+              <span
+                className="text-4xl font-bold tabular-nums transition-colors"
+                style={{ color: current >= 0 ? npsSliderColor : 'hsl(var(--muted-foreground))' }}
+              >
+                {current >= 0 ? current : '–'}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={max}
+              value={current >= 0 ? current : 0}
+              onChange={e => onChange(Number(e.target.value))}
+              className="w-full h-2 rounded-full appearance-none cursor-pointer"
+              style={{
+                background: current >= 0
+                  ? `linear-gradient(to right, ${npsSliderColor} ${(current / max) * 100}%, hsl(var(--border)) ${(current / max) * 100}%)`
+                  : 'hsl(var(--border))',
+                accentColor: npsSliderColor,
+              }}
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums px-0.5">
+              <span>0</span>
+              <span>{max}</span>
+            </div>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground px-1">
             <span>{t(element.npsLowLabel) || 'Nada provável'}</span>
