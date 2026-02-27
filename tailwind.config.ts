@@ -88,6 +88,8 @@ export default {
           "webhook-accent": "hsl(var(--node-webhook-accent))",
           analytics: "hsl(var(--node-analytics))",
           "analytics-accent": "hsl(var(--node-analytics-accent))",
+          whatsapp: "hsl(var(--node-whatsapp))",
+          "whatsapp-accent": "hsl(var(--node-whatsapp-accent))",
         },
       },
       borderRadius: {

@@ -343,6 +343,28 @@ export interface AnalyticsNodeData {
   platforms?: AnalyticsPlatformEntry[];
 }
 
+// ── WhatsApp (Evolution API) Node ────────────────────────────────────────────
+
+export type WhatsAppMediaType = 'image' | 'document' | 'video' | 'audio';
+
+export interface WhatsAppNodeData {
+  id: string;
+  /** ID of the integration_settings row for the Evolution API instance */
+  instanceId?: string;
+  /** Recipient phone number — may contain {{var}} interpolation */
+  recipientNumber?: string;
+  /** Message text — may contain {{var}} interpolation */
+  messageText?: string;
+  /** Whether to send media along with the message */
+  sendMedia?: boolean;
+  /** Media type when sendMedia is true */
+  mediaType?: WhatsAppMediaType;
+  /** URL of the media to send — may contain {{var}} */
+  mediaUrl?: string;
+  /** Filename for document media type */
+  mediaFileName?: string;
+}
+
 /** A pixel event fired automatically when the form loads */
 export interface FormPixelEvent {
   id: string;
@@ -448,6 +470,8 @@ export interface FormData {
   variableOpNodes?: VariableOpNodeData[];
   integrationNodes?: IntegrationNodeData[];
   analyticsNodes?: AnalyticsNodeData[];
+  /** WhatsApp (Evolution API) nodes */
+  whatsappNodes?: WhatsAppNodeData[];
   /** Pixel events fired automatically when the form is loaded */
   pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];

@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
@@ -337,6 +337,46 @@ export default function FormEditor() {
     });
   }, [form, updateForm]);
 
+  // ---- WhatsAppNode CRUD ----
+
+  const handleWhatsAppAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const wa: WhatsAppNodeData = {
+      id: crypto.randomUUID(),
+    };
+    const nodeId = `wa-${wa.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, {
+      whatsappNodes: [...(form.whatsappNodes || []), wa],
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
+  const handleWhatsAppChange = useCallback((nodeId: string, patch: Partial<WhatsAppNodeData>) => {
+    if (!form) return;
+    const whatsappNodes = (form.whatsappNodes || []).map(n =>
+      n.id === nodeId ? { ...n, ...patch } : n
+    );
+    updateForm(form.id, { whatsappNodes });
+  }, [form, updateForm]);
+
+  const handleWhatsAppDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `wa-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(
+      e => e.source !== rfNodeId && e.target !== rfNodeId
+    );
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, {
+      whatsappNodes: (form.whatsappNodes || []).filter(n => n.id !== nodeId),
+      flowEdges,
+      nodePositions,
+    });
+  }, [form, updateForm]);
+
   // ---- Variables CRUD ----
 
   const handleAddVariable = useCallback(() => {
@@ -587,6 +627,9 @@ export default function FormEditor() {
               onAnalyticsAddAtPosition={handleAnalyticsAddAtPosition}
               onAnalyticsChange={handleAnalyticsChange}
               onAnalyticsDelete={handleAnalyticsDelete}
+              onWhatsAppAddAtPosition={handleWhatsAppAddAtPosition}
+              onWhatsAppChange={handleWhatsAppChange}
+              onWhatsAppDelete={handleWhatsAppDelete}
               onFormUpdate={handleFormUpdate}
               onPageSelect={handlePageSelectFromWorkflow}
               onCreateVariable={(newVar) => {
