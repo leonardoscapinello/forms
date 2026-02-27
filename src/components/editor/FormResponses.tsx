@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormData } from '@/types/form';
-import { PageElement } from '@/types/pageElements';
+import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Download, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,17 +37,32 @@ type ResponseRow = {
 
 type StatusFilter = 'all' | 'complete' | 'partial';
 
-/** Extract all input elements from the form pages — these become the table columns */
-function extractInputFields(form: FormData): { id: string; label: string; type: string }[] {
-  const fields: { id: string; label: string; type: string }[] = [];
+/** Extract all input elements from the form pages — these become the table columns.
+ *  Compound fields (address, company, phone) are expanded into sub-columns. */
+function extractInputFields(form: FormData): { id: string; label: string; type: string; subKey?: string }[] {
+  const fields: { id: string; label: string; type: string; subKey?: string }[] = [];
   for (const page of form.pages || []) {
     for (const el of page.elements || []) {
       if (el.type.startsWith('input_')) {
-        fields.push({
-          id: el.id,
-          label: el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '),
-          type: el.type,
-        });
+        const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
+        if (subKeys && subKeys.length > 0) {
+          // Expand compound field into sub-columns
+          const parentLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
+          for (const sub of subKeys) {
+            fields.push({
+              id: el.id,
+              label: `${parentLabel} — ${sub.label}`,
+              type: el.type,
+              subKey: sub.key,
+            });
+          }
+        } else {
+          fields.push({
+            id: el.id,
+            label: el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '),
+            type: el.type,
+          });
+        }
       }
     }
   }
@@ -67,6 +82,21 @@ function formatCellValue(value: any, fieldType: string): string {
     return parts.length > 0 ? parts.join(', ') : JSON.stringify(value);
   }
   return String(value);
+}
+
+/** Resolve cell value, handling compound sub-keys */
+function resolveCellValue(answers: Record<string, any>, field: { id: string; type: string; subKey?: string }): string {
+  const raw = answers?.[field.id];
+  if (field.subKey) {
+    // Try compound object first
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      return formatCellValue(raw[field.subKey], field.type);
+    }
+    // Try flattened key (e.g. elementId.subKey)
+    const flatVal = answers?.[`${field.id}.${field.subKey}`];
+    return formatCellValue(flatVal, field.type);
+  }
+  return formatCellValue(raw, field.type);
 }
 
 function formatDuration(ms: number | null): string {
@@ -132,8 +162,7 @@ export default function FormResponses({ form }: Props) {
       const envio = row.metadata?.submitted_at ? formatDate(row.metadata.submitted_at) : '—';
       const duration = formatDuration(row.total_time_ms);
       const fieldVals = fields.map(f => {
-        const raw = formatCellValue(row.answers?.[f.id], f.type);
-        // Escape CSV
+        const raw = resolveCellValue(row.answers, f);
         return `"${raw.replace(/"/g, '""')}"`;
       });
       csvRows.push([idx + 1, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals].join(','));
@@ -233,8 +262,8 @@ export default function FormResponses({ form }: Props) {
                 <TableHead className="w-36">Entrada</TableHead>
                 <TableHead className="w-36">Envio</TableHead>
                 <TableHead className="w-20">Duração</TableHead>
-                {fields.map(f => (
-                  <TableHead key={f.id} className="min-w-[160px] max-w-[280px]">
+                {fields.map((f, fi) => (
+                  <TableHead key={`${f.id}-${f.subKey || fi}`} className="min-w-[160px] max-w-[280px]">
                     <span className="truncate block">{f.label}</span>
                   </TableHead>
                 ))}
@@ -265,10 +294,10 @@ export default function FormResponses({ form }: Props) {
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatDuration(row.total_time_ms)}
                     </TableCell>
-                    {fields.map(f => (
-                      <TableCell key={f.id} className="text-sm max-w-[280px]">
-                        <span className="truncate block" title={formatCellValue(row.answers?.[f.id], f.type)}>
-                          {formatCellValue(row.answers?.[f.id], f.type)}
+                    {fields.map((f, fi) => (
+                      <TableCell key={`${f.id}-${f.subKey || fi}`} className="text-sm max-w-[280px]">
+                        <span className="truncate block" title={resolveCellValue(row.answers, f)}>
+                          {resolveCellValue(row.answers, f)}
                         </span>
                       </TableCell>
                     ))}
