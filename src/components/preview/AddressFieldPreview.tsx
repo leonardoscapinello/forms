@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 const BR_STATES = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
@@ -45,20 +45,33 @@ const EMPTY_ADDRESS: AddressValue = {
   state: '',
 };
 
+export interface GeoSuggestion {
+  city?: string;
+  state?: string;
+  country?: string;
+  countryCode?: string;
+  neighborhood?: string;
+  street?: string;
+  cep?: string;
+  source?: string; // 'gps' | 'ip'
+}
+
 interface Props {
   value: AddressValue | undefined;
   onChange: (value: AddressValue) => void;
+  geoSuggestion?: GeoSuggestion;
 }
 
 const inputClass = "w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-xl py-2 mt-1 text-foreground placeholder:text-muted-foreground/40 transition-colors";
 const readonlyClass = "w-full bg-muted/30 border-0 border-b-2 border-border/50 outline-none text-xl py-2 mt-1 text-foreground/80 transition-colors cursor-default";
 const labelClass = "text-sm font-medium text-muted-foreground uppercase tracking-wider";
 
-export default function AddressFieldPreview({ value, onChange }: Props) {
+export default function AddressFieldPreview({ value, onChange, geoSuggestion }: Props) {
   const addr = value && typeof value === 'object' && 'country' in value ? value : EMPTY_ADDRESS;
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
   const [cepFound, setCepFound] = useState(false);
+  const [geoApplied, setGeoApplied] = useState(false);
 
   const numberRef = useRef<HTMLInputElement>(null);
   const complementRef = useRef<HTMLInputElement>(null);
@@ -68,6 +81,44 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
   const update = useCallback((patch: Partial<AddressValue>) => {
     onChange({ ...addr, ...patch });
   }, [addr, onChange]);
+
+  // Auto-fill from geolocation suggestion (once, when data arrives)
+  useEffect(() => {
+    if (geoApplied || !geoSuggestion || !geoSuggestion.city) return;
+    // Only suggest if user hasn't typed anything yet
+    const isEmpty = !addr.city && !addr.state && !addr.street && !addr.cep;
+    if (!isEmpty) return;
+
+    const patch: Partial<AddressValue> = {};
+
+    // Set country if detected
+    if (geoSuggestion.countryCode) {
+      const matchedCountry = COUNTRIES.find(c => c.code === geoSuggestion.countryCode);
+      if (matchedCountry) patch.country = matchedCountry.code;
+    }
+
+    if (geoSuggestion.city) patch.city = geoSuggestion.city;
+    if (geoSuggestion.state) {
+      // For Brazil, try to match UF
+      if ((patch.country || addr.country) === 'BR') {
+        const uf = BR_STATES.find(s => 
+          geoSuggestion.state!.toUpperCase().includes(s) ||
+          s === geoSuggestion.state!.toUpperCase().slice(0, 2)
+        );
+        if (uf) patch.state = uf;
+      } else {
+        patch.state = geoSuggestion.state;
+      }
+    }
+    if (geoSuggestion.neighborhood) patch.neighborhood = geoSuggestion.neighborhood;
+    if (geoSuggestion.street && geoSuggestion.source === 'gps') patch.street = geoSuggestion.street;
+    if (geoSuggestion.cep && geoSuggestion.source === 'gps') patch.cep = geoSuggestion.cep;
+
+    if (Object.keys(patch).length > 0) {
+      onChange({ ...addr, ...patch });
+      setGeoApplied(true);
+    }
+  }, [geoSuggestion, geoApplied, addr, onChange]);
 
   // Auto-fill from ViaCEP
   const fetchCep = useCallback(async (cep: string) => {
