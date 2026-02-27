@@ -1060,7 +1060,7 @@ export default function FormPreview() {
       )}
 
       {/* Progress */}
-      {!isWelcome && !isThankYou && (
+      {!isWelcome && !isThankYou && form?.showProgressBar !== false && (
         <div className="px-4 md:px-8 pt-6">
           <Progress value={progress} className="h-1" />
         </div>

@@ -456,6 +456,8 @@ export interface FormData {
   savePartialResponses?: boolean;
   /** Enable geolocation capture for respondents */
   enableGeolocation?: boolean;
+  /** Show progress bar at the top of the form */
+  showProgressBar?: boolean;
 }
 
 export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {
