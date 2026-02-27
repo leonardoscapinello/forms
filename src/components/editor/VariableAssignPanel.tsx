@@ -4,6 +4,7 @@ import { Plus, Trash2, Variable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CONTEXT_KEYS } from '@/lib/sessionContext';
 
 export interface InputElementGroup {
   pageId: string;
@@ -22,6 +23,8 @@ interface Props {
 const SOURCE_LABELS: Record<VariableAssignmentSource, string> = {
   field: 'Campo do formulário',
   free: 'Valor livre',
+  context: 'Fator de contexto',
+  param: 'Parâmetro GET',
 };
 
 export default function VariableAssignPanel({ assignments, variables, allInputElements, onChange }: Props) {
@@ -147,6 +150,40 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
                       )}
                     </SelectContent>
                   </Select>
+                ) : a.sourceType === 'context' ? (
+                  <Select
+                    value={a.value || ''}
+                    onValueChange={val => update(a.id, { value: val })}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Fator de contexto..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-56">
+                      {(() => {
+                        const categories = [...new Set(CONTEXT_KEYS.map(c => c.category))];
+                        return categories.map(cat => (
+                          <SelectGroup key={cat}>
+                            <SelectLabel className="text-[9px] uppercase tracking-wider text-muted-foreground">{cat}</SelectLabel>
+                            {CONTEXT_KEYS.filter(c => c.category === cat).map(c => (
+                              <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                ) : a.sourceType === 'param' ? (
+                  <div className="space-y-1">
+                    <Input
+                      value={a.value || ''}
+                      onChange={e => update(a.id, { value: e.target.value })}
+                      placeholder="Nome do parâmetro (ex: utm_source)"
+                      className="h-7 text-xs font-mono"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Captura <code className="font-mono bg-muted px-0.5 rounded">?{a.value || 'param'}=valor</code> da URL
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-1">
                     <Input
@@ -156,7 +193,7 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
                       className="h-7 text-xs"
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      Pode usar <code className="font-mono bg-muted px-0.5 rounded">{`{{outra_var}}`}</code> para referenciar outras variáveis
+                      Pode usar <code className="font-mono bg-muted px-0.5 rounded">{`{{outra_var}}`}</code>, <code className="font-mono bg-muted px-0.5 rounded">{`{{ctx.device}}`}</code> ou <code className="font-mono bg-muted px-0.5 rounded">{`{{param.utm_source}}`}</code>
                     </p>
                   </div>
                 )}

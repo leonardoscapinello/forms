@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InputElementGroup } from './VariableAssignPanel';
+import { CONTEXT_KEYS } from '@/lib/sessionContext';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: 'equals',      label: 'igual a' },
@@ -40,7 +41,11 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
   const webhookNodesWithFields = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
 
   // Build subject type options dynamically
-  const subjectTypes: { value: string; label: string }[] = [{ value: 'question', label: 'Campo' }];
+  const subjectTypes: { value: string; label: string }[] = [
+    { value: 'question', label: 'Campo' },
+    { value: 'context', label: 'Contexto' },
+    { value: 'param', label: 'Parâmetro GET' },
+  ];
   if (variables.length > 0) subjectTypes.push({ value: 'variable', label: 'Variável' });
   if (webhookNodesWithFields.length > 0) subjectTypes.push({ value: 'webhook_response', label: 'Webhook' });
 
@@ -239,6 +244,32 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                       ))}
                     </SelectContent>
                   </Select>
+                ) : subjectType === 'context' ? (
+                  <Select value={rule.contextKey || ''} onValueChange={v => updateRule(rule.id, { contextKey: v })}>
+                    <SelectTrigger className="h-7 text-xs flex-1">
+                      <SelectValue placeholder="Fator de contexto..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200] max-h-56">
+                      {(() => {
+                        const categories = [...new Set(CONTEXT_KEYS.map(c => c.category))];
+                        return categories.map(cat => (
+                          <SelectGroup key={cat}>
+                            <SelectLabel className="text-[9px] uppercase tracking-wider text-muted-foreground">{cat}</SelectLabel>
+                            {CONTEXT_KEYS.filter(c => c.category === cat).map(c => (
+                              <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                ) : subjectType === 'param' ? (
+                  <Input
+                    value={rule.paramKey || ''}
+                    onChange={e => updateRule(rule.id, { paramKey: e.target.value })}
+                    placeholder="Nome do parâmetro (ex: utm_source)"
+                    className="h-7 text-xs flex-1 font-mono"
+                  />
                 ) : (
                   <Select value={rule.questionId} onValueChange={v => updateRule(rule.id, { questionId: v })}>
                     <SelectTrigger className="h-7 text-xs flex-1">

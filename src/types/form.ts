@@ -185,11 +185,11 @@ export type ConditionOperator =
 
 export type LogicOperator = 'and' | 'or';
 
-/** A single rule: "question/variable/webhook X operator value" */
+/** A single rule: "question/variable/webhook/context/param X operator value" */
 export interface ConditionRule {
   id: string;
-  /** 'question' = compare a form question answer; 'variable' = compare a form variable value; 'webhook_response' = compare a webhook response field */
-  subjectType?: 'question' | 'variable' | 'webhook_response';
+  /** 'question' = compare a form question answer; 'variable' = compare a form variable value; 'webhook_response' = compare a webhook response field; 'context' = session context factor; 'param' = GET parameter */
+  subjectType?: 'question' | 'variable' | 'webhook_response' | 'context' | 'param';
   questionId: string;
   /** When subjectType === 'variable': the variable ID to compare */
   variableId?: string;
@@ -197,6 +197,10 @@ export interface ConditionRule {
   webhookNodeId?: string;
   /** When subjectType === 'webhook_response': the dot-notation path in the response */
   webhookResponsePath?: string;
+  /** When subjectType === 'context': the context key (e.g. 'device', 'browser') */
+  contextKey?: string;
+  /** When subjectType === 'param': the GET parameter name */
+  paramKey?: string;
   operator: ConditionOperator;
   value: string;
   /** How this rule connects to the previous item (ignored for the first rule) */
@@ -354,7 +358,7 @@ export interface FunnelPageStyle {
 }
 
 /** How a variable gets its value when a page is visited */
-export type VariableAssignmentSource = 'field' | 'free';
+export type VariableAssignmentSource = 'field' | 'free' | 'context' | 'param';
 
 export interface VariableAssignment {
   id: string;
