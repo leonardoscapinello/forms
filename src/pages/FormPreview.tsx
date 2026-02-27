@@ -180,7 +180,7 @@ export default function FormPreview() {
 
   // Auto-save session for resume + partial responses
   useEffect(() => {
-    if (!form?.id || finished) return;
+    if (!form?.id || finished || isEditorPreview) return;
     if (currentPageIndex === null) return;
 
     const timer = window.setTimeout(() => {
@@ -229,7 +229,7 @@ export default function FormPreview() {
 
   // Save partial on beforeunload — use edge function via fetch keepalive
   useEffect(() => {
-    if (!form?.id) return;
+    if (!form?.id || isEditorPreview) return;
     const handler = () => {
       if (form.savePartialResponses === false) return;
       if (finished) return;
@@ -273,7 +273,7 @@ export default function FormPreview() {
 
   // Insert session record on form load
   useEffect(() => {
-    if (!form?.id) return;
+    if (!form?.id || isEditorPreview) return;
     const { responseId, userAgent, queryParams, referrer } = sessionMetaRef.current;
     const generatedSessionId = crypto.randomUUID();
     sessionDbIdRef.current = generatedSessionId;
@@ -307,7 +307,7 @@ export default function FormPreview() {
   // Fire pixel load events once the form is ready
   // ── Load Events: disparo server-side com retry, nunca falha por AdBlock ──────
   useEffect(() => {
-    if (!form?.id) return;
+    if (!form?.id || isEditorPreview) return;
     const loadEvents = form.pixelLoadEvents || [];
     if (loadEvents.length === 0) return;
 
@@ -339,7 +339,7 @@ export default function FormPreview() {
 
   // Track page views & session progress when page changes or form completes
   useEffect(() => {
-    if (!form?.id) return;
+    if (!form?.id || isEditorPreview) return;
     const { responseId } = sessionMetaRef.current;
     const sessionId = sessionDbIdRef.current;
     const now = new Date().toISOString();
