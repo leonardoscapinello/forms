@@ -31,6 +31,11 @@ export default function LoadingPreview({
   const [percent, setPercent] = useState(0);
   const completedRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (!interactive) {
@@ -52,7 +57,7 @@ export default function LoadingPreview({
 
       if (progress >= targetPercent && !completedRef.current) {
         completedRef.current = true;
-        onComplete?.();
+        onCompleteRef.current?.();
         return;
       }
       if (progress < targetPercent) {
@@ -67,7 +72,7 @@ export default function LoadingPreview({
       const timer = setTimeout(() => {
         if (!completedRef.current) {
           completedRef.current = true;
-          onComplete?.();
+          onCompleteRef.current?.();
         }
       }, duration * 1000);
       return () => clearTimeout(timer);
@@ -76,7 +81,7 @@ export default function LoadingPreview({
     return () => {
       if (animId) cancelAnimationFrame(animId);
     };
-  }, [interactive, duration, targetPercent, style, onComplete]);
+  }, [interactive, duration, targetPercent, style]);
 
   if (style === 'circular') {
     const radius = (size - stroke) / 2;
