@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ProgressBarItem } from '@/types/pageElements';
 
 interface Props {
@@ -10,6 +10,41 @@ interface Props {
   colBorderRadius?: number;
 }
 
+function useAnimatedNumber(target: number, duration = 1000) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>();
+
+  useEffect(() => {
+    setDisplay(0);
+    const startTime = performance.now();
+    let started = false;
+
+    const delay = setTimeout(() => {
+      started = true;
+      const tick = (now: number) => {
+        const elapsed = now - startTime - 80; // account for delay
+        const progress = Math.min(1, Math.max(0, elapsed / duration));
+        // match cubic-bezier(0.4, 0, 0.2, 1) approximation
+        const eased = progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        setDisplay(Math.round(eased * target));
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    }, 80);
+
+    return () => {
+      clearTimeout(delay);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [target, duration]);
+
+  return display;
+}
+
 export default function ProgressBarColumn({
   bar,
   disposition,
@@ -18,12 +53,13 @@ export default function ProgressBarColumn({
   colBorderColor,
   colBorderRadius,
 }: Props) {
-  const [animated, setAnimated] = useState(0);
   const target = Math.min(100, Math.max(0, bar.value));
+  const animatedNum = useAnimatedNumber(target, 1000);
+  const [barHeight, setBarHeight] = useState(0);
 
   useEffect(() => {
-    setAnimated(0);
-    const t = setTimeout(() => setAnimated(target), 80);
+    setBarHeight(0);
+    const t = setTimeout(() => setBarHeight(target), 80);
     return () => clearTimeout(t);
   }, [target]);
 
@@ -44,14 +80,14 @@ export default function ProgressBarColumn({
       <div
         className="absolute bottom-0 left-0 right-0 rounded-xl"
         style={{
-          height: `${animated}%`,
+          height: `${barHeight}%`,
           backgroundColor: bar.color,
           transition: 'height 1s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       />
       <div className="absolute inset-0 flex items-start justify-center pt-3">
-        <span className="text-base font-extrabold drop-shadow-sm" style={{ color: valColor }}>
-          {Math.round(animated)}%
+        <span className="text-base font-extrabold drop-shadow-sm tabular-nums" style={{ color: valColor }}>
+          {animatedNum}%
         </span>
       </div>
     </div>
