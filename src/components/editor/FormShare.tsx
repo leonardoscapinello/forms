@@ -9,7 +9,7 @@ interface Props {
   form: FormData;
 }
 
-const PUBLISHED_BASE = 'https://twobrain.lovable.app';
+const PUBLISHED_BASE = 'https://nodecraft-forms.lovable.app';
 
 function CopyField({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   const [copied, setCopied] = useState(false);
