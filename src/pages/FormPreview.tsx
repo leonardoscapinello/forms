@@ -1066,8 +1066,12 @@ export default function FormPreview() {
   const hasVariables = (form.variables?.length ?? 0) > 0;
 
   return (
-    <Suspense fallback={null}>
-    <div className="min-h-screen bg-background flex flex-col relative">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="min-h-screen bg-background flex flex-col relative"
+    >
 
       {/* Close — only visible when opened from the editor */}
       {isEditorPreview && (
@@ -1301,8 +1305,7 @@ export default function FormPreview() {
           </div>
         );
       })()}
-    </div>
-    </Suspense>
+    </motion.div>
   );
 }
 
