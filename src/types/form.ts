@@ -458,6 +458,10 @@ export interface FormData {
   enableGeolocation?: boolean;
   /** Show progress bar at the top of the form */
   showProgressBar?: boolean;
+  /** Google Sheet ID linked for response sync */
+  googleSheetId?: string;
+  /** Google Sheet URL for display */
+  googleSheetUrl?: string;
 }
 
 export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {
