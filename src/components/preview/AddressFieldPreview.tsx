@@ -1,5 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 
+const BR_STATES = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
+  'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
+];
+
 const COUNTRIES = [
   { code: 'BR', flag: '🇧🇷', name: 'Brasil', hasCep: true },
   { code: 'US', flag: '🇺🇸', name: 'Estados Unidos', hasCep: false },
@@ -234,13 +239,31 @@ export default function AddressFieldPreview({ value, onChange }: Props) {
         </div>
         <div>
           <label className={labelClass}>{isBrazil ? 'Estado' : 'Estado / Região'}</label>
-          <input
-            value={addr.state}
-            onChange={autoFilled ? undefined : e => update({ state: e.target.value })}
-            readOnly={autoFilled}
-            placeholder={isBrazil ? 'UF' : 'Estado'}
-            className={autoFilled ? readonlyClass : inputClass}
-          />
+          {isBrazil ? (
+            <div className="relative mt-1">
+              <select
+                value={addr.state}
+                onChange={autoFilled ? undefined : e => update({ state: e.target.value })}
+                disabled={autoFilled}
+                className={`${autoFilled ? readonlyClass : inputClass} appearance-none cursor-pointer`}
+              >
+                <option value="">Selecione</option>
+                {BR_STATES.map(uf => (
+                  <option key={uf} value={uf}>{uf}</option>
+                ))}
+              </select>
+              <svg className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          ) : (
+            <input
+              value={addr.state}
+              onChange={e => update({ state: e.target.value })}
+              placeholder="Estado"
+              className={inputClass}
+            />
+          )}
         </div>
       </div>
     </div>
