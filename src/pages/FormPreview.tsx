@@ -1246,35 +1246,41 @@ export default function FormPreview() {
         );
       })()}
 
-      {/* Navigation arrows */}
-      {!isWelcome && !isThankYou && (
-        <div className="fixed bottom-6 right-6 flex flex-col gap-1 z-50">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={goBack}
-            disabled={currentPageIndex === 0 && !form?.showWelcomeScreen}
-            className="h-9 w-9 rounded-md shadow-md"
-            aria-label="Voltar"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="default"
-            size="icon"
-            onClick={goNext}
-            disabled={isPageBlocked}
-            className="h-9 w-9 rounded-md shadow-md"
-            aria-label="Avançar"
-          >
-            {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              currentPageIndex !== null && currentPageIndex === pages.length - 1
-                ? <Send className="h-4 w-4" />
-                : <ArrowDown className="h-4 w-4" />
+      {/* Navigation arrows — hide when page has its own action buttons */}
+      {!isWelcome && !isThankYou && (() => {
+        const hasActionButtons = currentPage?.elements?.some(el => el.type === 'button');
+        if (hasActionButtons) return null;
+        const canGoBack = currentPageIndex !== null && (currentPageIndex > 0 || !!form?.showWelcomeScreen);
+        return (
+          <div className="fixed bottom-6 right-6 flex flex-col gap-1 z-50">
+            {canGoBack && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={goBack}
+                className="h-9 w-9 rounded-md shadow-md"
+                aria-label="Voltar"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
             )}
-          </Button>
-        </div>
-      )}
+            <Button
+              variant="default"
+              size="icon"
+              onClick={goNext}
+              disabled={isPageBlocked}
+              className="h-9 w-9 rounded-md shadow-md"
+              aria-label="Avançar"
+            >
+              {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                currentPageIndex !== null && currentPageIndex === pages.length - 1
+                  ? <Send className="h-4 w-4" />
+                  : <ArrowDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
