@@ -9,8 +9,9 @@ import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings } from 'lucide-react';
+import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings, Monitor } from 'lucide-react';
 import { useEffect, useCallback, useState, useMemo, lazy, Suspense } from 'react';
+import { AnimatePresence } from 'framer-motion';
 
 // Lazy-load heavy editor sub-views
 const FlowCanvas = lazy(() => import('@/components/editor/FlowCanvas'));
@@ -20,6 +21,7 @@ const FormResponses = lazy(() => import('@/components/editor/FormResponses'));
 const FormShare = lazy(() => import('@/components/editor/FormShare'));
 const FormSettings = lazy(() => import('@/components/editor/FormSettings'));
 const FormAnalytics = lazy(() => import('@/components/editor/FormAnalytics'));
+const ResponsivePreview = lazy(() => import('@/components/editor/ResponsivePreview'));
 
 type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings' | 'analytics';
 
@@ -34,6 +36,7 @@ export default function FormEditor() {
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [editingWelcome, setEditingWelcome] = useState(false);
   const [editingThankYou, setEditingThankYou] = useState(false);
+  const [showResponsivePreview, setShowResponsivePreview] = useState(false);
 
   // Compute disconnected page IDs (pages not reachable from 'start' node)
   const disconnectedPageIds = useMemo(() => {
@@ -438,11 +441,19 @@ export default function FormEditor() {
             <Button
               variant="outline"
               size="sm"
-              className="hidden sm:flex"
-              onClick={() => navigate(`/f/${form.id}`)}
+              className="hidden sm:flex gap-1.5"
+              onClick={() => setShowResponsivePreview(true)}
             >
-              <Eye className="mr-2 h-4 w-4" />
-              Visualizar
+              <Monitor className="h-4 w-4" />
+              Preview
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 sm:hidden"
+              onClick={() => setShowResponsivePreview(true)}
+            >
+              <Eye className="h-4 w-4" />
             </Button>
             <Button
               size="sm"
@@ -603,6 +614,15 @@ export default function FormEditor() {
         )}
       </div>
       </Suspense>
+
+      {/* Responsive preview overlay */}
+      <AnimatePresence>
+        {showResponsivePreview && (
+          <Suspense fallback={null}>
+            <ResponsivePreview formId={form.id} onClose={() => setShowResponsivePreview(false)} />
+          </Suspense>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
