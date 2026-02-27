@@ -234,6 +234,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                   <VariableSelect
                     value={rule.variableId || ''}
                     variables={variables}
+                    integrationNodes={integrationNodes}
                     onValueChange={v => updateRule(rule.id, { variableId: v })}
                     onCreateVariable={onCreateVariable}
                     placeholder="Escolha a variável..."

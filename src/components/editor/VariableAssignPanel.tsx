@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FormVariable, VariableAssignment, VariableAssignmentSource } from '@/types/form';
+import { FormVariable, VariableAssignment, VariableAssignmentSource, IntegrationNodeData } from '@/types/form';
 import { Plus, Trash2, Variable } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ interface Props {
   variables: FormVariable[];
   /** Input elements grouped by page, only including previous pages */
   allInputElements: InputElementGroup[];
+  integrationNodes?: IntegrationNodeData[];
   onChange: (assignments: VariableAssignment[]) => void;
   onCreateVariable?: (variable: FormVariable) => void;
 }
@@ -29,7 +30,7 @@ const SOURCE_LABELS: Record<VariableAssignmentSource, string> = {
   param: 'Parâmetro GET',
 };
 
-export default function VariableAssignPanel({ assignments, variables, allInputElements, onChange, onCreateVariable }: Props) {
+export default function VariableAssignPanel({ assignments, variables, allInputElements, integrationNodes, onChange, onCreateVariable }: Props) {
   const [localAssignments, setLocalAssignments] = useState<VariableAssignment[]>(assignments);
 
   const commit = (next: VariableAssignment[]) => {
@@ -82,6 +83,7 @@ export default function VariableAssignPanel({ assignments, variables, allInputEl
                   <VariableSelect
                     value={a.variableId}
                     variables={variables}
+                    integrationNodes={integrationNodes}
                     onValueChange={val => update(a.id, { variableId: val })}
                     onCreateVariable={onCreateVariable}
                   />

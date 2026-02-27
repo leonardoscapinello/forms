@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Variable, Plus, Trash2, AlertTriangle } from 'lucide-react';
-import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType } from '@/types/form';
+import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType, IntegrationNodeData } from '@/types/form';
 import VariableSelect from './shared/VariableSelect';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ interface VariableOpNodeProps {
   label: string;
   operations: VariableOperation[];
   variables: FormVariable[];
+  integrationNodes?: IntegrationNodeData[];
   allInputElements: InputElementGroup[];
   onChange: (patch: Partial<VariableOpNodeData>) => void;
   onDelete: () => void;
@@ -31,7 +32,7 @@ const OP_OPTIONS: { value: VariableOpType; label: string }[] = [
 ];
 
 function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps }) {
-  const { label, operations, variables, allInputElements = [], onChange, onDelete, onCreateVariable } = data;
+  const { label, operations, variables, integrationNodes = [], allInputElements = [], onChange, onDelete, onCreateVariable } = data;
 
   const validation = useMemo(() => validateVariableOpNode(operations, variables), [operations, variables]);
 
@@ -132,6 +133,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                   <VariableSelect
                     value={op.variableId}
                     variables={variables}
+                    integrationNodes={integrationNodes}
                     onValueChange={val => updateOp(op.id, { variableId: val })}
                     onCreateVariable={onCreateVariable}
                     accentClass="text-node-variable-op-accent"
