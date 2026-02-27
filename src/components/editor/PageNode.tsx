@@ -1,7 +1,7 @@
 import { memo, useCallback, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { FileText, Variable } from 'lucide-react';
-import { FunnelPage, FormVariable, VariableAssignment } from '@/types/form';
+import { FunnelPage, FormVariable, VariableAssignment, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import VariableAssignPanel, { InputElementGroup } from './VariableAssignPanel';
 
@@ -12,13 +12,14 @@ interface PageNodeData {
   onDelete: () => void;
   onSelect: () => void;
   variables?: FormVariable[];
+  integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
   isDisconnected?: boolean;
   onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange, variables = [], allInputElements = [], isDisconnected = false, onCreateVariable } = data;
+  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, onCreateVariable } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
   const [varPopoverOpen, setVarPopoverOpen] = useState(false);
@@ -148,6 +149,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
                 <VariableAssignPanel
                   assignments={page.variableAssignments || []}
                   variables={variables}
+                  integrationNodes={integrationNodes}
                   allInputElements={allInputElements}
                   onChange={assignments => onChange({ variableAssignments: assignments })}
                   onCreateVariable={onCreateVariable}
