@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 interface Props {
   form: FormData;
@@ -264,7 +264,7 @@ export default function FormResponses({ form }: Props) {
       </div>
 
       {/* Table */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-auto">
         <div className="min-w-max">
           <Table>
             <TableHeader>
@@ -319,7 +319,7 @@ export default function FormResponses({ form }: Props) {
             </TableBody>
           </Table>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
