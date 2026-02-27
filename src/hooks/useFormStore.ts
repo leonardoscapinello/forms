@@ -59,7 +59,6 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [forms, setForms] = useState<FormData[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const pendingUpdates = useRef<Map<string, Partial<FormData>>>(new Map());
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [saveStatuses, setSaveStatuses] = useState<Map<string, 'saved' | 'saving' | 'idle'>>(new Map());
   const [lastSavedTimes, setLastSavedTimes] = useState<Map<string, string>>(new Map());
@@ -78,9 +77,10 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     (async () => {
       const { data } = await supabase
         .from('forms')
-        .select('*')
+        .select('id,user_id,title,data,status,created_at,updated_at,folder_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
+
       if (!cancelled && data) {
         setForms((data as unknown as DbForm[]).map(dbToForm));
         setLoaded(true);
@@ -89,25 +89,28 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Realtime sync: listen for changes from other users
+  // Realtime sync: only current user's forms (avoids cross-tenant noise)
   useEffect(() => {
     if (!user) return;
+
     const channel = supabase
-      .channel('forms-realtime')
+      .channel(`forms-realtime-${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'forms' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'forms',
+          filter: `user_id=eq.${user.id}`,
+        },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             const row = payload.new as unknown as DbForm;
-            // Only apply if from another session (check updated_at diff)
             setForms(prev => {
               const existing = prev.find(f => f.id === row.id);
               if (!existing) return prev;
-              // Skip if we have a pending debounce (we're the one editing)
               if (debounceTimers.current.has(row.id)) return prev;
-              const updated = dbToForm(row);
-              return prev.map(f => f.id === row.id ? updated : f);
+              return prev.map(f => (f.id === row.id ? dbToForm(row) : f));
             });
           } else if (payload.eventType === 'INSERT') {
             const row = payload.new as unknown as DbForm;
@@ -124,21 +127,34 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
         }
       )
       .subscribe();
+
     return () => { channel.unsubscribe(); };
   }, [user]);
 
   // Flush pending update to DB
   const flushUpdate = useCallback(async (id: string) => {
     if (!user) return;
-    setSaveStatuses(prev => new Map(prev).set(id, 'saving'));
+
     const form = formsRef.current.find(f => f.id === id);
     if (!form) return;
+
+    setSaveStatuses(prev => new Map(prev).set(id, 'saving'));
+
     const row = formToDb(form, user.id);
-    await supabase.from('forms').update({
-      title: row.title,
-      status: row.status,
-      data: row.data,
-    }).eq('id', id);
+    const { error } = await supabase
+      .from('forms')
+      .update({
+        title: row.title,
+        status: row.status,
+        data: row.data,
+      })
+      .eq('id', id);
+
+    if (error) {
+      setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
+      return;
+    }
+
     const now = new Date().toISOString();
     setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
     setLastSavedTimes(prev => new Map(prev).set(id, now));
@@ -158,7 +174,6 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
 
     const timer = setTimeout(() => {
       flushUpdate(id);
-      pendingUpdates.current.delete(id);
       debounceTimers.current.delete(id);
     }, DEBOUNCE_MS);
     debounceTimers.current.set(id, timer);
@@ -170,7 +185,6 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       for (const [id, timer] of debounceTimers.current.entries()) {
         clearTimeout(timer);
         debounceTimers.current.delete(id);
-        pendingUpdates.current.delete(id);
         flushUpdate(id);
       }
     };
@@ -228,7 +242,6 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     const timer = debounceTimers.current.get(id);
     if (timer) clearTimeout(timer);
     debounceTimers.current.delete(id);
-    pendingUpdates.current.delete(id);
 
     setForms(prev => prev.filter(f => f.id !== id));
     await supabase.from('forms').delete().eq('id', id);
@@ -247,7 +260,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   }, [lastSavedTimes]);
 
   const moveFormToFolder = useCallback(async (formId: string, folderId: string | null) => {
-    setForms(prev => prev.map(f => f.id === formId ? { ...f, folderId: folderId ?? undefined } : f));
+    setForms(prev => prev.map(f => f.id === formId ? { ...f, folderId } : f));
     await supabase.from('forms').update({ folder_id: folderId }).eq('id', formId);
   }, []);
 
