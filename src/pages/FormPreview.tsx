@@ -652,7 +652,7 @@ export default function FormPreview() {
     }
     if (currentPageIndex !== null && currentPageIndex > 0) {
       setCurrentPageIndex(currentPageIndex - 1);
-    } else {
+    } else if (currentPageIndex === 0 && form?.showWelcomeScreen) {
       setCurrentPageIndex(null);
     }
   }, [currentPageIndex, finished]);
