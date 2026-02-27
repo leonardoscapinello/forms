@@ -108,9 +108,25 @@ serve(async (req) => {
         results.meta = { skipped: true, reason: !enabled ? 'Meta Pixel disabled in settings' : 'Pixel ID or CAPI Token not configured in Settings → Integrations' };
       } else {
         const userData_hashed: Record<string, string> = {};
-        if (resolvedUserData?.email) userData_hashed.em = await sha256(resolvedUserData.email);
+        if (resolvedUserData?.email) userData_hashed.em = [await sha256(resolvedUserData.email)];
         if (resolvedUserData?.phone) {
-          userData_hashed.ph = await sha256(resolvedUserData.phone.replace(/\D/g, ''));
+          userData_hashed.ph = [await sha256(resolvedUserData.phone.replace(/\D/g, ''))];
+        }
+
+        // Meta CAPI requires at least client_ip_address + client_user_agent
+        // to avoid "not enough customer information parameters" error
+        const clientIp = body.clientIpAddress || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || '';
+        const clientUa = userAgent || req.headers.get('user-agent') || '';
+        if (clientIp) userData_hashed.client_ip_address = clientIp;
+        if (clientUa) userData_hashed.client_user_agent = clientUa;
+
+        // Pass fbc/fbp cookies if available (sent from client)
+        if (body.fbc) userData_hashed.fbc = body.fbc;
+        if (body.fbp) userData_hashed.fbp = body.fbp;
+
+        // External ID fallback — use responseId as external_id if no email/phone
+        if (!resolvedUserData?.email && !resolvedUserData?.phone && body.responseId) {
+          userData_hashed.external_id = [await sha256(body.responseId)];
         }
 
         const customData: Record<string, any> = {

@@ -27,9 +27,31 @@ interface FirePixelOptions {
   webhookMethod?: string;
   webhookPayload?: Record<string, any>;
   queryParams?: Record<string, string>;
+  // Meta CAPI enrichment
+  fbc?: string;
+  fbp?: string;
+  clientIpAddress?: string;
+}
+
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+function enrichMetaParams(opts: FirePixelOptions): FirePixelOptions {
+  if (opts.platform !== 'meta_pixel') return opts;
+  return {
+    ...opts,
+    fbc: opts.fbc || getCookie('_fbc'),
+    fbp: opts.fbp || getCookie('_fbp'),
+    sourceUrl: opts.sourceUrl || (typeof window !== 'undefined' ? window.location.href : ''),
+    userAgent: opts.userAgent || (typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+  };
 }
 
 async function callEdgeFunction(body: FirePixelOptions, attempt: number): Promise<boolean> {
+  const enriched = enrichMetaParams(body);
   try {
     const res = await fetch(EDGE_URL, {
       method: 'POST',
@@ -38,7 +60,7 @@ async function callEdgeFunction(body: FirePixelOptions, attempt: number): Promis
         'apikey': ANON_KEY,
         'Authorization': `Bearer ${ANON_KEY}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(enriched),
     });
     return res.ok;
   } catch {
