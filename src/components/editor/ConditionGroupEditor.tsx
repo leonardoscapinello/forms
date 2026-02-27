@@ -16,14 +16,14 @@ import { InputElementGroup } from './VariableAssignPanel';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
-  { value: 'equals',      label: 'igual a' },
-  { value: 'not_equals',  label: 'diferente de' },
-  { value: 'contains',    label: 'contém' },
-  { value: 'not_contains',label: 'não contém' },
-  { value: 'greater_than',label: 'maior que' },
-  { value: 'less_than',   label: 'menor que' },
-  { value: 'is_empty',    label: 'está vazio' },
-  { value: 'is_not_empty',label: 'não está vazio' },
+  { value: 'equals',      label: '= igual' },
+  { value: 'not_equals',  label: '≠ diferente' },
+  { value: 'contains',    label: '∋ contém' },
+  { value: 'not_contains',label: '∌ não contém' },
+  { value: 'greater_than',label: '> maior que' },
+  { value: 'less_than',   label: '< menor que' },
+  { value: 'is_empty',    label: '∅ vazio' },
+  { value: 'is_not_empty',label: '≠∅ preenchido' },
 ];
 
 interface Props {
@@ -44,7 +44,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
   const subjectTypes: { value: string; label: string }[] = [
     { value: 'question', label: 'Campo' },
     { value: 'context', label: 'Contexto' },
-    { value: 'param', label: 'Parâmetro GET' },
+    { value: 'param', label: 'Parâmetro' },
   ];
   if (variables.length > 0) subjectTypes.push({ value: 'variable', label: 'Variável' });
   if (webhookNodesWithFields.length > 0) subjectTypes.push({ value: 'webhook_response', label: 'Webhook' });
@@ -127,11 +127,8 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                 : 'bg-warning/15 text-warning hover:bg-warning/25'
             }`}
           >
-            Grupo {group.logic === 'and' ? 'E' : 'OU'}
+            {group.logic === 'and' ? 'E (todas)' : 'OU (qualquer)'}
           </button>
-          <span className="text-[9px] text-muted-foreground">
-            {group.logic === 'and' ? 'Todas devem ser verdadeiras' : 'Pelo menos uma deve ser verdadeira'}
-          </span>
           {onRemove && (
             <button
               onClick={onRemove}
@@ -173,7 +170,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
             <div className="rounded-lg bg-background border border-border p-2 space-y-1.5">
               {/* Subject type selector */}
               {(variables.length > 0 || webhookNodesWithFields.length > 0) && (
-                <div className="flex gap-1">
+                <div className="flex gap-0.5 bg-muted/50 rounded-md p-0.5">
                   {subjectTypes.map(t => (
                     <button
                       key={t.value}
@@ -183,10 +180,10 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                         webhookNodeId: undefined,
                         webhookResponsePath: undefined,
                       })}
-                      className={`flex-1 text-[10px] py-0.5 rounded border transition-colors ${
+                      className={`flex-1 text-[10px] py-0.5 rounded transition-colors ${
                         subjectType === t.value
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-border text-muted-foreground hover:border-primary/50'
+                          ? 'bg-background text-foreground shadow-sm font-medium'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {t.label}
@@ -267,7 +264,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                   <Input
                     value={rule.paramKey || ''}
                     onChange={e => updateRule(rule.id, { paramKey: e.target.value })}
-                    placeholder="Nome do parâmetro (ex: utm_source)"
+                    placeholder="ex: utm_source"
                     className="h-7 text-xs flex-1 font-mono"
                   />
                 ) : (
@@ -368,7 +365,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
           onClick={addRule}
         >
           <Plus className="mr-1 h-2.5 w-2.5" />
-          Regra
+          Condição
         </Button>
         {depth < 2 && (
           <Button
@@ -378,7 +375,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
             onClick={addSubGroup}
           >
             <Group className="mr-1 h-2.5 w-2.5" />
-            Sub-grupo
+            Grupo
           </Button>
         )}
       </div>
