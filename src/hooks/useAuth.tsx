@@ -37,68 +37,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const recoverSession = useCallback(async (): Promise<Session | null> => {
-    const { data: { session: existingSession } } = await supabase.auth.getSession();
-    if (existingSession) return existingSession;
-
-    const { data: refreshed, error } = await supabase.auth.refreshSession();
-    if (error) return null;
-    return refreshed.session ?? null;
-  }, []);
-
   useEffect(() => {
     let mounted = true;
 
-    const applySession = async (incomingSession: Session | null, shouldTryRecover = false) => {
-      let resolvedSession = incomingSession;
-
-      if (!resolvedSession && shouldTryRecover) {
-        resolvedSession = await recoverSession();
-      }
-
-      if (!mounted) return;
-
-      setSession(resolvedSession);
-      setUser(resolvedSession?.user ?? null);
-
-      if (resolvedSession?.user) {
-        await fetchUserData(resolvedSession.user.id);
-      } else {
-        setProfile(null);
-        setRole(null);
-      }
-
-      if (mounted) setLoading(false);
-    };
-
-    // IMPORTANT: Set up listener FIRST, then get initial session
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, nextSession) => {
+      (event, nextSession) => {
         if (!mounted) return;
 
-        // Ignore INITIAL_SESSION — we handle it via getSession below
+        // We handle INITIAL_SESSION via getSession below
         if (event === 'INITIAL_SESSION') return;
 
-        setLoading(true);
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
 
-        // Defer to avoid Supabase auth deadlock
-        setTimeout(() => {
-          void applySession(nextSession, !nextSession);
-        }, 0);
+        if (nextSession?.user) {
+          // Defer profile fetch to avoid Supabase auth deadlock
+          setTimeout(() => {
+            if (mounted) fetchUserData(nextSession.user.id);
+          }, 0);
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          setRole(null);
+          setLoading(false);
+        }
       }
     );
 
-    // Get the initial session (with recovery fallback)
-    setLoading(true);
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      void applySession(session, !session);
+    // Then get the persisted session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        fetchUserData(session.user.id).finally(() => {
+          if (mounted) setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserData, recoverSession]);
+  }, [fetchUserData]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
