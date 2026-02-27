@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  FileText, BarChart3, Settings, LogOut, LayoutDashboard,
+  Settings, LogOut, LayoutDashboard,
 } from 'lucide-react';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -11,13 +11,10 @@ import {
 
 const mainItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Formulários', url: '/forms', icon: FileText },
-  { title: 'Respostas', url: '/responses', icon: BarChart3 },
-];
-
-const configItems = [
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
+
+const configItems: typeof mainItems = [];
 
 export function AppSidebar() {
   const navigate = useNavigate();
