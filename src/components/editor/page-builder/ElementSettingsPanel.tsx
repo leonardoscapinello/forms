@@ -271,12 +271,33 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
           )}
 
           {isFormField(element.type) && (
-            <div className="flex items-center justify-between">
-              <Label>Obrigatório</Label>
-              <Switch
-                checked={element.required || false}
-                onCheckedChange={v => onChange({ required: v })}
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Obrigatório</Label>
+                <Switch
+                  checked={element.required || false}
+                  onCheckedChange={v => onChange({ required: v })}
+                />
+              </div>
+              {element.required && (
+                <Input
+                  value={element.requiredMessage || ''}
+                  onChange={e => onChange({ requiredMessage: e.target.value })}
+                  placeholder="Preencha este campo"
+                  className="text-xs"
+                />
+              )}
+              {element.type === 'input_email' && element.smartValidation && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground/70">Msg erro de validação</Label>
+                  <Input
+                    value={element.validationMessage || ''}
+                    onChange={e => onChange({ validationMessage: e.target.value })}
+                    placeholder="E-mail inválido"
+                    className="text-xs"
+                  />
+                </div>
+              )}
             </div>
           )}
 
