@@ -864,6 +864,18 @@ export default function FormPreview() {
               return;
             }
           }
+          // No workflow connection from empty page — fall through to sequential from this index
+          const nextNonEmpty = (() => {
+            for (let i = targetIndex + 1; i < pages.length; i++) {
+              if (!isPageEmpty(pages[i])) return i;
+            }
+            return -1;
+          })();
+          if (nextNonEmpty !== -1) {
+            setAnswers(applyPageVariableAssignments(pages[nextNonEmpty], updatedAnswers));
+            setCurrentPageIndex(nextNonEmpty);
+            return;
+          }
           setFinished(true);
           return;
         }
