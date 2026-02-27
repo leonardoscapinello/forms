@@ -44,6 +44,7 @@ export type PageElementType =
   | 'input_height'
   | 'input_weight'
   | 'input_document'
+  | 'input_company'
   // Quiz elements
   | 'input_yes_no'
   | 'input_multi_select'
@@ -379,6 +380,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_quiz_icon: 'Quiz com ícone',
   input_quiz_image: 'Quiz com imagem',
   input_document: 'Documento',
+  input_company: 'Empresa',
 };
 
 export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'sections';
@@ -394,7 +396,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   fields_text: {
     label: 'Campos de entrada',
-    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_address', 'input_document', 'input_height', 'input_weight'],
+    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_address', 'input_document', 'input_company', 'input_height', 'input_weight'],
   },
   fields_choice: {
     label: 'Campos de escolha',
@@ -744,6 +746,10 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'input_document':
       base.label = 'Informe seu documento';
       base.documentAllowedTypes = ['cpf', 'cnpj', 'passport'];
+      base.required = false;
+      break;
+    case 'input_company':
+      base.label = 'Dados da empresa';
       base.required = false;
       break;
   }

@@ -23,6 +23,7 @@ import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import DocumentFieldPreview from '@/components/preview/DocumentFieldPreview';
+import CompanyFieldPreview from '@/components/preview/CompanyFieldPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
@@ -1389,6 +1390,14 @@ function InteractiveElement({
           value={value as any}
           onChange={onChange}
           allowedTypes={element.documentAllowedTypes as any}
+        />
+      );
+
+    case 'input_company':
+      return withFieldHeader(
+        <CompanyFieldPreview
+          value={value as any}
+          onChange={onChange}
         />
       );
 
