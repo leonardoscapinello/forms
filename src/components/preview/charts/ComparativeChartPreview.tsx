@@ -71,7 +71,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   return (
     <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={data} margin={{ top: 36, right: 8, left: 0, bottom: 5 }}>
+        <AreaChart data={data} margin={{ top: 48, right: 44, left: 8, bottom: 8 }} style={{ overflow: 'visible' }}>
           <defs>
             <filter id="cmpBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
@@ -130,8 +130,8 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                     {showBadge && (
                       <g>
                         <rect
-                          x={cx - badgeW / 2}
-                          y={cy - badgeH - 10}
+                          x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW))}
+                          y={Math.max(6, cy - badgeH - 10)}
                           width={badgeW}
                           height={badgeH}
                           rx={badgeH / 2}
@@ -139,7 +139,7 @@ function CartesianView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                           filter="url(#cmpBadgeShadow)"
                         />
                         <text
-                          x={cx}
+                          x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW)) + badgeW / 2}
                           y={cy - badgeH / 2 - 10 + 1}
                           textAnchor="middle"
                           dominantBaseline="middle"
@@ -172,7 +172,7 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
   return (
     <div className="w-full min-w-0">
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={data} margin={{ top: 36, right: 8, left: -24, bottom: 5 }}>
+        <BarChart data={data} margin={{ top: 48, right: 44, left: -12, bottom: 8 }} style={{ overflow: 'visible' }}>
           <defs>
             <filter id="cmpBarBadgeShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
@@ -211,8 +211,8 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                 return (
                   <g key={`bar-tip-${ds.id}-${index}`}>
                     <rect
-                      x={cx - badgeW / 2}
-                      y={y - badgeH - 6}
+                      x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW))}
+                      y={Math.max(6, y - badgeH - 6)}
                       width={badgeW}
                       height={badgeH}
                       rx={badgeH / 2}
@@ -220,7 +220,7 @@ function BarView({ datasets, labels, style }: Omit<Props, 'mode'>) {
                       filter="url(#cmpBarBadgeShadow)"
                     />
                     <text
-                      x={cx}
+                      x={Math.max(6, Math.min((cx - badgeW / 2), 294 - badgeW)) + badgeW / 2}
                       y={y - badgeH / 2 - 6 + 1}
                       textAnchor="middle"
                       dominantBaseline="middle"

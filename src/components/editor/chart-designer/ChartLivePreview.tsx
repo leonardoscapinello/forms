@@ -172,7 +172,7 @@ function ColumnChart({ items, style }: { items: GraphicDataItem[]; style: ChartS
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 50, right: 10, left: -20, bottom: 5 }}>
+        <BarChart data={data} margin={{ top: 58, right: 42, left: 0, bottom: 8 }} style={{ overflow: 'visible' }}>
           <GradientDefs items={items} />
           {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.5} />}
           <XAxis dataKey="name" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
@@ -196,7 +196,7 @@ function HorizontalBarChart({ items, style }: { items: GraphicDataItem[]; style:
   return (
     <div>
       <ResponsiveContainer width="100%" height={Math.max(300, items.length * 50)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 10, right: 60, left: 10, bottom: 10 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 14, right: 120, left: 10, bottom: 10 }} style={{ overflow: 'visible' }}>
           <GradientDefs items={items} />
           {style.showGrid !== false && <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} opacity={0.5} />}
           <XAxis type="number" tick={style.showLabels !== false ? { fontSize: 10, fill: 'hsl(var(--muted-foreground))' } : false} axisLine={false} tickLine={false} />
@@ -231,7 +231,7 @@ function LineChart({ items, style }: { items: GraphicDataItem[]; style: ChartSty
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data} margin={{ top: 50, right: 10, left: -20, bottom: 5 }}>
+        <AreaChart data={data} margin={{ top: 58, right: 42, left: 0, bottom: 8 }} style={{ overflow: 'visible' }}>
           <defs>
             <filter id="tooltipCardShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.08" />
@@ -318,7 +318,7 @@ function PieDonutChart({ items, style }: { items: GraphicDataItem[]; style: Char
   return (
     <div>
       <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
+        <PieChart style={{ overflow: 'visible' }}>
           <GradientDefs items={items} />
           <Pie
             data={data} cx="50%" cy="50%" outerRadius={115} innerRadius={ir} dataKey="value"
