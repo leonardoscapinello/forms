@@ -880,6 +880,8 @@ export default function FormPreview() {
           }
         }
       }
+      // Keep ref in sync immediately to avoid stale saves on fast submit/navigation
+      answersRef.current = next;
       return next;
     });
   }, []);
