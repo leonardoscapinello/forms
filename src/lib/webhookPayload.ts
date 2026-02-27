@@ -147,6 +147,8 @@ export interface BuildWebhookPayloadOptions {
   submittedAt?: string;                  // ISO timestamp
   extraParams?: Record<string, any>;     // static params from node config
   queryParams?: Record<string, string>;  // URL search params
+  sourceUrl?: string;
+  referrer?: string;
 }
 
 export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
@@ -159,6 +161,8 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
     submittedAt,
     extraParams = {},
     queryParams = {},
+    sourceUrl,
+    referrer,
   } = opts;
 
   // Build element lookup
@@ -180,14 +184,15 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
   // User data extracted for PII hashing (email, phone)
   const userData: { email?: string; phone?: string } = {};
 
+  // Rich fields array with question metadata + answer
+  const fields: any[] = [];
+
   for (const [elementId, rawValue] of Object.entries(answers)) {
-    if (elementId.startsWith('__var_') || elementId.startsWith('__webhook_')) continue; // skip internal keys
-    if (elementId.includes('.')) continue; // skip compound sub-keys (used internally for conditions/variables)
+    if (elementId.startsWith('__var_') || elementId.startsWith('__webhook_')) continue;
+    if (elementId.includes('.')) continue;
 
     const element = elementMap[elementId];
     if (!element) continue;
-
-    // Skip non-input elements
     if (!element.type.startsWith('input_')) continue;
 
     const key = element.fieldName || elementId;
@@ -195,6 +200,19 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
 
     typedAnswers[key] = typed;
     rawAnswers[elementId] = rawValue;
+
+    // Build rich field entry
+    fields.push({
+      field_id: elementId,
+      field_name: key,
+      type: element.type.replace('input_', ''),
+      label: element.label || null,
+      placeholder: element.placeholder || null,
+      required: element.required ?? false,
+      value: typed,
+      raw_value: rawValue,
+      options: element.options?.map(o => ({ id: o.id, label: o.label })) || undefined,
+    });
 
     // Extract PII for pixel/CAPI
     if (element.type === 'input_email' && typeof rawValue === 'string') {
@@ -218,16 +236,23 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
   }
 
   const now = new Date().toISOString();
+  const landedAtTs = landedAt || now;
+  const submittedAtTs = submittedAt || now;
+  const totalTimeMs = new Date(submittedAtTs).getTime() - new Date(landedAtTs).getTime();
 
   return {
     payload: {
-      /** Event metadata */
+      /** Event & form metadata */
       event: {
         id: responseId || crypto.randomUUID(),
         form_id: form.id,
         form_name: form.title,
-        landed_at: landedAt || now,
-        submitted_at: submittedAt || now,
+        form_status: form.status,
+        total_pages: (form.pages || []).length,
+        landed_at: landedAtTs,
+        submitted_at: submittedAtTs,
+        total_time_ms: totalTimeMs > 0 ? totalTimeMs : null,
+        total_time_seconds: totalTimeMs > 0 ? Math.round(totalTimeMs / 1000) : null,
       },
 
       /** Respondent context */
@@ -237,20 +262,24 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
         geolocation: respondent.geolocation ?? null,
       },
 
-      /** Typed & named answers */
+      /** Navigation & source */
+      navigation: {
+        source_url: sourceUrl || null,
+        referrer: referrer || null,
+        query_params: queryParams,
+      },
+
+      /** Rich fields with question metadata + answer */
+      fields,
+
+      /** Typed & named answers (flat) */
       answers: typedAnswers,
 
-      /**
-       * Raw answers keyed by element ID.
-       * Useful for debugging or when fieldName was not configured.
-       */
+      /** Raw answers keyed by element ID */
       answers_raw: rawAnswers,
 
       /** Form variables at submission time */
       variables,
-
-      /** URL query parameters captured on load */
-      query_params: queryParams,
 
       /** Static extra params configured on the webhook node */
       meta: Object.keys(extraParams).length > 0 ? extraParams : undefined,

@@ -406,6 +406,8 @@ export default function FormPreview() {
           landedAt: sessionMetaRef.current.landedAt,
           submittedAt: now,
           queryParams: sessionMetaRef.current.queryParams as Record<string, string>,
+          sourceUrl: window.location.href,
+          referrer: sessionMetaRef.current.referrer,
           respondent: {
             user_agent: sessionMetaRef.current.userAgent,
           },
