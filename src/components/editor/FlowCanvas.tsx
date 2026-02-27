@@ -624,7 +624,7 @@ function FlowCanvasInner({
         onNodeClick={(_, node) => {
           const x = (node.position?.x ?? 0) + ((node.measured?.width ?? node.width ?? 200) / 2);
           const y = (node.position?.y ?? 0) + ((node.measured?.height ?? node.height ?? 100) / 2);
-          const zoom = Math.min(Math.max(getZoom(), 0.85), 1.2);
+          const zoom = 1.5;
           setCenter(x, y, { zoom, duration: 400 });
         }}
       >
