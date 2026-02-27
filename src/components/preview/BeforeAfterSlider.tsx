@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { ImageIcon } from 'lucide-react';
 
 interface Props {
@@ -14,8 +14,22 @@ interface Props {
  */
 export default function BeforeAfterSlider({ beforeImage, afterImage, mode }: Props) {
   const [position, setPosition] = useState(50);
+  const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+
+  // Track container width for before image sizing
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    setContainerWidth(containerRef.current.clientWidth);
+    return () => observer.disconnect();
+  }, []);
 
   const updatePosition = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -97,7 +111,7 @@ export default function BeforeAfterSlider({ beforeImage, afterImage, mode }: Pro
         draggable={false}
       />
 
-      {/* Before image (clipped) */}
+      {/* Before image (clipped by width %) */}
       <div
         className="absolute inset-0 overflow-hidden"
         style={{ width: `${position}%` }}
@@ -105,8 +119,8 @@ export default function BeforeAfterSlider({ beforeImage, afterImage, mode }: Pro
         <img
           src={beforeImage}
           alt="Antes"
-          className="absolute inset-0 h-full object-cover"
-          style={{ width: containerRef.current ? `${containerRef.current.offsetWidth}px` : '100vw', maxWidth: 'none' }}
+          className="absolute top-0 left-0 h-full object-cover"
+          style={{ width: containerWidth || '100%', minWidth: containerWidth || '100%', maxWidth: 'none' }}
           draggable={false}
         />
       </div>
