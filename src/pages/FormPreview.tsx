@@ -1095,6 +1095,7 @@ export default function FormPreview() {
       {(() => {
         const pageStyle = form.globalPageStyle || {};
         const paddingX = pageStyle.paddingX ?? 24;
+        const mobilePaddingX = Math.min(paddingX, 16);
         const paddingY = pageStyle.paddingY ?? 32;
         const gap = pageStyle.gap ?? 32;
         const bgColor = pageStyle.backgroundColor || undefined;
@@ -1121,10 +1122,10 @@ export default function FormPreview() {
                 exit="exit"
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="w-full mx-auto my-auto"
-                style={isDefaultScreen ? { maxWidth: 672, padding: '32px 24px' } : {
+                style={isDefaultScreen ? { maxWidth: 672, padding: '32px 16px' } : {
                   maxWidth: 672 + paddingX * 2,
-                  paddingLeft: paddingX,
-                  paddingRight: paddingX,
+                  paddingLeft: `clamp(${mobilePaddingX}px, 4vw, ${paddingX}px)`,
+                  paddingRight: `clamp(${mobilePaddingX}px, 4vw, ${paddingX}px)`,
                   paddingTop: paddingY,
                   paddingBottom: paddingY,
                 }}
@@ -1277,13 +1278,13 @@ export default function FormPreview() {
         if (hasActionButtons) return null;
         const canGoBack = currentPageIndex !== null && (currentPageIndex > 0 || !!form?.showWelcomeScreen);
         return (
-          <div className="fixed bottom-6 right-6 flex flex-col gap-1 z-50">
+          <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 flex flex-col gap-1 z-50">
             {canGoBack && (
               <Button
                 variant="outline"
                 size="icon"
                 onClick={goBack}
-                className="h-9 w-9 rounded-md shadow-md"
+                className="h-11 w-11 md:h-9 md:w-9 rounded-md shadow-md"
                 aria-label="Voltar"
               >
                 <ArrowUp className="h-4 w-4" />
@@ -1294,7 +1295,7 @@ export default function FormPreview() {
               size="icon"
               onClick={goNext}
               disabled={isPageBlocked}
-              className="h-9 w-9 rounded-md shadow-md"
+              className="h-11 w-11 md:h-9 md:w-9 rounded-md shadow-md"
               aria-label="Avançar"
             >
               {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : (
@@ -1477,12 +1478,12 @@ function InteractiveElement({
 
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
-    <div className={`space-y-4 md:space-y-6 ${fieldError ? 'animate-shake' : ''}`}>
-      <div className="flex items-start gap-2 md:gap-3">
-        <span className={`text-lg md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>{stepNumber}</span>
-        <span className={`text-lg md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>→</span>
+    <div className={`space-y-3 md:space-y-6 ${fieldError ? 'animate-shake' : ''}`}>
+      <div className="flex items-start gap-1.5 md:gap-3">
+        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>{stepNumber}</span>
+        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>→</span>
         <div>
-          <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
+          <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
             {t(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
@@ -1491,7 +1492,7 @@ function InteractiveElement({
           )}
         </div>
       </div>
-      <div className="pl-10 md:pl-12 lg:pl-14">
+      <div className="pl-7 md:pl-12 lg:pl-14">
         {content}
         {fieldError && (
           <motion.p
@@ -1651,7 +1652,8 @@ function InteractiveElement({
       const colCount = element.columnCount || 2;
       const cols = element.columnData || [];
       return (
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}>
+        <div className="grid gap-4 mobile-stack-cols" style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}>
+          <style>{`@media (max-width: 640px) { .mobile-stack-cols { grid-template-columns: 1fr !important; } }`}</style>
           {cols.slice(0, colCount).map(col => (
             <div key={col.id} className="space-y-4">
               {col.elements.map((childEl) => (
