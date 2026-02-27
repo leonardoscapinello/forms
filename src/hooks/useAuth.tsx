@@ -23,60 +23,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = useCallback(async (userId: string) => {
-    const [profileRes, roleRes] = await Promise.all([
-      supabase.from('profiles').select('display_name, email, avatar_url').eq('user_id', userId).maybeSingle(),
-      supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
-    ]);
-    if (profileRes.data) setProfile(profileRes.data);
-    if (roleRes.data) setRole(roleRes.data.role as 'admin' | 'user');
+    try {
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from('profiles').select('display_name, email, avatar_url').eq('user_id', userId).maybeSingle(),
+        supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+      ]);
+
+      setProfile(profileRes.data ?? null);
+      setRole((roleRes.data?.role as 'admin' | 'user' | undefined) ?? null);
+    } catch {
+      setProfile(null);
+      setRole(null);
+    }
+  }, []);
+
+  const recoverSession = useCallback(async (): Promise<Session | null> => {
+    const { data: { session: existingSession } } = await supabase.auth.getSession();
+    if (existingSession) return existingSession;
+
+    const { data: refreshed, error } = await supabase.auth.refreshSession();
+    if (error) return null;
+    return refreshed.session ?? null;
   }, []);
 
   useEffect(() => {
     let mounted = true;
 
+    const applySession = async (incomingSession: Session | null, shouldTryRecover = false) => {
+      let resolvedSession = incomingSession;
+
+      if (!resolvedSession && shouldTryRecover) {
+        resolvedSession = await recoverSession();
+      }
+
+      if (!mounted) return;
+
+      setSession(resolvedSession);
+      setUser(resolvedSession?.user ?? null);
+
+      if (resolvedSession?.user) {
+        await fetchUserData(resolvedSession.user.id);
+      } else {
+        setProfile(null);
+        setRole(null);
+      }
+
+      if (mounted) setLoading(false);
+    };
+
     // IMPORTANT: Set up listener FIRST, then get initial session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, nextSession) => {
         if (!mounted) return;
 
         // Ignore INITIAL_SESSION — we handle it via getSession below
         if (event === 'INITIAL_SESSION') return;
 
-        setSession(session);
-        setUser(session?.user ?? null);
+        setLoading(true);
 
-        if (session?.user) {
-          // Defer to avoid Supabase auth deadlock
-          setTimeout(() => {
-            if (mounted) fetchUserData(session.user.id);
-          }, 0);
-        } else if (event === 'SIGNED_OUT') {
-          setProfile(null);
-          setRole(null);
-          setLoading(false);
-        }
+        // Defer to avoid Supabase auth deadlock
+        setTimeout(() => {
+          void applySession(nextSession, !nextSession);
+        }, 0);
       }
     );
 
-    // Get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      } else {
-        setLoading(false);
-      }
+    // Get the initial session (with recovery fallback)
+    setLoading(true);
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      void applySession(session, !session);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, [fetchUserData, recoverSession]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
