@@ -32,31 +32,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    // IMPORTANT: Set up listener FIRST, then get initial session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        if (!mounted) return;
+
+        // Ignore INITIAL_SESSION — we handle it via getSession below
+        if (event === 'INITIAL_SESSION') return;
+
         setSession(session);
         setUser(session?.user ?? null);
+
         if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock
-          setTimeout(() => fetchUserData(session.user.id), 0);
-        } else {
+          // Defer to avoid Supabase auth deadlock
+          setTimeout(() => {
+            if (mounted) fetchUserData(session.user.id);
+          }, 0);
+        } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setRole(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
+    // Get the initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserData(session.user.id);
+        fetchUserData(session.user.id).finally(() => {
+          if (mounted) setLoading(false);
+        });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchUserData]);
 
   const signIn = useCallback(async (email: string, password: string) => {
