@@ -5,11 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { Loader2, Save, Eye, EyeOff, ExternalLink, CheckCircle2, Unplug, Copy } from 'lucide-react';
 
 interface GoogleOAuthConfig {
   clientId: string;
   clientSecret: string;
+  accessToken?: string;
+  refreshToken?: string;
+  tokenExpiry?: string;
+  connectedEmail?: string;
+  connectedAt?: string;
 }
 
 const EMPTY: GoogleOAuthConfig = { clientId: '', clientSecret: '' };
@@ -18,30 +23,62 @@ export default function GoogleOAuthCard() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [settingsId, setSettingsId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [config, setConfig] = useState<GoogleOAuthConfig>(EMPTY);
 
-  useEffect(() => {
-    supabase
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
+
+  const loadSettings = useCallback(async () => {
+    const { data } = await supabase
       .from('integration_settings')
       .select('*')
       .eq('integration_type', 'google_oauth')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setSettingsId(data.id);
-          setIsActive(data.is_active);
-          const cfg = data.config as any;
-          setConfig({
-            clientId: cfg.clientId || '',
-            clientSecret: cfg.clientSecret || '',
-          });
-        }
-        setLoading(false);
+      .maybeSingle();
+    if (data) {
+      setSettingsId(data.id);
+      setIsActive(data.is_active);
+      const cfg = data.config as any;
+      setConfig({
+        clientId: cfg.clientId || '',
+        clientSecret: cfg.clientSecret || '',
+        accessToken: cfg.accessToken,
+        refreshToken: cfg.refreshToken,
+        tokenExpiry: cfg.tokenExpiry,
+        connectedEmail: cfg.connectedEmail,
+        connectedAt: cfg.connectedAt,
       });
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  // Check for OAuth callback result in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('google_oauth');
+    if (result === 'success') {
+      toast({ title: 'Google conectado!', description: 'Autenticação OAuth2 concluída com sucesso.' });
+      loadSettings();
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_oauth');
+      window.history.replaceState({}, '', url.toString());
+    } else if (result === 'error') {
+      const reason = params.get('reason') || 'desconhecido';
+      toast({ title: 'Erro na autenticação', description: `Falha: ${reason}`, variant: 'destructive' });
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_oauth');
+      url.searchParams.delete('reason');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [toast, loadSettings]);
 
   const updateConfig = useCallback((patch: Partial<GoogleOAuthConfig>) => {
     setConfig(prev => ({ ...prev, ...patch }));
@@ -52,7 +89,7 @@ export default function GoogleOAuthCard() {
     const payload = {
       integration_type: 'google_oauth',
       label: 'Google OAuth2',
-      config: config as any,
+      config: { clientId: config.clientId, clientSecret: config.clientSecret, accessToken: config.accessToken, refreshToken: config.refreshToken, tokenExpiry: config.tokenExpiry, connectedEmail: config.connectedEmail, connectedAt: config.connectedAt } as any,
       is_active: isActive,
     };
     if (settingsId) {
@@ -64,6 +101,38 @@ export default function GoogleOAuthCard() {
     toast({ title: 'Salvo', description: 'Credenciais Google OAuth salvas.' });
     setSaving(false);
   }, [config, isActive, settingsId, toast]);
+
+  const handleConnect = useCallback(async () => {
+    // Save first to make sure credentials are persisted
+    await handleSave();
+    setConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('google-oauth-start', {
+        body: { returnUrl: window.location.origin + '/settings' },
+      });
+      if (error || !data?.authUrl) {
+        toast({ title: 'Erro', description: data?.error || 'Não foi possível iniciar autenticação.', variant: 'destructive' });
+        setConnecting(false);
+        return;
+      }
+      // Redirect to Google consent
+      window.location.href = data.authUrl;
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      setConnecting(false);
+    }
+  }, [handleSave, toast]);
+
+  const handleDisconnect = useCallback(async () => {
+    const updated = { clientId: config.clientId, clientSecret: config.clientSecret };
+    setConfig({ ...updated });
+    if (settingsId) {
+      await supabase.from('integration_settings').update({ config: updated as any }).eq('id', settingsId);
+    }
+    toast({ title: 'Desconectado', description: 'Tokens Google removidos.' });
+  }, [config.clientId, config.clientSecret, settingsId, toast]);
+
+  const isConnected = !!config.accessToken;
 
   if (loading) {
     return (
@@ -87,26 +156,72 @@ export default function GoogleOAuthCard() {
           </div>
           <div>
             <h2 className="text-base font-semibold text-foreground">Google OAuth2</h2>
-            <p className="text-xs text-muted-foreground">Credenciais para integração com Google Sheets, Drive, etc.</p>
+            <p className="text-xs text-muted-foreground">Credenciais para Google Sheets, Drive, etc.</p>
           </div>
         </div>
-        <Switch checked={isActive} onCheckedChange={setIsActive} />
+        <div className="flex items-center gap-3">
+          {isConnected && (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Conectado
+            </div>
+          )}
+          <Switch checked={isActive} onCheckedChange={setIsActive} />
+        </div>
       </div>
 
       <div className="p-6 space-y-4">
-        <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-1">
-          <p>
-            Crie um projeto no{' '}
-            <a
-              href="https://console.cloud.google.com/apis/credentials"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline inline-flex items-center gap-1"
+        {/* Connected status */}
+        {isConnected && config.connectedEmail && (
+          <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center justify-between">
+            <div className="text-xs space-y-0.5">
+              <p className="font-medium text-foreground">Conta conectada: <span className="font-mono">{config.connectedEmail}</span></p>
+              {config.connectedAt && (
+                <p className="text-muted-foreground">
+                  Conectado em {new Date(config.connectedAt).toLocaleDateString('pt-BR')}
+                </p>
+              )}
+            </div>
+            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleDisconnect}>
+              <Unplug className="h-3 w-3" />
+              Desconectar
+            </Button>
+          </div>
+        )}
+
+        {/* Instructions */}
+        <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-1.5">
+          <p className="font-medium text-foreground">Como configurar:</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>
+              Acesse o{' '}
+              <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
+                Google Cloud Console <ExternalLink className="h-3 w-3" />
+              </a>
+            </li>
+            <li>Ative a <strong>Google Sheets API</strong> e <strong>Google Drive API</strong></li>
+            <li>Crie credenciais <strong>OAuth 2.0 → Web Application</strong></li>
+            <li>Adicione a URI de redirecionamento abaixo nas <strong>Authorized redirect URIs</strong></li>
+          </ol>
+        </div>
+
+        {/* Redirect URI for copy */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Redirect URI (copie para o Google Console)</Label>
+          <div className="flex gap-2">
+            <Input value={redirectUri} readOnly className="text-xs font-mono bg-muted/30" />
+            <Button
+              variant="outline"
+              size="icon"
+              className="flex-shrink-0"
+              onClick={() => {
+                navigator.clipboard.writeText(redirectUri);
+                toast({ title: 'Copiado!' });
+              }}
             >
-              Google Cloud Console <ExternalLink className="h-3 w-3" />
-            </a>
-          </p>
-          <p>Ative a API do Google Sheets e crie credenciais OAuth2 (Web Application).</p>
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-1.5">
@@ -140,7 +255,21 @@ export default function GoogleOAuthCard() {
         </div>
       </div>
 
-      <div className="flex items-center justify-end px-6 py-4 border-t border-border bg-muted/30 rounded-b-xl">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30 rounded-b-xl">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1.5"
+          disabled={!config.clientId || !config.clientSecret || connecting}
+          onClick={handleConnect}
+        >
+          {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+            </svg>
+          )}
+          {isConnected ? 'Reconectar' : 'Conectar com Google'}
+        </Button>
         <Button size="sm" onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
           Salvar
