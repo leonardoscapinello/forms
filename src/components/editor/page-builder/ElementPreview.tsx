@@ -241,11 +241,12 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'input_address':
     case 'input_number':
     case 'input_document':
+    case 'input_company':
       return withFieldHeader(
         <input
           type="text"
           readOnly
-          placeholder={element.placeholder || (type === 'input_document' ? '000.000.000-00' : 'Digite aqui...')}
+          placeholder={element.placeholder || (type === 'input_document' ? '000.000.000-00' : type === 'input_company' ? '00.000.000/0000-00' : 'Digite aqui...')}
           className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
         />
       );
