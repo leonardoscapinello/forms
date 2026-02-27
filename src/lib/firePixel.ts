@@ -6,6 +6,8 @@
  * Funciona mesmo com AdBlock, bloqueio de JS de terceiros, etc.
  */
 
+import type { PixelEventRecord } from '@/lib/webhookPayload';
+
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pixel-event`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
@@ -129,8 +131,21 @@ export async function fireWebhookWithResponse(opts: FirePixelOptions): Promise<R
  * Tenta client-side (para deduplicação nos ad managers) e garante server-side.
  * Client-side é best-effort — não bloqueia se ausente/bloqueado.
  */
-export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { triggerType?: FirePixelOptions['triggerType'] }): void {
-  if (!isProductionEnvironment()) return; // skip pixels in non-production
+export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { triggerType?: FirePixelOptions['triggerType']; onFired?: (record: PixelEventRecord) => void }): void {
+  if (!isProductionEnvironment()) {
+    // Still record the event even in non-production for webhook tracking
+    opts.onFired?.({
+      platform: opts.platform,
+      event_name: opts.eventName,
+      event_id: opts.eventId,
+      trigger_type: opts.triggerType || 'flow_node',
+      fired_client: false,
+      fired_server: false,
+      fired_at: new Date().toISOString(),
+      custom_params: opts.customParams,
+    });
+    return;
+  }
   // 1. Client-side (best-effort, pode ser bloqueado por AdBlock)
   let firedClient = false;
   if (typeof window !== 'undefined') {
@@ -156,6 +171,18 @@ export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { tr
       }
     } catch (_) {}
   }
+
+  // Record the event for webhook tracking
+  opts.onFired?.({
+    platform: opts.platform,
+    event_name: opts.eventName,
+    event_id: opts.eventId,
+    trigger_type: opts.triggerType || 'flow_node',
+    fired_client: firedClient,
+    fired_server: true, // will be fired below
+    fired_at: new Date().toISOString(),
+    custom_params: opts.customParams,
+  });
 
   // 2. Server-side com retry — SEMPRE, independente do client
   firePixel({ ...opts, firedClient } as FirePixelOptions);
