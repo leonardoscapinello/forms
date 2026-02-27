@@ -9,6 +9,13 @@
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pixel-event`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
+/** Pixels only fire on the published domain — never on preview/localhost/test */
+const PUBLISHED_HOSTS = ['nodecraft-forms.lovable.app'];
+function isProductionEnvironment(): boolean {
+  if (typeof window === 'undefined') return false;
+  return PUBLISHED_HOSTS.includes(window.location.hostname);
+}
+
 interface FirePixelOptions {
   platform: string;
   eventName: string;
@@ -74,6 +81,7 @@ async function callEdgeFunction(body: FirePixelOptions, attempt: number): Promis
  * Máximo 3 tentativas: 0ms → 800ms → 2400ms
  */
 export async function firePixel(opts: FirePixelOptions): Promise<void> {
+  if (opts.platform !== 'webhook' && !isProductionEnvironment()) return; // skip pixels in non-production
   const MAX_ATTEMPTS = 3;
   const BACKOFF_BASE = 800; // ms
 
@@ -122,6 +130,7 @@ export async function fireWebhookWithResponse(opts: FirePixelOptions): Promise<R
  * Client-side é best-effort — não bloqueia se ausente/bloqueado.
  */
 export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { triggerType?: FirePixelOptions['triggerType'] }): void {
+  if (!isProductionEnvironment()) return; // skip pixels in non-production
   // 1. Client-side (best-effort, pode ser bloqueado por AdBlock)
   let firedClient = false;
   if (typeof window !== 'undefined') {
