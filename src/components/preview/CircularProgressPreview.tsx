@@ -61,8 +61,7 @@ export default function CircularProgressPreview({
   const displayNum = useAnimatedCounter(clampedValue, 1200);
 
   const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (displayNum / 100) * circumference;
+  const progressOffset = 100 - displayNum;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -93,8 +92,9 @@ export default function CircularProgressPreview({
             stroke={color}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
+            pathLength={100}
+            strokeDasharray={100}
+            strokeDashoffset={progressOffset}
           />
         </svg>
 
