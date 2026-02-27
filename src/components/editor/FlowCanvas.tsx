@@ -665,35 +665,79 @@ function FlowCanvasInner({
       </ReactFlow>
 
       {/* Node navigation bar */}
-      {focusedNodeId && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-full shadow-lg px-1.5 py-1 z-50">
-          <button
-            onClick={() => navigateNode(-1)}
-            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <span className="text-xs text-muted-foreground px-2 select-none">
-            {(() => {
-              const sorted = [...nodes].sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
-              const idx = sorted.findIndex(n => n.id === focusedNodeId);
-              return `${idx + 1} / ${sorted.length}`;
-            })()}
-          </span>
-          <button
-            onClick={() => navigateNode(1)}
-            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-          <button
-            onClick={() => setFocusedNodeId(null)}
-            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground ml-0.5"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      )}
+      {focusedNodeId && (() => {
+        const sorted = [...nodes].sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0));
+        const idx = sorted.findIndex(n => n.id === focusedNodeId);
+        const prevNode = idx > 0 ? sorted[idx - 1] : null;
+        const nextNode = idx < sorted.length - 1 ? sorted[idx + 1] : null;
+
+        const nodeLabel = (n: typeof sorted[0] | null) => {
+          if (!n) return null;
+          const t = n.type || '';
+          const d = n.data as any;
+          if (t === 'pageNode') return d?.title || 'Página';
+          if (t === 'startNode') return 'Início';
+          if (t === 'endNode') return 'Fim';
+          if (t === 'conditionNode') return 'Condição';
+          if (t === 'variableOpNode') return 'Variável';
+          if (t === 'integrationNode') return 'Integração';
+          if (t === 'analyticsNode') return 'Analytics';
+          return 'Nó';
+        };
+
+        const nodeIcon = (n: typeof sorted[0] | null) => {
+          if (!n) return '·';
+          const t = n.type || '';
+          if (t === 'pageNode') return '📄';
+          if (t === 'startNode') return '▶';
+          if (t === 'endNode') return '⏹';
+          if (t === 'conditionNode') return '🔀';
+          if (t === 'variableOpNode') return '📝';
+          if (t === 'integrationNode') return '🔗';
+          if (t === 'analyticsNode') return '📊';
+          return '○';
+        };
+
+        return (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-card border border-border rounded-full shadow-lg px-2 py-1 z-50">
+            {/* Prev hint */}
+            {prevNode && (
+              <span className="text-[10px] text-muted-foreground/60 px-1.5 truncate max-w-[80px] select-none" title={nodeLabel(prevNode) || ''}>
+                {nodeIcon(prevNode)} {nodeLabel(prevNode)}
+              </span>
+            )}
+            <button
+              onClick={() => navigateNode(-1)}
+              disabled={idx <= 0}
+              className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground disabled:opacity-30"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span className="text-xs text-muted-foreground px-1.5 select-none font-medium">
+              {idx + 1} / {sorted.length}
+            </span>
+            <button
+              onClick={() => navigateNode(1)}
+              disabled={idx >= sorted.length - 1}
+              className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-foreground disabled:opacity-30"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            {/* Next hint */}
+            {nextNode && (
+              <span className="text-[10px] text-muted-foreground/60 px-1.5 truncate max-w-[80px] select-none" title={nodeLabel(nextNode) || ''}>
+                {nodeIcon(nextNode)} {nodeLabel(nextNode)}
+              </span>
+            )}
+            <button
+              onClick={() => setFocusedNodeId(null)}
+              className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground ml-0.5"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        );
+      })()}
 
       {dropMenu && (
         <ConnectDropMenu
