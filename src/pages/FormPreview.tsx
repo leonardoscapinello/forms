@@ -1,38 +1,46 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send } from 'lucide-react';
-import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
-import BeforeAfterSlider from '@/components/preview/BeforeAfterSlider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage, FormData as AppFormData } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
-import PhoneFieldPreview from '@/components/preview/PhoneFieldPreview';
-import EmailDomainSuggestions from '@/components/preview/EmailDomainSuggestions';
-import HeightWeightField from '@/components/preview/HeightWeightField';
-import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
-import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
-import CircularProgressPreview from '@/components/preview/CircularProgressPreview';
 import Twemoji from '@/components/Twemoji';
-import IOSNotification from '@/components/preview/IOSNotification';
-import DateFieldPreview from '@/components/preview/DateFieldPreview';
-import TimerPreview from '@/components/preview/TimerPreview';
-import ListPreview from '@/components/preview/ListPreview';
-import LoadingPreview from '@/components/preview/LoadingPreview';
-import DocumentFieldPreview from '@/components/preview/DocumentFieldPreview';
-import CompanyFieldPreview from '@/components/preview/CompanyFieldPreview';
-import AddressFieldPreview from '@/components/preview/AddressFieldPreview';
-import ProgressBarColumn from '@/components/preview/ProgressBarColumn';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
-import DebugPanel from '@/components/preview/DebugPanel';
 import { buildWebhookPayload } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
+
+// Lazy-loaded heavy preview components — only loaded when the form actually uses them
+const PhoneFieldPreview = lazy(() => import('@/components/preview/PhoneFieldPreview'));
+const EmailDomainSuggestions = lazy(() => import('@/components/preview/EmailDomainSuggestions'));
+const HeightWeightField = lazy(() => import('@/components/preview/HeightWeightField'));
+const ChartLivePreview = lazy(() => import('@/components/editor/chart-designer/ChartLivePreview'));
+const ComparativeChartPreview = lazy(() => import('@/components/preview/charts/ComparativeChartPreview'));
+const CircularProgressPreview = lazy(() => import('@/components/preview/CircularProgressPreview'));
+const IOSNotification = lazy(() => import('@/components/preview/IOSNotification'));
+const DateFieldPreview = lazy(() => import('@/components/preview/DateFieldPreview'));
+const TimerPreview = lazy(() => import('@/components/preview/TimerPreview'));
+const ListPreview = lazy(() => import('@/components/preview/ListPreview'));
+const LoadingPreview = lazy(() => import('@/components/preview/LoadingPreview'));
+const DocumentFieldPreview = lazy(() => import('@/components/preview/DocumentFieldPreview'));
+const CompanyFieldPreview = lazy(() => import('@/components/preview/CompanyFieldPreview'));
+const AddressFieldPreview = lazy(() => import('@/components/preview/AddressFieldPreview'));
+const ProgressBarColumn = lazy(() => import('@/components/preview/ProgressBarColumn'));
+const BeforeAfterSlider = lazy(() => import('@/components/preview/BeforeAfterSlider'));
+const DebugPanel = lazy(() => import('@/components/preview/DebugPanel'));
+// Section previews are lightweight — import directly
+import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
+
+// Wrapper to avoid Suspense boundary per element — shows nothing while loading (instant swap)
+function LazyWrap({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<div className="animate-pulse h-10 rounded bg-muted/30" />}>{children}</Suspense>;
+}
 
 function buildDefaults(form: AppFormData | null) {
   if (!form) return {};
@@ -62,7 +70,7 @@ export default function FormPreview() {
     setPublicLoading(true);
     supabase
       .from('forms')
-      .select('*')
+      .select('id, title, status, data, created_at, updated_at')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
@@ -1043,6 +1051,7 @@ export default function FormPreview() {
   }));
 
   return (
+    <Suspense fallback={null}>
     <div className="min-h-screen bg-background flex flex-col relative">
       {/* Debug panel — only shown when form has variables */}
       {hasVariables && (
@@ -1284,6 +1293,7 @@ export default function FormPreview() {
         );
       })()}
     </div>
+    </Suspense>
   );
 }
 
