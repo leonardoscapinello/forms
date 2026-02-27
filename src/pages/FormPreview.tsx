@@ -22,6 +22,7 @@ import DateFieldPreview from '@/components/preview/DateFieldPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
+import DocumentFieldPreview from '@/components/preview/DocumentFieldPreview';
 import { interpolateText } from '@/lib/variableInterpolation';
 import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
@@ -1379,6 +1380,15 @@ function InteractiveElement({
           placeholder={t(element.placeholder) || 'Digite aqui...'}
           className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
           autoFocus
+        />
+      );
+
+    case 'input_document':
+      return withFieldHeader(
+        <DocumentFieldPreview
+          value={value as any}
+          onChange={onChange}
+          allowedTypes={element.documentAllowedTypes as any}
         />
       );
 

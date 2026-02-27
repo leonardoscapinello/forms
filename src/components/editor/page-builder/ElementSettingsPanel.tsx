@@ -153,6 +153,33 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Document field: allowed types ─── */}
+          {element.type === 'input_document' && (
+            <div className="space-y-2">
+              <Label>Tipos permitidos</Label>
+              <div className="space-y-2">
+                {(['cpf', 'cnpj', 'passport'] as const).map(dt => {
+                  const allowed = element.documentAllowedTypes || ['cpf', 'cnpj', 'passport'];
+                  const checked = allowed.includes(dt);
+                  const labels: Record<string, string> = { cpf: 'CPF', cnpj: 'CNPJ', passport: 'Passaporte' };
+                  return (
+                    <div key={dt} className="flex items-center justify-between">
+                      <Label className="font-normal">{labels[dt]}</Label>
+                      <Switch
+                        checked={checked}
+                        onCheckedChange={v => {
+                          let next = v ? [...allowed, dt] : allowed.filter((t: string) => t !== dt);
+                          if (next.length === 0) next = [dt];
+                          onChange({ documentAllowedTypes: next });
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ─── Date field settings ─── */}
           {element.type === 'input_date' && (
             <>
