@@ -358,6 +358,8 @@ export interface PageElement {
   label?: string;
   placeholder?: string;
   required?: boolean;
+  requiredMessage?: string; // custom "required" error text
+  validationMessage?: string; // custom validation error text (e.g. smart email)
   options?: SelectOption[];
   maxRating?: number;
   smartValidation?: boolean;

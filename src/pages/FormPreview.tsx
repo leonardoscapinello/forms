@@ -88,6 +88,7 @@ export default function FormPreview() {
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
@@ -329,18 +330,24 @@ export default function FormPreview() {
   /** Check that all required fields on the current page have a non-empty value */
   const areRequiredFieldsFilled = useCallback(() => {
     if (!currentPage) return true;
+    const errors: Record<string, string> = {};
     for (const el of currentPage.elements) {
       if (el.required && el.type.startsWith('input_')) {
         const val = answers[el.id];
         if (val === undefined || val === null || val === '' || val === false) {
-          return false;
+          errors[el.id] = el.requiredMessage || 'Preencha este campo';
         }
         // multi_select: require at least one selection
         if (el.type === 'input_multi_select' && Array.isArray(val) && val.length === 0) {
-          return false;
+          errors[el.id] = el.requiredMessage || 'Selecione ao menos uma opção';
         }
       }
     }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return false;
+    }
+    setFieldErrors({});
     return true;
   }, [currentPage, answers]);
 
@@ -676,6 +683,7 @@ export default function FormPreview() {
 
   const goBack = useCallback(() => {
     setDirection(-1);
+    setFieldErrors({});
     if (finished) {
       setFinished(false);
       return;
@@ -688,6 +696,15 @@ export default function FormPreview() {
   }, [currentPageIndex, finished]);
 
   const setAnswer = useCallback((elementId: string, value: any) => {
+    // Clear field error when user provides a value
+    setFieldErrors(prev => {
+      if (prev[elementId]) {
+        const next = { ...prev };
+        delete next[elementId];
+        return next;
+      }
+      return prev;
+    });
     setAnswers(prev => {
       const next = { ...prev, [elementId]: value };
       // Flatten compound field sub-values (e.g. address.street, company.razao_social)
@@ -868,6 +885,7 @@ export default function FormPreview() {
                           onNavigate={handleButtonNavigate}
                           variables={form.variables || []}
                           answers={answers}
+                          fieldError={fieldErrors[el.id]}
                         />
                       );
                     })}
@@ -916,6 +934,7 @@ export default function FormPreview() {
                           onNavigate={handleButtonNavigate}
                           variables={form.variables || []}
                           answers={answers}
+                          fieldError={fieldErrors[el.id]}
                         />
                       );
                     })}
@@ -955,6 +974,7 @@ export default function FormPreview() {
                                   onNavigate={handleButtonNavigate}
                                   variables={form.variables || []}
                                   answers={answers}
+                                  fieldError={fieldErrors[el.id]}
                                 />
                               );
                             })}
@@ -1011,6 +1031,7 @@ function InteractiveElement({
   onNavigate,
   variables = [],
   answers = {},
+  fieldError,
 }: {
   element: PageElement;
   value: any;
@@ -1022,6 +1043,7 @@ function InteractiveElement({
   onNavigate?: (action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => void;
   variables?: FormVariable[];
   answers?: Record<string, any>;
+  fieldError?: string;
 }) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
@@ -1113,14 +1135,14 @@ function InteractiveElement({
 
         if (!val) {
           if (element.required) {
-            setEmailError('E-mail obrigatório');
+            setEmailError(element.requiredMessage || 'E-mail obrigatório');
             return false;
           }
           return true;
         }
 
         if (!emailRegex.test(val)) {
-          setEmailError('E-mail inválido');
+          setEmailError(element.validationMessage || 'E-mail inválido');
           return false;
         }
 
@@ -1163,10 +1185,10 @@ function InteractiveElement({
 
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
-    <div className="space-y-4 md:space-y-6">
+    <div className={`space-y-4 md:space-y-6 ${fieldError ? 'animate-shake' : ''}`}>
       <div className="flex items-start gap-2 md:gap-3">
-        <span className="text-lg md:text-xl lg:text-2xl font-semibold text-primary mt-0.5">{stepNumber}</span>
-        <span className="text-lg md:text-xl lg:text-2xl font-semibold text-primary mt-0.5">→</span>
+        <span className={`text-lg md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>{stepNumber}</span>
+        <span className={`text-lg md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>→</span>
         <div>
           <h2 className="text-lg md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
             {t(element.label) || 'Sem título'}
@@ -1179,6 +1201,16 @@ function InteractiveElement({
       </div>
       <div className="pl-10 md:pl-12 lg:pl-14">
         {content}
+        {fieldError && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-sm text-destructive mt-2 flex items-center gap-1.5"
+          >
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+            {fieldError}
+          </motion.p>
+        )}
       </div>
     </div>
   );
