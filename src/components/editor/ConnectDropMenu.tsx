@@ -1,4 +1,4 @@
-import { FileText, GitBranch, Variable, Webhook, BarChart2 } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare } from 'lucide-react';
 
 interface Props {
   position: { x: number; y: number };
@@ -7,10 +7,11 @@ interface Props {
   onAddVariableOp: () => void;
   onAddIntegration: () => void;
   onAddAnalytics: () => void;
+  onAddWhatsApp: () => void;
   onClose: () => void;
 }
 
-export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onClose }: Props) {
+export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
@@ -93,6 +94,22 @@ export default function ConnectDropMenu({ position, onAddPage, onAddCondition, o
           <div>
             <span className="font-medium text-foreground">Analytics</span>
             <p className="text-[10px] text-muted-foreground">Meta, Google, TikTok, LinkedIn Pixel</p>
+          </div>
+        </button>
+
+        <div className="h-px bg-border my-1.5 mx-3" />
+
+        {/* WhatsApp */}
+        <button
+          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
+          onClick={() => { onAddWhatsApp(); onClose(); }}
+        >
+          <div className="h-8 w-8 rounded-lg bg-node-whatsapp flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="h-4 w-4 text-node-whatsapp-accent" />
+          </div>
+          <div>
+            <span className="font-medium text-foreground">WhatsApp</span>
+            <p className="text-[10px] text-muted-foreground">Enviar mensagem via Evolution API</p>
           </div>
         </button>
       </div>
