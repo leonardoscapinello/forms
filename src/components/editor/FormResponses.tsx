@@ -169,9 +169,10 @@ export default function FormResponses({ form }: Props) {
   }, [rows]);
 
   const exportCSV = useCallback(() => {
-    const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label)];
+    const headers = ['#', 'ID', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label)];
     const csvRows = [headers.join(',')];
     filtered.forEach((row, idx) => {
+      const hash = row.metadata?.response_hash || row.response_id?.slice(0, 8).toUpperCase() || '';
       const status = (row.metadata?.status === 'complete' || !!row.metadata?.submitted_at) ? 'Completa' : 'Parcial';
       const entrada = formatDate(row.metadata?.landed_at || row.created_at);
       const envio = row.metadata?.submitted_at ? formatDate(row.metadata.submitted_at) : '—';
@@ -184,7 +185,7 @@ export default function FormResponses({ form }: Props) {
         const val = row.answers?.[v.key];
         return `"${formatCellValue(val, v.type).replace(/"/g, '""')}"`;
       });
-      csvRows.push([idx + 1, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals, ...varVals].join(','));
+      csvRows.push([idx + 1, hash, status, `"${entrada}"`, `"${envio}"`, `"${duration}"`, ...fieldVals, ...varVals].join(','));
     });
     const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -283,6 +284,7 @@ export default function FormResponses({ form }: Props) {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-12 text-center sticky left-0 bg-muted/50 z-10">#</TableHead>
+                <TableHead className="w-20 font-mono">ID</TableHead>
                 <TableHead className="w-24 sticky left-12 bg-muted/50 z-10">Status</TableHead>
                 <TableHead className="w-36">Entrada</TableHead>
                 <TableHead className="w-36">Envio</TableHead>
@@ -306,6 +308,9 @@ export default function FormResponses({ form }: Props) {
                   <TableRow key={row.id} className="group hover:bg-muted/30">
                     <TableCell className="text-center text-xs text-muted-foreground sticky left-0 bg-background group-hover:bg-muted/30 z-10">
                       {sortDir === 'desc' ? filtered.length - idx : idx + 1}
+                    </TableCell>
+                    <TableCell className="text-xs font-mono text-muted-foreground">
+                      {row.metadata?.response_hash || row.response_id?.slice(0, 8).toUpperCase() || '—'}
                     </TableCell>
                     <TableCell className="sticky left-12 bg-background group-hover:bg-muted/30 z-10">
                       <Badge

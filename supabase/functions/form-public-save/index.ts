@@ -111,8 +111,11 @@ async function appendToSheet(supabase: any, formId: string, payload: Record<stri
     const answers = payload.answers as any;
     const isComplete = metadata?.status === 'complete' || !!metadata?.submitted_at;
 
+    const responseHash = metadata?.response_hash || (payload.response_id as string || '').slice(0, 8).toUpperCase();
+
     const row = [
       rowNum,
+      responseHash,
       isComplete ? 'Completa' : 'Parcial',
       formatDate(metadata?.landed_at || new Date().toISOString()),
       metadata?.submitted_at ? formatDate(metadata.submitted_at) : '',
