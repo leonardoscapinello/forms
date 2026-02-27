@@ -7,34 +7,15 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
 import { Loader2 } from "lucide-react";
+import FormPreview from "./pages/FormPreview";
 
-// Detect public form route EARLY — before any lazy imports
-const IS_PUBLIC_FORM = typeof window !== 'undefined' && /^\/f\//.test(window.location.pathname);
-
-// For public form: EAGER import (no Suspense delay). For others: lazy.
-const FormPreviewEager = IS_PUBLIC_FORM ? null : null; // placeholder
-const FormPreviewImport = IS_PUBLIC_FORM
-  ? import("./pages/FormPreview") // starts immediately, resolved by the time React renders
-  : null;
-
-// Lazy-loaded pages — each becomes its own chunk
+// Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const FormEditor = lazy(() => import("./pages/FormEditor"));
-const FormPreviewLazy = lazy(() => import("./pages/FormPreview"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AppLayout = lazy(() => import("./components/AppLayout"));
-
-// Prefetch preview chunk in background for non-public routes
-if (!IS_PUBLIC_FORM && typeof window !== 'undefined') {
-  const prefetch = () => { import("./pages/FormPreview"); };
-  if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(prefetch, { timeout: 2000 });
-  } else {
-    setTimeout(prefetch, 100);
-  }
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +24,7 @@ const queryClient = new QueryClient({
       gcTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
       retry: 1,
-      networkMode: 'offlineFirst',
+      networkMode: "offlineFirst",
     },
   },
 });
@@ -83,29 +64,15 @@ function LegacyPreviewRedirect() {
   return <Navigate to={id ? `/f/${id}` : "/"} replace />;
 }
 
-// Eager public form component — resolves the already-started import
-import { useState } from "react";
-
-function EagerFormPreview() {
-  const [Component, setComponent] = useState<React.ComponentType | null>(null);
-
-  useEffect(() => {
-    if (FormPreviewImport) {
-      FormPreviewImport.then(mod => setComponent(() => mod.default));
-    }
-  }, []);
-
-  if (!Component) return null; // index.html skeleton is still visible
-  return <Component />;
-}
-
 const App = () => {
-  // Public form route: ZERO providers — no auth, no store, no query client
-  if (IS_PUBLIC_FORM) {
+  const isPublicFormPath = typeof window !== "undefined" && /^\/f\//.test(window.location.pathname);
+
+  // Public form route: no heavy providers, no extra suspense loaders
+  if (isPublicFormPath) {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/f/:id" element={<EagerFormPreview />} />
+          <Route path="/f/:id" element={<FormPreview />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
@@ -127,7 +94,7 @@ const App = () => {
                   <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
                   <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
-                  <Route path="/f/:id" element={<Suspense fallback={null}><FormPreviewLazy /></Suspense>} />
+                  <Route path="/f/:id" element={<FormPreview />} />
                   <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
                   <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
                   <Route path="*" element={<NotFound />} />

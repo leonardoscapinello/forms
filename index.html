@@ -13,32 +13,13 @@
     <!-- Non-blocking font load -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-    <!-- Inline critical skeleton — form skeleton for /f/ routes, spinner for others -->
     <style>
-      #root:empty { display:flex;align-items:center;justify-content:center;min-height:100vh;background:hsl(30 20% 98%); }
-      @media(prefers-color-scheme:dark){ #root:empty{background:hsl(220 18% 10%);} }
-      /* Default: spinner for non-form routes */
-      #root:empty::after { content:'';width:24px;height:24px;border:2px solid hsl(0 0% 80%);border-top-color:hsl(0 0% 40%);border-radius:50%;animation:sp .6s linear infinite; }
-      @keyframes sp{to{transform:rotate(360deg)}}
-      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-      /* Form skeleton for /f/ routes — injected by inline script below */
-      .form-skeleton{display:none;flex-direction:column;gap:1.5rem;width:100%;max-width:32rem;padding:0 1.5rem;animation:pulse 1.5s ease-in-out infinite}
-      .form-skeleton .sk{border-radius:.5rem;background:hsl(30 10% 90%)}
-      @media(prefers-color-scheme:dark){.form-skeleton .sk{background:hsl(220 14% 20%)}}
-      .form-skeleton.active{display:flex}
-      #root:empty:has(.form-skeleton.active)::after{display:none}
-    </style>
-    <script>
-      // If on /f/ route, inject form skeleton immediately (no JS bundle needed)
-      if(/^\/f\//.test(location.pathname)){
-        document.addEventListener('DOMContentLoaded',function(){
-          var r=document.getElementById('root');
-          if(r&&!r.children.length){
-            r.innerHTML='<div class="form-skeleton active"><div class="sk" style="height:1.75rem;width:60%"></div><div class="sk" style="height:1rem;width:80%;opacity:.7"></div><div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem"><div class="sk" style="height:.875rem;width:6rem;opacity:.6"></div><div class="sk" style="height:3rem;width:100%;opacity:.5;border-radius:.75rem"></div></div><div style="display:flex;flex-direction:column;gap:.5rem"><div class="sk" style="height:.875rem;width:8rem;opacity:.6"></div><div class="sk" style="height:3rem;width:100%;opacity:.5;border-radius:.75rem"></div></div><div class="sk" style="height:2.75rem;width:100%;opacity:.4;border-radius:.75rem;margin-top:.5rem"></div></div>';
-          }
-        });
+      html, body, #root { min-height: 100%; }
+      body { margin: 0; background: hsl(30 20% 98%); }
+      @media (prefers-color-scheme: dark) {
+        body { background: hsl(220 18% 10%); }
       }
-    </script>
+    </style>
   </head>
   <body>
     <div id="root"></div>
