@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useFormStore } from '@/hooks/useFormStore';
+import { useFormStoreSafe } from '@/hooks/useFormStore';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -59,10 +59,10 @@ function buildDefaults(form: AppFormData | null) {
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getForm } = useFormStore();
+  const store = useFormStoreSafe();
 
   // Try to get form from store first (when editor is open), otherwise fetch publicly
-  const storeForm = getForm(id!);
+  const storeForm = store?.getForm(id!) ?? null;
   const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
   const [publicLoading, setPublicLoading] = useState(!storeForm);
 

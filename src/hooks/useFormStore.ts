@@ -261,3 +261,8 @@ export function useFormStore() {
   if (!ctx) throw new Error('useFormStore must be used within FormStoreProvider');
   return ctx;
 }
+
+/** Safe version that returns null when no provider exists (e.g. public form route) */
+export function useFormStoreSafe() {
+  return useContext(FormStoreContext);
+}

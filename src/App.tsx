@@ -77,32 +77,57 @@ function LegacyPreviewRedirect() {
   return <Navigate to={id ? `/f/${id}` : "/"} replace />;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <FormStoreProvider>
-        <TooltipProvider delayDuration={300}>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-                <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
-                <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
-                <Route path="/f/:id" element={<FormPreview />} />
-                <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
-                <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </FormStoreProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+// Lightweight wrapper for public form — skips AuthProvider/FormStoreProvider
+function PublicFormRoute() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <FormPreview />
+    </Suspense>
+  );
+}
+
+const App = () => {
+  const isPublicForm = typeof window !== 'undefined' && /^\/f\//.test(window.location.pathname);
+
+  // Public form route: minimal providers (no auth, no form store, no tooltip)
+  if (isPublicForm) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/f/:id" element={<PublicFormRoute />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <FormStoreProvider>
+          <TooltipProvider delayDuration={300}>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+                  <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+                  <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
+                  <Route path="/f/:id" element={<FormPreview />} />
+                  <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
+                  <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </TooltipProvider>
+        </FormStoreProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
