@@ -318,6 +318,7 @@ function FlowCanvasInner({
           nodeData: an,
           onChange: (patch: Partial<AnalyticsNodeData>) => onAnalyticsChange(an.id, patch),
           onDelete: () => onAnalyticsDelete(an.id),
+          form,
         },
       });
     });

@@ -1,7 +1,8 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Facebook, BarChart3, Music2, Linkedin, Trash2, BarChart2, Plus, Settings, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { AnalyticsNodeData, AnalyticsPlatform, PixelEventType, AnalyticsPlatformEntry } from '@/types/form';
+import { Facebook, BarChart3, Music2, Linkedin, Trash2, BarChart2, Plus, Settings, Check, X, ChevronDown, ChevronUp, User, Mail, Phone } from 'lucide-react';
+import { AnalyticsNodeData, AnalyticsPlatform, PixelEventType, AnalyticsPlatformEntry, UserDataMapping, FormData as AppFormData } from '@/types/form';
+import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -66,20 +67,83 @@ function migrateNode(nodeData: AnalyticsNodeData): AnalyticsPlatformEntry[] {
   return defaults;
 }
 
+// ── Helper: extract all input elements from form ──────────────────────────────
+
+function extractInputElements(form?: AppFormData): { id: string; label: string; type: string }[] {
+  if (!form) return [];
+  const els: { id: string; label: string; type: string }[] = [];
+  for (const page of form.pages || []) {
+    for (const el of page.elements || []) {
+      if (el.type?.startsWith('input_')) {
+        els.push({
+          id: el.id,
+          label: el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '),
+          type: el.type,
+        });
+      }
+    }
+  }
+  return els;
+}
+
+function FieldSelector({ label, icon: Icon, value, elements, filterTypes, onChange }: {
+  label: string;
+  icon: React.ElementType;
+  value?: string;
+  elements: { id: string; label: string; type: string }[];
+  filterTypes?: string[];
+  onChange: (val: string) => void;
+}) {
+  const filtered = filterTypes ? elements.filter(e => filterTypes.includes(e.type)) : elements;
+  const allOptions = [...filtered];
+  // Add non-matching elements as "other" options
+  if (filterTypes) {
+    const others = elements.filter(e => !filterTypes.includes(e.type));
+    allOptions.push(...others);
+  }
+
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+        <Icon className="h-3 w-3" />
+        {label}
+      </label>
+      <Select value={value || '__auto__'} onValueChange={v => onChange(v === '__auto__' ? '' : v)}>
+        <SelectTrigger className="h-7 text-xs">
+          <SelectValue placeholder="Auto-detectar" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__auto__" className="text-xs text-muted-foreground">Auto-detectar (primeiro encontrado)</SelectItem>
+          <SelectItem value="__none__" className="text-xs text-muted-foreground">Não enviar</SelectItem>
+          {allOptions.map(el => (
+            <SelectItem key={el.id} value={el.id} className="text-xs">
+              {el.label}
+              <span className="ml-1 text-muted-foreground text-[10px]">({el.type.replace('input_', '')})</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 // ── Platform Detail Modal ─────────────────────────────────────────────────────
 
 function PlatformDetailModal({
   entry,
   onClose,
   onChange,
+  formElements,
 }: {
   entry: AnalyticsPlatformEntry;
   onClose: () => void;
   onChange: (patch: Partial<AnalyticsPlatformEntry>) => void;
+  formElements: { id: string; label: string; type: string }[];
 }) {
   const cfg = ANALYTICS_PLATFORMS.find(p => p.value === entry.platform)!;
   const Icon = cfg.icon;
   const params = entry.customParams || [];
+  const mapping = entry.userDataMapping || {};
 
   const addParam = () => onChange({
     customParams: [...params, { id: crypto.randomUUID(), key: '', value: '' }],
@@ -91,6 +155,10 @@ function PlatformDetailModal({
 
   const removeParam = (id: string) => {
     onChange({ customParams: params.filter(p => p.id !== id) });
+  };
+
+  const updateMapping = (patch: Partial<UserDataMapping>) => {
+    onChange({ userDataMapping: { ...mapping, ...patch } });
   };
 
   return (
@@ -129,6 +197,42 @@ function PlatformDetailModal({
                 className="h-8 text-xs mt-1.5"
               />
             )}
+          </div>
+
+          {/* Lead data mapping */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Dados do lead
+            </label>
+            <p className="text-[10px] text-muted-foreground -mt-1">
+              Selecione quais campos enviar como dados do lead para a plataforma.
+            </p>
+            <div className="space-y-1.5 bg-muted/30 rounded-lg p-2.5">
+              <FieldSelector
+                label="E-mail"
+                icon={Mail}
+                value={mapping.emailElementId}
+                elements={formElements}
+                filterTypes={['input_email']}
+                onChange={v => updateMapping({ emailElementId: v })}
+              />
+              <FieldSelector
+                label="Telefone"
+                icon={Phone}
+                value={mapping.phoneElementId}
+                elements={formElements}
+                filterTypes={['input_phone']}
+                onChange={v => updateMapping({ phoneElementId: v })}
+              />
+              <FieldSelector
+                label="Nome"
+                icon={User}
+                value={mapping.nameElementId}
+                elements={formElements}
+                filterTypes={['input_short_text', 'input_text', 'input_contact_name']}
+                onChange={v => updateMapping({ nameElementId: v })}
+              />
+            </div>
           </div>
 
           {/* Custom params */}
@@ -188,11 +292,13 @@ interface AnalyticsNodeProps {
   nodeData: AnalyticsNodeData;
   onChange: (patch: Partial<AnalyticsNodeData>) => void;
   onDelete: () => void;
+  form?: AppFormData;
 }
 
 function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProps }) {
-  const { nodeData, onChange, onDelete } = data;
+  const { nodeData, onChange, onDelete, form } = data;
   const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
+  const formElements = useMemo(() => extractInputElements(form), [form]);
 
   const platforms = migrateNode(nodeData);
   const enabledCount = platforms.filter(p => p.enabled).length;
@@ -307,6 +413,7 @@ function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProp
           entry={editingEntry}
           onClose={() => setEditingPlatformId(null)}
           onChange={(patch) => updateEntry(editingEntry.id, patch)}
+          formElements={formElements}
         />
       )}
     </TooltipProvider>

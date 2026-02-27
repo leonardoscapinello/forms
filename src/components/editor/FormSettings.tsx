@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { FormData, FormPixelEvent, AnalyticsPlatform, PixelEventType, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
+import { useState, useMemo } from 'react';
+import { FormData, FormPixelEvent, AnalyticsPlatform, PixelEventType, TrackedParam, DEFAULT_TRACKED_PARAMS, UserDataMapping } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2 } from 'lucide-react';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Props {
   form: FormData;
@@ -33,7 +33,62 @@ const LOAD_EVENTS: { value: PixelEventType | 'PageView'; label: string }[] = [
   { value: 'custom',               label: 'Evento customizado...' },
 ];
 
+function LeadFieldSelector({ label, icon: Icon, value, elements, filterTypes, onChange }: {
+  label: string;
+  icon: React.ElementType;
+  value?: string;
+  elements: { id: string; label: string; type: string }[];
+  filterTypes?: string[];
+  onChange: (val: string) => void;
+}) {
+  const filtered = filterTypes ? elements.filter(e => filterTypes.includes(e.type)) : elements;
+  const allOptions = filterTypes
+    ? [...filtered, ...elements.filter(e => !filterTypes.includes(e.type))]
+    : elements;
+
+  return (
+    <div className="space-y-0.5">
+      <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+        <Icon className="h-3 w-3" />
+        {label}
+      </label>
+      <Select value={value || '__auto__'} onValueChange={v => onChange(v === '__auto__' ? '' : v)}>
+        <SelectTrigger className="h-7 text-xs">
+          <SelectValue placeholder="Auto-detectar" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__auto__" className="text-xs text-muted-foreground">Auto-detectar (primeiro)</SelectItem>
+          <SelectItem value="__none__" className="text-xs text-muted-foreground">Não enviar</SelectItem>
+          {allOptions.map(el => (
+            <SelectItem key={el.id} value={el.id} className="text-xs">
+              {el.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 export default function FormSettings({ form, onUpdate }: Props) {
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+
+  const formElements = useMemo(() => {
+    const els: { id: string; label: string; type: string }[] = [];
+    for (const page of form.pages || []) {
+      for (const el of page.elements || []) {
+        if (el.type?.startsWith('input_')) {
+          els.push({
+            id: el.id,
+            label: el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '),
+            type: el.type,
+          });
+        }
+      }
+    }
+    return els;
+  }, [form.pages]);
+
   const events: FormPixelEvent[] = form.pixelLoadEvents || [];
   const trackedParams: TrackedParam[] = form.trackedParams || DEFAULT_TRACKED_PARAMS;
 
@@ -268,6 +323,47 @@ export default function FormSettings({ form, onUpdate }: Props) {
                         />
                       </div>
                     )}
+
+                    {/* Lead data mapping (collapsible) */}
+                    <div>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                        onClick={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
+                      >
+                        {expandedEventId === event.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        <User className="h-3 w-3" />
+                        Dados do lead
+                      </button>
+                      {expandedEventId === event.id && (
+                        <div className="mt-2 space-y-1.5 bg-muted/30 rounded-lg p-2.5">
+                          <LeadFieldSelector
+                            label="E-mail"
+                            icon={Mail}
+                            value={event.userDataMapping?.emailElementId}
+                            elements={formElements}
+                            filterTypes={['input_email']}
+                            onChange={v => updateEvent(event.id, { userDataMapping: { ...event.userDataMapping, emailElementId: v } })}
+                          />
+                          <LeadFieldSelector
+                            label="Telefone"
+                            icon={Phone}
+                            value={event.userDataMapping?.phoneElementId}
+                            elements={formElements}
+                            filterTypes={['input_phone']}
+                            onChange={v => updateEvent(event.id, { userDataMapping: { ...event.userDataMapping, phoneElementId: v } })}
+                          />
+                          <LeadFieldSelector
+                            label="Nome"
+                            icon={User}
+                            value={event.userDataMapping?.nameElementId}
+                            elements={formElements}
+                            filterTypes={['input_short_text', 'input_text']}
+                            onChange={v => updateEvent(event.id, { userDataMapping: { ...event.userDataMapping, nameElementId: v } })}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}

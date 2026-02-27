@@ -27,7 +27,7 @@ interface FirePixelOptions {
   triggerType?: 'load_event' | 'flow_node';
   answers?: Record<string, any>;
   variables?: Record<string, any>;
-  userData?: { email?: string; phone?: string };
+  userData?: { email?: string; phone?: string; name?: string };
   sourceUrl?: string;
   userAgent?: string;
   customParams?: Record<string, any>;
