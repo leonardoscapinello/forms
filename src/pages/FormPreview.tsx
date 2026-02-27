@@ -2022,34 +2022,31 @@ function InteractiveElement({
     case 'input_nps': {
       const max = element.maxRating || 10;
       const current = value ?? -1;
-      const detractorColor = element.npsDetractorColor || '#ef4444';
-      const passiveColor = element.npsPassiveColor || '#f59e0b';
-      const promoterColor = element.npsPromoterColor || '#22c55e';
-      const detractorLabel = element.npsDetractorLabel || '😟 Detrator';
-      const passiveLabel = element.npsPassiveLabel || '😐 Neutro';
-      const promoterLabel = element.npsPromoterLabel || '😍 Promotor';
+      const scoreColors = element.npsScoreColors || [];
+      const scoreLabels = element.npsScoreLabels || [];
       const dragHint = element.npsDragHint || 'Arraste para escolher sua nota';
 
-      const getNpsColor = (i: number, maxVal: number) => {
-        const ratio = i / maxVal;
-        if (ratio <= 0.6) return detractorColor;
-        if (ratio <= 0.8) return passiveColor;
-        return promoterColor;
-      };
-      const getNpsLabel = (i: number, maxVal: number) => {
-        const ratio = i / maxVal;
-        if (ratio <= 0.6) return detractorLabel;
-        if (ratio <= 0.8) return passiveLabel;
-        return promoterLabel;
-      };
-      const npsSliderColor = current >= 0 ? getNpsColor(current, max) : 'hsl(var(--border))';
+      const defaultColor = (i: number) => { const r = i / max; return r <= 0.6 ? '#ef4444' : r <= 0.8 ? '#f59e0b' : '#22c55e'; };
+      const defaultLabel = (i: number) => { const r = i / max; return r <= 0.6 ? '😟 Detrator' : r <= 0.8 ? '😐 Neutro' : '😍 Promotor'; };
+      const getNpsColor = (i: number) => scoreColors[i] || defaultColor(i);
+      const getNpsLabel = (i: number) => scoreLabels[i] || defaultLabel(i);
+      const npsSliderColor = current >= 0 ? getNpsColor(current) : 'hsl(var(--border))';
+
+      // Build gradient stops from per-score colors
+      const gradientStops = Array.from({ length: max + 1 }, (_, i) => {
+        const pct = (i / max) * 100;
+        const nextPct = ((i + 1) / max) * 100;
+        const c = getNpsColor(i);
+        return `${c} ${pct}%, ${c} ${Math.min(nextPct, 100)}%`;
+      }).join(', ');
+
       return withFieldHeader(
         <div className="space-y-2">
           {/* Desktop: blocos */}
           <div className="hidden sm:flex gap-1">
             {Array.from({ length: max + 1 }).map((_, i) => {
               const isSelected = current === i;
-              const color = getNpsColor(i, max);
+              const color = getNpsColor(i);
               return (
                 <motion.button
                   key={i}
@@ -2093,7 +2090,7 @@ function InteractiveElement({
                   className="text-xs font-medium"
                   style={{ color: npsSliderColor }}
                 >
-                  {getNpsLabel(current, max)}
+                  {getNpsLabel(current)}
                 </motion.span>
               )}
             </div>
@@ -2102,7 +2099,7 @@ function InteractiveElement({
             <div className="relative px-1">
               {/* Gradient track background */}
               <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-3 rounded-full overflow-hidden"
-                style={{ background: `linear-gradient(to right, ${detractorColor} 0%, ${detractorColor} 60%, ${passiveColor} 60%, ${passiveColor} 80%, ${promoterColor} 80%, ${promoterColor} 100%)`, opacity: 0.2 }}
+                style={{ background: `linear-gradient(to right, ${gradientStops})`, opacity: 0.2 }}
               />
               <input
                 type="range"

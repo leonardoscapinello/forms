@@ -384,12 +384,10 @@ export interface PageElement {
   ratingInactiveColor?: string;
   npsLowLabel?: string;
   npsHighLabel?: string;
-  npsDetractorLabel?: string;
-  npsPassiveLabel?: string;
-  npsPromoterLabel?: string;
-  npsDetractorColor?: string;
-  npsPassiveColor?: string;
-  npsPromoterColor?: string;
+  /** Per-score colors — array indexed by score value (0..maxRating). Falls back to band defaults. */
+  npsScoreColors?: string[];
+  /** Per-score labels — array indexed by score value (0..maxRating). Shown on mobile when selected. */
+  npsScoreLabels?: string[];
   npsDragHint?: string;
   // Loading element properties
   loadingStyle?: LoadingStyle;
