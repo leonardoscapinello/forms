@@ -2022,11 +2022,25 @@ function InteractiveElement({
     case 'input_nps': {
       const max = element.maxRating || 10;
       const current = value ?? -1;
+      const detractorColor = element.npsDetractorColor || '#ef4444';
+      const passiveColor = element.npsPassiveColor || '#f59e0b';
+      const promoterColor = element.npsPromoterColor || '#22c55e';
+      const detractorLabel = element.npsDetractorLabel || '😟 Detrator';
+      const passiveLabel = element.npsPassiveLabel || '😐 Neutro';
+      const promoterLabel = element.npsPromoterLabel || '😍 Promotor';
+      const dragHint = element.npsDragHint || 'Arraste para escolher sua nota';
+
       const getNpsColor = (i: number, maxVal: number) => {
         const ratio = i / maxVal;
-        if (ratio <= 0.6) return '#ef4444';
-        if (ratio <= 0.8) return '#f59e0b';
-        return '#22c55e';
+        if (ratio <= 0.6) return detractorColor;
+        if (ratio <= 0.8) return passiveColor;
+        return promoterColor;
+      };
+      const getNpsLabel = (i: number, maxVal: number) => {
+        const ratio = i / maxVal;
+        if (ratio <= 0.6) return detractorLabel;
+        if (ratio <= 0.8) return passiveLabel;
+        return promoterLabel;
       };
       const npsSliderColor = current >= 0 ? getNpsColor(current, max) : 'hsl(var(--border))';
       return withFieldHeader(
@@ -2056,7 +2070,7 @@ function InteractiveElement({
           </div>
           {/* Mobile: slider com visual aprimorado */}
           <div className="flex sm:hidden flex-col gap-1">
-            {/* Valor grande com emoji e animação */}
+            {/* Valor grande com label e animação */}
             <div className="flex flex-col items-center gap-1 py-3">
               <motion.div
                 key={current}
@@ -2079,7 +2093,7 @@ function InteractiveElement({
                   className="text-xs font-medium"
                   style={{ color: npsSliderColor }}
                 >
-                  {current / max <= 0.6 ? '😟 Detrator' : current / max <= 0.8 ? '😐 Neutro' : '😍 Promotor'}
+                  {getNpsLabel(current, max)}
                 </motion.span>
               )}
             </div>
@@ -2088,7 +2102,7 @@ function InteractiveElement({
             <div className="relative px-1">
               {/* Gradient track background */}
               <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-3 rounded-full overflow-hidden"
-                style={{ background: 'linear-gradient(to right, #ef4444 0%, #ef4444 60%, #f59e0b 60%, #f59e0b 80%, #22c55e 80%, #22c55e 100%)' , opacity: 0.2 }}
+                style={{ background: `linear-gradient(to right, ${detractorColor} 0%, ${detractorColor} 60%, ${passiveColor} 60%, ${passiveColor} 80%, ${promoterColor} 80%, ${promoterColor} 100%)`, opacity: 0.2 }}
               />
               <input
                 type="range"
@@ -2131,7 +2145,7 @@ function InteractiveElement({
                 className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-2"
               >
                 <span>👆</span>
-                <span>Arraste para escolher sua nota</span>
+                <span>{dragHint}</span>
               </motion.div>
             )}
           </div>
