@@ -683,7 +683,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   if (!hasBoxStyle && !hasContainerStyle) return <>{content}</>;
 
   return (
-    <div style={{ ...containerStyle, ...boxStyle }}>
+    <div style={{ ...containerStyle, ...boxStyle, overflow: 'visible' }}>
       {content}
     </div>
   );

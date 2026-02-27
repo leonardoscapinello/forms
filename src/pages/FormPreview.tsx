@@ -1185,7 +1185,7 @@ function InteractiveElement({
 
   const wrapWithStyle = (content: React.ReactNode) => {
     if (!hasWrapperStyle) return content;
-    return <div style={{ ...containerStyle, ...boxStyle }}>{content}</div>;
+    return <div style={{ ...containerStyle, ...boxStyle, overflow: 'visible' }}>{content}</div>;
   };
 
   switch (type) {
