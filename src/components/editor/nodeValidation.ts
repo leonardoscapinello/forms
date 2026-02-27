@@ -21,7 +21,14 @@ export function validateConditionNode(branches: ConditionBranch[], variables: Fo
       continue;
     }
     for (const rule of rules) {
-      if (rule.subjectType === 'variable') {
+      if (rule.subjectType === 'webhook_response') {
+        if (!rule.webhookNodeId) {
+          errors.push(`Caminho "${branch.label}": webhook não escolhido`);
+        }
+        if (!rule.webhookResponsePath) {
+          errors.push(`Caminho "${branch.label}": campo do webhook não escolhido`);
+        }
+      } else if (rule.subjectType === 'variable') {
         if (!rule.variableId) {
           errors.push(`Caminho "${branch.label}": variável não escolhida`);
         }

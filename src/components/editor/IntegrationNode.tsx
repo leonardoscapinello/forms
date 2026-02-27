@@ -77,7 +77,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; status?: number; body?: any; error?: string } | null>(null);
-  const [responsePaths, setResponsePaths] = useState<string[]>([]);
+  const [responsePaths, setResponsePaths] = useState<string[]>(nodeData.responseFields || []);
 
   const handleTest = useCallback(async () => {
     if (!nodeData.webhookUrl) return;
@@ -119,6 +119,8 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
       if (typeof body === 'object' && body !== null) {
         const paths = flattenPaths(body);
         setResponsePaths(paths);
+        // Persist response schema in node data for future reference
+        onChange({ responseFields: paths, lastTestResponse: body });
       }
     } catch (err: any) {
       setTestResult({ ok: false, error: err.message || 'Erro de rede' });

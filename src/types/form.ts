@@ -185,14 +185,18 @@ export type ConditionOperator =
 
 export type LogicOperator = 'and' | 'or';
 
-/** A single rule: "question/variable X operator value" */
+/** A single rule: "question/variable/webhook X operator value" */
 export interface ConditionRule {
   id: string;
-  /** 'question' = compare a form question answer; 'variable' = compare a form variable value */
-  subjectType?: 'question' | 'variable';
+  /** 'question' = compare a form question answer; 'variable' = compare a form variable value; 'webhook_response' = compare a webhook response field */
+  subjectType?: 'question' | 'variable' | 'webhook_response';
   questionId: string;
   /** When subjectType === 'variable': the variable ID to compare */
   variableId?: string;
+  /** When subjectType === 'webhook_response': the integration node ID */
+  webhookNodeId?: string;
+  /** When subjectType === 'webhook_response': the dot-notation path in the response */
+  webhookResponsePath?: string;
   operator: ConditionOperator;
   value: string;
   /** How this rule connects to the previous item (ignored for the first rule) */
@@ -293,6 +297,10 @@ export interface IntegrationNodeData {
   webhookParams?: WebhookParam[];
   /** Map response fields back to form variables */
   responseMappings?: WebhookResponseMapping[];
+  /** Persisted: flattened dot-notation paths from the last successful test */
+  responseFields?: string[];
+  /** Persisted: sample response body from the last successful test (for previews) */
+  lastTestResponse?: any;
 }
 
 /** A single platform config inside an analytics node */

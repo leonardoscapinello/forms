@@ -1,9 +1,23 @@
 import { ConditionGroup, ConditionRule, ConditionBranch, ConditionNodeData, FormData, FormVariable } from '@/types/form';
 
+/** Get a value from an object using dot/bracket path */
+function getNestedValue(obj: any, path: string): any {
+  const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+  return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+}
+
 /**
- * Resolves the subject value for a rule — either a question answer or a variable value.
+ * Resolves the subject value for a rule — either a question answer, variable value, or webhook response field.
  */
 function resolveSubjectValue(rule: ConditionRule, answers: Record<string, any>, variables?: FormVariable[]): string {
+  if (rule.subjectType === 'webhook_response' && rule.webhookNodeId && rule.webhookResponsePath) {
+    const webhookData = answers[`__webhook_${rule.webhookNodeId}`];
+    if (webhookData) {
+      const val = getNestedValue(webhookData, rule.webhookResponsePath);
+      return val !== undefined && val !== null ? String(val) : '';
+    }
+    return '';
+  }
   if (rule.subjectType === 'variable' && rule.variableId && variables) {
     const variable = variables.find(v => v.id === rule.variableId);
     if (variable) {
