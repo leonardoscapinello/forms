@@ -1,15 +1,43 @@
-import { memo } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Webhook, Trash2, Plus, X, ArrowDownToLine } from 'lucide-react';
-import { IntegrationNodeData, IntegrationPlatform, WebhookParam, WebhookResponseMapping } from '@/types/form';
+import { Webhook, Trash2, Plus, X, ArrowDownToLine, Play, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { IntegrationNodeData, WebhookParam, WebhookResponseMapping } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const WEBHOOK_METHODS = ['GET', 'POST', 'PUT', 'PATCH'] as const;
+
+/** Recursively flatten a JSON object into dot-notation paths */
+function flattenPaths(obj: any, prefix = ''): string[] {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return [];
+  const paths: string[] = [];
+  if (Array.isArray(obj)) {
+    obj.forEach((item, i) => {
+      const p = `${prefix}[${i}]`;
+      paths.push(p);
+      paths.push(...flattenPaths(item, p));
+    });
+  } else {
+    for (const key of Object.keys(obj)) {
+      const p = prefix ? `${prefix}.${key}` : key;
+      paths.push(p);
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        paths.push(...flattenPaths(obj[key], p));
+      }
+    }
+  }
+  return paths;
+}
+
+/** Get a value from an object using dot/bracket path */
+function getNestedValue(obj: any, path: string): any {
+  const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+  return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+}
 
 interface IntegrationNodeProps {
   nodeData: IntegrationNodeData;
@@ -20,6 +48,58 @@ interface IntegrationNodeProps {
 
 function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNodeProps }) {
   const { nodeData, onChange, onDelete, variables = [] } = data;
+
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; status?: number; body?: any; error?: string } | null>(null);
+  const [responsePaths, setResponsePaths] = useState<string[]>([]);
+
+  const handleTest = useCallback(async () => {
+    if (!nodeData.webhookUrl) return;
+    setTesting(true);
+    setTestResult(null);
+    setResponsePaths([]);
+
+    try {
+      const extraParams = Object.fromEntries(
+        (nodeData.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
+      );
+
+      const testPayload = {
+        event: { id: 'test', form_id: 'test', form_name: 'Teste', landed_at: new Date().toISOString(), submitted_at: new Date().toISOString() },
+        respondent: { ip: null, user_agent: 'Lovable Test', geolocation: null },
+        answers: {},
+        answers_raw: {},
+        variables: {},
+        query_params: {},
+        meta: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+      };
+
+      const method = nodeData.webhookMethod || 'POST';
+      const fetchOpts: RequestInit = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+      };
+      if (method !== 'GET') {
+        fetchOpts.body = JSON.stringify(testPayload);
+      }
+
+      const res = await fetch(nodeData.webhookUrl, fetchOpts);
+      let body: any = null;
+      const text = await res.text();
+      try { body = JSON.parse(text); } catch { body = text; }
+
+      setTestResult({ ok: res.ok, status: res.status, body });
+
+      if (typeof body === 'object' && body !== null) {
+        const paths = flattenPaths(body);
+        setResponsePaths(paths);
+      }
+    } catch (err: any) {
+      setTestResult({ ok: false, error: err.message || 'Erro de rede' });
+    } finally {
+      setTesting(false);
+    }
+  }, [nodeData.webhookUrl, nodeData.webhookMethod, nodeData.webhookParams]);
 
   return (
     <TooltipProvider>
@@ -40,11 +120,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
             Integração
           </span>
           <div className="ml-auto">
-            <Button
-              variant="ghost" size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-              onClick={onDelete}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onDelete}>
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
@@ -68,13 +144,8 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
           {/* Method */}
           <div className="space-y-1">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Método</span>
-            <Select
-              value={nodeData.webhookMethod || 'POST'}
-              onValueChange={val => onChange({ webhookMethod: val as any })}
-            >
-              <SelectTrigger className="h-8 text-xs w-28">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={nodeData.webhookMethod || 'POST'} onValueChange={val => onChange({ webhookMethod: val as any })}>
+              <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {WEBHOOK_METHODS.map(m => (
                   <SelectItem key={m} value={m} className="text-xs font-mono">{m}</SelectItem>
@@ -87,9 +158,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Parâmetros extras</span>
-              <Button
-                variant="ghost" size="icon"
-                className="h-5 w-5 text-muted-foreground"
+              <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"
                 onClick={() => {
                   const newParam: WebhookParam = { id: crypto.randomUUID(), key: '', value: '' };
                   onChange({ webhookParams: [...(nodeData.webhookParams || []), newParam] });
@@ -100,38 +169,63 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
             </div>
             {(nodeData.webhookParams || []).map((param, idx) => (
               <div key={param.id} className="flex items-center gap-1">
-                <Input
-                  value={param.key}
-                  onChange={e => {
-                    const updated = [...(nodeData.webhookParams || [])];
-                    updated[idx] = { ...updated[idx], key: e.target.value };
-                    onChange({ webhookParams: updated });
-                  }}
-                  placeholder="chave"
-                  className="h-7 text-xs w-0 flex-1 font-mono"
-                />
-                <Input
-                  value={param.value}
-                  onChange={e => {
-                    const updated = [...(nodeData.webhookParams || [])];
-                    updated[idx] = { ...updated[idx], value: e.target.value };
-                    onChange({ webhookParams: updated });
-                  }}
-                  placeholder="valor"
-                  className="h-7 text-xs w-0 flex-1"
-                />
-                <Button
-                  variant="ghost" size="icon"
-                  className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    const updated = (nodeData.webhookParams || []).filter((_, i) => i !== idx);
-                    onChange({ webhookParams: updated });
-                  }}
+                <Input value={param.key} onChange={e => {
+                  const updated = [...(nodeData.webhookParams || [])];
+                  updated[idx] = { ...updated[idx], key: e.target.value };
+                  onChange({ webhookParams: updated });
+                }} placeholder="chave" className="h-7 text-xs w-0 flex-1 font-mono" />
+                <Input value={param.value} onChange={e => {
+                  const updated = [...(nodeData.webhookParams || [])];
+                  updated[idx] = { ...updated[idx], value: e.target.value };
+                  onChange({ webhookParams: updated });
+                }} placeholder="valor" className="h-7 text-xs w-0 flex-1" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => onChange({ webhookParams: (nodeData.webhookParams || []).filter((_, i) => i !== idx) })}
                 >
                   <X className="h-3 w-3" />
                 </Button>
               </div>
             ))}
+          </div>
+
+          {/* ── Test Webhook ── */}
+          <div className="border-t border-border pt-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs gap-2"
+              disabled={!nodeData.webhookUrl || testing}
+              onClick={handleTest}
+            >
+              {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+              {testing ? 'Enviando...' : 'Testar Webhook'}
+            </Button>
+
+            {testResult && (
+              <div className={`mt-2 rounded-lg p-2 text-[10px] space-y-1 ${
+                testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'
+              }`}>
+                <div className="flex items-center gap-1.5">
+                  {testResult.ok
+                    ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    : <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                  }
+                  <span className={`font-medium ${testResult.ok ? 'text-emerald-600' : 'text-destructive'}`}>
+                    {testResult.ok ? `OK (${testResult.status})` : testResult.error || `Erro (${testResult.status})`}
+                  </span>
+                </div>
+                {testResult.body && typeof testResult.body === 'object' && (
+                  <details className="cursor-pointer">
+                    <summary className="text-muted-foreground hover:text-foreground transition-colors">
+                      Ver resposta ({responsePaths.length} campos)
+                    </summary>
+                    <pre className="mt-1 text-[9px] font-mono bg-background/50 rounded p-1.5 max-h-32 overflow-auto whitespace-pre-wrap text-foreground/80">
+                      {JSON.stringify(testResult.body, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── Response Mappings ── */}
@@ -144,15 +238,9 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
                 </span>
               </div>
               {variables.length > 0 && (
-                <Button
-                  variant="ghost" size="icon"
-                  className="h-5 w-5 text-muted-foreground"
+                <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"
                   onClick={() => {
-                    const newMapping: WebhookResponseMapping = {
-                      id: crypto.randomUUID(),
-                      responsePath: '',
-                      variableId: '',
-                    };
+                    const newMapping: WebhookResponseMapping = { id: crypto.randomUUID(), responsePath: '', variableId: '' };
                     onChange({ responseMappings: [...(nodeData.responseMappings || []), newMapping] });
                   }}
                 >
@@ -169,11 +257,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
               <button
                 className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-[10px] text-muted-foreground hover:border-node-webhook-accent hover:text-node-webhook-accent transition-colors"
                 onClick={() => {
-                  const newMapping: WebhookResponseMapping = {
-                    id: crypto.randomUUID(),
-                    responsePath: '',
-                    variableId: '',
-                  };
+                  const newMapping: WebhookResponseMapping = { id: crypto.randomUUID(), responsePath: '', variableId: '' };
                   onChange({ responseMappings: [newMapping] });
                 }}
               >
@@ -182,58 +266,97 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
               </button>
             ) : (
               <div className="space-y-1.5">
-                {(nodeData.responseMappings || []).map((mapping, idx) => (
-                  <div key={mapping.id} className="space-y-1 bg-muted/40 rounded-lg p-2">
-                    <div className="flex items-center gap-1">
-                      <div className="flex-1 space-y-0.5">
-                        <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Caminho JSON</span>
-                        <Input
-                          value={mapping.responsePath}
-                          onChange={e => {
+                {(nodeData.responseMappings || []).map((mapping, idx) => {
+                  const previewValue = responsePaths.length > 0 && mapping.responsePath && testResult?.body
+                    ? getNestedValue(testResult.body, mapping.responsePath)
+                    : undefined;
+
+                  return (
+                    <div key={mapping.id} className="space-y-1 bg-muted/40 rounded-lg p-2">
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 space-y-0.5">
+                          <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Caminho JSON</span>
+                          {responsePaths.length > 0 ? (
+                            <Select
+                              value={mapping.responsePath || '__empty__'}
+                              onValueChange={val => {
+                                const updated = [...(nodeData.responseMappings || [])];
+                                updated[idx] = { ...updated[idx], responsePath: val === '__empty__' ? '' : val };
+                                onChange({ responseMappings: updated });
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs font-mono">
+                                <SelectValue placeholder="Selecionar campo..." />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-48 z-[200]">
+                                {responsePaths.map(p => {
+                                  const val = getNestedValue(testResult?.body, p);
+                                  const preview = val !== undefined && typeof val !== 'object'
+                                    ? String(val).slice(0, 30)
+                                    : typeof val === 'object' ? (Array.isArray(val) ? `[${val.length}]` : '{...}') : '';
+                                  return (
+                                    <SelectItem key={p} value={p} className="text-xs">
+                                      <span className="font-mono">{p}</span>
+                                      {preview && (
+                                        <span className="ml-2 text-muted-foreground text-[9px]">= {preview}</span>
+                                      )}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              value={mapping.responsePath}
+                              onChange={e => {
+                                const updated = [...(nodeData.responseMappings || [])];
+                                updated[idx] = { ...updated[idx], responsePath: e.target.value };
+                                onChange({ responseMappings: updated });
+                              }}
+                              placeholder="ex: data.token ou items[0].id"
+                              className="h-7 text-xs font-mono"
+                            />
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon"
+                          className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive mt-4"
+                          onClick={() => onChange({ responseMappings: (nodeData.responseMappings || []).filter((_, i) => i !== idx) })}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+
+                      {/* Preview value */}
+                      {previewValue !== undefined && typeof previewValue !== 'object' && (
+                        <div className="text-[9px] text-muted-foreground bg-background/50 rounded px-1.5 py-0.5 font-mono truncate">
+                          Valor: {String(previewValue)}
+                        </div>
+                      )}
+
+                      <div className="space-y-0.5">
+                        <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Salvar em variável</span>
+                        <Select
+                          value={mapping.variableId}
+                          onValueChange={val => {
                             const updated = [...(nodeData.responseMappings || [])];
-                            updated[idx] = { ...updated[idx], responsePath: e.target.value };
+                            updated[idx] = { ...updated[idx], variableId: val };
                             onChange({ responseMappings: updated });
                           }}
-                          placeholder="ex: data.token ou items[0].id"
-                          className="h-7 text-xs font-mono"
-                        />
+                        >
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecionar variável..." /></SelectTrigger>
+                          <SelectContent className="z-[200]">
+                            {variables.map(v => (
+                              <SelectItem key={v.id} value={v.id} className="text-xs">
+                                <span className="font-mono text-node-webhook-accent">{`{{${v.name}}}`}</span>
+                                <span className="ml-1.5 text-muted-foreground">{v.type}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Button
-                        variant="ghost" size="icon"
-                        className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive mt-4"
-                        onClick={() => {
-                          const updated = (nodeData.responseMappings || []).filter((_, i) => i !== idx);
-                          onChange({ responseMappings: updated });
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
                     </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider">Salvar em variável</span>
-                      <Select
-                        value={mapping.variableId}
-                        onValueChange={val => {
-                          const updated = [...(nodeData.responseMappings || [])];
-                          updated[idx] = { ...updated[idx], variableId: val };
-                          onChange({ responseMappings: updated });
-                        }}
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue placeholder="Selecionar variável..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {variables.map(v => (
-                            <SelectItem key={v.id} value={v.id} className="text-xs">
-                              <span className="font-mono text-node-webhook-accent">{`{{${v.name}}}`}</span>
-                              <span className="ml-1.5 text-muted-foreground">{v.type}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
