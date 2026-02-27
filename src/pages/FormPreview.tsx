@@ -16,6 +16,7 @@ import { buildWebhookPayload } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
 import { consumePrefetchedForm } from '@/lib/formPrefetch';
+import { validateEmailFormat } from '@/lib/emailValidation';
 
 // Lazy-loaded heavy preview components — only loaded when the form actually uses them
 const PhoneFieldPreview = lazy(() => import('@/components/preview/PhoneFieldPreview'));
@@ -1391,8 +1392,10 @@ function InteractiveElement({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Basic format validation runs on every email field
+  const emailFormatResult = element.type === 'input_email' && value
+    ? validateEmailFormat(value as string)
+    : null;
 
   // Report blocked state to parent (only while checking)
   useEffect(() => {
@@ -1403,12 +1406,11 @@ function InteractiveElement({
     }
   }, [emailChecking, element.type, onBlockedChange]);
 
-  // Register validator for smart email validation (triggered on "next")
+  // Register validator for email fields (format + optional smart validation)
   useEffect(() => {
-    if (element.type === 'input_email' && element.smartValidation) {
+    if (element.type === 'input_email') {
       registerValidator(async () => {
-        const val = value || '';
-        // Reset previous state
+        const val = (value || '') as string;
         setEmailError(null);
         setEmailValid(null);
 
@@ -1420,34 +1422,39 @@ function InteractiveElement({
           return true;
         }
 
-        if (!emailRegex.test(val)) {
-          setEmailError(element.validationMessage || 'E-mail inválido');
+        // Format + TLD validation (always runs)
+        const formatCheck = validateEmailFormat(val);
+        if (!formatCheck.valid) {
+          setEmailError(formatCheck.error || 'E-mail inválido');
           return false;
         }
 
-        // If already validated successfully for this value, skip API call
-        // Run smart validation via API
-        setEmailChecking(true);
-        try {
-          const res = await supabase.functions.invoke('verify-email', { body: { email: val } });
-          const data = res.data as any;
-          if (data?.is_safe_to_send === false) {
-            setEmailError(data?.is_disposable ? 'E-mail descartável' : 'Este e-mail não é válido para receber mensagens');
-            setEmailValid(false);
-            return false;
-          } else if (data?.is_safe_to_send === true) {
-            setEmailValid(true);
-            setEmailError(null);
+        // Smart validation via API (only if enabled)
+        if (element.smartValidation) {
+          setEmailChecking(true);
+          try {
+            const res = await supabase.functions.invoke('verify-email', { body: { email: val } });
+            const data = res.data as any;
+            if (data?.is_safe_to_send === false) {
+              setEmailError(data?.is_disposable ? 'E-mail descartável' : 'Este e-mail não é válido para receber mensagens');
+              setEmailValid(false);
+              return false;
+            } else if (data?.is_safe_to_send === true) {
+              setEmailValid(true);
+              setEmailError(null);
+              return true;
+            }
             return true;
+          } catch {
+            return true;
+          } finally {
+            setEmailChecking(false);
           }
-          // null = not configured, pass silently
-          return true;
-        } catch {
-          // Don't block on API errors
-          return true;
-        } finally {
-          setEmailChecking(false);
         }
+
+        // Format passed, no smart validation
+        setEmailValid(true);
+        return true;
       });
     } else {
       registerValidator(null);
@@ -1457,10 +1464,24 @@ function InteractiveElement({
 
   const handleEmailChange = useCallback((val: string) => {
     onChange(val);
-    // Reset validation state when user types (they'll be re-validated on next)
+    // Reset validation state when user types
     setEmailValid(null);
     setEmailError(null);
   }, [onChange]);
+
+  // Validate email format on blur (inline feedback before clicking "next")
+  const handleEmailBlur = useCallback(() => {
+    const val = (value || '') as string;
+    if (!val) { setEmailError(null); setEmailValid(null); return; }
+    const result = validateEmailFormat(val);
+    if (!result.valid) {
+      setEmailError(result.error || 'E-mail inválido');
+      setEmailValid(false);
+    } else {
+      setEmailError(null);
+      // Don't set emailValid=true here — wait for full validation on "next"
+    }
+  }, [value]);
 
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
@@ -1675,6 +1696,7 @@ function InteractiveElement({
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              onBlur={handleEmailBlur}
               data-1p-ignore
               data-lpignore="true"
               data-bwignore
