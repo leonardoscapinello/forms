@@ -502,8 +502,10 @@ export default function FormPreview() {
 
   const isWelcome = currentPageIndex === null && !finished;
   const isThankYou = finished;
-  const totalSteps = pages.length;
-  const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? (((currentPageIndex || 0) + 1) / totalSteps) * 100 : 0;
+  const nonEmptyPages = useMemo(() => pages.filter(p => p.elements && p.elements.length > 0), [pages]);
+  const totalSteps = nonEmptyPages.length;
+  const currentStepIndex = currentPageIndex !== null ? nonEmptyPages.findIndex(p => p.id === pages[currentPageIndex]?.id) : -1;
+  const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 0;
 
   /** Check if a page has any meaningful elements for the respondent */
   const isPageEmpty = useCallback((page: import('@/types/form').FunnelPage | undefined): boolean => {
