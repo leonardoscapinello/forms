@@ -201,16 +201,15 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
     typedAnswers[key] = typed;
     rawAnswers[elementId] = rawValue;
 
-    // Build rich field entry
+    // Build rich field entry with label + answer together
     fields.push({
       field_id: elementId,
       field_name: key,
       type: element.type.replace('input_', ''),
-      label: element.label || null,
-      placeholder: element.placeholder || null,
+      label: element.label || element.placeholder || null,
+      answer: typed,
+      answer_raw: rawValue,
       required: element.required ?? false,
-      value: typed,
-      raw_value: rawValue,
       options: element.options?.map(o => ({ id: o.id, label: o.label })) || undefined,
     });
 
