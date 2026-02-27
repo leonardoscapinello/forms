@@ -1409,6 +1409,9 @@ function InteractiveElement({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  // Ref to always read latest value inside validator (avoids stale closure / race condition)
+  const valueRef = useRef(value);
+  useEffect(() => { valueRef.current = value; }, [value]);
   // Basic format validation runs on every email field
   const emailFormatResult = element.type === 'input_email' && value
     ? validateEmailFormat(value as string)
@@ -1427,7 +1430,7 @@ function InteractiveElement({
   useEffect(() => {
     if (element.type === 'input_email') {
       registerValidator(async () => {
-        const val = (value || '') as string;
+        const val = (valueRef.current || '') as string;
         setEmailError(null);
         setEmailValid(null);
 
@@ -1477,7 +1480,7 @@ function InteractiveElement({
       registerValidator(null);
     }
     return () => registerValidator(null);
-  }, [element.type, element.smartValidation, element.required, value, registerValidator]);
+  }, [element.type, element.smartValidation, element.required, element.requiredMessage, registerValidator]);
 
   const handleEmailChange = useCallback((val: string) => {
     onChange(val);
