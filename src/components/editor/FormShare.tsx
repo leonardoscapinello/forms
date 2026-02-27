@@ -149,9 +149,10 @@ export default function FormShare({ form, onUpdate }: Props) {
           field_id: el.id,
           field_name: el.fieldName || el.id,
           type: el.type.replace('input_', ''),
-          label: el.label || null,
+          label: el.label || el.placeholder || null,
+          answer: '<valor respondido>',
+          answer_raw: '<valor bruto>',
           required: el.required ?? false,
-          value: '<valor>',
         });
       }
     }
@@ -159,7 +160,6 @@ export default function FormShare({ form, onUpdate }: Props) {
       event: { form_id: form.id, form_name: form.title, submitted_at: '2025-01-01T12:05:30Z', total_time_seconds: 330 },
       navigation: { source_url: 'https://...', query_params: { utm_source: 'email' } },
       fields,
-      answers: Object.fromEntries(fields.map(f => [f.field_name, '<valor>'])),
       variables: Object.fromEntries((form.variables || []).map(v => [v.name, '<valor>'])),
     };
   }, [form]);
