@@ -1,5 +1,36 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
+/** Renders dropdown in a portal, positioned relative to trigger, flipping up if near bottom */
+function DropdownPortal({ triggerRef, children }: { triggerRef: React.RefObject<HTMLDivElement | null>; children: React.ReactNode }) {
+  const [style, setStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 280; // max-h-64 ≈ 256 + padding
+    const openUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+
+    setStyle({
+      position: 'fixed',
+      left: rect.left,
+      width: 288, // w-72
+      zIndex: 9999,
+      ...(openUp
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+    });
+  }, [triggerRef]);
+
+  return createPortal(
+    <div style={style} className="max-h-64 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg">
+      {children}
+    </div>,
+    document.body
+  );
+}
 const COUNTRIES = [
   { code: 'BR', ddi: '+55', flag: '🇧🇷', name: 'Brasil', mask: '(00) 00000-0000' },
   { code: 'US', ddi: '+1', flag: '🇺🇸', name: 'Estados Unidos', mask: '(000) 000-0000' },
@@ -121,7 +152,7 @@ export default function PhoneFieldPreview({ value, onChange, defaultCountryCode 
         </button>
 
         {open && (
-          <div className="absolute top-full left-0 mt-1 w-72 max-h-64 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg z-50">
+          <DropdownPortal triggerRef={dropdownRef}>
             <div className="sticky top-0 bg-popover p-2 border-b border-border">
               <input
                 value={search}
@@ -149,7 +180,7 @@ export default function PhoneFieldPreview({ value, onChange, defaultCountryCode 
                 Nenhum país encontrado
               </div>
             )}
-          </div>
+          </DropdownPortal>
         )}
       </div>
 
