@@ -3,7 +3,7 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send } from 'lucide-react';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
 import BeforeAfterSlider from '@/components/preview/BeforeAfterSlider';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1265,7 +1265,11 @@ export default function FormPreview() {
             className="h-9 w-9 rounded-md shadow-md"
             aria-label="Avançar"
           >
-            {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDown className="h-4 w-4" />}
+            {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              currentPageIndex !== null && currentPageIndex === pages.length - 1
+                ? <Send className="h-4 w-4" />
+                : <ArrowDown className="h-4 w-4" />
+            )}
           </Button>
         </div>
       )}
