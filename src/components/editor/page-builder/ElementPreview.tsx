@@ -357,10 +357,18 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const max = element.maxRating || 10;
       return withFieldHeader(
         <div className="space-y-1">
-          <div className="flex gap-1">
+          <div className="hidden sm:flex gap-1">
             {Array.from({ length: max + 1 }).map((_, i) => (
               <div key={i} className="flex-1 h-10 rounded-lg border-2 border-border flex items-center justify-center text-xs font-bold text-muted-foreground">{i}</div>
             ))}
+          </div>
+          <div className="flex sm:hidden flex-col gap-2 items-center">
+            <span className="text-3xl font-bold text-muted-foreground">–</span>
+            <div className="w-full h-2 rounded-full bg-border" />
+            <div className="flex justify-between w-full text-[10px] text-muted-foreground tabular-nums">
+              <span>0</span>
+              <span>{max}</span>
+            </div>
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground px-1">
             <span>{element.npsLowLabel || 'Nada provável'}</span>
