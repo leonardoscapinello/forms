@@ -60,16 +60,9 @@ export default function CircularProgressPreview({
   const clampedValue = Math.min(100, Math.max(0, value));
   const displayNum = useAnimatedCounter(clampedValue, 1200);
 
-  const [dashTarget, setDashTarget] = useState(0);
-  useEffect(() => {
-    setDashTarget(0);
-    const t = setTimeout(() => setDashTarget(clampedValue), 50);
-    return () => clearTimeout(t);
-  }, [clampedValue]);
-
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (dashTarget / 100) * circumference;
+  const offset = circumference - (displayNum / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -102,9 +95,6 @@ export default function CircularProgressPreview({
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
-            style={{
-              transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
           />
         </svg>
 
