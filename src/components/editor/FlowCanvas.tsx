@@ -512,6 +512,8 @@ function FlowCanvasInner({
         nodesDraggable
         edgesFocusable
         selectNodesOnDrag={false}
+        panOnScroll
+        zoomOnPinch
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--border))" />
         <Controls
