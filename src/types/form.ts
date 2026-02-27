@@ -448,6 +448,12 @@ export interface FormData {
   completionRate: number;
   /** Folder this form belongs to */
   folderId?: string | null;
+  /** Webhook URL to POST complete submissions to */
+  completionWebhookUrl?: string;
+  /** Allow respondents to resume from where they left off */
+  allowResume?: boolean;
+  /** Save partial (incomplete) responses */
+  savePartialResponses?: boolean;
 }
 
 export const QUESTION_CATEGORIES: Record<QuestionCategory, { label: string; types: QuestionType[] }> = {
