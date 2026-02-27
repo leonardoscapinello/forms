@@ -445,10 +445,12 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
 };
 
 export function createDefaultPageElement(type: PageElementType): PageElement {
+  const shortId = crypto.randomUUID().slice(0, 6);
   const base: PageElement = {
     id: crypto.randomUUID(),
     type,
     style: { textAlign: 'left' },
+    fieldName: type.startsWith('input_') ? `${type.replace('input_', '')}_${shortId}` : undefined,
   };
 
   switch (type) {
