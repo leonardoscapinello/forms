@@ -109,6 +109,23 @@ export default function FormPreview() {
   const maxPageVisitedRef = useRef<number>(-1);
   const pageEnteredAtRef = useRef<number>(Date.now());
 
+  const saveWithBackendFallback = useCallback(async (args: {
+    kind: 'response' | 'session';
+    action: 'insert' | 'upsert' | 'update';
+    payload: Record<string, any>;
+    onConflict?: string;
+    match?: Record<string, any>;
+  }) => {
+    try {
+      const { error } = await supabase.functions.invoke('form-public-save', { body: args });
+      if (error) {
+        console.error('Fallback backend save falhou:', error);
+      }
+    } catch (e) {
+      console.error('Erro no fallback backend save:', e);
+    }
+  }, []);
+
   // Initialise answers, page index, and session context once form is loaded
   useEffect(() => {
     if (!form) return;
@@ -193,8 +210,29 @@ export default function FormPreview() {
             last_page_index: currentPageIndex,
           },
           pages_visited: maxPageVisitedRef.current + 1,
-        }, { onConflict: 'form_id,response_id' }).then(({ error }: any) => {
-          if (error) console.error('Erro ao salvar resposta parcial:', error);
+        }, { onConflict: 'form_id,response_id' }).then(async ({ error }: any) => {
+          if (!error) return;
+          console.error('Erro ao salvar resposta parcial:', error);
+          await saveWithBackendFallback({
+            kind: 'response',
+            action: 'upsert',
+            onConflict: 'form_id,response_id',
+            payload: {
+              form_id: form.id,
+              response_id: responseId,
+              session_id: sessionId,
+              answers: answersRef.current,
+              metadata: {
+                status: 'partial',
+                user_agent: sessionMetaRef.current.userAgent,
+                referrer: sessionMetaRef.current.referrer,
+                query_params: sessionMetaRef.current.queryParams,
+                landed_at: sessionMetaRef.current.landedAt,
+                last_page_index: currentPageIndex,
+              },
+              pages_visited: maxPageVisitedRef.current + 1,
+            },
+          });
         });
       }
     }, 700);
@@ -261,11 +299,26 @@ export default function FormPreview() {
       referrer: referrer || null,
       user_agent: userAgent,
       query_params: queryParams,
-    }).then(({ error }: any) => {
-      if (error) {
-        console.error('Erro ao criar sessão do formulário:', error);
-        sessionDbIdRef.current = null;
-      }
+    }).then(async ({ error }: any) => {
+      if (!error) return;
+      console.error('Erro ao criar sessão do formulário:', error);
+      sessionDbIdRef.current = null;
+      await saveWithBackendFallback({
+        kind: 'session',
+        action: 'insert',
+        payload: {
+          id: generatedSessionId,
+          form_id: form.id,
+          response_id: responseId,
+          status: 'active',
+          total_pages: form.pages?.length || 0,
+          source_url: typeof window !== 'undefined' ? window.location.href : '',
+          referrer: referrer || null,
+          user_agent: userAgent,
+          query_params: queryParams,
+        },
+      });
+      sessionDbIdRef.current = generatedSessionId;
     });
 
     // Insert form_start page event
@@ -326,7 +379,20 @@ export default function FormPreview() {
           completed_at: now,
           last_seen_at: now,
           pages_visited: maxPageVisitedRef.current + 1,
-        }).eq('id', sessionId).then(() => {});
+        }).eq('id', sessionId).then(async ({ error }: any) => {
+          if (!error) return;
+          await saveWithBackendFallback({
+            kind: 'session',
+            action: 'update',
+            match: { id: sessionId },
+            payload: {
+              status: 'completed',
+              completed_at: now,
+              last_seen_at: now,
+              pages_visited: maxPageVisitedRef.current + 1,
+            },
+          });
+        });
       }
       ;(supabase as any).from('form_page_events').insert({
         session_id: sessionId,
@@ -353,8 +419,30 @@ export default function FormPreview() {
         },
         total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
         pages_visited: maxPageVisitedRef.current + 1,
-      }, { onConflict: 'form_id,response_id' }).then(({ error }: any) => {
-        if (error) console.error('Erro ao salvar resposta completa:', error);
+      }, { onConflict: 'form_id,response_id' }).then(async ({ error }: any) => {
+        if (!error) return;
+        console.error('Erro ao salvar resposta completa:', error);
+        await saveWithBackendFallback({
+          kind: 'response',
+          action: 'upsert',
+          onConflict: 'form_id,response_id',
+          payload: {
+            form_id: form.id,
+            response_id: responseId,
+            session_id: sessionId,
+            answers: latestAnswers,
+            metadata: {
+              status: 'complete',
+              user_agent: sessionMetaRef.current.userAgent,
+              referrer: sessionMetaRef.current.referrer,
+              query_params: sessionMetaRef.current.queryParams,
+              landed_at: sessionMetaRef.current.landedAt,
+              submitted_at: now,
+            },
+            total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
+            pages_visited: maxPageVisitedRef.current + 1,
+          },
+        });
       });
 
       // Clear resume data
