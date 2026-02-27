@@ -3,7 +3,7 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
 import BeforeAfterSlider from '@/components/preview/BeforeAfterSlider';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -928,17 +928,28 @@ export default function FormPreview() {
         );
       })()}
 
-      {/* Navigation */}
+      {/* Navigation arrows */}
       {!isWelcome && !isThankYou && (
-        <div className="px-4 md:px-8 py-4 md:py-6 flex justify-between items-center">
-          <Button variant="ghost" onClick={goBack} className="text-sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+        <div className="fixed bottom-6 right-6 flex flex-col gap-1 z-50">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goBack}
+            disabled={currentPageIndex === 0 && !form?.showWelcomeScreen}
+            className="h-9 w-9 rounded-md shadow-md"
+            aria-label="Voltar"
+          >
+            <ArrowUp className="h-4 w-4" />
           </Button>
-          <Button onClick={goNext} className="text-sm px-6" disabled={isPageBlocked}>
-            {isPageBlocked && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {currentPageIndex !== null && currentPageIndex >= pages.length - 1 ? 'Enviar' : 'OK'}
-            {!isPageBlocked && <Check className="ml-2 h-4 w-4" />}
+          <Button
+            variant="default"
+            size="icon"
+            onClick={goNext}
+            disabled={isPageBlocked}
+            className="h-9 w-9 rounded-md shadow-md"
+            aria-label="Avançar"
+          >
+            {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDown className="h-4 w-4" />}
           </Button>
         </div>
       )}
