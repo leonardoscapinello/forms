@@ -54,6 +54,34 @@ export type PageElementType =
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
 
+/** Keys for company field visibility/editability config */
+export type CompanyFieldKey =
+  | 'razao_social' | 'nome_fantasia' | 'natureza_juridica' | 'porte'
+  | 'abertura' | 'situacao' | 'cnae_principal'
+  | 'logradouro' | 'numero' | 'complemento' | 'bairro' | 'municipio' | 'uf' | 'cep'
+  | 'telefone' | 'email';
+
+export const COMPANY_FIELD_LABELS: Record<CompanyFieldKey, string> = {
+  razao_social: 'Razão Social',
+  nome_fantasia: 'Nome Fantasia',
+  natureza_juridica: 'Natureza Jurídica',
+  porte: 'Porte',
+  abertura: 'Data de Abertura',
+  situacao: 'Situação',
+  cnae_principal: 'CNAE Principal',
+  logradouro: 'Logradouro',
+  numero: 'Número',
+  complemento: 'Complemento',
+  bairro: 'Bairro',
+  municipio: 'Município',
+  uf: 'UF',
+  cep: 'CEP',
+  telefone: 'Telefone',
+  email: 'E-mail',
+};
+
+export const ALL_COMPANY_FIELDS: CompanyFieldKey[] = Object.keys(COMPANY_FIELD_LABELS) as CompanyFieldKey[];
+
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
   fontSize?: string;
@@ -326,6 +354,10 @@ export interface PageElement {
   fieldName?: string;
   /** Document field: allowed document types */
   documentAllowedTypes?: ('cpf' | 'cnpj' | 'passport')[];
+  /** Company field: which fields to show in UI (all data is still submitted) */
+  companyVisibleFields?: CompanyFieldKey[];
+  /** Company field: which fields the user can manually edit */
+  companyEditableFields?: CompanyFieldKey[];
   style?: PageElementStyle;
 }
 

@@ -1409,6 +1409,8 @@ function InteractiveElement({
         <CompanyFieldPreview
           value={value as any}
           onChange={onChange}
+          visibleFields={element.companyVisibleFields}
+          editableFields={element.companyEditableFields}
         />
       );
 
