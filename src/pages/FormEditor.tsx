@@ -369,22 +369,22 @@ export default function FormEditor() {
     >
       <CursorOverlay collaborators={collaborators} />
       <header className="flex-shrink-0 border-b border-border bg-card">
-        <div className="flex items-center gap-3 py-3 px-5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
+        <div className="flex items-center gap-2 sm:gap-3 py-2 sm:py-3 px-3 sm:px-5 overflow-x-auto">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 shrink">
             <Input
               value={form.title}
               onChange={e => updateForm(form.id, { title: e.target.value })}
-              className="text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-[200px] bg-transparent"
-              placeholder="Título do formulário"
+              className="text-sm sm:text-base font-semibold border-0 shadow-none focus-visible:ring-0 px-0 max-w-[120px] sm:max-w-[200px] bg-transparent"
+              placeholder="Título"
             />
           </div>
 
           {/* View switcher */}
-          <div className="flex items-center gap-0.5 ml-6 border border-border rounded-lg p-1 bg-muted/40">
+          <div className="flex items-center gap-0.5 ml-2 sm:ml-6 border border-border rounded-lg p-0.5 sm:p-1 bg-muted/40 shrink-0">
             {([
               { view: 'pages', icon: LayoutPanelLeft, label: 'Páginas' },
               { view: 'workflow', icon: GitBranch, label: 'Workflow' },
@@ -397,22 +397,24 @@ export default function FormEditor() {
                 key={view}
                 onClick={() => setEditorView(view)}
                 title={label}
-                className={`flex items-center justify-center p-1.5 rounded-md transition-colors ${
+                className={`flex items-center justify-center p-1 sm:p-1.5 rounded-md transition-colors ${
                   editorView === view
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                 }`}
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               </button>
             ))}
           </div>
 
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Online collaborators */}
-            <CollaboratorAvatars collaborators={collaborators} />
+            <div className="hidden sm:block">
+              <CollaboratorAvatars collaborators={collaborators} />
+            </div>
             {/* Save status indicator */}
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
               {saveStatus === 'saving' ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -436,6 +438,7 @@ export default function FormEditor() {
             <Button
               variant="outline"
               size="sm"
+              className="hidden sm:flex"
               onClick={() => navigate(`/preview/${form.id}`)}
             >
               <Eye className="mr-2 h-4 w-4" />

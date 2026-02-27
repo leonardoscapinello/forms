@@ -37,29 +37,31 @@ export default function Settings() {
   const [tab, setTab] = useState<TabId>('general');
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-border bg-muted/30 py-6 px-3 space-y-1">
-        <h1 className="text-sm font-semibold text-foreground tracking-tight px-3 mb-4">Configurações</h1>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === t.id
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            <t.icon className="h-4 w-4" />
-            {t.label}
-          </button>
-        ))}
+    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)]">
+      {/* Sidebar — horizontal scroll on mobile */}
+      <aside className="md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-border bg-muted/30 py-3 md:py-6 px-3 md:space-y-1">
+        <h1 className="hidden md:block text-sm font-semibold text-foreground tracking-tight px-3 mb-4">Configurações</h1>
+        <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-1 md:pb-0">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+                tab === t.id
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              <t.icon className="h-4 w-4" />
+              <span className="hidden md:inline">{t.label}</span>
+            </button>
+          ))}
+        </div>
       </aside>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto py-8 px-8">
+        <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-foreground tracking-tight">
               {TABS.find(t => t.id === tab)?.label}
