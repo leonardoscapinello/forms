@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,28 +6,38 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
-import AppLayout from "./components/AppLayout";
-import Dashboard from "./pages/Dashboard";
-import FormEditor from "./pages/FormEditor";
-import FormPreview from "./pages/FormPreview";
-import Settings from "./pages/Settings";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Lazy-loaded pages — each becomes its own chunk
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const FormEditor = lazy(() => import("./pages/FormEditor"));
+const FormPreview = lazy(() => import("./pages/FormPreview"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Login = lazy(() => import("./pages/Login"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AppLayout = lazy(() => import("./components/AppLayout"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // 2 min — avoid refetching on every mount
+      gcTime: 1000 * 60 * 5,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
+  if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -40,15 +50,10 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 }
 
 function ScrollToTop() {
-  const { pathname, search, hash } = useLocation();
-
+  const { pathname } = useLocation();
   useEffect(() => {
-    if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
-    }
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [pathname, search, hash]);
-
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 }
 
@@ -61,20 +66,22 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <FormStoreProvider>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={300}>
           <Toaster />
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
-            <Routes>
-              <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-              <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
-              <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
-              <Route path="/preview/:id" element={<FormPreview />} />
-              <Route path="/forms/:id" element={<LegacyFormRouteRedirect />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+                <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+                <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
+                <Route path="/preview/:id" element={<FormPreview />} />
+                <Route path="/forms/:id" element={<LegacyFormRouteRedirect />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </FormStoreProvider>

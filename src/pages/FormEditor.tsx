@@ -4,20 +4,22 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData } from '@/types/form';
 import { PageElement, createDefaultPageElement } from '@/types/pageElements';
-import FlowCanvas from '@/components/editor/FlowCanvas';
-import PageBuilder from '@/components/editor/page-builder/PageBuilder';
-import PageListPanel from '@/components/editor/PageListPanel';
-import FormResponses from '@/components/editor/FormResponses';
-import FormShare from '@/components/editor/FormShare';
-import FormSettings from '@/components/editor/FormSettings';
-import FormAnalytics from '@/components/editor/FormAnalytics';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings } from 'lucide-react';
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, lazy, Suspense } from 'react';
+
+// Lazy-load heavy editor sub-views
+const FlowCanvas = lazy(() => import('@/components/editor/FlowCanvas'));
+const PageBuilder = lazy(() => import('@/components/editor/page-builder/PageBuilder'));
+const PageListPanel = lazy(() => import('@/components/editor/PageListPanel'));
+const FormResponses = lazy(() => import('@/components/editor/FormResponses'));
+const FormShare = lazy(() => import('@/components/editor/FormShare'));
+const FormSettings = lazy(() => import('@/components/editor/FormSettings'));
+const FormAnalytics = lazy(() => import('@/components/editor/FormAnalytics'));
 
 type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings' | 'analytics';
 
@@ -449,6 +451,7 @@ export default function FormEditor() {
         </div>
       </header>
 
+      <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
       <div className="flex-1 flex overflow-hidden">
         {/* Pages view: list + page builder */}
         {editorView === 'pages' && (
@@ -596,6 +599,7 @@ export default function FormEditor() {
           <FormSettings form={form} onUpdate={(patch) => updateForm(form.id, patch)} />
         )}
       </div>
+      </Suspense>
     </div>
   );
 }
