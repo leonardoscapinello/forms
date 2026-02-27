@@ -377,24 +377,32 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_quiz_image: 'Quiz com imagem',
 };
 
-export type ElementCategory = 'visual' | 'data' | 'sections' | 'fields';
+export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'sections';
 
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
-  visual: {
+  layout: {
     label: 'Layout',
-    types: ['heading', 'text', 'image', 'button', 'divider', 'video', 'spacer', 'list', 'alert', 'notification', 'columns'],
+    types: ['columns', 'spacer', 'divider'],
+  },
+  content: {
+    label: 'Conteúdo',
+    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert', 'notification'],
+  },
+  fields_text: {
+    label: 'Campos de entrada',
+    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_address', 'input_height', 'input_weight'],
+  },
+  fields_choice: {
+    label: 'Campos de escolha',
+    types: ['input_checkbox', 'input_select', 'input_radio', 'input_rating', 'input_nps', 'input_yes_no', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'],
   },
   data: {
-    label: 'Dados',
-    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'timer', 'circular_progress', 'loading'],
+    label: 'Dados e métricas',
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress', 'timer', 'loading'],
   },
   sections: {
-    label: 'Seções',
+    label: 'Seções prontas',
     types: ['arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel'],
-  },
-  fields: {
-    label: 'Formulário',
-    types: ['input_text', 'input_email', 'input_phone', 'input_number', 'input_textarea', 'input_date', 'input_height', 'input_weight', 'input_address', 'input_checkbox', 'input_select', 'input_radio', 'input_rating', 'input_nps', 'input_yes_no', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'],
   },
 };
 
