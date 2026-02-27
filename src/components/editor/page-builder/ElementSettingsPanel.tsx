@@ -699,41 +699,45 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 <Input value={element.npsHighLabel || ''} onChange={e => onChange({ npsHighLabel: e.target.value })} placeholder="Muito provável" />
               </div>
               <div className="border-t border-border my-2" />
-              <Label className="text-xs font-medium text-muted-foreground">Textos das faixas</Label>
-              <div className="space-y-2">
-                <Input value={element.npsDetractorLabel || ''} onChange={e => onChange({ npsDetractorLabel: e.target.value })} placeholder="😟 Detrator" />
-              </div>
-              <div className="space-y-2">
-                <Input value={element.npsPassiveLabel || ''} onChange={e => onChange({ npsPassiveLabel: e.target.value })} placeholder="😐 Neutro" />
-              </div>
-              <div className="space-y-2">
-                <Input value={element.npsPromoterLabel || ''} onChange={e => onChange({ npsPromoterLabel: e.target.value })} placeholder="😍 Promotor" />
+              <Label className="text-xs font-medium text-muted-foreground">Cor e texto por nota</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">Personalize cada nota individualmente</p>
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                {Array.from({ length: (element.maxRating || 10) + 1 }).map((_, i) => {
+                  const max = element.maxRating || 10;
+                  const colors = element.npsScoreColors || [];
+                  const labels = element.npsScoreLabels || [];
+                  const defaultColor = (() => { const r = i / max; return r <= 0.6 ? '#ef4444' : r <= 0.8 ? '#f59e0b' : '#22c55e'; })();
+                  const defaultLabel = (() => { const r = i / max; return r <= 0.6 ? '😟 Detrator' : r <= 0.8 ? '😐 Neutro' : '😍 Promotor'; })();
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs font-bold w-5 text-center text-muted-foreground">{i}</span>
+                      <ColorPickerField
+                        label=""
+                        value={colors[i] || defaultColor}
+                        onChange={v => {
+                          const next = [...(element.npsScoreColors || Array.from({ length: max + 1 }, (_, j) => { const r2 = j / max; return r2 <= 0.6 ? '#ef4444' : r2 <= 0.8 ? '#f59e0b' : '#22c55e'; }))];
+                          next[i] = v;
+                          onChange({ npsScoreColors: next });
+                        }}
+                        allowTransparent={false}
+                      />
+                      <Input
+                        className="flex-1 h-8 text-xs"
+                        value={labels[i] ?? ''}
+                        onChange={e => {
+                          const next = [...(element.npsScoreLabels || Array.from({ length: max + 1 }, (_, j) => { const r2 = j / max; return r2 <= 0.6 ? '😟 Detrator' : r2 <= 0.8 ? '😐 Neutro' : '😍 Promotor'; }))];
+                          next[i] = e.target.value;
+                          onChange({ npsScoreLabels: next });
+                        }}
+                        placeholder={defaultLabel}
+                      />
+                    </div>
+                  );
+                })}
               </div>
               <div className="space-y-2">
                 <Label>Dica de arrastar (mobile)</Label>
                 <Input value={element.npsDragHint || ''} onChange={e => onChange({ npsDragHint: e.target.value })} placeholder="Arraste para escolher sua nota" />
-              </div>
-              <div className="border-t border-border my-2" />
-              <Label className="text-xs font-medium text-muted-foreground">Cores das faixas</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <ColorPickerField
-                  label="Detrator"
-                  value={element.npsDetractorColor || '#ef4444'}
-                  onChange={v => onChange({ npsDetractorColor: v })}
-                  allowTransparent={false}
-                />
-                <ColorPickerField
-                  label="Neutro"
-                  value={element.npsPassiveColor || '#f59e0b'}
-                  onChange={v => onChange({ npsPassiveColor: v })}
-                  allowTransparent={false}
-                />
-                <ColorPickerField
-                  label="Promotor"
-                  value={element.npsPromoterColor || '#22c55e'}
-                  onChange={v => onChange({ npsPromoterColor: v })}
-                  allowTransparent={false}
-                />
               </div>
             </>
           )}
