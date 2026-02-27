@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Webhook, Trash2, Plus, X, ArrowDownToLine, Play, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { IntegrationNodeData, WebhookParam, WebhookResponseMapping } from '@/types/form';
@@ -8,6 +8,32 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
+/**
+ * A controlled input that keeps local state while typing
+ * and only propagates via onBlur or Enter — prevents cursor jumping
+ * inside React Flow nodes.
+ */
+function LocalInput({ value, onCommit, ...rest }: Omit<React.ComponentProps<typeof Input>, 'onChange' | 'onBlur'> & { value: string; onCommit: (v: string) => void }) {
+  const [local, setLocal] = useState(value);
+  const ref = useRef(value);
+  // Sync external value only when not focused
+  useEffect(() => {
+    if (ref.current !== value) {
+      ref.current = value;
+      setLocal(value);
+    }
+  }, [value]);
+  return (
+    <Input
+      {...rest}
+      value={local}
+      onChange={e => { setLocal(e.target.value); ref.current = e.target.value; }}
+      onBlur={() => { if (local !== value) onCommit(local); }}
+      onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+    />
+  );
+}
 
 const WEBHOOK_METHODS = ['GET', 'POST', 'PUT', 'PATCH'] as const;
 
@@ -133,9 +159,9 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
               URL de destino <span className="text-destructive">*</span>
             </span>
-            <Input
+            <LocalInput
               value={nodeData.webhookUrl || ''}
-              onChange={e => onChange({ webhookUrl: e.target.value })}
+              onCommit={v => onChange({ webhookUrl: v })}
               placeholder="https://hooks.example.com/..."
               className={`h-8 text-xs ${!nodeData.webhookUrl ? 'border-destructive/50' : ''}`}
             />
@@ -169,14 +195,14 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
             </div>
             {(nodeData.webhookParams || []).map((param, idx) => (
               <div key={param.id} className="flex items-center gap-1">
-                <Input value={param.key} onChange={e => {
+                <LocalInput value={param.key} onCommit={v => {
                   const updated = [...(nodeData.webhookParams || [])];
-                  updated[idx] = { ...updated[idx], key: e.target.value };
+                  updated[idx] = { ...updated[idx], key: v };
                   onChange({ webhookParams: updated });
                 }} placeholder="chave" className="h-7 text-xs w-0 flex-1 font-mono" />
-                <Input value={param.value} onChange={e => {
+                <LocalInput value={param.value} onCommit={v => {
                   const updated = [...(nodeData.webhookParams || [])];
-                  updated[idx] = { ...updated[idx], value: e.target.value };
+                  updated[idx] = { ...updated[idx], value: v };
                   onChange({ webhookParams: updated });
                 }} placeholder="valor" className="h-7 text-xs w-0 flex-1" />
                 <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
@@ -306,11 +332,11 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
                               </SelectContent>
                             </Select>
                           ) : (
-                            <Input
+                            <LocalInput
                               value={mapping.responsePath}
-                              onChange={e => {
+                              onCommit={v => {
                                 const updated = [...(nodeData.responseMappings || [])];
-                                updated[idx] = { ...updated[idx], responsePath: e.target.value };
+                                updated[idx] = { ...updated[idx], responsePath: v };
                                 onChange({ responseMappings: updated });
                               }}
                               placeholder="ex: data.token ou items[0].id"
