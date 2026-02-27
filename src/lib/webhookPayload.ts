@@ -181,7 +181,8 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
   const userData: { email?: string; phone?: string } = {};
 
   for (const [elementId, rawValue] of Object.entries(answers)) {
-    if (elementId.startsWith('__var_')) continue; // skip internal var keys
+    if (elementId.startsWith('__var_') || elementId.startsWith('__webhook_')) continue; // skip internal keys
+    if (elementId.includes('.')) continue; // skip compound sub-keys (used internally for conditions/variables)
 
     const element = elementMap[elementId];
     if (!element) continue;

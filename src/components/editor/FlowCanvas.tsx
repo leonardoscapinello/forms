@@ -26,6 +26,7 @@ import {
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData,
 } from '@/types/form';
+import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
 import StartNode from './StartNode';
 import EndNode from './EndNode';
@@ -121,18 +122,27 @@ function FlowCanvasInner({
   const integrationNodes = form.integrationNodes || [];
   const analyticsNodes = form.analyticsNodes || [];
 
-  // Build a grouped structure of input elements per page
+  // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
-    return pages.map(page => ({
-      pageId: page.id,
-      pageTitle: page.title,
-      elements: (page.elements || [])
-        .filter(el => el.type.startsWith('input_'))
-        .map(el => ({
-          elementId: el.id,
-          elementLabel: el.label || el.type.replace('input_', '').replace(/_/g, ' '),
-        })),
-    })).filter(p => p.elements.length > 0);
+    return pages.map(page => {
+      const elements: { elementId: string; elementLabel: string }[] = [];
+      for (const el of (page.elements || [])) {
+        if (!el.type.startsWith('input_')) continue;
+        const baseLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
+        const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
+        if (subKeys) {
+          // Add the whole compound field first
+          elements.push({ elementId: el.id, elementLabel: `${baseLabel} (completo)` });
+          // Then add each sub-key
+          for (const sub of subKeys) {
+            elements.push({ elementId: `${el.id}.${sub.key}`, elementLabel: `${baseLabel} → ${sub.label}` });
+          }
+        } else {
+          elements.push({ elementId: el.id, elementLabel: baseLabel });
+        }
+      }
+      return { pageId: page.id, pageTitle: page.title, elements };
+    }).filter(p => p.elements.length > 0);
   }, [pages]);
 
   /**
