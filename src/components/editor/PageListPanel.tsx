@@ -1,4 +1,5 @@
 import { FunnelPage, FormVariable, FormVariableType } from '@/types/form';
+import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { Plus, FileText, Trash2, Home, Variable, Pencil, Check, X, Copy, Braces, CheckCircle, Settings2, ChevronDown, ChevronRight, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -370,11 +371,27 @@ export default function PageListPanel({
                         <SelectValue placeholder="Selecione o campo..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {allFields.map(f => (
-                          <SelectItem key={f.element.id} value={f.element.id} className="text-xs">
-                            {f.pageTitle} → {f.element.label || f.element.type}
-                          </SelectItem>
-                        ))}
+                        {allFields.flatMap(f => {
+                          const subKeys = COMPOUND_FIELD_SUB_KEYS[f.element.type];
+                          const baseLabel = f.element.label || f.element.type;
+                          if (subKeys) {
+                            return [
+                              <SelectItem key={f.element.id} value={f.element.id} className="text-xs">
+                                {f.pageTitle} → {baseLabel} (completo)
+                              </SelectItem>,
+                              ...subKeys.map(sub => (
+                                <SelectItem key={`${f.element.id}.${sub.key}`} value={`${f.element.id}.${sub.key}`} className="text-xs pl-6">
+                                  {f.pageTitle} → {baseLabel} → {sub.label}
+                                </SelectItem>
+                              )),
+                            ];
+                          }
+                          return [
+                            <SelectItem key={f.element.id} value={f.element.id} className="text-xs">
+                              {f.pageTitle} → {baseLabel}
+                            </SelectItem>,
+                          ];
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

@@ -82,6 +82,53 @@ export const COMPANY_FIELD_LABELS: Record<CompanyFieldKey, string> = {
 
 export const ALL_COMPANY_FIELDS: CompanyFieldKey[] = Object.keys(COMPANY_FIELD_LABELS) as CompanyFieldKey[];
 
+/**
+ * Compound field sub-keys: element types that store an object value
+ * and can be referenced by sub-key (e.g. "elementId.street").
+ * Used in conditions, variables, and webhook payloads.
+ */
+export const COMPOUND_FIELD_SUB_KEYS: Partial<Record<PageElementType, { key: string; label: string }[]>> = {
+  input_address: [
+    { key: 'country', label: 'País' },
+    { key: 'cep', label: 'CEP' },
+    { key: 'street', label: 'Rua' },
+    { key: 'number', label: 'Número' },
+    { key: 'complement', label: 'Complemento' },
+    { key: 'neighborhood', label: 'Bairro' },
+    { key: 'city', label: 'Cidade' },
+    { key: 'state', label: 'Estado' },
+  ],
+  input_company: [
+    { key: 'cnpj', label: 'CNPJ' },
+    { key: 'razao_social', label: 'Razão Social' },
+    { key: 'nome_fantasia', label: 'Nome Fantasia' },
+    { key: 'situacao', label: 'Situação' },
+    { key: 'porte', label: 'Porte' },
+    { key: 'natureza_juridica', label: 'Natureza Jurídica' },
+    { key: 'cnae_principal', label: 'CNAE' },
+    { key: 'logradouro', label: 'Logradouro' },
+    { key: 'numero', label: 'Número' },
+    { key: 'municipio', label: 'Município' },
+    { key: 'uf', label: 'UF' },
+    { key: 'cep', label: 'CEP' },
+    { key: 'telefone', label: 'Telefone' },
+    { key: 'email', label: 'E-mail' },
+  ],
+  input_phone: [
+    { key: 'ddi', label: 'DDI' },
+    { key: 'number', label: 'Número' },
+    { key: 'countryCode', label: 'Código do país' },
+  ],
+  input_height: [
+    { key: 'value', label: 'Valor' },
+    { key: 'unit', label: 'Unidade' },
+  ],
+  input_weight: [
+    { key: 'value', label: 'Valor' },
+    { key: 'unit', label: 'Unidade' },
+  ],
+};
+
 export interface PageElementStyle {
   textAlign?: 'left' | 'center' | 'right';
   fontSize?: string;

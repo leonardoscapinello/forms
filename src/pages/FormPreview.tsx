@@ -659,7 +659,18 @@ export default function FormPreview() {
   }, [currentPageIndex, finished]);
 
   const setAnswer = useCallback((elementId: string, value: any) => {
-    setAnswers(prev => ({ ...prev, [elementId]: value }));
+    setAnswers(prev => {
+      const next = { ...prev, [elementId]: value };
+      // Flatten compound field sub-values (e.g. address.street, company.razao_social)
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        for (const [subKey, subVal] of Object.entries(value)) {
+          if (subVal !== undefined && subVal !== null) {
+            next[`${elementId}.${subKey}`] = String(subVal);
+          }
+        }
+      }
+      return next;
+    });
   }, []);
 
   const handleButtonNavigate = useCallback((action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => {
