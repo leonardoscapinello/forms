@@ -27,6 +27,8 @@ interface Props {
   pathPrefix?: string;
   /** Placeholder for the URL input */
   placeholder?: string;
+  /** Hide the "Save to gallery" button */
+  hideSaveToGallery?: boolean;
 }
 
 export default function ImageSourcePicker({
@@ -39,6 +41,7 @@ export default function ImageSourcePicker({
   compact = false,
   pathPrefix = 'images',
   placeholder = 'URL da imagem...',
+  hideSaveToGallery = false,
 }: Props) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -168,7 +171,7 @@ export default function ImageSourcePicker({
       </div>
 
       {/* Save to gallery */}
-      {value && (
+      {value && !hideSaveToGallery && (
         <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 w-full" onClick={handleSaveToGallery} disabled={uploading}>
           <Save className="h-3 w-3" /> Salvar na galeria
         </Button>
