@@ -2,6 +2,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const FONT_OPTIONS = [
+  { value: 'Borna', label: 'Borna' },
   { value: 'Inter', label: 'Inter' },
   { value: 'DM Sans', label: 'DM Sans' },
   { value: 'Poppins', label: 'Poppins' },
@@ -42,8 +43,8 @@ export default function TypographySelector({ fontFamily, fontWeight, onFontFamil
       <Label className="text-xs">{label}</Label>
       <div className="grid grid-cols-2 gap-2">
         <Select
-          value={fontFamily || ''}
-          onValueChange={v => onFontFamilyChange(v || undefined)}
+          value={fontFamily || 'Borna'}
+          onValueChange={v => onFontFamilyChange(v || 'Borna')}
         >
           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Fonte" /></SelectTrigger>
           <SelectContent>

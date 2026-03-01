@@ -63,6 +63,11 @@ function buildDefaults(form: AppFormData | null) {
   return defaults;
 }
 
+function normalizeFontFamily(fontFamily?: string) {
+  if (!fontFamily || fontFamily.trim() === '' || fontFamily === 'Inter') return 'Borna';
+  return fontFamily;
+}
+
 /** Resolve userData (email, phone, name) from a UserDataMapping and current answers */
 function resolveUserData(
   mapping: UserDataMapping | undefined,
@@ -1156,7 +1161,7 @@ export default function FormPreview() {
         const paddingY = pageStyle.paddingY ?? 32;
         const gap = pageStyle.gap ?? 32;
         const bgColor = pageStyle.backgroundColor || undefined;
-        const fontFamily = pageStyle.fontFamily || form.style?.fontFamily || 'Borna';
+        const fontFamily = normalizeFontFamily(pageStyle.fontFamily || form.style?.fontFamily);
 
         // Build container background from form.style design settings
         const formStyle = form.style;
@@ -1616,7 +1621,7 @@ function InteractiveElement({
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return wrapWithStyle(
         <div className={alignClass}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
             {t(element.content) || 'Título'}
           </div>
         </div>
@@ -1626,7 +1631,7 @@ function InteractiveElement({
     case 'text':
       return wrapWithStyle(
         <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
+          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
             {t(element.content) || ''}
           </p>
         </div>
@@ -1674,7 +1679,7 @@ function InteractiveElement({
               width: style?.width || 'auto',
               padding: style?.padding !== undefined ? `${style.padding}px ${style.padding * 1.5}px` : undefined,
               color: style?.color,
-              fontFamily: style?.fontFamily,
+              fontFamily: normalizeFontFamily(style?.fontFamily),
               fontWeight: style?.fontWeight,
             }}
           >
