@@ -184,6 +184,7 @@ export default function FormPreview() {
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const navigatingRef = useRef(false);
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -955,108 +956,114 @@ export default function FormPreview() {
 
 
   const goNext = useCallback(async () => {
+    if (navigatingRef.current) return;
     if (isPageBlocked) return;
     if (!areRequiredFieldsFilled()) return;
+    navigatingRef.current = true;
 
-    // Run async validators for current page
-    if (currentPage) {
-      const validators = currentPage.elements
-        .map(el => validatorsRef.current[el.id])
-        .filter(Boolean);
-      if (validators.length > 0) {
-        const results = await Promise.all(validators.map(v => v()));
-        if (results.some(r => !r)) return;
-      }
-    }
-
-    setDirection(1);
-
-    const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
-    const allEdges = formRef.current?.flowEdges || [];
-    const currentNodeHasOutEdges = allEdges.some(e => e.source === fromNodeId);
-
-    // Use answersRef.current to always get the latest state — avoids stale closure
-    const latestAnswers = answersRef.current;
-    const { nextNodeId, updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
-
-    if (nextNodeId === 'end') {
-      // Apply any variable ops that ran along the path to 'end'
-      setAnswers(updatedAnswers);
-      answersRef.current = updatedAnswers;
-      setFinished(true);
-      return;
-    }
-
-    if (nextNodeId && nextNodeId.startsWith('p-')) {
-      const pageId = nextNodeId.replace('p-', '');
-      const targetIndex = pages.findIndex(p => p.id === pageId);
-      if (targetIndex !== -1) {
-        // Skip empty pages in workflow-resolved navigation
-        if (isPageEmpty(pages[targetIndex])) {
-          // Recursively navigate from this empty page
-          const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers);
-          if (n2 === 'end') { setAnswers(a2); answersRef.current = a2; setFinished(true); return; }
-          if (n2 && n2.startsWith('p-')) {
-            const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
-            if (idx2 !== -1) {
-              setAnswers(applyPageVariableAssignments(pages[idx2], a2));
-              setCurrentPageIndex(idx2);
-              return;
-            }
-          }
-          // No workflow connection from empty page — fall through to sequential from this index
-          const nextNonEmpty = (() => {
-            for (let i = targetIndex + 1; i < pages.length; i++) {
-              if (!isPageEmpty(pages[i])) return i;
-            }
-            return -1;
-          })();
-          if (nextNonEmpty !== -1) {
-            setAnswers(applyPageVariableAssignments(pages[nextNonEmpty], updatedAnswers));
-            setCurrentPageIndex(nextNonEmpty);
-            return;
-          }
-          setFinished(true);
-          return;
+    try {
+      // Run async validators for current page
+      if (currentPage) {
+        const validators = currentPage.elements
+          .map(el => validatorsRef.current[el.id])
+          .filter(Boolean);
+        if (validators.length > 0) {
+          const results = await Promise.all(validators.map(v => v()));
+          if (results.some(r => !r)) return;
         }
-        const nextPage = pages[targetIndex];
-        setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
-        setCurrentPageIndex(targetIndex);
+      }
+
+      setDirection(1);
+
+      const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
+      const allEdges = formRef.current?.flowEdges || [];
+      const currentNodeHasOutEdges = allEdges.some(e => e.source === fromNodeId);
+
+      // Use answersRef.current to always get the latest state — avoids stale closure
+      const latestAnswers = answersRef.current;
+      const { nextNodeId, updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
+
+      if (nextNodeId === 'end') {
+        // Apply any variable ops that ran along the path to 'end'
+        setAnswers(updatedAnswers);
+        answersRef.current = updatedAnswers;
+        setFinished(true);
         return;
       }
-    }
 
-    if (currentNodeHasOutEdges) {
-      setFinished(true);
-      return;
-    }
-
-    // Fallback: sequential navigation — skip empty pages
-    const findNextNonEmpty = (startIdx: number): number => {
-      for (let i = startIdx; i < pages.length; i++) {
-        if (!isPageEmpty(pages[i])) return i;
+      if (nextNodeId && nextNodeId.startsWith('p-')) {
+        const pageId = nextNodeId.replace('p-', '');
+        const targetIndex = pages.findIndex(p => p.id === pageId);
+        if (targetIndex !== -1) {
+          // Skip empty pages in workflow-resolved navigation
+          if (isPageEmpty(pages[targetIndex])) {
+            // Recursively navigate from this empty page
+            const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers);
+            if (n2 === 'end') { setAnswers(a2); answersRef.current = a2; setFinished(true); return; }
+            if (n2 && n2.startsWith('p-')) {
+              const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
+              if (idx2 !== -1) {
+                setAnswers(applyPageVariableAssignments(pages[idx2], a2));
+                setCurrentPageIndex(idx2);
+                return;
+              }
+            }
+            // No workflow connection from empty page — fall through to sequential from this index
+            const nextNonEmpty = (() => {
+              for (let i = targetIndex + 1; i < pages.length; i++) {
+                if (!isPageEmpty(pages[i])) return i;
+              }
+              return -1;
+            })();
+            if (nextNonEmpty !== -1) {
+              setAnswers(applyPageVariableAssignments(pages[nextNonEmpty], updatedAnswers));
+              setCurrentPageIndex(nextNonEmpty);
+              return;
+            }
+            setFinished(true);
+            return;
+          }
+          const nextPage = pages[targetIndex];
+          setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
+          setCurrentPageIndex(targetIndex);
+          return;
+        }
       }
-      return -1; // all remaining pages are empty
-    };
 
-    if (currentPageIndex === null) {
-      const idx = findNextNonEmpty(0);
-      if (idx !== -1) {
-        setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
-        setCurrentPageIndex(idx);
+      if (currentNodeHasOutEdges) {
+        setFinished(true);
+        return;
+      }
+
+      // Fallback: sequential navigation — skip empty pages
+      const findNextNonEmpty = (startIdx: number): number => {
+        for (let i = startIdx; i < pages.length; i++) {
+          if (!isPageEmpty(pages[i])) return i;
+        }
+        return -1; // all remaining pages are empty
+      };
+
+      if (currentPageIndex === null) {
+        const idx = findNextNonEmpty(0);
+        if (idx !== -1) {
+          setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
+          setCurrentPageIndex(idx);
+        } else {
+          setFinished(true);
+        }
+      } else if (currentPageIndex < pages.length - 1) {
+        const idx = findNextNonEmpty(currentPageIndex + 1);
+        if (idx !== -1) {
+          setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
+          setCurrentPageIndex(idx);
+        } else {
+          setFinished(true);
+        }
       } else {
         setFinished(true);
       }
-    } else if (currentPageIndex < pages.length - 1) {
-      const idx = findNextNonEmpty(currentPageIndex + 1);
-      if (idx !== -1) {
-        setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
-        setCurrentPageIndex(idx);
-      } else {
-        setFinished(true);
-      }
-    } else {
-      setFinished(true);
+    } finally {
+      navigatingRef.current = false;
     }
   }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, isPageEmpty]);
 
