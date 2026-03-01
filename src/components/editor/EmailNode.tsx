@@ -1,8 +1,8 @@
-import { memo, useState, useEffect, useCallback, useMemo } from 'react';
+import { memo, useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
   Mail, Trash2, ChevronDown, ChevronUp,
-  Loader2, CheckCircle2, XCircle, Send, Code,
+  Loader2, CheckCircle2, XCircle, Send, Code, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,6 +39,8 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
   const [instances, setInstances] = useState<ResendInstance[]>([]);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const EmailBuilderDialog = useMemo(() => lazy(() => import('./email-builder/EmailBuilderDialog')), []);
 
   useEffect(() => {
     supabase.from('integration_settings')
@@ -225,12 +227,22 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
                     </div>
                   </div>
                   {nodeData.useHtml ? (
-                    <textarea
-                      value={nodeData.bodyHtml || ''}
-                      onChange={e => onChange({ bodyHtml: e.target.value })}
-                      placeholder="<h1>Olá {{nome}}</h1><p>Seu conteúdo HTML aqui…</p>"
-                      className="w-full min-h-[80px] max-h-[200px] rounded-md border border-input bg-background px-2 py-1.5 text-xs font-mono resize-y focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
+                    <div className="space-y-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-8 text-xs gap-2"
+                        onClick={() => setBuilderOpen(true)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Abrir Editor Visual
+                      </Button>
+                      {nodeData.bodyHtml && (
+                        <div className="rounded-md border border-input bg-muted/30 p-2 max-h-[60px] overflow-hidden">
+                          <p className="text-[9px] text-muted-foreground truncate">HTML gerado ({nodeData.bodyHtml.length} caracteres)</p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <textarea
                       value={nodeData.bodyText || ''}
@@ -266,6 +278,18 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
             </div>
           )}
         </div>
+
+        {/* Email Builder Dialog */}
+        {builderOpen && (
+          <Suspense fallback={null}>
+            <EmailBuilderDialog
+              open={builderOpen}
+              onClose={() => setBuilderOpen(false)}
+              value={nodeData.bodyHtml || ''}
+              onChange={html => onChange({ bodyHtml: html })}
+            />
+          </Suspense>
+        )}
       </div>
     </TooltipProvider>
   );
