@@ -142,7 +142,7 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
   return (
     <div className="space-y-3">
       {/* Upload / Galeria / URL */}
-      <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} showPreview={!!block.src && !block.src.includes('{{')} />
+      <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} showPreview={!!block.src && !block.src.includes('{{')} hideSaveToGallery />
 
       {/* URL com variável */}
       <div>
