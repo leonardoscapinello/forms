@@ -107,8 +107,23 @@ export function VariableHighlightOverlay({
     <div className={className} aria-hidden="true">
       {parts.map((part, i) =>
         part.isVar ? (
-          <mark key={i} className={varTypeClass[part.varType]}>
-            {part.display}
+          <mark key={i} className={varTypeClass[part.varType]} style={{ position: 'relative' }}>
+            {/* Raw token text (invisible) keeps the same width as the textarea */}
+            <span style={{ visibility: 'hidden' }}>{part.text}</span>
+            {/* Readable label shown on top */}
+            {displayFieldLabels && part.display !== part.text && (
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                }}
+              >
+                {part.display}
+              </span>
+            )}
           </mark>
         ) : (
           <span key={i}>{part.display}</span>
