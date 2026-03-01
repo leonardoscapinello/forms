@@ -34,8 +34,8 @@ export function AppSidebar() {
         onClick={() => navigate(item.url)}
         className={`mx-2 px-3 py-2.5 rounded-full text-[13px] transition-all ${
           isActive(item.url)
-            ? 'bg-primary text-primary-foreground font-medium shadow-sm'
-            : 'text-foreground/70 hover:bg-accent hover:text-foreground'
+            ? 'bg-primary text-primary-foreground font-medium'
+            : 'bg-transparent text-foreground/70 hover:bg-accent hover:text-foreground'
         }`}
       >
         <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
