@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast as sonnerToast } from 'sonner';
 import { useFormStoreSafe } from '@/hooks/useFormStore';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
@@ -1116,6 +1117,14 @@ export default function FormPreview() {
           loadingLabel: fb.loadingLabel,
           allowSkip,
         });
+
+        // Show toast notification if configured
+        if (fb.showToast) {
+          sonnerToast(fb.toastTitle || 'Processando...', {
+            description: fb.toastDescription || undefined,
+            duration: durationMs,
+          });
+        }
 
         // Countdown interval for button_countdown mode
         const startTime = Date.now();

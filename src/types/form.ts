@@ -442,6 +442,12 @@ export interface WaitFeedbackConfig {
   skipReduceAmount?: number;
   /** For 'reduce_time': unit of the reduction */
   skipReduceUnit?: WaitUnit;
+  /** Show a toast notification when entering the wait */
+  showToast?: boolean;
+  /** Toast title */
+  toastTitle?: string;
+  /** Toast description */
+  toastDescription?: string;
 }
 
 export interface WaitNodeData {
