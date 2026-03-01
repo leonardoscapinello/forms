@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { cn } from '@/lib/utils';
 import { Webhook, Variable, Replace, FileText, Globe, Monitor } from 'lucide-react';
@@ -57,6 +58,19 @@ export function useVariableAutocomplete({
   const [showReplace, setShowReplace] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Update dropdown position based on input element
+  const updateDropdownPos = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setDropdownPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, [inputRef]);
 
   const webhookNodesWithFields = useMemo(
     () => (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0),
@@ -146,6 +160,7 @@ export function useVariableAutocomplete({
       setShowReplace(false);
       setFilter(match[1]);
       setTriggerPos(cursorPos - match[0].length);
+      updateDropdownPos();
     } else {
       setShowDropdown(false);
       setFilter('');
@@ -214,6 +229,7 @@ export function useVariableAutocomplete({
       setReplaceRange({ start: token.start, end: token.end });
       setShowReplace(true);
       setFilter('');
+      updateDropdownPos();
       requestAnimationFrame(() => {
         el.setSelectionRange(token.start, token.end);
       });
@@ -278,10 +294,17 @@ export function useVariableAutocomplete({
     }
   };
 
-  const DropdownUI = isVisible ? (
+  const DropdownUI = isVisible && dropdownPos ? createPortal(
     <div
       ref={dropdownRef}
-      className="absolute left-0 right-0 top-full mt-1 z-[300] bg-popover border border-border rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+      style={{
+        position: 'fixed',
+        top: dropdownPos.top,
+        left: dropdownPos.left,
+        width: dropdownPos.width,
+        zIndex: 9999,
+      }}
+      className="bg-popover border border-border rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
       onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
       onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
     >
@@ -317,7 +340,8 @@ export function useVariableAutocomplete({
           </button>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body
   ) : null;
 
   return {
