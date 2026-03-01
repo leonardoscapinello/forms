@@ -3,7 +3,7 @@ import { useFormStoreSafe } from '@/hooks/useFormStore';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage, FormData as AppFormData, UserDataMapping } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
@@ -1478,6 +1478,12 @@ export default function FormPreview() {
                   </>
                 )}
               </Button>
+              <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/60 pl-1 pr-1">
+                <span>ou</span>
+                <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted/50 px-1 py-0.5 font-mono text-[10px]">
+                  Enter <CornerDownLeft className="h-2.5 w-2.5" />
+                </kbd>
+              </div>
             </div>
           </div>
         );
