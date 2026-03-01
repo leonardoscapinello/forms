@@ -696,7 +696,7 @@ function FloatingToolbar({ onAddStructure }: {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+    <div className="sticky bottom-4 left-1/2 -translate-x-1/2 z-30 w-fit mx-auto">
       {!expanded ? (
         <button onClick={() => setExpanded(true)}
           className="rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95"
