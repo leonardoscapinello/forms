@@ -1,7 +1,7 @@
 // ─── Email Block Types ──────────────────────────────────────────────
-// Extracted to reduce duplication and enable reuse across email-related components.
 
-export type BlockType = 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'columns';
+export type ElementType = 'text' | 'image' | 'button' | 'divider' | 'spacer';
+export type BlockType = ElementType | 'columns';
 
 export interface BlockPadding {
   top: number;
@@ -72,19 +72,35 @@ export type EmailBlock = TextBlock | ImageBlock | ButtonBlock | DividerBlock | S
 // ─── Defaults ────────────────────────────────────────────────────────
 export function uid() { return Math.random().toString(36).slice(2, 10); }
 
-export const DEFAULT_PADDING: BlockPadding = { top: 8, right: 24, bottom: 8, left: 24 };
+export const DEFAULT_PADDING: BlockPadding = { top: 8, right: 16, bottom: 8, left: 16 };
 
-export function createBlock(type: BlockType): EmailBlock {
+export function createElement(type: ElementType): EmailBlock {
   const id = uid();
   const padding = { ...DEFAULT_PADDING };
   switch (type) {
     case 'text': return { id, type, padding, content: 'Seu texto aqui...', align: 'left', fontSize: 16, fontWeight: 'normal', color: '#333333' };
     case 'image': return { id, type, padding, src: '', alt: '', width: '100%', align: 'center', link: '' };
-    case 'button': return { id, type, padding: { top: 16, right: 24, bottom: 16, left: 24 }, text: 'Clique aqui', href: '#', linkMode: 'custom' as ButtonLinkMode, bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
+    case 'button': return { id, type, padding: { top: 16, right: 16, bottom: 16, left: 16 }, text: 'Clique aqui', href: '#', linkMode: 'custom' as ButtonLinkMode, bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
     case 'divider': return { id, type, padding, color: '#E5E7EB', thickness: 1, width: '100%' };
     case 'spacer': return { id, type, padding: { top: 0, right: 0, bottom: 0, left: 0 }, height: 20 };
-    case 'columns': return { id, type, padding: { top: 8, right: 20, bottom: 8, left: 20 }, columns: [[], []] };
   }
+}
+
+export function createStructure(colCount: number): ColumnsBlock {
+  const columns: EmailBlock[][] = [];
+  for (let i = 0; i < colCount; i++) columns.push([]);
+  return {
+    id: uid(),
+    type: 'columns',
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    columns,
+  };
+}
+
+// Keep backward compat
+export function createBlock(type: BlockType): EmailBlock {
+  if (type === 'columns') return createStructure(2);
+  return createElement(type as ElementType);
 }
 
 // ─── HTML serialization ──────────────────────────────────────────────
@@ -112,7 +128,7 @@ export function blockToHtml(block: EmailBlock): string {
       const colWidth = Math.floor(100 / block.columns.length);
       const cols = block.columns.map(col => {
         const inner = col.map(b => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${blockToHtml(b)}</table>`).join('');
-        return `<!--[if mso]><td style="width:${colWidth}%;vertical-align:top;padding:0 4px;"><![endif]--><div class="email-col" style="display:inline-block;width:100%;max-width:${colWidth}%;vertical-align:top;padding:0 4px;box-sizing:border-box;">${inner || '&nbsp;'}</div><!--[if mso]></td><![endif]-->`;
+        return `<!--[if mso]><td style="width:${colWidth}%;vertical-align:top;"><![endif]--><div class="email-col" style="display:inline-block;width:100%;max-width:${colWidth}%;vertical-align:top;box-sizing:border-box;">${inner || '&nbsp;'}</div><!--[if mso]></td><![endif]-->`;
       }).join('');
       return `<tr><td style="padding:${pad};"><!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><![endif]-->${cols}<!--[if mso]></tr></table><![endif]--></td></tr>`;
     }
@@ -165,19 +181,27 @@ export function extractBlocksFromHtml(html: string): { blocks: EmailBlock[]; ema
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
-import { Type, ImageIcon, MousePointer2, Minus, Space, Columns2 } from 'lucide-react';
+import { Type, ImageIcon, MousePointer2, Minus, Space, Columns2, Square, Columns3, Columns4 } from 'lucide-react';
 
-export const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Type }[] = [
+export const ELEMENT_TYPES: { type: ElementType; label: string; icon: typeof Type }[] = [
   { type: 'text', label: 'Texto', icon: Type },
   { type: 'image', label: 'Imagem', icon: ImageIcon },
   { type: 'button', label: 'Botão', icon: MousePointer2 },
   { type: 'divider', label: 'Divisor', icon: Minus },
   { type: 'spacer', label: 'Espaço', icon: Space },
-  { type: 'columns', label: 'Colunas', icon: Columns2 },
 ];
 
-export const COL_BLOCK_TYPES = BLOCK_TYPES.filter(b => b.type !== 'columns');
+export const STRUCTURE_PRESETS: { cols: number; label: string; icon: typeof Square }[] = [
+  { cols: 1, label: '1 Coluna', icon: Square },
+  { cols: 2, label: '2 Colunas', icon: Columns2 },
+  { cols: 3, label: '3 Colunas', icon: Columns3 },
+  { cols: 4, label: '4 Colunas', icon: Columns4 },
+];
+
+// Keep backward compat
+export const BLOCK_TYPES = [...ELEMENT_TYPES.map(e => ({ ...e, type: e.type as BlockType })), { type: 'columns' as BlockType, label: 'Colunas', icon: Columns2 }];
+export const COL_BLOCK_TYPES = ELEMENT_TYPES.map(e => ({ ...e, type: e.type as BlockType }));
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
-  text: 'Texto', image: 'Imagem', button: 'Botão', divider: 'Divisor', spacer: 'Espaço', columns: 'Colunas',
+  text: 'Texto', image: 'Imagem', button: 'Botão', divider: 'Divisor', spacer: 'Espaço', columns: 'Estrutura',
 };
