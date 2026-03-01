@@ -2482,8 +2482,8 @@ function InteractiveElement({
               transition={{ duration: 0.2 }}
               className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                 value === opt.id
-                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
-                  : 'border-border hover:border-primary/40 text-foreground'
+                  ? 'border-primary bg-transparent text-foreground shadow-sm'
+                  : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
               }`}
             >
               <motion.span
@@ -2513,8 +2513,8 @@ function InteractiveElement({
               transition={{ duration: 0.2 }}
               className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                 value === opt.id
-                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
-                  : 'border-border hover:border-primary/40 text-foreground'
+                  ? 'border-primary bg-transparent text-foreground shadow-sm'
+                  : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
               }`}
             >
               <motion.span
@@ -2735,8 +2735,8 @@ function InteractiveElement({
               transition={{ duration: 0.2 }}
               className={`flex-1 px-5 py-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 text-lg font-medium ${
                 value === opt.key
-                  ? 'border-primary bg-primary/5 text-foreground shadow-sm'
-                  : 'border-border hover:border-primary/40 text-foreground'
+                  ? 'border-primary bg-transparent text-foreground shadow-sm'
+                  : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
               }`}
             >
               <Twemoji className="text-xl">{opt.emoji}</Twemoji>
@@ -2768,8 +2768,8 @@ function InteractiveElement({
                 transition={{ duration: 0.2 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                   isSelected
-                    ? 'border-primary bg-primary/5 text-foreground shadow-sm'
-                    : 'border-border hover:border-primary/40 text-foreground'
+                    ? 'border-primary bg-transparent text-foreground shadow-sm'
+                    : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
                 }`}
               >
                 <motion.span
@@ -2812,8 +2812,8 @@ function InteractiveElement({
                 transition={{ duration: 0.2 }}
                 className={`relative px-4 py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
                   selected
-                    ? 'border-primary bg-primary/5 shadow-sm'
-                    : 'border-border hover:border-primary/40'
+                    ? 'border-primary bg-transparent shadow-sm'
+                    : 'border-border hover:bg-primary/5 hover:border-primary/40'
                 }`}
               >
                 {selected && (
@@ -2860,9 +2860,9 @@ function InteractiveElement({
                       <span className="text-sm">Sem imagem</span>
                     </div>
                   )}
-                  {selected && <div className="absolute inset-0 bg-primary/10" />}
+                  {selected && <div className="absolute inset-0 bg-transparent" />}
                 </div>
-                <div className={`px-3 py-2 text-sm font-medium text-center ${selected ? 'bg-primary/5' : ''}`}>{t(opt.label)}</div>
+                <div className={`px-3 py-2 text-sm font-medium text-center`}>{t(opt.label)}</div>
               </motion.button>
             );
           })}
