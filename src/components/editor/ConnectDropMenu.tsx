@@ -1,7 +1,8 @@
-import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface Props {
-  position: { x: number; y: number };
   onAddPage: () => void;
   onAddCondition: () => void;
   onAddVariableOp: () => void;
@@ -12,123 +13,113 @@ interface Props {
   onClose: () => void;
 }
 
-export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onClose }: Props) {
+interface ActionItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  iconColor: string;
+  bgColor: string;
+  action: () => void;
+  category: string;
+}
+
+const CATEGORIES = [
+  { key: 'flow', label: 'Fluxo' },
+  { key: 'logic', label: 'Lógica' },
+  { key: 'integration', label: 'Integrações' },
+] as const;
+
+export default function ConnectDropMenu({
+  onAddPage, onAddCondition, onAddVariableOp,
+  onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onClose,
+}: Props) {
+  const [search, setSearch] = useState('');
+
+  const items: ActionItem[] = useMemo(() => [
+    { id: 'page', label: 'Nova Página', icon: FileText, iconColor: 'text-primary', bgColor: 'bg-primary/10', action: () => { onAddPage(); onClose(); }, category: 'flow' },
+    { id: 'condition', label: 'Condição', icon: GitBranch, iconColor: 'text-node-condition-accent', bgColor: 'bg-node-condition', action: () => { onAddCondition(); onClose(); }, category: 'logic' },
+    { id: 'variable', label: 'Variável', icon: Variable, iconColor: 'text-node-variable-op-accent', bgColor: 'bg-node-variable-op', action: () => { onAddVariableOp(); onClose(); }, category: 'logic' },
+    { id: 'webhook', label: 'Webhook', icon: Webhook, iconColor: 'text-node-webhook-accent', bgColor: 'bg-node-webhook', action: () => { onAddIntegration(); onClose(); }, category: 'integration' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2, iconColor: 'text-node-analytics-accent', bgColor: 'bg-node-analytics', action: () => { onAddAnalytics(); onClose(); }, category: 'integration' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, iconColor: 'text-node-whatsapp-accent', bgColor: 'bg-node-whatsapp', action: () => { onAddWhatsApp(); onClose(); }, category: 'integration' },
+    { id: 'email', label: 'E-mail', icon: Mail, iconColor: 'text-node-email-accent', bgColor: 'bg-node-email', action: () => { onAddEmail(); onClose(); }, category: 'integration' },
+  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onClose]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter(i => i.label.toLowerCase().includes(q));
+  }, [items, search]);
+
+  const groupedByCategory = useMemo(() => {
+    return CATEGORIES.map(cat => ({
+      ...cat,
+      items: filtered.filter(i => i.category === cat.key),
+    })).filter(cat => cat.items.length > 0);
+  }, [filtered]);
+
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div
-        className="fixed z-50 w-64 rounded-xl border border-border bg-popover shadow-xl py-2"
-        style={{ left: position.x, top: position.y }}
-      >
-        {/* New Page */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddPage(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <FileText className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Nova Página</span>
-            <p className="text-[10px] text-muted-foreground">Adicionar página ao fluxo</p>
-          </div>
-        </button>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
+      
+      {/* Side panel */}
+      <div className="fixed left-0 top-0 bottom-0 z-50 w-64 bg-card border-r border-border shadow-xl flex flex-col animate-in slide-in-from-left duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <h3 className="text-sm font-semibold text-foreground">Adicionar bloco</h3>
+          <button
+            onClick={onClose}
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-        <div className="h-px bg-border my-1.5 mx-3" />
+        {/* Search */}
+        <div className="px-4 pb-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="h-8 pl-8 text-sm bg-muted/50 border-border"
+            />
+          </div>
+        </div>
 
-        {/* Condition */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddCondition(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-node-condition flex items-center justify-center flex-shrink-0">
-            <GitBranch className="h-4 w-4 text-node-condition-accent" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Condicional</span>
-            <p className="text-[10px] text-muted-foreground">Ramificar o fluxo</p>
-          </div>
-        </button>
+        {/* Items */}
+        <div className="flex-1 overflow-y-auto px-3 pb-4">
+          {groupedByCategory.map(cat => (
+            <div key={cat.key} className="mb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-2">
+                {cat.label}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {cat.items.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.action}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground hover:bg-muted hover:border-muted-foreground/20 transition-colors text-left group"
+                    >
+                      <div className={`h-5 w-5 rounded flex items-center justify-center flex-shrink-0 ${item.bgColor}`}>
+                        <Icon className={`h-3 w-3 ${item.iconColor}`} />
+                      </div>
+                      <span className="text-xs font-medium truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
 
-        <div className="h-px bg-border my-1.5 mx-3" />
-
-        {/* Variable Op */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddVariableOp(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-node-variable-op flex items-center justify-center flex-shrink-0">
-            <Variable className="h-4 w-4 text-node-variable-op-accent" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Variáveis</span>
-            <p className="text-[10px] text-muted-foreground">Atribuir, somar, calcular variáveis</p>
-          </div>
-        </button>
-
-        <div className="h-px bg-border my-1.5 mx-3" />
-
-        {/* Webhook */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddIntegration(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-node-webhook flex items-center justify-center flex-shrink-0">
-            <Webhook className="h-4 w-4 text-node-webhook-accent" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Webhook</span>
-            <p className="text-[10px] text-muted-foreground">Enviar dados para uma URL</p>
-          </div>
-        </button>
-
-        <div className="h-px bg-border my-1.5 mx-3" />
-
-        {/* Analytics / Pixel */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddAnalytics(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-node-analytics flex items-center justify-center flex-shrink-0">
-            <BarChart2 className="h-4 w-4 text-node-analytics-accent" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">Analytics</span>
-            <p className="text-[10px] text-muted-foreground">Meta, Google, TikTok, LinkedIn Pixel</p>
-          </div>
-        </button>
-
-        <div className="h-px bg-border my-1.5 mx-3" />
-
-        {/* WhatsApp */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddWhatsApp(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-node-whatsapp flex items-center justify-center flex-shrink-0">
-            <MessageSquare className="h-4 w-4 text-node-whatsapp-accent" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">WhatsApp</span>
-            <p className="text-[10px] text-muted-foreground">Enviar mensagem via Evolution API</p>
-          </div>
-        </button>
-
-        <div className="h-px bg-border my-1.5 mx-3" />
-
-        {/* Email */}
-        <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
-          onClick={() => { onAddEmail(); onClose(); }}
-        >
-          <div className="h-8 w-8 rounded-lg bg-node-email flex items-center justify-center flex-shrink-0">
-            <Mail className="h-4 w-4 text-node-email-accent" />
-          </div>
-          <div>
-            <span className="font-medium text-foreground">E-mail</span>
-            <p className="text-[10px] text-muted-foreground">Enviar e-mail via Resend</p>
-          </div>
-        </button>
+          {groupedByCategory.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-6">Nenhum bloco encontrado</p>
+          )}
+        </div>
       </div>
     </>
   );
