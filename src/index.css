@@ -396,3 +396,29 @@ img.emoji {
   border-radius: 2px;
   font-size: 0.9em;
 }
+
+/* Variable highlight overlay in inputs */
+.var-highlight {
+  border-radius: 3px;
+  padding: 1px 0;
+  color: transparent; /* text is invisible, only background shows through */
+}
+.var-highlight-variable {
+  background: hsl(var(--primary) / 0.15);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+}
+.var-highlight-webhook {
+  background: hsl(var(--chart-4) / 0.15);
+  box-shadow: 0 0 0 1px hsl(var(--chart-4) / 0.2);
+}
+
+/* Container for the highlight backdrop */
+.var-highlight-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: transparent;
+}

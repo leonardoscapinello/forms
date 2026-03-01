@@ -6,6 +6,7 @@ import { Braces } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FormVariable, IntegrationNodeData } from '@/types/form';
 import { useVariableAutocomplete } from '../shared/useVariableAutocomplete';
+import { VariableHighlightOverlay } from '../shared/VariableHighlightOverlay';
 
 const COMMON_EMOJIS = [
   '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊',
@@ -242,13 +243,22 @@ export default function WhatsAppMessageEditor({
 
       {/* Textarea */}
       <div className="relative">
+        {local.includes('{{') && (
+          <VariableHighlightOverlay
+            text={local}
+            className="var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-xs"
+          />
+        )}
         <Textarea
           ref={textareaRef}
           value={local}
           onChange={e => acHandleChange(e.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="text-xs min-h-[60px] nodrag nopan nowheel resize-none"
+          className={cn(
+            'text-xs min-h-[60px] nodrag nopan nowheel resize-none relative',
+            local.includes('{{') && 'bg-transparent'
+          )}
           onFocus={() => { isFocusedRef.current = true; }}
           onBlur={() => { isFocusedRef.current = false; acDismiss(); commitValue(); }}
           onKeyDown={e => { acHandleKeyDown(e); e.stopPropagation(); }}
