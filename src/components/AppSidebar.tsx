@@ -1,13 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  Settings, LogOut, LayoutDashboard, Image,
-} from 'lucide-react';
-import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarFooter,
-} from '@/components/ui/sidebar';
+import { Settings, LogOut, LayoutDashboard, Image } from 'lucide-react';
+import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
 
 const mainItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -28,29 +22,6 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const renderItem = (item: typeof mainItems[0]) => {
-    const active = isActive(item.url);
-    return (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton
-          onClick={() => navigate(item.url)}
-          className={`!mx-4 !rounded-lg text-[14px] ${
-            active
-              ? '!bg-[#203300] !text-white font-medium'
-              : '!bg-transparent !text-[#474738] hover:!bg-[#F1F1E9]'
-          }`}
-        >
-          <item.icon
-            className={`!h-[18px] !w-[18px] flex-shrink-0 ${
-              active ? '!text-white' : '!text-[#B7B790]'
-            }`}
-          />
-          <span>{item.title}</span>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
-  };
-
   const initials = (profile?.display_name || profile?.email || 'U')
     .split(' ')
     .map(w => w[0])
@@ -58,10 +29,31 @@ export function AppSidebar() {
     .join('')
     .toUpperCase();
 
+  const NavItem = ({ item }: { item: typeof mainItems[0] }) => {
+    const active = isActive(item.url);
+    return (
+      <button
+        onClick={() => navigate(item.url)}
+        className={`w-full flex items-center gap-3 h-10 px-4 rounded-lg text-[14px] transition-colors ${
+          active
+            ? 'bg-[#203300] text-white font-medium'
+            : 'text-[#474738] hover:bg-[#F1F1E9]'
+        }`}
+      >
+        <item.icon
+          className={`h-[18px] w-[18px] flex-shrink-0 ${
+            active ? 'text-white' : 'text-[#B7B790]'
+          }`}
+        />
+        <span>{item.title}</span>
+      </button>
+    );
+  };
+
   return (
-    <Sidebar className="border-r border-sidebar-border">
-      {/* Logo */}
-      <div className="px-4 pt-4 pb-4">
+    <Sidebar className="border-r border-[#F1F1E9]">
+      {/* Logo — 16px padding all around */}
+      <div className="p-4 pb-2">
         <img
           src="/images/twobrain-logo-dark.svg"
           alt="twobrain"
@@ -69,29 +61,28 @@ export function AppSidebar() {
         />
       </div>
 
-      <SidebarContent>
-        {/* Main items — no group label, just like reference */}
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {mainItems.map(renderItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="!gap-0 !p-0">
+        {/* Main nav */}
+        <nav className="flex flex-col gap-1 p-4 pt-2">
+          {mainItems.map(item => (
+            <NavItem key={item.title} item={item} />
+          ))}
+        </nav>
 
-        <SidebarGroup className="pt-4">
-          <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B7B790] px-4 mb-1">
+        {/* System section */}
+        <div className="px-4 pt-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B7B790] mb-2 px-0">
             Sistema
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {systemItems.map(renderItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          </p>
+          <nav className="flex flex-col gap-1">
+            {systemItems.map(item => (
+              <NavItem key={item.title} item={item} />
+            ))}
+          </nav>
+        </div>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border px-4 py-4">
+      <SidebarFooter className="!p-4 border-t border-[#F1F1E9]">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-8 w-8 rounded-full bg-[#F1F1E9] flex items-center justify-center text-[12px] font-semibold text-[#474738]">
             {initials}
@@ -105,7 +96,7 @@ export function AppSidebar() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-2">
           {role === 'admin' && (
             <button
               onClick={() => navigate('/settings')}
