@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useVariableAutocomplete } from './useVariableAutocomplete';
+import { VariableHighlightOverlay } from './VariableHighlightOverlay';
 
 interface BaseProps {
   variables?: FormVariable[];
@@ -104,28 +105,52 @@ export default function VariableInput(props: Props) {
     onPointerDown: stopProp,
   };
 
+  const hasHighlight = local.includes('{{');
+
   return (
     <div className="relative flex items-start gap-1 nodrag nopan nowheel">
       <div className="relative flex-1">
         {props.as === 'textarea' ? (
-          <Textarea
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-            value={local}
-            onChange={e => handleChange(e.target.value)}
-            placeholder={placeholder}
-            rows={props.rows ?? 2}
-            className={cn('nodrag nopan nowheel', className)}
-            {...inputHandlers}
-          />
+          <>
+            {hasHighlight && (
+              <VariableHighlightOverlay
+                text={local}
+                className={cn(
+                  'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-base md:text-sm',
+                  className
+                )}
+              />
+            )}
+            <Textarea
+              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+              value={local}
+              onChange={e => handleChange(e.target.value)}
+              placeholder={placeholder}
+              rows={props.rows ?? 2}
+              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent', className)}
+              {...inputHandlers}
+            />
+          </>
         ) : (
-          <Input
-            ref={inputRef as React.RefObject<HTMLInputElement>}
-            value={local}
-            onChange={e => handleChange(e.target.value)}
-            placeholder={placeholder}
-            className={cn('nodrag nopan nowheel', className)}
-            {...inputHandlers}
-          />
+          <>
+            {hasHighlight && (
+              <VariableHighlightOverlay
+                text={local}
+                className={cn(
+                  'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-base md:text-sm whitespace-nowrap',
+                  className
+                )}
+              />
+            )}
+            <Input
+              ref={inputRef as React.RefObject<HTMLInputElement>}
+              value={local}
+              onChange={e => handleChange(e.target.value)}
+              placeholder={placeholder}
+              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent', className)}
+              {...inputHandlers}
+            />
+          </>
         )}
         {DropdownUI}
       </div>
