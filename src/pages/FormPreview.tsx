@@ -1019,7 +1019,7 @@ export default function FormPreview() {
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
           const durationMs = (wtNode.duration || 1) * multiplier;
           // Walk the rest of the workflow from the wait node to find the destination
-          const restResult = await walkWorkflow(target, currentAns);
+          const restResult = await walkWorkflow(target, currentAns, skipSideEffects);
           return {
             ...restResult,
             pendingWait: { durationMs, feedback: wtNode.feedback, remainingNodeId: target },
@@ -1174,7 +1174,7 @@ export default function FormPreview() {
           // Skip empty pages in workflow-resolved navigation
           if (isPageEmpty(pages[targetIndex])) {
             // Recursively navigate from this empty page
-            const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers);
+            const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers, isEditorPreview);
             if (n2 === 'end') { setAnswers(a2); answersRef.current = a2; setFinished(true); return; }
             if (n2 && n2.startsWith('p-')) {
               const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
