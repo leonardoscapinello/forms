@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { normalizeFontFamily } from '@/lib/fontUtils';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
 import {
@@ -118,18 +119,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     }).filter(g => g.elements.length > 0);
   }, [selectedId, allInputElements, pageId]);
 
-  const normalizeFontFamily = (fontFamily?: string) => {
-    const raw = (fontFamily ?? '').trim();
-    if (!raw) return "'Borna', ui-sans-serif, system-ui, sans-serif";
-
-    const normalized = raw.replace(/["']/g, '').toLowerCase();
-    const firstFamily = normalized.split(',')[0]?.trim() || '';
-    if (!firstFamily || firstFamily === 'inter' || firstFamily === 'borna') {
-      return "'Borna', ui-sans-serif, system-ui, sans-serif";
-    }
-
-    return raw;
-  };
+  // normalizeFontFamily is now imported from @/lib/fontUtils
 
   const effectiveStyle: FunnelPageStyle = {
     backgroundColor: '',

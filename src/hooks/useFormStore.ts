@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { FormData, DEFAULT_FORM_STYLE, createDefaultFunnelPage } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -264,7 +264,9 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     await supabase.from('forms').update({ folder_id: folderId }).eq('id', formId);
   }, []);
 
-  const value = { forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder };
+  const value = useMemo(() => ({
+    forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder,
+  }), [forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder]);
 
   return React.createElement(FormStoreContext.Provider, { value }, children);
 }
