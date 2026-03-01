@@ -978,6 +978,61 @@ export default function FormPreview() {
         continue;
       }
 
+      // Intermediate: A/B Test node — pick random variant based on weights
+      if (target.startsWith('ab-')) {
+        const abId = target.replace('ab-', '');
+        const abNode = f?.abTestNodes?.find(n => n.id === abId);
+        if (abNode && abNode.variants?.length) {
+          const totalWeight = abNode.variants.reduce((s, v) => s + v.weight, 0);
+          let random = Math.random() * totalWeight;
+          let chosenVariant = abNode.variants[0];
+          for (const variant of abNode.variants) {
+            random -= variant.weight;
+            if (random <= 0) { chosenVariant = variant; break; }
+          }
+          // Find the edge from this A/B test node with the matching source handle
+          const variantEdge = edges.find(e => e.source === target && e.sourceHandle === `ab-${chosenVariant.id}`);
+          if (variantEdge) {
+            currentNodeId = target;
+            // Override: jump directly to the chosen variant's target
+            const nextTarget = variantEdge.target;
+            if (nextTarget.startsWith('p-')) {
+              const pageId = nextTarget.replace('p-', '');
+              return { nextNodeId: pageId, updatedAnswers: currentAns };
+            }
+            // If it's another intermediate node, keep traversing
+            currentNodeId = nextTarget;
+            continue;
+          }
+        }
+        currentNodeId = target;
+        continue;
+      }
+
+      // Intermediate: Wait node — delay before continuing
+      if (target.startsWith('wt-')) {
+        const wtId = target.replace('wt-', '');
+        const wtNode = f?.waitNodes?.find(n => n.id === wtId);
+        if (wtNode) {
+          const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
+          const delayMs = (wtNode.duration || 1) * multiplier;
+          await new Promise(resolve => setTimeout(resolve, Math.min(delayMs, 30000))); // cap at 30s for UX
+        }
+        currentNodeId = target;
+        continue;
+      }
+
+      // Intermediate: Jump node — redirect to target page
+      if (target.startsWith('jp-')) {
+        const jpId = target.replace('jp-', '');
+        const jpNode = f?.jumpNodes?.find(n => n.id === jpId);
+        if (jpNode?.targetPageId) {
+          return { nextNodeId: jpNode.targetPageId, updatedAnswers: currentAns };
+        }
+        currentNodeId = target;
+        continue;
+      }
+
       if (target.startsWith('c-')) {
         currentNodeId = target;
         continue;

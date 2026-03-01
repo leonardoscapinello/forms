@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X, GitMerge, Clock, CornerDownRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface Props {
@@ -10,6 +10,9 @@ interface Props {
   onAddAnalytics: () => void;
   onAddWhatsApp: () => void;
   onAddEmail: () => void;
+  onAddABTest: () => void;
+  onAddWait: () => void;
+  onAddJump: () => void;
   onClose: () => void;
 }
 
@@ -31,19 +34,23 @@ const CATEGORIES = [
 
 export default function ConnectDropMenu({
   onAddPage, onAddCondition, onAddVariableOp,
-  onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onClose,
+  onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail,
+  onAddABTest, onAddWait, onAddJump, onClose,
 }: Props) {
   const [search, setSearch] = useState('');
 
   const items: ActionItem[] = useMemo(() => [
     { id: 'page', label: 'Nova Página', icon: FileText, iconColor: 'text-primary', bgColor: 'bg-primary/10', action: () => { onAddPage(); onClose(); }, category: 'flow' },
+    { id: 'jump', label: 'Pular', icon: CornerDownRight, iconColor: 'text-node-jump-accent', bgColor: 'bg-node-jump', action: () => { onAddJump(); onClose(); }, category: 'flow' },
     { id: 'condition', label: 'Condição', icon: GitBranch, iconColor: 'text-node-condition-accent', bgColor: 'bg-node-condition', action: () => { onAddCondition(); onClose(); }, category: 'logic' },
+    { id: 'abtest', label: 'Teste A/B', icon: GitMerge, iconColor: 'text-node-abtest-accent', bgColor: 'bg-node-abtest', action: () => { onAddABTest(); onClose(); }, category: 'logic' },
     { id: 'variable', label: 'Variável', icon: Variable, iconColor: 'text-node-variable-op-accent', bgColor: 'bg-node-variable-op', action: () => { onAddVariableOp(); onClose(); }, category: 'logic' },
+    { id: 'wait', label: 'Espera', icon: Clock, iconColor: 'text-node-wait-accent', bgColor: 'bg-node-wait', action: () => { onAddWait(); onClose(); }, category: 'logic' },
     { id: 'webhook', label: 'Webhook', icon: Webhook, iconColor: 'text-node-webhook-accent', bgColor: 'bg-node-webhook', action: () => { onAddIntegration(); onClose(); }, category: 'integration' },
     { id: 'analytics', label: 'Analytics', icon: BarChart2, iconColor: 'text-node-analytics-accent', bgColor: 'bg-node-analytics', action: () => { onAddAnalytics(); onClose(); }, category: 'integration' },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, iconColor: 'text-node-whatsapp-accent', bgColor: 'bg-node-whatsapp', action: () => { onAddWhatsApp(); onClose(); }, category: 'integration' },
     { id: 'email', label: 'E-mail', icon: Mail, iconColor: 'text-node-email-accent', bgColor: 'bg-node-email', action: () => { onAddEmail(); onClose(); }, category: 'integration' },
-  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onClose]);
+  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onAddABTest, onAddWait, onAddJump, onClose]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;

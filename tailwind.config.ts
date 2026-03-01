@@ -95,6 +95,12 @@ export default {
           "whatsapp-accent": "hsl(var(--node-whatsapp-accent))",
           email: "hsl(var(--node-email))",
           "email-accent": "hsl(var(--node-email-accent))",
+          abtest: "hsl(var(--node-abtest))",
+          "abtest-accent": "hsl(var(--node-abtest-accent))",
+          wait: "hsl(var(--node-wait))",
+          "wait-accent": "hsl(var(--node-wait-accent))",
+          jump: "hsl(var(--node-jump))",
+          "jump-accent": "hsl(var(--node-jump-accent))",
         },
       },
       borderRadius: {

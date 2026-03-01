@@ -24,7 +24,8 @@ import '@xyflow/react/dist/style.css';
 import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
-  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData, FormVariable,
+  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData,
+  ABTestNodeData, WaitNodeData, JumpNodeData, FormVariable,
 } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
@@ -36,6 +37,9 @@ import IntegrationNode from './IntegrationNode';
 import AnalyticsNode from './AnalyticsNode';
 import WhatsAppNode from './WhatsAppNode';
 import EmailNode from './EmailNode';
+import ABTestNode from './ABTestNode';
+import WaitNode from './WaitNode';
+import JumpNode from './JumpNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import { FileText, Trash2, LayoutGrid } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
@@ -54,6 +58,9 @@ const nodeTypes = {
   analyticsNode: AnalyticsNode,
   whatsappNode: WhatsAppNode,
   emailNode: EmailNode,
+  abTestNode: ABTestNode,
+  waitNode: WaitNode,
+  jumpNode: JumpNode,
 };
 
 const edgeTypes = {
@@ -91,6 +98,15 @@ interface Props {
   onEmailAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onEmailChange: (nodeId: string, patch: Partial<EmailNodeData>) => void;
   onEmailDelete: (nodeId: string) => void;
+  onABTestAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onABTestChange: (nodeId: string, patch: Partial<ABTestNodeData>) => void;
+  onABTestDelete: (nodeId: string) => void;
+  onWaitAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onWaitChange: (nodeId: string, patch: Partial<WaitNodeData>) => void;
+  onWaitDelete: (nodeId: string) => void;
+  onJumpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onJumpChange: (nodeId: string, patch: Partial<JumpNodeData>) => void;
+  onJumpDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
   onCreateVariable?: (variable: FormVariable) => void;
@@ -109,6 +125,9 @@ function FlowCanvasInner({
   onAnalyticsAddAtPosition, onAnalyticsChange, onAnalyticsDelete,
   onWhatsAppAddAtPosition, onWhatsAppChange, onWhatsAppDelete,
   onEmailAddAtPosition, onEmailChange, onEmailDelete,
+  onABTestAddAtPosition, onABTestChange, onABTestDelete,
+  onWaitAddAtPosition, onWaitChange, onWaitDelete,
+  onJumpAddAtPosition, onJumpChange, onJumpDelete,
   onFormUpdate, onPageSelect, onCreateVariable,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -168,6 +187,9 @@ function FlowCanvasInner({
   const analyticsNodes = form.analyticsNodes || [];
   const whatsappNodes = form.whatsappNodes || [];
   const emailNodes = form.emailNodes || [];
+  const abTestNodes = form.abTestNodes || [];
+  const waitNodes = form.waitNodes || [];
+  const jumpNodes = form.jumpNodes || [];
 
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
@@ -392,8 +414,51 @@ function FlowCanvasInner({
       });
     });
 
+    abTestNodes.forEach((ab, i) => {
+      const nodeId = `ab-${ab.id}`;
+      n.push({
+        id: nodeId,
+        type: 'abTestNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 7) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: ab,
+          onChange: (patch: Partial<ABTestNodeData>) => onABTestChange(ab.id, patch),
+          onDelete: () => onABTestDelete(ab.id),
+        },
+      });
+    });
+
+    waitNodes.forEach((w, i) => {
+      const nodeId = `wt-${w.id}`;
+      n.push({
+        id: nodeId,
+        type: 'waitNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 8) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: w,
+          onChange: (patch: Partial<WaitNodeData>) => onWaitChange(w.id, patch),
+          onDelete: () => onWaitDelete(w.id),
+        },
+      });
+    });
+
+    jumpNodes.forEach((j, i) => {
+      const nodeId = `jp-${j.id}`;
+      n.push({
+        id: nodeId,
+        type: 'jumpNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 9) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: j,
+          pages,
+          onChange: (patch: Partial<JumpNodeData>) => onJumpChange(j.id, patch),
+          onDelete: () => onJumpDelete(j.id),
+        },
+      });
+    });
+
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -437,10 +502,13 @@ function FlowCanvasInner({
     const intgChanged = prev.integrationNodes !== form.integrationNodes;
     const whatsappChanged = prev.whatsappNodes !== form.whatsappNodes;
     const emailChanged = prev.emailNodes !== form.emailNodes;
+    const abTestChanged = prev.abTestNodes !== form.abTestNodes;
+    const waitChanged = prev.waitNodes !== form.waitNodes;
+    const jumpChanged = prev.jumpNodes !== form.jumpNodes;
     const varsChanged = prev.variables !== form.variables;
     const edgesChanged = prev.flowEdges !== form.flowEdges;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || varsChanged || edgesChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || varsChanged || edgesChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
@@ -638,6 +706,12 @@ function FlowCanvasInner({
         onWhatsAppDelete(nodeId.replace('wa-', ''));
       } else if (nodeId.startsWith('em-')) {
         onEmailDelete(nodeId.replace('em-', ''));
+      } else if (nodeId.startsWith('ab-')) {
+        onABTestDelete(nodeId.replace('ab-', ''));
+      } else if (nodeId.startsWith('wt-')) {
+        onWaitDelete(nodeId.replace('wt-', ''));
+      } else if (nodeId.startsWith('jp-')) {
+        onJumpDelete(nodeId.replace('jp-', ''));
       }
     }
 
@@ -650,7 +724,7 @@ function FlowCanvasInner({
 
     onNodesChangeBase(nodeIds.map(id => ({ type: 'remove' as const, id })));
     setDeleteConfirm(null);
-  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, onIntegrationDelete, onWhatsAppDelete, onEmailDelete, setEdges, saveEdges, onNodesChangeBase]);
+  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, onIntegrationDelete, onWhatsAppDelete, onEmailDelete, onABTestDelete, onWaitDelete, onJumpDelete, setEdges, saveEdges, onNodesChangeBase]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
@@ -747,6 +821,24 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onEmailAddAtPosition]);
 
+  const handleDropAddABTest = useCallback(() => {
+    if (!dropMenu) return;
+    onABTestAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onABTestAddAtPosition]);
+
+  const handleDropAddWait = useCallback(() => {
+    if (!dropMenu) return;
+    onWaitAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onWaitAddAtPosition]);
+
+  const handleDropAddJump = useCallback(() => {
+    if (!dropMenu) return;
+    onJumpAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onJumpAddAtPosition]);
+
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -798,6 +890,24 @@ function FlowCanvasInner({
     onEmailAddAtPosition(contextMenu.flowPos, 'start');
     setContextMenu(null);
   }, [contextMenu, onEmailAddAtPosition]);
+
+  const handleCtxAddABTest = useCallback(() => {
+    if (!contextMenu) return;
+    onABTestAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onABTestAddAtPosition]);
+
+  const handleCtxAddWait = useCallback(() => {
+    if (!contextMenu) return;
+    onWaitAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onWaitAddAtPosition]);
+
+  const handleCtxAddJump = useCallback(() => {
+    if (!contextMenu) return;
+    onJumpAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onJumpAddAtPosition]);
 
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
@@ -883,6 +993,9 @@ function FlowCanvasInner({
             if (node.type === 'analyticsNode') return 'hsl(var(--node-analytics-accent))';
             if (node.type === 'whatsappNode') return 'hsl(var(--node-whatsapp-accent))';
             if (node.type === 'emailNode') return 'hsl(var(--node-email-accent))';
+            if (node.type === 'abTestNode') return 'hsl(var(--node-abtest-accent))';
+            if (node.type === 'waitNode') return 'hsl(var(--node-wait-accent))';
+            if (node.type === 'jumpNode') return 'hsl(var(--node-jump-accent))';
             if (node.type === 'pageNode') return 'hsl(var(--muted-foreground))';
             return 'hsl(var(--muted))';
           }}
@@ -912,6 +1025,9 @@ function FlowCanvasInner({
           if (t === 'analyticsNode') return 'Analytics';
           if (t === 'whatsappNode') return 'WhatsApp';
           if (t === 'emailNode') return 'E-mail';
+          if (t === 'abTestNode') return 'Teste A/B';
+          if (t === 'waitNode') return 'Espera';
+          if (t === 'jumpNode') return 'Pular';
           return 'Nó';
         };
 
@@ -927,6 +1043,9 @@ function FlowCanvasInner({
           if (t === 'analyticsNode') return '📊';
           if (t === 'whatsappNode') return '💬';
           if (t === 'emailNode') return '📧';
+          if (t === 'abTestNode') return '🔀';
+          if (t === 'waitNode') return '⏳';
+          if (t === 'jumpNode') return '↪';
           return '○';
         };
 
@@ -976,6 +1095,9 @@ function FlowCanvasInner({
           onAddAnalytics={handleDropAddAnalytics}
           onAddWhatsApp={handleDropAddWhatsApp}
           onAddEmail={handleDropAddEmail}
+          onAddABTest={handleDropAddABTest}
+          onAddWait={handleDropAddWait}
+          onAddJump={handleDropAddJump}
           onClose={() => setDropMenu(null)}
         />
       )}
@@ -989,6 +1111,9 @@ function FlowCanvasInner({
           onAddAnalytics={handleCtxAddAnalytics}
           onAddWhatsApp={handleCtxAddWhatsApp}
           onAddEmail={handleCtxAddEmail}
+          onAddABTest={handleCtxAddABTest}
+          onAddWait={handleCtxAddWait}
+          onAddJump={handleCtxAddJump}
           onClose={() => setContextMenu(null)}
         />
       )}
