@@ -567,8 +567,8 @@ function StructureRow({
     <div
       onClick={e => { e.stopPropagation(); onSelect(); }}
       className={cn(
-        'relative group/row transition-all rounded-md',
-        isSelected ? 'ring-2 ring-primary/20 ring-offset-2 ring-offset-background' : 'hover:ring-1 hover:ring-border/50',
+        'relative group/row transition-all rounded-md border border-dashed',
+        isSelected ? 'border-primary/40 ring-2 ring-primary/20 ring-offset-2 ring-offset-background' : 'border-border/40 hover:border-border/70 hover:ring-1 hover:ring-border/50',
       )}
     >
       {/* Floating row controls — appears on the left edge */}
