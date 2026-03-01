@@ -28,21 +28,24 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const renderItem = (item: typeof mainItems[0]) => (
-    <SidebarMenuItem key={item.title}>
-      <SidebarMenuButton
-        onClick={() => navigate(item.url)}
-        className={`mx-3 px-3 py-2.5 rounded-lg text-[13px] transition-all ${
-          isActive(item.url)
-            ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-            : 'bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-        }`}
-      >
-        <item.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${isActive(item.url) ? 'text-sidebar-primary-foreground' : 'text-[hsl(var(--sidebar-icon))]'}`} />
-        <span>{item.title}</span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+  const renderItem = (item: typeof mainItems[0]) => {
+    const active = isActive(item.url);
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          onClick={() => navigate(item.url)}
+          className={`mx-2 px-4 h-10 rounded-lg text-[14px] leading-none transition-all ${
+            active
+              ? 'bg-sidebar-primary text-white font-medium'
+              : 'bg-transparent text-sidebar-foreground hover:bg-sidebar-accent'
+          }`}
+        >
+          <item.icon className={`h-[18px] w-[18px] mr-3 flex-shrink-0 ${active ? 'text-white' : 'text-[hsl(var(--sidebar-icon))]'}`} />
+          <span>{item.title}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   const initials = (profile?.display_name || profile?.email || 'U')
     .split(' ')
@@ -52,55 +55,52 @@ export function AppSidebar() {
     .toUpperCase();
 
   return (
-    <Sidebar className="border-r border-border">
+    <Sidebar className="border-r border-sidebar-border">
       {/* Logo */}
-      <div className="px-5 pt-5 pb-4">
+      <div className="px-5 pt-6 pb-5">
         <img src="/images/twobrain-logo-dark.svg" alt="twobrain" className="max-w-[127px]" />
       </div>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/40 px-5 mb-1">
-            Principal
-          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {mainItems.map(renderItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/40 px-5 mb-1">
+          <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[hsl(var(--sidebar-icon))] px-5 mb-1">
             Sistema
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {systemItems.map(renderItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-xs font-semibold text-foreground/60">
+          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-foreground">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-[13px] font-medium text-sidebar-foreground truncate">
               {profile?.display_name || 'Usuário'}
             </p>
-            <p className="text-[11px] text-muted-foreground truncate">
+            <p className="text-[11px] text-[hsl(var(--sidebar-icon))] truncate">
               {profile?.email || ''}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 px-1">
+        <div className="flex items-center gap-2 px-1">
           {role === 'admin' && (
             <button
               onClick={() => navigate('/settings')}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-[12px] text-[hsl(var(--sidebar-icon))] hover:text-sidebar-foreground transition-colors"
             >
               <Settings className="h-3.5 w-3.5" />
               <span>Admin</span>
@@ -109,7 +109,7 @@ export function AppSidebar() {
           <div className="flex-1" />
           <button
             onClick={signOut}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-[12px] text-[hsl(var(--sidebar-icon))] hover:text-sidebar-foreground transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>Sair</span>
