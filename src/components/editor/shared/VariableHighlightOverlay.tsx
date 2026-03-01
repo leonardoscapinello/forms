@@ -2,8 +2,14 @@ import { useMemo } from 'react';
 
 type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
 
-interface ElementLookup {
-  [elementId: string]: string; // elementId → label
+export type ElementLookup = Record<string, string>; // elementId → label
+
+export function formatFieldTokensForDisplay(text: string, elementLookup?: ElementLookup): string {
+  if (!text) return text;
+  return text.replace(/\{\{field:([^}]+)\}\}/g, (raw, elementId: string) => {
+    const label = elementLookup?.[elementId];
+    return label ? `{{${label}}}` : raw;
+  });
 }
 
 /**
@@ -38,9 +44,7 @@ export function VariableHighlightOverlay({
 
       if (raw.startsWith('{{field:')) {
         varType = 'field';
-        const id = raw.slice(8, -2); // extract UUID
-        const label = elementLookup?.[id];
-        display = label ? `{{${label}}}` : raw;
+        display = formatFieldTokensForDisplay(raw, elementLookup);
       } else if (raw.startsWith('{{webhook:')) {
         varType = 'webhook';
       } else if (raw.startsWith('{{param.')) {

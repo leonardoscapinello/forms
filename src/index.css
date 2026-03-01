@@ -401,7 +401,7 @@ img.emoji {
 .var-highlight {
   border-radius: 3px;
   padding: 1px 0;
-  color: transparent; /* text is invisible, only background shows through */
+  color: hsl(var(--foreground));
 }
 .var-highlight-variable {
   background: hsl(var(--primary) / 0.15);
@@ -424,5 +424,5 @@ img.emoji {
   overflow: hidden;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: transparent;
+  color: hsl(var(--foreground));
 }

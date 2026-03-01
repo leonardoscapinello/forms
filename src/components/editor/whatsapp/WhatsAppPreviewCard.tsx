@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Type, FileText, Volume2 } from 'lucide-react';
 import { parseWhatsAppMarkdown } from './WhatsAppMessageEditor';
+import type { ElementLookup } from '../shared/VariableHighlightOverlay';
 
 interface Props {
   messageText?: string;
@@ -8,6 +9,7 @@ interface Props {
   mediaType?: 'image' | 'document' | 'video' | 'audio';
   mediaUrl?: string;
   mediaFileName?: string;
+  elementLookup?: ElementLookup;
 }
 
 export default function WhatsAppPreviewCard({
@@ -16,8 +18,9 @@ export default function WhatsAppPreviewCard({
   mediaType,
   mediaUrl,
   mediaFileName,
+  elementLookup,
 }: Props) {
-  const previewHtml = useMemo(() => parseWhatsAppMarkdown(messageText || ''), [messageText]);
+  const previewHtml = useMemo(() => parseWhatsAppMarkdown(messageText || '', elementLookup), [messageText, elementLookup]);
   const hasContent = !!(messageText || (sendMedia && mediaUrl));
 
   if (!hasContent) return null;
