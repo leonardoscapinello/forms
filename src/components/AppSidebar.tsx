@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Settings, LogOut, LayoutDashboard, Image } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
 
 const mainItems = [
@@ -24,92 +25,95 @@ export function AppSidebar() {
 
   const initials = (profile?.display_name || profile?.email || 'U')
     .split(' ')
-    .map(w => w[0])
+    .map((w) => w[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
 
-  const NavItem = ({ item }: { item: typeof mainItems[0] }) => {
+  const renderNavItem = (item: typeof mainItems[0]) => {
     const active = isActive(item.url);
+
     return (
       <button
+        key={item.title}
+        type="button"
         onClick={() => navigate(item.url)}
-        className={`w-full flex items-center gap-3 h-10 px-4 rounded-lg text-[14px] transition-colors ${
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'flex h-10 w-full items-center gap-3 rounded-lg px-4 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
           active
-            ? 'bg-[#203300] text-white font-medium'
-            : 'text-[#474738] hover:bg-[#F1F1E9]'
-        }`}
+            ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold'
+            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+        )}
       >
         <item.icon
-          className={`h-[18px] w-[18px] flex-shrink-0 ${
-            active ? 'text-white' : 'text-[#B7B790]'
-          }`}
+          className={cn(
+            'h-[18px] w-[18px] shrink-0',
+            active ? 'text-sidebar-primary-foreground' : 'text-sidebar-foreground/60',
+          )}
         />
-        <span>{item.title}</span>
+        <span className="truncate">{item.title}</span>
       </button>
     );
   };
 
   return (
-    <Sidebar className="border-r border-[#F1F1E9]">
-      {/* Logo — 16px padding all around */}
-      <div className="p-4 pb-2">
-        <img
-          src="/images/twobrain-logo-dark.svg"
-          alt="twobrain"
-          className="max-w-[127px]"
-        />
-      </div>
+    <Sidebar className="border-r border-sidebar-border bg-sidebar">
+      <SidebarContent className="gap-0">
+        <div className="p-4">
+          <img
+            src="/images/twobrain-logo-dark.svg"
+            alt="twobrain"
+            className="h-6 w-auto max-w-[127px]"
+          />
+        </div>
 
-      <SidebarContent className="!gap-0 !p-0">
-        {/* Main nav */}
-        <nav className="flex flex-col gap-1 p-4 pt-2">
-          {mainItems.map(item => (
-            <NavItem key={item.title} item={item} />
-          ))}
-        </nav>
+        <section className="p-4">
+          <nav className="flex flex-col gap-1">{mainItems.map(renderNavItem)}</nav>
+        </section>
 
-        {/* System section */}
-        <div className="px-4 pt-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B7B790] mb-2 px-0">
+        <section className="p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60">
             Sistema
           </p>
-          <nav className="flex flex-col gap-1">
-            {systemItems.map(item => (
-              <NavItem key={item.title} item={item} />
-            ))}
-          </nav>
-        </div>
+          <nav className="flex flex-col gap-1">{systemItems.map(renderNavItem)}</nav>
+        </section>
       </SidebarContent>
 
-      <SidebarFooter className="!p-4 border-t border-[#F1F1E9]">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-8 w-8 rounded-full bg-[#F1F1E9] flex items-center justify-center text-[12px] font-semibold text-[#474738]">
+      <SidebarFooter className="border-t border-sidebar-border p-4">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-[#474738] truncate">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-sidebar-foreground">
               {profile?.display_name || 'Usuário'}
             </p>
-            <p className="text-[11px] text-[#B7B790] truncate">
+            <p className="truncate text-xs text-sidebar-foreground/60">
               {profile?.email || ''}
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-2">
           {role === 'admin' && (
             <button
+              type="button"
               onClick={() => navigate('/settings')}
-              className="flex items-center gap-1.5 text-[12px] text-[#B7B790] hover:text-[#474738] transition-colors"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <Settings className="h-3.5 w-3.5" />
               <span>Admin</span>
             </button>
           )}
-          <div className="flex-1" />
+
           <button
+            type="button"
             onClick={signOut}
-            className="flex items-center gap-1.5 text-[12px] text-[#B7B790] hover:text-[#474738] transition-colors"
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              role === 'admin' && 'ml-auto',
+            )}
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>Sair</span>
@@ -119,3 +123,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
