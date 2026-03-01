@@ -1,15 +1,23 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { 
   Type, ImageIcon, MousePointer2, Minus, Space, Columns2, 
-  Trash2, ChevronUp, ChevronDown, Plus, X,
+  Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
   AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, DragOverlay, type DragStartEvent, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // ─── Block types ────────────────────────────────────────────────────
 type BlockType = 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'columns';
@@ -550,6 +558,62 @@ const BLOCK_LABELS: Record<BlockType, string> = {
   text: 'Texto', image: 'Imagem', button: 'Botão', divider: 'Divisor', spacer: 'Espaço', columns: 'Colunas',
 };
 
+// ─── Sortable block wrapper ─────────────────────────────────────────
+function SortableBlock({ block, isSelected, isDragOverlay, onSelect, onRemove, onAddAfter }: {
+  block: EmailBlock;
+  isSelected: boolean;
+  isDragOverlay: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+  onAddAfter: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onSelect}
+      className={cn(
+        'relative group cursor-pointer transition-all',
+        isSelected ? 'ring-2 ring-primary/40 ring-inset' : 'hover:ring-1 hover:ring-primary/20 hover:ring-inset',
+        isDragging && 'z-0',
+      )}
+    >
+      <BlockPreview block={block} />
+      {/* Drag handle + actions */}
+      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 rounded bg-background/90 border border-border shadow-sm cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+        >
+          <GripVertical className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-md border border-border shadow-sm p-0.5">
+        <button onClick={e => { e.stopPropagation(); onRemove(); }} className="p-0.5 rounded hover:bg-muted text-destructive">
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={e => { e.stopPropagation(); onAddAfter(); }}
+          className="h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
+        >
+          <Plus className="h-2.5 w-2.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ─────────────────────────────────────────────────
 interface Props {
   open: boolean;
@@ -565,6 +629,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
     return [createBlock('text'), createBlock('divider'), createBlock('button')];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<'editor' | 'preview' | 'code'>('editor');
   const [emailBg, setEmailBg] = useState(() => {
     const restored = extractBlocksFromHtml(value);
@@ -576,8 +641,14 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
   });
 
   const selectedBlock = useMemo(() => blocks.find(b => b.id === selectedId) || null, [blocks, selectedId]);
+  const activeBlock = useMemo(() => blocks.find(b => b.id === activeId) || null, [blocks, activeId]);
 
   const html = useMemo(() => blocksToHtml(blocks, emailBg, contentBg), [blocks, emailBg, contentBg]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
 
   const updateBlock = useCallback((updated: EmailBlock) => {
     setBlocks(prev => prev.map(b => b.id === updated.id ? updated : b));
@@ -598,15 +669,19 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
     if (selectedId === id) setSelectedId(null);
   }, [selectedId]);
 
-  const moveBlock = useCallback((id: string, dir: -1 | 1) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
     setBlocks(prev => {
-      const idx = prev.findIndex(b => b.id === id);
-      if (idx < 0) return prev;
-      const newIdx = idx + dir;
-      if (newIdx < 0 || newIdx >= prev.length) return prev;
-      const arr = [...prev];
-      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-      return arr;
+      const oldIndex = prev.findIndex(b => b.id === active.id);
+      const newIndex = prev.findIndex(b => b.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
     });
   }, []);
 
@@ -682,45 +757,36 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
 
               {/* Canvas */}
               <div className="flex-1 overflow-y-auto" style={{ backgroundColor: emailBg }}>
-                <div className="max-w-[600px] mx-auto my-6 rounded-lg shadow-sm" style={{ backgroundColor: contentBg }}>
-                  {blocks.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                      <Plus className="h-8 w-8 mb-2 opacity-30" />
-                      <p className="text-sm">Clique em um bloco à esquerda para adicionar</p>
-                    </div>
-                  )}
-                  {blocks.map((block, idx) => (
-                    <div
-                      key={block.id}
-                      onClick={() => setSelectedId(block.id)}
-                      className={cn(
-                        'relative group cursor-pointer transition-all',
-                        selectedId === block.id ? 'ring-2 ring-primary/40 ring-inset' : 'hover:ring-1 hover:ring-primary/20 hover:ring-inset'
-                      )}
-                    >
-                      <BlockPreview block={block} />
-                      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-md border border-border shadow-sm p-0.5">
-                        <button onClick={e => { e.stopPropagation(); moveBlock(block.id, -1); }} className="p-0.5 rounded hover:bg-muted" disabled={idx === 0}>
-                          <ChevronUp className="h-3 w-3" />
-                        </button>
-                        <button onClick={e => { e.stopPropagation(); moveBlock(block.id, 1); }} className="p-0.5 rounded hover:bg-muted" disabled={idx === blocks.length - 1}>
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                        <button onClick={e => { e.stopPropagation(); removeBlock(block.id); }} className="p-0.5 rounded hover:bg-muted text-destructive">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                  <div className="max-w-[600px] mx-auto my-6 rounded-lg shadow-sm" style={{ backgroundColor: contentBg }}>
+                    {blocks.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                        <Plus className="h-8 w-8 mb-2 opacity-30" />
+                        <p className="text-sm">Clique em um bloco à esquerda para adicionar</p>
                       </div>
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={e => { e.stopPropagation(); addBlock('text', idx + 1); }}
-                          className="h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
-                        >
-                          <Plus className="h-2.5 w-2.5" />
-                        </button>
+                    )}
+                    <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                      {blocks.map((block, idx) => (
+                        <SortableBlock
+                          key={block.id}
+                          block={block}
+                          isSelected={selectedId === block.id}
+                          isDragOverlay={false}
+                          onSelect={() => setSelectedId(block.id)}
+                          onRemove={() => removeBlock(block.id)}
+                          onAddAfter={() => addBlock('text', idx + 1)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </div>
+                  <DragOverlay dropAnimation={null}>
+                    {activeBlock && (
+                      <div className="opacity-80 shadow-lg rounded-lg overflow-hidden" style={{ backgroundColor: contentBg, maxWidth: 600 }}>
+                        <BlockPreview block={activeBlock} />
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </DragOverlay>
+                </DndContext>
               </div>
 
               {/* Settings panel */}
