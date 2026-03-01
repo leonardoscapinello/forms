@@ -101,7 +101,7 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
       <SectionDivider />
 
       {/* Tipografia */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2">
         <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Tamanho</label>
           <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-8 text-xs mt-1 w-full" />
@@ -288,7 +288,7 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
         <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
         <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 gap-2">
         <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Raio</label>
           <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-8 text-xs mt-1" />
@@ -1026,9 +1026,12 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
               {/* Settings panel */}
               {showRightPanel && (
-                <div className="w-52 sm:w-60 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3" style={{ minWidth: 0, maxWidth: '15rem' }}>
+                <div
+                  className="w-64 sm:w-72 md:w-80 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3"
+                  style={{ minWidth: 0 }}
+                >
                   {settingsTarget ? (
-                    <div className="w-full" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+                    <div className="w-full min-w-0 max-w-full overflow-hidden">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold truncate">{BLOCK_LABELS[settingsTarget.type]}</span>
                         <button onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }} className="text-muted-foreground hover:text-foreground flex-shrink-0">

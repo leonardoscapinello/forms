@@ -159,13 +159,13 @@ export default function ImageSourcePicker({
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-1.5">
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px]" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           <Upload className="h-3 w-3" /> Upload
         </Button>
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => setGalleryOpen(true)}>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px]" onClick={() => setGalleryOpen(true)}>
           <FolderOpen className="h-3 w-3" /> Galeria
         </Button>
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => setShowUrlInput(!showUrlInput)}>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px]" onClick={() => setShowUrlInput(!showUrlInput)}>
           <Link className="h-3 w-3" /> URL
         </Button>
       </div>
