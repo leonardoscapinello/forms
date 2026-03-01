@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.whatsapp-send]
 verify_jwt = false
+
+[functions.resend-send]
+verify_jwt = false

@@ -93,6 +93,8 @@ export default {
           "analytics-accent": "hsl(var(--node-analytics-accent))",
           whatsapp: "hsl(var(--node-whatsapp))",
           "whatsapp-accent": "hsl(var(--node-whatsapp-accent))",
+          email: "hsl(var(--node-email))",
+          "email-accent": "hsl(var(--node-email-accent))",
         },
       },
       borderRadius: {

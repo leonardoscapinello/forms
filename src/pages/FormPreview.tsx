@@ -922,7 +922,6 @@ export default function FormPreview() {
         const waId = target.replace('wa-', '');
         const waNode = f?.whatsappNodes?.find(n => n.id === waId);
         if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
-          // Resolve variables NOW (sync) so the closure captures correct values
           const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
           const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
           const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
@@ -941,6 +940,38 @@ export default function FormPreview() {
           enqueueTask(
             () => supabase.functions.invoke('whatsapp-send', { body }).then(() => {}),
             `whatsapp:${resolvedNumber}`,
+          );
+        }
+        currentNodeId = target;
+        continue;
+      }
+
+      // Intermediate: Email node — fire-and-forget via background queue
+      if (target.startsWith('em-')) {
+        const emId = target.replace('em-', '');
+        const emNode = f?.emailNodes?.find(n => n.id === emId);
+        if (emNode && f && emNode.instanceId && emNode.toEmail) {
+          const resolvedTo = interpolateText(emNode.toEmail || '', f.variables || [], currentAns);
+          const resolvedFrom = emNode.fromEmail ? interpolateText(emNode.fromEmail, f.variables || [], currentAns) : undefined;
+          const resolvedFromName = emNode.fromName ? interpolateText(emNode.fromName, f.variables || [], currentAns) : undefined;
+          const resolvedSubject = interpolateText(emNode.subject || '', f.variables || [], currentAns);
+          const resolvedBody = interpolateText(emNode.bodyText || '', f.variables || [], currentAns);
+          const resolvedHtml = emNode.bodyHtml ? interpolateText(emNode.bodyHtml, f.variables || [], currentAns) : undefined;
+
+          const body: Record<string, any> = {
+            instanceId: emNode.instanceId,
+            toEmail: resolvedTo,
+            fromEmail: resolvedFrom,
+            fromName: resolvedFromName,
+            subject: resolvedSubject,
+            bodyText: resolvedBody,
+            bodyHtml: resolvedHtml,
+            useHtml: emNode.useHtml,
+          };
+
+          enqueueTask(
+            () => supabase.functions.invoke('resend-send', { body }).then(() => {}),
+            `email:${resolvedTo}`,
           );
         }
         currentNodeId = target;

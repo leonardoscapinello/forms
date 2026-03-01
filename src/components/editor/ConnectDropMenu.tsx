@@ -1,4 +1,4 @@
-import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail } from 'lucide-react';
 
 interface Props {
   position: { x: number; y: number };
@@ -8,10 +8,11 @@ interface Props {
   onAddIntegration: () => void;
   onAddAnalytics: () => void;
   onAddWhatsApp: () => void;
+  onAddEmail: () => void;
   onClose: () => void;
 }
 
-export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onClose }: Props) {
+export default function ConnectDropMenu({ position, onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
@@ -110,6 +111,22 @@ export default function ConnectDropMenu({ position, onAddPage, onAddCondition, o
           <div>
             <span className="font-medium text-foreground">WhatsApp</span>
             <p className="text-[10px] text-muted-foreground">Enviar mensagem via Evolution API</p>
+          </div>
+        </button>
+
+        <div className="h-px bg-border my-1.5 mx-3" />
+
+        {/* Email */}
+        <button
+          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-accent text-left transition-colors"
+          onClick={() => { onAddEmail(); onClose(); }}
+        >
+          <div className="h-8 w-8 rounded-lg bg-node-email flex items-center justify-center flex-shrink-0">
+            <Mail className="h-4 w-4 text-node-email-accent" />
+          </div>
+          <div>
+            <span className="font-medium text-foreground">E-mail</span>
+            <p className="text-[10px] text-muted-foreground">Enviar e-mail via Resend</p>
           </div>
         </button>
       </div>
