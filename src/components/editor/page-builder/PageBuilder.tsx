@@ -493,8 +493,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                       <LayoutTemplate className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-base font-medium">Arraste elementos aqui</p>
-                      <p className="text-sm mt-1">Ou clique em um elemento na barra lateral esquerda</p>
+                      <p className="text-base font-medium">Página vazia</p>
+                      <p className="text-sm mt-1">Clique em um elemento na barra de ferramentas à esquerda para começar</p>
                     </div>
                   </div>
                 ) : sortableElements.length === 0 && isExternalDragOver ? (
