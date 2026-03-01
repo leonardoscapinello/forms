@@ -20,6 +20,8 @@ export interface AutocompleteTriggerInfo {
 export interface VariableContentEditableRef {
   insertToken: (raw: string) => void;
   replaceRangeWithToken: (textNode: Text, start: number, end: number, raw: string) => void;
+  insertAtCursor: (text: string) => void;
+  wrapSelection: (prefix: string, suffix: string, fallback?: string) => void;
   focus: () => void;
 }
 
@@ -288,11 +290,53 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
     editor.focus();
   }, [createTokenSpan, emitChange]);
 
+  const insertAtCursor = useCallback((text: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    document.execCommand('insertText', false, text);
+    emitChange();
+  }, [emitChange]);
+
+  const wrapSelection = useCallback((prefix: string, suffix: string, fallback = 'texto') => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+
+    const selectedText = sel.toString() || fallback;
+    const wrapped = prefix + selectedText + suffix;
+
+    document.execCommand('insertText', false, wrapped);
+
+    // Select the inner text (between prefix and suffix)
+    requestAnimationFrame(() => {
+      const newSel = window.getSelection();
+      if (!newSel || !newSel.focusNode) return;
+      const node = newSel.focusNode;
+      const end = newSel.focusOffset;
+      const innerStart = end - suffix.length - selectedText.length;
+      const innerEnd = end - suffix.length;
+      if (node.nodeType === Node.TEXT_NODE && innerStart >= 0) {
+        const range = document.createRange();
+        range.setStart(node, innerStart);
+        range.setEnd(node, innerEnd);
+        newSel.removeAllRanges();
+        newSel.addRange(range);
+      }
+    });
+
+    emitChange();
+  }, [emitChange]);
+
   useImperativeHandle(ref, () => ({
     insertToken,
     replaceRangeWithToken,
+    insertAtCursor,
+    wrapSelection,
     focus: () => editorRef.current?.focus(),
-  }), [insertToken, replaceRangeWithToken]);
+  }), [insertToken, replaceRangeWithToken, insertAtCursor, wrapSelection]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
