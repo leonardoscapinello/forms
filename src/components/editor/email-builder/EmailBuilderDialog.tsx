@@ -360,6 +360,7 @@ function ElementPreview({ block, elementLookup, onUpdateBlock, onSelect, variabl
             allInputElements={allInputElements as any}
             placeholder="Digite seu texto..."
             rows={1}
+            hidePickerButton
             className="!border-none !ring-0 !shadow-none !bg-transparent !p-0 !min-h-0 !rounded-none !text-inherit !font-inherit !leading-inherit"
           />
         </div>
