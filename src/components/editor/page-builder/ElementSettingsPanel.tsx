@@ -9,10 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { X, Plus, Trash2, Upload, Loader2, Star, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Plus, Trash2, Star, ChevronDown, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   ColorPickerField,
   TypographySelector,
@@ -22,6 +21,7 @@ import {
   ShadowSelector,
   WidthSelector,
   VariableInput,
+  ImageSourcePicker,
 } from '@/components/editor/shared';
 
 interface Props {
@@ -39,8 +39,6 @@ const isFormField = (type: string) => type.startsWith('input_');
 
 export default function ElementSettingsPanel({ element, onChange, onClose, pages, variables = [], integrationNodes, allInputElements, trackedParams }: Props) {
   const varProps = { variables, integrationNodes, allInputElements, trackedParams };
-  const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [openSections, setOpenSections] = useState({ content: true, appearance: false, exterior: false });
 
   const toggleSection = (key: keyof typeof openSections) =>
@@ -544,61 +542,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       </Button>
                     </div>
                     {element.type === 'input_quiz_image' && (
-                      <div className="space-y-1.5">
-                        {opt.imageUrl && (
-                          <img src={opt.imageUrl} alt={opt.label} className="w-full h-20 object-cover rounded" />
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <Input
-                            value={opt.imageUrl || ''}
-                            onChange={e => updateOptionField(opt.id, 'imageUrl', e.target.value)}
-                            className="h-8 text-xs flex-1"
-                            placeholder="URL da imagem..."
-                          />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            ref={el => { fileInputRefs.current[opt.id] = el; }}
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              setUploadingOptionId(opt.id);
-                              try {
-                                const formData = new FormData();
-                                formData.append('file', file);
-                                const path = `quiz-images/${crypto.randomUUID()}-${file.name}`;
-                                formData.append('path', path);
-                                const { data, error } = await supabase.functions.invoke('minio-upload', {
-                                  body: formData,
-                                });
-                                if (error) throw error;
-                                if (data?.url) {
-                                  updateOptionField(opt.id, 'imageUrl', data.url);
-                                }
-                              } catch (err) {
-                                console.error('Upload failed:', err);
-                              } finally {
-                                setUploadingOptionId(null);
-                                e.target.value = '';
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 flex-shrink-0"
-                            disabled={uploadingOptionId === opt.id}
-                            onClick={() => fileInputRefs.current[opt.id]?.click()}
-                          >
-                            {uploadingOptionId === opt.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Upload className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
+                      <ImageSourcePicker
+                        compact
+                        value={opt.imageUrl || ''}
+                        onChange={(url) => updateOptionField(opt.id, 'imageUrl', url)}
+                        pathPrefix="quiz-images"
+                        showPreview
+                        alt={opt.label}
+                      />
                     )}
                     <div className="flex items-center gap-1.5">
                       <Label className="text-xs text-muted-foreground whitespace-nowrap">Pontos</Label>
@@ -906,40 +857,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     </div>
                   </div>
                 ) : null}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = async (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (!file) return;
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        formData.append('path', `images/${crypto.randomUUID()}-${file.name}`);
-                        try {
-                          const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-                          if (error) throw error;
-                          if (data?.url) onChange({ src: data.url });
-                        } catch (err) {
-                          console.error('Upload failed:', err);
-                        }
-                      };
-                      input.click();
-                    }}
-                  >
-                    <Upload className="h-3.5 w-3.5 mr-1" /> Upload
-                  </Button>
-                </div>
-                <Input
+                <ImageSourcePicker
+                  compact
                   value={element.src || ''}
-                  onChange={e => onChange({ src: e.target.value })}
+                  onChange={(url) => onChange({ src: url })}
+                  pathPrefix="images"
+                  showPreview={false}
                   placeholder="ou cole uma URL..."
-                  className="text-xs"
                 />
               </div>
 
@@ -2018,28 +1942,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     <Label className="text-xs text-muted-foreground">Verificado</Label>
                     <Switch checked={item.verified || false} onCheckedChange={v => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, verified: v } : t); onChange({ testimonialItems: items }); }} />
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Input value={item.photoUrl || ''} onChange={e => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, photoUrl: e.target.value } : t); onChange({ testimonialItems: items }); }} className="h-8 text-xs flex-1" placeholder="URL da foto (opcional)" />
-                    <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`testimonial-${item.id}`] = el; }}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setUploadingOptionId(`testimonial-${item.id}`);
-                        try {
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          formData.append('path', `testimonials/${crypto.randomUUID()}-${file.name}`);
-                          const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-                          if (error) throw error;
-                          if (data?.url) { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, photoUrl: data.url } : t); onChange({ testimonialItems: items }); }
-                        } catch (err) { console.error('Upload failed:', err); }
-                        finally { setUploadingOptionId(null); e.target.value = ''; }
-                      }}
-                    />
-                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" disabled={uploadingOptionId === `testimonial-${item.id}`} onClick={() => fileInputRefs.current[`testimonial-${item.id}`]?.click()}>
-                      {uploadingOptionId === `testimonial-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    </Button>
-                  </div>
+                  <ImageSourcePicker
+                    compact
+                    value={item.photoUrl || ''}
+                    onChange={(url) => { const items = (element.testimonialItems || []).map(t => t.id === item.id ? { ...t, photoUrl: url } : t); onChange({ testimonialItems: items }); }}
+                    pathPrefix="testimonials"
+                    showPreview={false}
+                    placeholder="URL da foto (opcional)"
+                  />
                 </div>
               ))}
               <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
@@ -2166,29 +2076,14 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 return (
                   <div key={side} className="space-y-1.5">
                     <Label>{label}</Label>
-                    {val && <img src={val} alt={label} className="w-full h-20 object-cover rounded" />}
-                    <div className="flex items-center gap-1.5">
-                      <Input value={val || ''} onChange={e => onChange({ [key]: e.target.value })} className="h-8 text-xs flex-1" placeholder="URL da imagem..." />
-                      <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`ba-${side}`] = el; }}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setUploadingOptionId(`ba-${side}`);
-                          try {
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            formData.append('path', `before-after/${crypto.randomUUID()}-${file.name}`);
-                            const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-                            if (error) throw error;
-                            if (data?.url) onChange({ [key]: data.url });
-                          } catch (err) { console.error('Upload failed:', err); }
-                          finally { setUploadingOptionId(null); e.target.value = ''; }
-                        }}
-                      />
-                      <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" disabled={uploadingOptionId === `ba-${side}`} onClick={() => fileInputRefs.current[`ba-${side}`]?.click()}>
-                        {uploadingOptionId === `ba-${side}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                      </Button>
-                    </div>
+                    <ImageSourcePicker
+                      compact
+                      value={val || ''}
+                      onChange={(url) => onChange({ [key]: url })}
+                      pathPrefix="before-after"
+                      showPreview
+                      alt={label}
+                    />
                   </div>
                 );
               })}
@@ -2201,31 +2096,18 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
               <Label>Imagens ({(element.carouselImages || []).length})</Label>
               {(element.carouselImages || []).map((img) => (
                 <div key={img.id} className="space-y-1.5 p-2 rounded-lg border border-border">
-                  {img.src && <img src={img.src} alt={img.alt || ''} className="w-full h-16 object-cover rounded" />}
+                  <ImageSourcePicker
+                    compact
+                    value={img.src}
+                    onChange={(url) => { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, src: url } : i); onChange({ carouselImages: images }); }}
+                    pathPrefix="carousel"
+                    showPreview
+                    alt={img.alt || ''}
+                  />
                   <div className="flex items-center gap-1.5">
-                    <Input value={img.src} onChange={e => { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, src: e.target.value } : i); onChange({ carouselImages: images }); }} className="h-8 text-xs flex-1" placeholder="URL da imagem..." />
-                    <input type="file" accept="image/*" className="hidden" ref={el => { fileInputRefs.current[`carousel-${img.id}`] = el; }}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setUploadingOptionId(`carousel-${img.id}`);
-                        try {
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          formData.append('path', `carousel/${crypto.randomUUID()}-${file.name}`);
-                          const { data, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-                          if (error) throw error;
-                          if (data?.url) { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, src: data.url } : i); onChange({ carouselImages: images }); }
-                        } catch (err) { console.error('Upload failed:', err); }
-                        finally { setUploadingOptionId(null); e.target.value = ''; }
-                      }}
-                    />
-                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" disabled={uploadingOptionId === `carousel-${img.id}`} onClick={() => fileInputRefs.current[`carousel-${img.id}`]?.click()}>
-                      {uploadingOptionId === `carousel-${img.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    </Button>
+                    <Input value={img.alt || ''} onChange={e => { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, alt: e.target.value } : i); onChange({ carouselImages: images }); }} className="h-7 text-xs flex-1" placeholder="Alt text (opcional)" />
                     <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange({ carouselImages: (element.carouselImages || []).filter(i => i.id !== img.id) })}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
-                  <Input value={img.alt || ''} onChange={e => { const images = (element.carouselImages || []).map(i => i.id === img.id ? { ...i, alt: e.target.value } : i); onChange({ carouselImages: images }); }} className="h-7 text-xs" placeholder="Alt text (opcional)" />
                 </div>
               ))}
               <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
