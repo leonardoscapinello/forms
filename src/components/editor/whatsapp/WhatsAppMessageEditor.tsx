@@ -274,6 +274,17 @@ export default function WhatsAppMessageEditor({
   const triggerRef = useRef<HTMLDivElement>(null);
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
 
+  // Build lookup for field ID → label
+  const elementLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const group of allInputElements) {
+      for (const el of group.elements) {
+        map[el.elementId] = el.elementLabel;
+      }
+    }
+    return map;
+  }, [allInputElements]);
+
   useEffect(() => {
     if (!isFocusedRef.current && !expanded) setLocal(value);
   }, [value, expanded]);
@@ -497,6 +508,7 @@ export default function WhatsAppMessageEditor({
                         {local.includes('{{') && (
                           <VariableHighlightOverlay
                             text={local}
+                            elementLookup={elementLookup}
                             className="var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-sm"
                           />
                         )}

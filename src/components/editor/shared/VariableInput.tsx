@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,17 @@ export default function VariableInput(props: Props) {
   const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Build a lookup map: elementId → label for human-readable highlights
+  const elementLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const group of allInputElements) {
+      for (const el of group.elements) {
+        map[el.elementId] = el.elementLabel;
+      }
+    }
+    return map;
+  }, [allInputElements]);
 
   const [local, setLocal] = useState(value);
   const isFocusedRef = useRef(false);
@@ -137,6 +148,7 @@ export default function VariableInput(props: Props) {
             {hasHighlight && (
               <VariableHighlightOverlay
                 text={local}
+                elementLookup={elementLookup}
                 className={cn(
                   'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-base md:text-sm',
                   className
@@ -158,6 +170,7 @@ export default function VariableInput(props: Props) {
             {hasHighlight && (
               <VariableHighlightOverlay
                 text={local}
+                elementLookup={elementLookup}
                 className={cn(
                   'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-base md:text-sm whitespace-nowrap',
                   className

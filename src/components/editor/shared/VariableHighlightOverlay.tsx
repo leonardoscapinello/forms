@@ -1,52 +1,82 @@
 import { useMemo } from 'react';
 
+type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
+
+interface ElementLookup {
+  [elementId: string]: string; // elementId → label
+}
+
 /**
- * Renders text with {{variables}} and {{webhook:...}} highlighted
- * as colored inline spans. Used as a backdrop behind transparent inputs.
+ * Renders text with {{variables}}, {{field:...}}, {{webhook:...}} etc. highlighted
+ * as colored inline spans. When an elementLookup is provided, field references
+ * show the human-readable label instead of the raw UUID.
  */
-export function VariableHighlightOverlay({ text, className }: { text: string; className?: string }) {
+export function VariableHighlightOverlay({
+  text,
+  className,
+  elementLookup,
+}: {
+  text: string;
+  className?: string;
+  elementLookup?: ElementLookup;
+}) {
   const parts = useMemo(() => {
     if (!text) return [];
     const regex = /(\{\{.*?\}\})/g;
-    const result: { text: string; isVar: boolean; varType: 'variable' | 'webhook' }[] = [];
+    const result: { text: string; display: string; isVar: boolean; varType: VarType }[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        result.push({ text: text.slice(lastIndex, match.index), isVar: false, varType: 'variable' });
+        result.push({ text: text.slice(lastIndex, match.index), display: text.slice(lastIndex, match.index), isVar: false, varType: 'variable' });
       }
-      const isWebhook = match[1].startsWith('{{webhook:');
-      result.push({ text: match[1], isVar: true, varType: isWebhook ? 'webhook' : 'variable' });
+
+      const raw = match[1];
+      let varType: VarType = 'variable';
+      let display = raw;
+
+      if (raw.startsWith('{{field:')) {
+        varType = 'field';
+        const id = raw.slice(8, -2); // extract UUID
+        const label = elementLookup?.[id];
+        display = label ? `{{${label}}}` : raw;
+      } else if (raw.startsWith('{{webhook:')) {
+        varType = 'webhook';
+      } else if (raw.startsWith('{{param.')) {
+        varType = 'param';
+      } else if (raw.startsWith('{{ctx.')) {
+        varType = 'context';
+      }
+
+      result.push({ text: raw, display, isVar: true, varType });
       lastIndex = regex.lastIndex;
     }
     if (lastIndex < text.length) {
-      result.push({ text: text.slice(lastIndex), isVar: false, varType: 'variable' });
+      result.push({ text: text.slice(lastIndex), display: text.slice(lastIndex), isVar: false, varType: 'variable' });
     }
     return result;
-  }, [text]);
+  }, [text, elementLookup]);
 
   if (!text) return null;
 
+  const varTypeClass: Record<VarType, string> = {
+    variable: 'var-highlight var-highlight-variable',
+    webhook: 'var-highlight var-highlight-webhook',
+    field: 'var-highlight var-highlight-field',
+    param: 'var-highlight var-highlight-variable',
+    context: 'var-highlight var-highlight-variable',
+  };
+
   return (
-    <div
-      className={className}
-      aria-hidden="true"
-    >
+    <div className={className} aria-hidden="true">
       {parts.map((part, i) =>
         part.isVar ? (
-          <mark
-            key={i}
-            className={
-              part.varType === 'webhook'
-                ? 'var-highlight var-highlight-webhook'
-                : 'var-highlight var-highlight-variable'
-            }
-          >
-            {part.text}
+          <mark key={i} className={varTypeClass[part.varType]}>
+            {part.display}
           </mark>
         ) : (
-          <span key={i}>{part.text}</span>
+          <span key={i}>{part.display}</span>
         )
       )}
     </div>
