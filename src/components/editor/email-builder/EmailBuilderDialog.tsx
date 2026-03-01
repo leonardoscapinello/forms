@@ -169,12 +169,12 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
       <SectionDivider />
 
       {/* Largura + Link */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
+      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))] gap-2">
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Largura</label>
           <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-8 text-xs mt-1" />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Link</label>
           <VariableInput
             value={block.link}
@@ -284,20 +284,20 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
       <SectionDivider />
 
       {/* Aparência */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))] gap-2">
         <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
         <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div>
+      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(78px,1fr))] gap-2">
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Raio</label>
           <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Pad. H</label>
           <Input type="number" value={block.paddingX} onChange={e => onChange({ ...block, paddingX: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Pad. V</label>
           <Input type="number" value={block.paddingY} onChange={e => onChange({ ...block, paddingY: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
@@ -317,9 +317,9 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
 function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (b: DividerBlock) => void }) {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))] gap-2">
         <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
-        <div>
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Espessura</label>
           <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
