@@ -1825,7 +1825,11 @@ function InteractiveElement({
     case 'notification':
       return (
         <IOSNotification
-          items={element.notificationItems || []}
+          items={(element.notificationItems || []).map(ni => ({
+            ...ni,
+            title: t(ni.title) || '',
+            text: t(ni.text) || '',
+          }))}
           mode={element.notificationMode || 'sequential'}
           duration={element.notificationDuration || 3}
           interval={element.notificationInterval || 2}
