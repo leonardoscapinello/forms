@@ -55,7 +55,7 @@ export function AppSidebar() {
     <Sidebar className="border-r border-border">
       {/* Logo */}
       <div className="px-5 pt-5 pb-4">
-        <img src="/images/twobrain-logo-dark.svg" alt="twobrain" className="h-7" />
+        <img src="/images/twobrain-logo-dark.svg" alt="twobrain" className="max-w-[127px]" />
       </div>
 
       <SidebarContent>
