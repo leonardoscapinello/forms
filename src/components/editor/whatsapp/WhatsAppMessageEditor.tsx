@@ -414,7 +414,7 @@ export default function WhatsAppMessageEditor({
     stopProp,
   };
 
-  const showReadableOverlay = local.includes('{{') && !isEditorFocused;
+  const showReadableOverlay = local.includes('{{');
   const previewText = local ? formatFieldTokensForDisplay(local, elementLookup) : (placeholder || 'Escreva sua mensagem…');
   const isPlaceholder = !local;
   const previewHtml = useMemo(() => parseWhatsAppMarkdown(local || '', elementLookup), [local, elementLookup]);
@@ -536,7 +536,7 @@ export default function WhatsAppMessageEditor({
                           rows={10}
                           className={cn(
                             'text-sm min-h-[280px] resize-none relative nodrag nopan nowheel',
-                            showReadableOverlay ? 'bg-transparent text-transparent caret-transparent' : local.includes('{{') && 'bg-transparent'
+                            showReadableOverlay ? 'bg-transparent text-transparent caret-foreground' : local.includes('{{') && 'bg-transparent'
                           )}
                           onFocus={() => { isFocusedRef.current = true; setIsEditorFocused(true); }}
                           onBlur={() => { isFocusedRef.current = false; setIsEditorFocused(false); acDismiss(); }}
