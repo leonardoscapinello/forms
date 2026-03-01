@@ -1434,38 +1434,51 @@ export default function FormPreview() {
         );
       })()}
 
-      {/* Navigation arrows — hide when page has its own action buttons */}
+      {/* Navigation bar — centered at bottom */}
       {!isWelcome && !isThankYou && (() => {
         const hasActionButtons = currentPage?.elements?.some(el => el.type === 'button');
         if (hasActionButtons) return null;
         const canGoBack = currentPageIndex !== null && (currentPageIndex > 0 || !!form?.showWelcomeScreen);
+        const isLastPage = currentPageIndex !== null && currentPageIndex === pages.length - 1;
         return (
-          <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 flex flex-col gap-1 z-50">
-            {canGoBack && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={goBack}
-                className="h-11 w-11 md:h-9 md:w-9 rounded-md shadow-md"
-                aria-label="Voltar"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-            )}
-            <Button
-              variant="default"
-              size="icon"
-              onClick={goNext}
-              disabled={isPageBlocked}
-              className="h-11 w-11 md:h-9 md:w-9 rounded-md shadow-md"
-              aria-label="Avançar"
-            >
-              {isPageBlocked ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                currentPageIndex !== null && currentPageIndex === pages.length - 1
-                  ? <Send className="h-4 w-4" />
-                  : <ArrowDown className="h-4 w-4" />
+          <div className="fixed bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-lg px-2 py-1.5">
+              {canGoBack && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goBack}
+                  className="h-9 px-3 rounded-full text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+                  aria-label="Voltar"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Voltar</span>
+                </Button>
               )}
-            </Button>
+              {canGoBack && <div className="w-px h-5 bg-border" />}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={goNext}
+                disabled={isPageBlocked}
+                className="h-9 px-4 rounded-full gap-1.5 text-xs"
+                aria-label={isLastPage ? 'Enviar' : 'Avançar'}
+              >
+                {isPageBlocked ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : isLastPage ? (
+                  <>
+                    <span>Enviar</span>
+                    <Send className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    <span>Continuar</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         );
       })()}
