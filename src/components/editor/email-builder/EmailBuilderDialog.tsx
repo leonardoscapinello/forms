@@ -53,10 +53,13 @@ interface ImageBlock extends BaseBlock {
   link: string;
 }
 
+type ButtonLinkMode = 'custom' | 'variable' | 'pass_all_params' | 'pass_utms' | 'pass_variables';
+
 interface ButtonBlock extends BaseBlock {
   type: 'button';
   text: string;
   href: string;
+  linkMode: ButtonLinkMode;
   bgColor: string;
   textColor: string;
   borderRadius: number;
@@ -96,7 +99,7 @@ function createBlock(type: BlockType): EmailBlock {
   switch (type) {
     case 'text': return { id, type, padding, content: 'Seu texto aqui...', align: 'left', fontSize: 16, fontWeight: 'normal', color: '#333333' };
     case 'image': return { id, type, padding, src: '', alt: '', width: '100%', align: 'center', link: '' };
-    case 'button': return { id, type, padding: { top: 16, right: 24, bottom: 16, left: 24 }, text: 'Clique aqui', href: '#', bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
+    case 'button': return { id, type, padding: { top: 16, right: 24, bottom: 16, left: 24 }, text: 'Clique aqui', href: '#', linkMode: 'custom' as ButtonLinkMode, bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
     case 'divider': return { id, type, padding, color: '#E5E7EB', thickness: 1, width: '100%' };
     case 'spacer': return { id, type, padding: { top: 0, right: 0, bottom: 0, left: 0 }, height: 20 };
     case 'columns': return { id, type, padding: { top: 8, right: 20, bottom: 8, left: 20 }, columns: [[], []] };
@@ -281,19 +284,84 @@ function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: I
   );
 }
 
-function ButtonSettings({ block, onChange }: { block: ButtonBlock; onChange: (b: ButtonBlock) => void }) {
+function ButtonSettings({ block, onChange, variables, trackedParams, allInputElements }: {
+  block: ButtonBlock;
+  onChange: (b: ButtonBlock) => void;
+  variables?: Props['variables'];
+  trackedParams?: Props['trackedParams'];
+  allInputElements?: Props['allInputElements'];
+}) {
+  const LINK_MODES: { value: ButtonLinkMode; label: string; desc: string }[] = [
+    { value: 'custom', label: 'Link personalizado', desc: 'URL fixa ou com variáveis {{…}}' },
+    { value: 'variable', label: 'Variável de link', desc: 'Usa o valor de uma variável como URL' },
+    { value: 'pass_all_params', label: 'Repassar todos os parâmetros', desc: 'Anexa todos os parâmetros GET recebidos ao link' },
+    { value: 'pass_utms', label: 'Repassar UTMs', desc: 'Anexa apenas utm_source, utm_medium, utm_campaign, etc.' },
+    { value: 'pass_variables', label: 'Repassar variáveis', desc: 'Anexa variáveis como parâmetros no link' },
+  ];
+
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto</label>
-          <Input value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} className="h-8 text-xs mt-1" />
-        </div>
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Link</label>
-          <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://..." className="h-8 text-xs mt-1" />
-        </div>
+      <div>
+        <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto do botão</label>
+        <Input value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} className="h-8 text-xs mt-1" />
       </div>
+
+      {/* Link mode */}
+      <div>
+        <label className="text-[10px] font-medium text-muted-foreground uppercase">Tipo de link</label>
+        <Select value={block.linkMode || 'custom'} onValueChange={v => onChange({ ...block, linkMode: v as ButtonLinkMode })}>
+          <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {LINK_MODES.map(m => (
+              <SelectItem key={m.value} value={m.value} className="text-xs">
+                <div>
+                  <span className="font-medium">{m.label}</span>
+                  <span className="text-muted-foreground ml-1.5 text-[10px]">— {m.desc}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Link value */}
+      {(block.linkMode === 'custom' || !block.linkMode) && (
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase">URL</label>
+          <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://... ou {{variavel}}" className="h-8 text-xs mt-1" />
+          <p className="text-[9px] text-muted-foreground mt-0.5">Use {'{{nome_variavel}}'} para valores dinâmicos</p>
+        </div>
+      )}
+
+      {block.linkMode === 'variable' && (
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase">Variável</label>
+          <Select value={block.href} onValueChange={v => onChange({ ...block, href: v })}>
+            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Selecionar variável…" /></SelectTrigger>
+            <SelectContent>
+              {(variables || []).map(v => (
+                <SelectItem key={v.id} value={`{{${v.name}}}`} className="text-xs">{v.name}</SelectItem>
+              ))}
+              {(allInputElements || []).flatMap(g => g.elements.map(el => (
+                <SelectItem key={el.elementId} value={`{{${el.elementId}}}`} className="text-xs">{g.pageTitle} › {el.elementLabel}</SelectItem>
+              )))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {(block.linkMode === 'pass_all_params' || block.linkMode === 'pass_utms' || block.linkMode === 'pass_variables') && (
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase">URL base</label>
+          <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://destino.com" className="h-8 text-xs mt-1" />
+          <p className="text-[9px] text-muted-foreground mt-0.5">
+            {block.linkMode === 'pass_all_params' && 'Todos os parâmetros GET serão anexados automaticamente'}
+            {block.linkMode === 'pass_utms' && 'Apenas utm_source, utm_medium, utm_campaign, utm_term e utm_content'}
+            {block.linkMode === 'pass_variables' && 'Todas as variáveis serão passadas como ?var1=valor&var2=valor'}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Cor do fundo</label>
@@ -543,11 +611,17 @@ function ColumnsSettings({ block, onChange }: { block: ColumnsBlock; onChange: (
 }
 
 // ─── Settings dispatcher ────────────────────────────────────────────
-function BlockSettingsDispatch({ block, onChange }: { block: EmailBlock; onChange: (b: EmailBlock) => void }) {
+function BlockSettingsDispatch({ block, onChange, variables, trackedParams, allInputElements }: {
+  block: EmailBlock;
+  onChange: (b: EmailBlock) => void;
+  variables?: Props['variables'];
+  trackedParams?: Props['trackedParams'];
+  allInputElements?: Props['allInputElements'];
+}) {
   switch (block.type) {
     case 'text': return <TextSettings block={block} onChange={onChange} />;
     case 'image': return <ImageSettings block={block} onChange={onChange} />;
-    case 'button': return <ButtonSettings block={block} onChange={onChange} />;
+    case 'button': return <ButtonSettings block={block} onChange={onChange} variables={variables} trackedParams={trackedParams} allInputElements={allInputElements} />;
     case 'divider': return <DividerSettings block={block} onChange={onChange} />;
     case 'spacer': return <SpacerSettings block={block} onChange={onChange} />;
     case 'columns': return <ColumnsSettings block={block} onChange={onChange as any} />;
@@ -620,9 +694,12 @@ interface Props {
   onClose: () => void;
   value: string;
   onChange: (html: string) => void;
+  variables?: { id: string; name: string }[];
+  trackedParams?: { key: string; enabled: boolean }[];
+  allInputElements?: { pageId: string; pageTitle: string; elements: { elementId: string; elementLabel: string }[] }[];
 }
 
-export default function EmailBuilderDialog({ open, onClose, value, onChange }: Props) {
+export default function EmailBuilderDialog({ open, onClose, value, onChange, variables, trackedParams, allInputElements }: Props) {
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
     const restored = extractBlocksFromHtml(value);
     if (restored) return restored.blocks;
@@ -799,7 +876,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <BlockSettingsDispatch block={selectedBlock} onChange={updateBlock} />
+                    <BlockSettingsDispatch block={selectedBlock} onChange={updateBlock} variables={variables} trackedParams={trackedParams} allInputElements={allInputElements} />
                   </div>
                 ) : (
                   <div className="text-center py-10 text-muted-foreground">

@@ -287,6 +287,9 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
               onClose={() => setBuilderOpen(false)}
               value={nodeData.bodyHtml || ''}
               onChange={html => onChange({ bodyHtml: html })}
+              variables={variables}
+              trackedParams={trackedParams}
+              allInputElements={allInputElements}
             />
           </Suspense>
         )}
