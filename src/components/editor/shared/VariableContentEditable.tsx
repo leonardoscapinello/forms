@@ -198,7 +198,29 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
     // Atomic delete of var tokens
     if (e.key === 'Backspace' || e.key === 'Delete') {
       const sel = window.getSelection();
-      if (!sel || !sel.isCollapsed) return;
+      if (!sel) return;
+
+      // When there's a selection, delete contents including tokens
+      if (!sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        const container = editorRef.current;
+        if (container) {
+          const tokens = container.querySelectorAll('[data-raw]');
+          const hasToken = Array.from(tokens).some(t => range.intersectsNode(t));
+          if (hasToken) {
+            e.preventDefault();
+            range.deleteContents();
+            container.normalize();
+            if (!container.childNodes.length) {
+              container.appendChild(document.createTextNode(''));
+            }
+            emitChange();
+            return;
+          }
+        }
+        return;
+      }
+
       const node = sel.focusNode;
       const offset = sel.focusOffset;
 
