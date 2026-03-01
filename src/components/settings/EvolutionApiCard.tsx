@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { MessageSquare, Plus, Trash2, Save, Loader2, Eye, EyeOff, TestTube, CheckCircle2, XCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MessageSquare, Plus, Trash2, Save, Loader2, Eye, EyeOff, TestTube, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 
 interface EvolutionInstance {
   id?: string;
@@ -25,6 +26,8 @@ export default function EvolutionApiCard() {
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, 'success' | 'error'>>({});
+  const [fetchingInstances, setFetchingInstances] = useState<string | null>(null);
+  const [availableInstances, setAvailableInstances] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     supabase.from('integration_settings')
@@ -100,6 +103,35 @@ export default function EvolutionApiCard() {
     setInstances(prev => prev.filter((_, i) => i !== index));
     toast({ title: 'Removido', description: `Instância "${inst.label}" removida.` });
   }, [instances, toast]);
+
+  const fetchAvailableInstances = useCallback(async (index: number) => {
+    const inst = instances[index];
+    const key = inst.id || `new-${index}`;
+    if (!inst.apiUrl || !inst.apiKey) {
+      toast({ title: 'Preencha URL e API Key', description: 'Necessário para buscar instâncias.', variant: 'destructive' });
+      return;
+    }
+    setFetchingInstances(key);
+    try {
+      const url = inst.apiUrl.replace(/\/+$/, '');
+      const res = await fetch(`${url}/instance/fetchInstances`, {
+        headers: { apikey: inst.apiKey },
+      });
+      const json = await res.json();
+      const names: string[] = Array.isArray(json)
+        ? json.map((i: any) => i.instance?.instanceName || i.instanceName || i.name).filter(Boolean)
+        : [];
+      setAvailableInstances(prev => ({ ...prev, [key]: names }));
+      if (names.length === 0) {
+        toast({ title: 'Nenhuma instância encontrada', description: 'Verifique se há instâncias criadas na Evolution API.' });
+      } else if (names.length === 1 && !inst.instanceName) {
+        updateInstance(index, { instanceName: names[0] });
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro ao buscar instâncias', description: err.message || 'Falha na conexão.', variant: 'destructive' });
+    }
+    setFetchingInstances(null);
+  }, [instances, toast, updateInstance]);
 
   const testInstance = useCallback(async (index: number) => {
     const inst = instances[index];
@@ -205,13 +237,41 @@ export default function EvolutionApiCard() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Nome da Instância</Label>
-                <Input
-                  value={inst.instanceName}
-                  onChange={e => updateInstance(index, { instanceName: e.target.value })}
-                  placeholder="minha-instancia"
-                  className="text-sm"
-                />
+                <Label className="text-xs text-muted-foreground">Instância</Label>
+                <div className="flex items-center gap-2">
+                  {(availableInstances[key]?.length ?? 0) > 0 ? (
+                    <Select value={inst.instanceName} onValueChange={v => updateInstance(index, { instanceName: v })}>
+                      <SelectTrigger className="text-sm flex-1">
+                        <SelectValue placeholder="Selecione uma instância" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableInstances[key].map(name => (
+                          <SelectItem key={name} value={name} className="text-sm">{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={inst.instanceName}
+                      onChange={e => updateInstance(index, { instanceName: e.target.value })}
+                      placeholder="Busque as instâncias →"
+                      className="text-sm flex-1"
+                    />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={() => fetchAvailableInstances(index)}
+                    disabled={fetchingInstances === key || !inst.apiUrl || !inst.apiKey}
+                    title="Buscar instâncias da API"
+                  >
+                    {fetchingInstances === key
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <RefreshCw className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Preencha URL e API Key, depois clique em buscar.</p>
               </div>
 
               <div className="flex items-center gap-2 pt-1">
