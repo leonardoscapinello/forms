@@ -676,16 +676,16 @@ function PixelLogRow({ log, expanded, onToggle }: { log: PixelLogRow; expanded: 
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <span>Client</span>
             {log.fired_client
-              ? <CheckCircle2 className="h-3.5 w-3.5 text-[#8A7D4A]" />
-              : <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />}
+              ? <CheckCircle2 className="h-3.5 w-3.5 text-[#4A5D2F]" />
+              : <XCircle className="h-3.5 w-3.5 text-muted-foreground/60" />}
           </div>
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <span>CAPI</span>
             {success
-              ? <CheckCircle2 className="h-3.5 w-3.5 text-[#8A7D4A]" />
+              ? <CheckCircle2 className="h-3.5 w-3.5 text-[#4A5D2F]" />
               : log.fired_server
               ? <AlertCircle className="h-3.5 w-3.5 text-destructive/70" />
-              : <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />}
+              : <XCircle className="h-3.5 w-3.5 text-muted-foreground/60" />}
           </div>
         </div>
 
