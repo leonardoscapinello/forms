@@ -119,7 +119,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     }).filter(g => g.elements.length > 0);
   }, [selectedId, allInputElements, pageId]);
 
-  // normalizeFontFamily is now imported from @/lib/fontUtils
+  
 
   const effectiveStyle: FunnelPageStyle = {
     backgroundColor: '',
