@@ -11,6 +11,7 @@ import type { WhatsAppNodeData, FormVariable, IntegrationNodeData } from '@/type
 import { supabase } from '@/integrations/supabase/client';
 import { VariableInput } from './shared';
 import WhatsAppMessageEditor from './whatsapp/WhatsAppMessageEditor';
+import WhatsAppPreviewCard from './whatsapp/WhatsAppPreviewCard';
 import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
 
@@ -109,6 +110,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
 
   return (
     <TooltipProvider delayDuration={200}>
+      <div className="relative">
       <div className={`w-[320px] rounded-xl border-2 transition-shadow ${selected ? 'border-node-whatsapp-accent shadow-lg' : 'border-border shadow-sm'} bg-card`}>
         <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-whatsapp-accent !border-2 !border-card" />
         <Handle type="source" position={Position.Right} id="default" className="!w-3 !h-3 !bg-node-whatsapp-accent !border-2 !border-card" />
@@ -318,6 +320,18 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
             </div>
           </div>
         )}
+      </div>
+
+      {/* Preview card - visible when node is selected */}
+      {selected && expanded && (
+        <WhatsAppPreviewCard
+          messageText={nodeData.messageText}
+          sendMedia={nodeData.sendMedia}
+          mediaType={nodeData.mediaType}
+          mediaUrl={nodeData.mediaUrl}
+          mediaFileName={nodeData.mediaFileName}
+        />
+      )}
       </div>
     </TooltipProvider>
   );
