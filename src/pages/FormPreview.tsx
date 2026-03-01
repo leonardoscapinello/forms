@@ -1526,6 +1526,9 @@ export default function FormPreview() {
           containerStyle.color = formStyle.textColor;
         }
 
+        // Override --primary inside form preview for field focus/selected borders
+        (containerStyle as any)['--primary'] = '48 24% 62%'; /* #B3AB86 */
+
         // Default screens (no custom elements): centered layout with own padding
         const showDefaultWelcome = isWelcome && (!form.showWelcomeScreen || !form.welcomePage?.elements?.length);
         const showDefaultThankYou = isThankYou && !form.thankYouPage?.elements?.length;
