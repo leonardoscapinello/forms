@@ -1,6 +1,6 @@
 import { memo, useCallback, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { FileText, Variable } from 'lucide-react';
+import { FileText, Variable, AlertTriangle } from 'lucide-react';
 import { FunnelPage, FormVariable, VariableAssignment, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import VariableAssignPanel, { InputElementGroup } from './VariableAssignPanel';
@@ -43,12 +43,16 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
   }, [editValue, page.title, onChange]);
 
   const elementCount = page.elements?.length || 0;
+  const isEmpty = elementCount === 0;
   const assignmentCount = page.variableAssignments?.length || 0;
 
   return (
     <div
       className={`w-72 rounded-xl border bg-card shadow-sm transition-all cursor-pointer hover:shadow-md ${
-        selected ? 'border-primary shadow-md ring-2 ring-primary/10' : isDisconnected ? 'border-destructive/50 opacity-60' : 'border-border'
+        selected ? 'border-primary shadow-md ring-2 ring-primary/10'
+        : isDisconnected ? 'border-destructive/50 opacity-60'
+        : isEmpty ? 'border-warning/50 bg-warning/5'
+        : 'border-border'
       }`}
       onDoubleClick={onSelect}
     >
@@ -56,9 +60,11 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/20 bg-primary/5 rounded-t-xl">
-        <div className="flex items-center gap-1.5 text-primary">
-          <FileText className="h-3.5 w-3.5" />
+      <div className={`flex items-center gap-2 px-3 py-2 border-b rounded-t-xl ${
+        isEmpty ? 'border-warning/30 bg-warning/10' : 'border-primary/20 bg-primary/5'
+      }`}>
+        <div className={`flex items-center gap-1.5 ${isEmpty ? 'text-warning' : 'text-primary'}`}>
+          {isEmpty ? <AlertTriangle className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
           <span className="text-[11px] font-medium uppercase tracking-wide">Página</span>
         </div>
         <span className="text-[11px] text-muted-foreground/60 ml-auto">#{index + 1}</span>
@@ -87,9 +93,16 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
 
         {/* Elements count */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground">
-            {elementCount === 0 ? 'Nenhum elemento' : `${elementCount} elemento${elementCount > 1 ? 's' : ''}`}
-          </span>
+          {isEmpty ? (
+            <span className="text-[10px] text-warning font-medium flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Página vazia — será pulada
+            </span>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">
+              {`${elementCount} elemento${elementCount > 1 ? 's' : ''}`}
+            </span>
+          )}
         </div>
 
         {/* Mini preview of element types */}
