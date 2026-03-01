@@ -423,8 +423,9 @@ function BlockPreview({ block }: { block: EmailBlock }) {
           {block.columns.map((col, ci) => (
             <div key={ci} style={{ flex: 1, minWidth: 0 }}>
               {col.length === 0 ? (
-                <div className="h-16 rounded border border-dashed border-border flex items-center justify-center text-[10px] text-muted-foreground">
-                  Coluna {ci + 1}
+                <div className="h-16 rounded border border-dashed border-border flex flex-col items-center justify-center text-[10px] text-muted-foreground gap-1">
+                  <span>Coluna {ci + 1}</span>
+                  <span className="text-[9px] opacity-60">Selecione para adicionar</span>
                 </div>
               ) : (
                 col.map(b => <BlockPreview key={b.id} block={b} />)
@@ -436,6 +437,103 @@ function BlockPreview({ block }: { block: EmailBlock }) {
   }
 }
 
+// ─── Column block types (no nested columns) ────────────────────────
+const COL_BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Type }[] = BLOCK_TYPES.filter(b => b.type !== 'columns');
+
+// ─── Columns settings ───────────────────────────────────────────────
+function ColumnsSettings({ block, onChange }: { block: ColumnsBlock; onChange: (b: ColumnsBlock) => void }) {
+  const addToColumn = (colIndex: number, type: BlockType) => {
+    const newBlock = createBlock(type);
+    const newColumns = block.columns.map((col, ci) =>
+      ci === colIndex ? [...col, newBlock] : col
+    );
+    onChange({ ...block, columns: newColumns });
+  };
+
+  const removeFromColumn = (colIndex: number, blockId: string) => {
+    const newColumns = block.columns.map((col, ci) =>
+      ci === colIndex ? col.filter(b => b.id !== blockId) : col
+    );
+    onChange({ ...block, columns: newColumns });
+  };
+
+  const moveInColumn = (colIndex: number, blockId: string, dir: -1 | 1) => {
+    const newColumns = block.columns.map((col, ci) => {
+      if (ci !== colIndex) return col;
+      const idx = col.findIndex(b => b.id === blockId);
+      if (idx < 0) return col;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= col.length) return col;
+      const arr = [...col];
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      return arr;
+    });
+    onChange({ ...block, columns: newColumns });
+  };
+
+  const addColumn = () => {
+    if (block.columns.length >= 4) return;
+    onChange({ ...block, columns: [...block.columns, []] });
+  };
+
+  const removeColumn = (ci: number) => {
+    if (block.columns.length <= 1) return;
+    onChange({ ...block, columns: block.columns.filter((_, i) => i !== ci) });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase">Colunas ({block.columns.length})</span>
+        <div className="flex gap-1">
+          <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={addColumn} disabled={block.columns.length >= 4}>
+            <Plus className="h-3 w-3 mr-0.5" /> Coluna
+          </Button>
+        </div>
+      </div>
+
+      {block.columns.map((col, ci) => (
+        <div key={ci} className="space-y-1.5 rounded-md border border-border p-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold">Coluna {ci + 1}</span>
+            {block.columns.length > 1 && (
+              <button onClick={() => removeColumn(ci)} className="text-destructive hover:text-destructive/80">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Existing blocks in column */}
+          {col.map((b, bi) => (
+            <div key={b.id} className="flex items-center gap-1 rounded bg-muted/50 px-1.5 py-1 text-[10px]">
+              <span className="flex-1 truncate">{BLOCK_LABELS[b.type]}: {b.type === 'text' ? (b as TextBlock).content.slice(0, 20) : b.type === 'button' ? (b as ButtonBlock).text : ''}</span>
+              <button onClick={() => moveInColumn(ci, b.id, -1)} className="p-0.5 hover:bg-muted rounded" disabled={bi === 0}><ChevronUp className="h-2.5 w-2.5" /></button>
+              <button onClick={() => moveInColumn(ci, b.id, 1)} className="p-0.5 hover:bg-muted rounded" disabled={bi === col.length - 1}><ChevronDown className="h-2.5 w-2.5" /></button>
+              <button onClick={() => removeFromColumn(ci, b.id)} className="p-0.5 hover:bg-muted rounded text-destructive"><Trash2 className="h-2.5 w-2.5" /></button>
+            </div>
+          ))}
+
+          {/* Add block buttons */}
+          <div className="flex flex-wrap gap-1 pt-1">
+            {COL_BLOCK_TYPES.map(bt => (
+              <button
+                key={bt.type}
+                onClick={() => addToColumn(ci, bt.type)}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-[9px]"
+              >
+                <bt.icon className="h-2.5 w-2.5" />
+                {bt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+    </div>
+  );
+}
+
 // ─── Settings dispatcher ────────────────────────────────────────────
 function BlockSettingsDispatch({ block, onChange }: { block: EmailBlock; onChange: (b: EmailBlock) => void }) {
   switch (block.type) {
@@ -444,12 +542,7 @@ function BlockSettingsDispatch({ block, onChange }: { block: EmailBlock; onChang
     case 'button': return <ButtonSettings block={block} onChange={onChange} />;
     case 'divider': return <DividerSettings block={block} onChange={onChange} />;
     case 'spacer': return <SpacerSettings block={block} onChange={onChange} />;
-    case 'columns': return (
-      <div className="space-y-3">
-        <div className="text-xs text-muted-foreground">Arraste blocos para dentro das colunas no preview.</div>
-        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
-      </div>
-    );
+    case 'columns': return <ColumnsSettings block={block} onChange={onChange as any} />;
   }
 }
 
