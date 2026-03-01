@@ -385,14 +385,33 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     updateForm(form.id, { variables: (form.variables || []).filter(v => v.id !== varId) });
   }, [form, updateForm]);
 
-  if (!form) return null;
-
-  const value: EditorFormContextType = {
-    form, formId: id!, saveStatus, lastSavedAt,
-    editingPageId, setEditingPageId, editingWelcome, setEditingWelcome, editingThankYou, setEditingThankYou,
-    showResponsivePreview, setShowResponsivePreview,
+  const value: EditorFormContextType | null = useMemo(() => {
+    if (!form) return null;
+    return {
+      form, formId: id!, saveStatus, lastSavedAt,
+      editingPageId, setEditingPageId, editingWelcome, setEditingWelcome, editingThankYou, setEditingThankYou,
+      showResponsivePreview, setShowResponsivePreview,
+      disconnectedPageIds, editorInputElements, editorIntegrationNodes, welcomePage, thankYouPage, editingPage,
+      collaborators: collab.collaborators, lockElement: collab.lockElement, unlockElement: collab.unlockElement, broadcastCursor: collab.broadcastCursor, isLockedByOther: collab.isLockedByOther,
+      updateFormData,
+      handleAddPage, handleDeletePage, handlePageChange, handleRenamePage,
+      handlePageSelectFromWorkflow, handlePageAddAtPosition,
+      handleConditionAddAtPosition, handleConditionChange, handleConditionDelete,
+      handleVariableOpAddAtPosition, handleVariableOpChange, handleVariableOpDelete,
+      handleIntegrationAddAtPosition, handleIntegrationChange, handleIntegrationDelete,
+      handleAnalyticsAddAtPosition, handleAnalyticsChange, handleAnalyticsDelete,
+      handleWhatsAppAddAtPosition, handleWhatsAppChange, handleWhatsAppDelete,
+      handleEmailAddAtPosition, handleEmailChange, handleEmailDelete,
+      handleABTestAddAtPosition, handleABTestChange, handleABTestDelete,
+      handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
+      handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
+      handleAddVariable, handleUpdateVariable, handleDeleteVariable,
+    };
+  }, [
+    form, id, saveStatus, lastSavedAt,
+    editingPageId, editingWelcome, editingThankYou, showResponsivePreview,
     disconnectedPageIds, editorInputElements, editorIntegrationNodes, welcomePage, thankYouPage, editingPage,
-    collaborators: collab.collaborators, lockElement: collab.lockElement, unlockElement: collab.unlockElement, broadcastCursor: collab.broadcastCursor, isLockedByOther: collab.isLockedByOther,
+    collab.collaborators, collab.lockElement, collab.unlockElement, collab.broadcastCursor, collab.isLockedByOther,
     updateFormData,
     handleAddPage, handleDeletePage, handlePageChange, handleRenamePage,
     handlePageSelectFromWorkflow, handlePageAddAtPosition,
@@ -406,7 +425,9 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
     handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
-  };
+  ]);
+
+  if (!value) return null;
 
   return <EditorFormContext.Provider value={value}>{children}</EditorFormContext.Provider>;
 }

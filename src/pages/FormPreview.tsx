@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FunnelPage, FormData as AppFormData, UserDataMapping } from '@/types/form';
+import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
 import { interpolateText } from '@/lib/variableInterpolation';
-import { FormVariable } from '@/types/form';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
@@ -18,6 +17,7 @@ import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/l
 import { enqueueTask } from '@/lib/backgroundQueue';
 import { consumePrefetchedForm } from '@/lib/formPrefetch';
 import { validateEmailFormat } from '@/lib/emailValidation';
+import { normalizeFontFamily } from '@/lib/fontUtils';
 
 // Lazy-loaded heavy preview components — only loaded when the form actually uses them
 const PhoneFieldPreview = lazy(() => import('@/components/preview/PhoneFieldPreview'));
@@ -64,21 +64,7 @@ function buildDefaults(form: AppFormData | null) {
   return defaults;
 }
 
-const BORNA_FONT_STACK = "'Borna', ui-sans-serif, system-ui, sans-serif";
-
-function normalizeFontFamily(fontFamily?: string) {
-  const raw = (fontFamily ?? '').trim();
-  if (!raw) return BORNA_FONT_STACK;
-
-  const normalized = raw.replace(/["']/g, '').toLowerCase();
-  const firstFamily = normalized.split(',')[0]?.trim() || '';
-
-  if (!firstFamily || firstFamily === 'inter' || firstFamily === 'borna') {
-    return BORNA_FONT_STACK;
-  }
-
-  return raw;
-}
+// normalizeFontFamily imported from shared utility
 
 /** Resolve userData (email, phone, name) from a UserDataMapping and current answers */
 function resolveUserData(

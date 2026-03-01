@@ -1,9 +1,8 @@
 import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
-import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon, Bell } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
-import { Bell } from 'lucide-react';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
@@ -11,6 +10,7 @@ import TimerPreview from '@/components/preview/TimerPreview';
 import CircularProgressPreview from '@/components/preview/CircularProgressPreview';
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
+import { normalizeFontFamily } from '@/lib/fontUtils';
 
 interface Props {
   element: PageElement;
@@ -25,18 +25,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
-  const normalizeFontFamily = (fontFamily?: string) => {
-    const raw = (fontFamily ?? '').trim();
-    if (!raw) return "'Borna', ui-sans-serif, system-ui, sans-serif";
-
-    const normalized = raw.replace(/["']/g, '').toLowerCase();
-    const firstFamily = normalized.split(',')[0]?.trim() || '';
-    if (!firstFamily || firstFamily === 'inter' || firstFamily === 'borna') {
-      return "'Borna', ui-sans-serif, system-ui, sans-serif";
-    }
-
-    return raw;
-  };
+  // normalizeFontFamily is now imported from @/lib/fontUtils
 
   // Outer wrapper styles (margin)
   const containerStyle: React.CSSProperties = {};
