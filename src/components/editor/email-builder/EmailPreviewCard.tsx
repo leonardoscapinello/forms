@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 interface Props {
   bodyHtml?: string;
@@ -23,9 +23,13 @@ export default function EmailPreviewCard({
   if (!hasContent) return null;
 
   return (
-    <div
+    <motion.div
       className="absolute left-full top-0 ml-3 z-10 pointer-events-none"
       style={{ width: 340 }}
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -12 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
     >
       <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden pointer-events-auto">
         {/* Email client header */}
@@ -61,6 +65,6 @@ export default function EmailPreviewCard({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,4 +1,5 @@
 import { memo, useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
   Mail, Trash2, ChevronDown, ChevronUp,
@@ -281,17 +282,19 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
         </div>
 
         {/* Preview card — right side when selected */}
-        {selected && expanded && (
-          <EmailPreviewCard
-            bodyHtml={nodeData.bodyHtml}
-            bodyText={nodeData.bodyText}
-            useHtml={nodeData.useHtml}
-            subject={nodeData.subject}
-            fromName={nodeData.fromName}
-            fromEmail={nodeData.fromEmail || selectedInstance?.config.defaultFrom}
-            toEmail={nodeData.toEmail}
-          />
-        )}
+        <AnimatePresence>
+          {selected && expanded && (
+            <EmailPreviewCard
+              bodyHtml={nodeData.bodyHtml}
+              bodyText={nodeData.bodyText}
+              useHtml={nodeData.useHtml}
+              subject={nodeData.subject}
+              fromName={nodeData.fromName}
+              fromEmail={nodeData.fromEmail || selectedInstance?.config.defaultFrom}
+              toEmail={nodeData.toEmail}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Email Builder Dialog */}
         {builderOpen && (
