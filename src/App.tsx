@@ -59,7 +59,7 @@ function ScrollToTop() {
 
 function LegacyPreviewRedirect() {
   const { id } = useParams();
-  return <Navigate to={id ? `/f/${id}` : "/"} replace />;
+  return <Navigate to={id ? `/f/${id}?editorPreview=1` : "/"} replace />;
 }
 
 const App = () => {
