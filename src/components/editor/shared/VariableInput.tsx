@@ -135,7 +135,7 @@ export default function VariableInput(props: Props) {
   };
 
   const hasHighlight = local.includes('{{');
-  const showReadableOverlay = hasHighlight && !isFocused;
+  const showReadableOverlay = hasHighlight;
 
   const PopoverRow = ({ syntax, icon, label, detail, onClick }: { syntax: string; icon: React.ReactNode; label: string; detail?: string; onClick: () => void }) => (
     <div className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={onClick}>
@@ -173,7 +173,7 @@ export default function VariableInput(props: Props) {
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
               rows={props.rows ?? 2}
-              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-transparent' : hasHighlight && 'bg-transparent', className)}
+              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-foreground' : hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
@@ -196,7 +196,7 @@ export default function VariableInput(props: Props) {
               value={local}
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
-              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-transparent' : hasHighlight && 'bg-transparent', className)}
+              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-foreground' : hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
