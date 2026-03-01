@@ -56,7 +56,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
       }`}
       onDoubleClick={onSelect}
     >
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
 
       {/* Header */}
