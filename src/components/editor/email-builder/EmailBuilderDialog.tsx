@@ -1,8 +1,8 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
   AlignLeft, AlignCenter, AlignRight, ArrowLeft, ArrowRight,
-  LayoutTemplate,
+  LayoutTemplate, PanelLeft, PanelRight, Settings2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -711,6 +711,8 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<'editor' | 'preview' | 'code'>('editor');
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [emailBg, setEmailBg] = useState(() => extractBlocksFromHtml(value)?.emailBg || '#F9FAFB');
   const [contentBg, setContentBg] = useState(() => extractBlocksFromHtml(value)?.contentBg || '#FFFFFF');
 
@@ -730,6 +732,11 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   // The active settings target: element takes priority over structure
   const settingsTarget = selectedElement || selectedStructure;
+
+  // Auto-show right panel when selecting an element
+  useEffect(() => {
+    if (settingsTarget) setShowRightPanel(true);
+  }, [settingsTarget]);
 
   const html = useMemo(() => blocksToHtml(blocks as EmailBlock[], emailBg, contentBg), [blocks, emailBg, contentBg]);
 
@@ -862,107 +869,131 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold">Editor de E-mail</h2>
+        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border flex-shrink-0 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <h2 className="text-sm font-semibold whitespace-nowrap hidden sm:block">Editor de E-mail</h2>
             <div className="flex border border-border rounded-md">
               {([['editor', 'Editor'], ['preview', 'Preview'], ['code', 'HTML']] as const).map(([mode, label]) => (
                 <button
                   key={mode}
                   onClick={() => setPreviewMode(mode)}
-                  className={cn('px-3 py-1 text-xs transition-colors', previewMode === mode ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground')}
+                  className={cn('px-2 sm:px-3 py-1 text-xs transition-colors', previewMode === mode ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground')}
                 >
                   {label}
                 </button>
               ))}
             </div>
+            {previewMode === 'editor' && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant={showLeftPanel ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setShowLeftPanel(p => !p)}
+                  title="Painel de elementos"
+                >
+                  <PanelLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant={showRightPanel ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setShowRightPanel(p => !p)}
+                  title="Painel de configurações"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-            <Button size="sm" onClick={handleSave}>Salvar HTML</Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button variant="outline" size="sm" onClick={onClose} className="text-xs">Cancelar</Button>
+            <Button size="sm" onClick={handleSave} className="text-xs">Salvar</Button>
           </div>
         </div>
 
         {/* Body */}
-        <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
           {previewMode === 'editor' && (
             <>
               {/* Left palette */}
-              <div className="w-52 border-r border-border flex-shrink-0 overflow-y-auto p-3 space-y-4">
-                {/* Structures */}
-                <div>
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estruturas</span>
-                  <div className="grid grid-cols-2 gap-1.5 mt-2">
-                    {STRUCTURE_PRESETS.map(sp => (
-                      <button
-                        key={sp.cols}
-                        onClick={() => addStructure(sp.cols)}
-                        className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                      >
-                        <sp.icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-[9px] font-medium">{sp.label}</span>
-                      </button>
-                    ))}
+              {showLeftPanel && (
+                <div className="w-44 sm:w-52 border-r border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-4 min-w-0">
+                  {/* Structures */}
+                  <div>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estruturas</span>
+                    <div className="grid grid-cols-2 gap-1.5 mt-2">
+                      {STRUCTURE_PRESETS.map(sp => (
+                        <button
+                          key={sp.cols}
+                          onClick={() => addStructure(sp.cols)}
+                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                        >
+                          <sp.icon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-[9px] font-medium">{sp.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Elements (draggable) */}
-                <div>
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Elementos</span>
-                  <p className="text-[9px] text-muted-foreground mt-0.5 mb-2">Arraste para dentro de uma estrutura</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {ELEMENT_TYPES.map(et => (
-                      <div
-                        key={et.type}
-                        draggable
-                        onDragStart={e => {
-                          e.dataTransfer.setData('application/email-element-type', et.type);
-                          e.dataTransfer.effectAllowed = 'copy';
-                        }}
-                        className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-grab active:cursor-grabbing"
-                      >
-                        <et.icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-[9px] font-medium">{et.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Templates */}
-                <div>
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Templates</span>
-                  <div className="flex flex-col gap-1.5 mt-2">
-                    {EMAIL_TEMPLATES.map(tpl => (
-                      <button
-                        key={tpl.id}
-                        onClick={() => applyTemplate(tpl)}
-                        className="flex items-center gap-2 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left"
-                      >
-                        <tpl.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-medium block leading-tight">{tpl.label}</span>
-                          <span className="text-[9px] text-muted-foreground block leading-tight truncate">{tpl.description}</span>
+                  {/* Elements (draggable) */}
+                  <div>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Elementos</span>
+                    <p className="text-[9px] text-muted-foreground mt-0.5 mb-2">Arraste para dentro de uma estrutura</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {ELEMENT_TYPES.map(et => (
+                        <div
+                          key={et.type}
+                          draggable
+                          onDragStart={e => {
+                            e.dataTransfer.setData('application/email-element-type', et.type);
+                            e.dataTransfer.effectAllowed = 'copy';
+                          }}
+                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-grab active:cursor-grabbing"
+                        >
+                          <et.icon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-[9px] font-medium">{et.label}</span>
                         </div>
-                      </button>
-                    ))}
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Templates */}
+                  <div>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Templates</span>
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      {EMAIL_TEMPLATES.map(tpl => (
+                        <button
+                          key={tpl.id}
+                          onClick={() => applyTemplate(tpl)}
+                          className="flex items-center gap-2 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left"
+                        >
+                          <tpl.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-medium block leading-tight">{tpl.label}</span>
+                            <span className="text-[9px] text-muted-foreground block leading-tight truncate">{tpl.description}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Global style */}
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estilo Global</span>
+                    <ColorPickerField label="Fundo do e-mail" value={emailBg} onChange={c => setEmailBg(c || '#F9FAFB')} allowTransparent={false} />
+                    <ColorPickerField label="Fundo do conteúdo" value={contentBg} onChange={c => setContentBg(c || '#FFFFFF')} allowTransparent={false} />
                   </div>
                 </div>
-
-                {/* Global style */}
-                <div className="space-y-3">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estilo Global</span>
-                  <ColorPickerField label="Fundo do e-mail" value={emailBg} onChange={c => setEmailBg(c || '#F9FAFB')} allowTransparent={false} />
-                  <ColorPickerField label="Fundo do conteúdo" value={contentBg} onChange={c => setContentBg(c || '#FFFFFF')} allowTransparent={false} />
-                </div>
-              </div>
+              )}
 
               {/* Canvas */}
-              <div className="flex-1 overflow-y-auto" style={{ backgroundColor: emailBg }}>
+              <div className="flex-1 overflow-y-auto min-w-0" style={{ backgroundColor: emailBg }}>
                 <div
                   className="max-w-[600px] mx-auto my-6 rounded-lg shadow-sm relative"
-                  style={{ backgroundColor: contentBg, marginLeft: 'auto', marginRight: 'auto', paddingLeft: 32 }}
+                  style={{ backgroundColor: contentBg, paddingLeft: 32 }}
                   onClick={() => { setSelectedStructureId(null); setSelectedElementId(null); }}
                 >
                   {blocks.length === 0 && (
@@ -994,37 +1025,39 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
               </div>
 
               {/* Settings panel */}
-              <div className="w-60 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-3 min-w-0">
-                {settingsTarget ? (
-                  <div className="min-w-0 max-w-full">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-semibold">{BLOCK_LABELS[settingsTarget.type]}</span>
-                      <button onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }} className="text-muted-foreground hover:text-foreground">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+              {showRightPanel && (
+                <div className="w-52 sm:w-60 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 min-w-0">
+                  {settingsTarget ? (
+                    <div className="min-w-0 max-w-full">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-semibold truncate">{BLOCK_LABELS[settingsTarget.type]}</span>
+                        <button onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <BlockSettingsDispatch
+                        block={settingsTarget}
+                        onChange={b => {
+                          if (b.type === 'columns') updateStructure(b as ColumnsBlock);
+                          else updateElement(b);
+                        }}
+                        variables={variables}
+                        trackedParams={trackedParams}
+                        allInputElements={allInputElements}
+                      />
                     </div>
-                    <BlockSettingsDispatch
-                      block={settingsTarget}
-                      onChange={b => {
-                        if (b.type === 'columns') updateStructure(b as ColumnsBlock);
-                        else updateElement(b);
-                      }}
-                      variables={variables}
-                      trackedParams={trackedParams}
-                      allInputElements={allInputElements}
-                    />
-                  </div>
-                ) : (
-                  <div className="text-center py-10 text-muted-foreground">
-                    <p className="text-xs">Selecione uma estrutura ou elemento para editar</p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <p className="text-xs">Selecione um elemento para editar</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
           {previewMode === 'preview' && (
-            <div className="flex-1 overflow-y-auto bg-muted/30 p-6">
+            <div className="flex-1 overflow-y-auto bg-muted/30 p-4 sm:p-6 min-w-0">
               <div className="max-w-[650px] mx-auto rounded-lg shadow-lg overflow-hidden border border-border">
                 <iframe
                   srcDoc={html}
@@ -1038,7 +1071,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
           )}
 
           {previewMode === 'code' && (
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 min-w-0">
               <textarea
                 value={html}
                 readOnly
