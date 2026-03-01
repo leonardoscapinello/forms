@@ -11,12 +11,21 @@ import FormPreview from "./pages/FormPreview";
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const FormEditor = lazy(() => import("./pages/FormEditor"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AppLayout = lazy(() => import("./components/AppLayout"));
+
+// Editor (layout + sub-routes)
+const EditorLayout = lazy(() => import("./pages/editor/EditorLayout"));
+const EditorPages = lazy(() => import("./pages/editor/EditorPages"));
+const EditorWorkflow = lazy(() => import("./pages/editor/EditorWorkflow"));
+const EditorDesign = lazy(() => import("./pages/editor/EditorDesign"));
+const EditorResponses = lazy(() => import("./pages/editor/EditorResponses"));
+const EditorShare = lazy(() => import("./pages/editor/EditorShare"));
+const EditorAnalytics = lazy(() => import("./pages/editor/EditorAnalytics"));
+const EditorSettingsPage = lazy(() => import("./pages/editor/EditorSettingsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,7 +77,6 @@ function LegacyPreviewRedirect() {
 const App = () => {
   const isPublicFormPath = typeof window !== "undefined" && /^\/f\//.test(window.location.pathname);
 
-  // Public form route: no heavy providers, no extra suspense loaders
   if (isPublicFormPath) {
     return (
       <BrowserRouter>
@@ -95,7 +103,19 @@ const App = () => {
                   <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
                   <Route path="/gallery" element={<ProtectedRoute><AppLayout><Gallery /></AppLayout></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
-                  <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
+
+                  {/* Editor with nested routes */}
+                  <Route path="/editor/:id" element={<ProtectedRoute><EditorLayout /></ProtectedRoute>}>
+                    <Route index element={<Navigate to="pages" replace />} />
+                    <Route path="pages" element={<EditorPages />} />
+                    <Route path="workflow" element={<EditorWorkflow />} />
+                    <Route path="design" element={<EditorDesign />} />
+                    <Route path="responses" element={<EditorResponses />} />
+                    <Route path="share" element={<EditorShare />} />
+                    <Route path="analytics" element={<EditorAnalytics />} />
+                    <Route path="settings" element={<EditorSettingsPage />} />
+                  </Route>
+
                   <Route path="/f/:id" element={<FormPreview />} />
                   <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
                   <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
