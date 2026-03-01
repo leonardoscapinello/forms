@@ -309,7 +309,7 @@ export default function FormResponses({ form }: Props) {
                 ))}
                 {variableColumns.map(v => (
                   <TableHead key={v.key} className="min-w-[120px] max-w-[200px]">
-                    <span className="truncate block text-primary/80">{v.label}</span>
+                    <span className="truncate block text-[#8A7D4A]">{v.label}</span>
                   </TableHead>
                 ))}
                 {paramColumns.map(p => (
