@@ -46,9 +46,9 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
       }`}
       onDoubleClick={onSelect}
     >
-      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} style={{ top: 18, background: '#B3AB86', borderColor: 'hsl(var(--card))' }} className="!w-3 !h-3 !border-2" />
       {!(question.routingMode === 'per_option' && ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'].includes(question.type)) && (
-        <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+        <Handle type="source" position={Position.Right} style={{ background: '#B3AB86', borderColor: 'hsl(var(--card))' }} className="!w-3 !h-3 !border-2" />
       )}
 
       {/* Header */}
@@ -136,8 +136,8 @@ function NodeSummary({ question }: { question: Question }) {
                 type="source"
                 position={Position.Right}
                 id={`option-${opt.id}`}
-                className="!w-2.5 !h-2.5 !bg-primary !border-2 !border-card !right-[-6px]"
-                style={{ top: 'auto', position: 'absolute', right: -6 }}
+                className="!w-2.5 !h-2.5 !border-2 !right-[-6px]"
+                style={{ top: 'auto', position: 'absolute', right: -6, background: '#B3AB86', borderColor: 'hsl(var(--card))' }}
               />
             )}
           </div>
@@ -162,8 +162,8 @@ function NodeSummary({ question }: { question: Question }) {
                 type="source"
                 position={Position.Right}
                 id={`option-${opt.id}`}
-                className="!w-2.5 !h-2.5 !bg-primary !border-2 !border-card !right-[-6px]"
-                style={{ top: 'auto', position: 'absolute', right: -6 }}
+                className="!w-2.5 !h-2.5 !border-2 !right-[-6px]"
+                style={{ top: 'auto', position: 'absolute', right: -6, background: '#B3AB86', borderColor: 'hsl(var(--card))' }}
               />
             </div>
           ))}
