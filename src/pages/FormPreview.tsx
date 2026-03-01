@@ -1153,7 +1153,8 @@ export default function FormPreview() {
     }
   }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, applyPageVariableAssignments]);
 
-  // Keyboard navigation: Enter/ArrowDown = next, ArrowUp = back
+  // Keyboard navigation: Enter = next (always), ArrowDown = next (except last page), ArrowUp = back
+  const isLastPage = currentPageIndex !== null && currentPageIndex === pages.length - 1;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -1162,7 +1163,7 @@ export default function FormPreview() {
       if (e.key === 'Enter' && !isTextarea) {
         e.preventDefault();
         goNext();
-      } else if (e.key === 'ArrowDown' && tag !== 'SELECT') {
+      } else if (e.key === 'ArrowDown' && tag !== 'SELECT' && !isLastPage) {
         e.preventDefault();
         goNext();
       } else if (e.key === 'ArrowUp' && tag !== 'SELECT') {
@@ -1172,7 +1173,7 @@ export default function FormPreview() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [goNext, goBack]);
+  }, [goNext, goBack, isLastPage]);
 
   if (publicLoading) {
     return (
