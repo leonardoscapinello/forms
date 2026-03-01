@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
-import { Upload, FolderOpen, Link, Save } from 'lucide-react';
+import { Upload, FolderOpen, Link, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useGallery } from '@/hooks/useGallery';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import GalleryPicker from '@/components/editor/GalleryPicker';
 import { toast } from 'sonner';
 
@@ -17,6 +18,15 @@ interface Props {
   previewMaxH?: string;
   /** Alt text shown on preview */
   alt?: string;
+  /**
+   * Compact / inline mode: shows a single-line Input + Upload + Gallery
+   * instead of the full picker with preview, URL toggle, etc.
+   */
+  compact?: boolean;
+  /** Path prefix for raw uploads (compact mode), default 'images' */
+  pathPrefix?: string;
+  /** Placeholder for the URL input */
+  placeholder?: string;
 }
 
 export default function ImageSourcePicker({
@@ -26,17 +36,28 @@ export default function ImageSourcePicker({
   showPreview = true,
   previewMaxH = 'max-h-40',
   alt = '',
+  compact = false,
+  pathPrefix = 'images',
+  placeholder = 'URL da imagem...',
 }: Props) {
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useGallery();
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Compact mode uses lightweight raw upload; full mode uses gallery upload
+  const { uploading: compactUploading, handleFileChange: compactFileChange } = useImageUpload({
+    pathPrefix,
+    onSuccess: onChange,
+  });
+
+  const [fullUploading, setFullUploading] = useState(false);
+  const uploading = compact ? compactUploading : fullUploading;
+
+  const handleFullFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
+    setFullUploading(true);
     try {
       const gf = await uploadFile(file);
       if (gf) {
@@ -44,7 +65,7 @@ export default function ImageSourcePicker({
         toast.success('Arquivo enviado e salvo na galeria');
       }
     } finally {
-      setUploading(false);
+      setFullUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -52,7 +73,7 @@ export default function ImageSourcePicker({
   const handleSaveToGallery = async () => {
     if (!value) { toast.error('Nenhum arquivo para salvar'); return; }
     try {
-      setUploading(true);
+      setFullUploading(true);
       const response = await fetch(value);
       const blob = await response.blob();
       const ext = value.split('.').pop()?.split('?')[0] || 'png';
@@ -62,10 +83,68 @@ export default function ImageSourcePicker({
     } catch {
       toast.error('Erro ao salvar na galeria');
     } finally {
-      setUploading(false);
+      setFullUploading(false);
     }
   };
 
+  const galleryPicker = (
+    <GalleryPicker
+      open={galleryOpen}
+      onClose={() => setGalleryOpen(false)}
+      onSelect={(file) => onChange(file.url)}
+      accept={accept}
+    />
+  );
+
+  const hiddenInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept={accept}
+      className="hidden"
+      onChange={compact ? compactFileChange : handleFullFileUpload}
+    />
+  );
+
+  // ── Compact / inline mode ──
+  if (compact) {
+    return (
+      <div className="space-y-1.5">
+        {showPreview && value && (
+          <img src={value} alt={alt} className="w-full h-20 object-cover rounded" />
+        )}
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="h-8 text-xs flex-1"
+            placeholder={placeholder}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 flex-shrink-0"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 flex-shrink-0"
+            onClick={() => setGalleryOpen(true)}
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {hiddenInput}
+        {galleryPicker}
+      </div>
+    );
+  }
+
+  // ── Full mode (original layout) ──
   return (
     <div className="space-y-2">
       {/* Preview */}
@@ -95,14 +174,8 @@ export default function ImageSourcePicker({
         </Button>
       )}
 
-      <input ref={fileInputRef} type="file" accept={accept} className="hidden" onChange={handleFileUpload} />
-
-      <GalleryPicker
-        open={galleryOpen}
-        onClose={() => setGalleryOpen(false)}
-        onSelect={(file) => onChange(file.url)}
-        accept={accept}
-      />
+      {hiddenInput}
+      {galleryPicker}
 
       {/* URL input (togglable) */}
       {showUrlInput && (
