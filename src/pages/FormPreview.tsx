@@ -1517,8 +1517,8 @@ export default function FormPreview() {
           containerStyle.backgroundSize = formStyle.backgroundSize || 'cover';
           containerStyle.backgroundPosition = 'center';
           containerStyle.backgroundRepeat = 'no-repeat';
-        } else if (bgColor) {
-          containerStyle.backgroundColor = bgColor;
+        } else {
+          containerStyle.backgroundColor = bgColor || formStyle.backgroundColor || '#FAFAF6';
         }
 
         if (formStyle.textColor) {

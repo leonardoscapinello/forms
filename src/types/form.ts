@@ -702,7 +702,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 
 export const DEFAULT_FORM_STYLE: FormStyle = {
   primaryColor: '220 18% 20%',
-  backgroundColor: '30 20% 98%',
+  backgroundColor: '#FAFAF6',
   fontFamily: 'Borna',
   backgroundType: 'solid',
   textColor: '',
