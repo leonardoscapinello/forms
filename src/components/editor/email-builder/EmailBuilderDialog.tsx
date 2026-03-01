@@ -317,7 +317,7 @@ function StructureSettings({ block, onChange }: { block: ColumnsBlock; onChange:
           ))}
         </div>
       </SettingsSection>
-      <SettingsSection title="Espaçamento" defaultOpen={false}>
+      <SettingsSection title="Espaçamento">
         <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
       </SettingsSection>
     </div>
