@@ -90,7 +90,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
   const effectiveStyle: FunnelPageStyle = {
     backgroundColor: '',
-    fontFamily: 'Inter',
+    fontFamily: 'Borna',
     gap: 32,
     paddingX: 24,
     paddingY: 32,
