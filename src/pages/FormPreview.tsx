@@ -980,6 +980,9 @@ export default function FormPreview() {
     const { nextNodeId, updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
 
     if (nextNodeId === 'end') {
+      // Apply any variable ops that ran along the path to 'end'
+      setAnswers(updatedAnswers);
+      answersRef.current = updatedAnswers;
       setFinished(true);
       return;
     }
@@ -992,7 +995,7 @@ export default function FormPreview() {
         if (isPageEmpty(pages[targetIndex])) {
           // Recursively navigate from this empty page
           const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers);
-          if (n2 === 'end') { setFinished(true); return; }
+          if (n2 === 'end') { setAnswers(a2); answersRef.current = a2; setFinished(true); return; }
           if (n2 && n2.startsWith('p-')) {
             const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
             if (idx2 !== -1) {
@@ -1108,22 +1111,34 @@ export default function FormPreview() {
     });
   }, []);
 
-  const handleButtonNavigate = useCallback((action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => {
+  const handleButtonNavigate = useCallback(async (action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => {
     if (action === 'next') {
       goNext();
     } else if (action === 'previous') {
       goBack();
     } else if (action === 'finish') {
+      // Run the workflow from current page before finishing — ensures WhatsApp, webhooks, analytics execute
       setDirection(1);
+      const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
+      const latestAnswers = answersRef.current;
+      const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
+      setAnswers(updatedAnswers);
+      answersRef.current = updatedAnswers;
       setFinished(true);
     } else if (action === 'specific' && targetPageId) {
       const targetIndex = pages.findIndex(p => p.id === targetPageId);
       if (targetIndex !== -1) {
         setDirection(targetIndex > (currentPageIndex ?? -1) ? 1 : -1);
+        // Run workflow from current page to execute intermediate nodes
+        const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
+        const latestAnswers = answersRef.current;
+        const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
+        setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
+        answersRef.current = updatedAnswers;
         setCurrentPageIndex(targetIndex);
       }
     }
-  }, [goNext, goBack, pages, currentPageIndex]);
+  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, applyPageVariableAssignments]);
 
   // Keyboard navigation: Enter/ArrowDown = next, ArrowUp = back
   useEffect(() => {
