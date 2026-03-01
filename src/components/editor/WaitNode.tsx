@@ -4,6 +4,7 @@ import { WaitNodeData, WaitUnit, WaitFeedbackMode } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const UNIT_LABELS: Record<WaitUnit, string> = {
   seconds: 'segundos',
@@ -130,6 +131,16 @@ export default function WaitNode({ data }: Props) {
             </div>
           </>
         )}
+
+        {/* Allow skip */}
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-[10px] text-muted-foreground">Permitir pular</Label>
+          <Switch
+            checked={feedback.allowSkip || false}
+            onCheckedChange={(v) => updateFeedback({ allowSkip: v })}
+            className="nodrag nopan"
+          />
+        </div>
       </div>
 
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-node-wait-accent !border-2 !border-card" />
