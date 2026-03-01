@@ -25,8 +25,6 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
-  // normalizeFontFamily is now imported from @/lib/fontUtils
-
   // Outer wrapper styles (margin)
   const containerStyle: React.CSSProperties = {};
   if (style?.margin !== undefined) containerStyle.margin = style.margin;

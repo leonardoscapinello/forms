@@ -2,7 +2,6 @@ import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
@@ -27,17 +26,6 @@ const EditorShare = lazy(() => import("./pages/editor/EditorShare"));
 const EditorAnalytics = lazy(() => import("./pages/editor/EditorAnalytics"));
 const EditorSettingsPage = lazy(() => import("./pages/editor/EditorSettingsPage"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 2,
-      gcTime: 1000 * 60 * 5,
-      refetchOnWindowFocus: false,
-      retry: 1,
-      networkMode: "offlineFirst",
-    },
-  },
-});
 
 function PageLoader() {
   return (
@@ -89,44 +77,42 @@ const App = () => {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <FormStoreProvider>
-          <TooltipProvider delayDuration={300}>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <ScrollToTop />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-                  <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-                  <Route path="/gallery" element={<ProtectedRoute><AppLayout><Gallery /></AppLayout></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+    <AuthProvider>
+      <FormStoreProvider>
+        <TooltipProvider delayDuration={300}>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ScrollToTop />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+                <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+                <Route path="/gallery" element={<ProtectedRoute><AppLayout><Gallery /></AppLayout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
 
-                  {/* Editor with nested routes */}
-                  <Route path="/editor/:id" element={<ProtectedRoute><EditorLayout /></ProtectedRoute>}>
-                    <Route index element={<Navigate to="pages" replace />} />
-                    <Route path="pages" element={<EditorPages />} />
-                    <Route path="workflow" element={<EditorWorkflow />} />
-                    <Route path="design" element={<EditorDesign />} />
-                    <Route path="responses" element={<EditorResponses />} />
-                    <Route path="share" element={<EditorShare />} />
-                    <Route path="analytics" element={<EditorAnalytics />} />
-                    <Route path="settings" element={<EditorSettingsPage />} />
-                  </Route>
+                {/* Editor with nested routes */}
+                <Route path="/editor/:id" element={<ProtectedRoute><EditorLayout /></ProtectedRoute>}>
+                  <Route index element={<Navigate to="pages" replace />} />
+                  <Route path="pages" element={<EditorPages />} />
+                  <Route path="workflow" element={<EditorWorkflow />} />
+                  <Route path="design" element={<EditorDesign />} />
+                  <Route path="responses" element={<EditorResponses />} />
+                  <Route path="share" element={<EditorShare />} />
+                  <Route path="analytics" element={<EditorAnalytics />} />
+                  <Route path="settings" element={<EditorSettingsPage />} />
+                </Route>
 
-                  <Route path="/f/:id" element={<FormPreview />} />
-                  <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
-                  <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-          </TooltipProvider>
-        </FormStoreProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+                <Route path="/f/:id" element={<FormPreview />} />
+                <Route path="/preview/:id" element={<LegacyPreviewRedirect />} />
+                <Route path="/forms/:id" element={<LegacyPreviewRedirect />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </FormStoreProvider>
+    </AuthProvider>
   );
 };
 

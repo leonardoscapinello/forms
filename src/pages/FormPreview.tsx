@@ -64,7 +64,6 @@ function buildDefaults(form: AppFormData | null) {
   return defaults;
 }
 
-// normalizeFontFamily imported from shared utility
 
 /** Resolve userData (email, phone, name) from a UserDataMapping and current answers */
 function resolveUserData(
