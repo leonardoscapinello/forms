@@ -87,7 +87,7 @@ export default function WhatsAppMessageEditor({
     if (val !== value) onChange(val);
   }, [local, value, onChange]);
 
-  const { handleChange: acHandleChange, handleKeyDown: acHandleKeyDown, dismiss: acDismiss, DropdownUI } = useVariableAutocomplete({
+  const { handleChange: acHandleChange, handleKeyDown: acHandleKeyDown, handleClick: acHandleClick, dismiss: acDismiss, DropdownUI } = useVariableAutocomplete({
     inputRef: textareaRef,
     localValue: local,
     setLocalValue: setLocal,
@@ -262,6 +262,7 @@ export default function WhatsAppMessageEditor({
           onFocus={() => { isFocusedRef.current = true; }}
           onBlur={() => { isFocusedRef.current = false; acDismiss(); commitValue(); }}
           onKeyDown={e => { acHandleKeyDown(e); e.stopPropagation(); }}
+          onClick={() => acHandleClick()}
           onMouseDown={stopProp}
           onPointerDown={stopProp}
         />
