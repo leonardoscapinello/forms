@@ -15,6 +15,7 @@ import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
+import { enqueueTask } from '@/lib/backgroundQueue';
 import { consumePrefetchedForm } from '@/lib/formPrefetch';
 import { validateEmailFormat } from '@/lib/emailValidation';
 
@@ -793,7 +794,7 @@ export default function FormPreview() {
         continue;
       }
 
-      // Intermediate: webhook integration node — fire server-side with retry
+      // Intermediate: webhook integration node
       if (target.startsWith('int-')) {
         const intgId = target.replace('int-', '');
         const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
@@ -816,14 +817,13 @@ export default function FormPreview() {
             pixelEvents: pixelEventsRef.current,
           });
 
-          // Fire webhook and capture response (for variable mapping)
-          const responseBody = await fireWebhookWithResponse({
-            platform: 'webhook',
+          const webhookOpts = {
+            platform: 'webhook' as const,
             eventName: 'webhook_fired',
             eventId,
             formId: f.id,
             responseId: sessionMetaRef.current.responseId,
-            triggerType: 'flow_node',
+            triggerType: 'flow_node' as const,
             sourceUrl,
             webhookUrl: intgNode.webhookUrl,
             webhookMethod: intgNode.webhookMethod,
@@ -831,29 +831,35 @@ export default function FormPreview() {
             userData,
             queryParams: sessionMetaRef.current.queryParams,
             userAgent: sessionMetaRef.current.userAgent,
-          });
+          };
 
-          // Apply response mappings to variables
-          if (responseBody && intgNode.responseMappings?.length) {
-            const getNestedValue = (obj: any, path: string): any => {
-              // Tokenize path supporting both dot notation and array indexing
-              // e.g. "items[0].id" → ["items", "0", "id"]
-              // e.g. "results[1].name" → ["results", "1", "name"]
-              const tokens = path
-                .replace(/\[(\d+)\]/g, '.$1') // convert [0] → .0
-                .split('.')
-                .filter(Boolean);
-              return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
-            };
-            for (const mapping of intgNode.responseMappings) {
-              if (!mapping.responsePath || !mapping.variableId) continue;
-              const value = getNestedValue(responseBody, mapping.responsePath);
-              if (value !== undefined) {
-                const mappedVar = f?.variables?.find(v => v.id === mapping.variableId);
-                const varKey = mappedVar ? `__var_${mappedVar.name}` : `__var_${mapping.variableId}`;
-                currentAns = { ...currentAns, [varKey]: String(value) };
+          const hasResponseMappings = intgNode.responseMappings?.some(m => m.responsePath && m.variableId);
+
+          if (hasResponseMappings) {
+            // Must await — downstream nodes depend on mapped variables
+            try {
+              const responseBody = await fireWebhookWithResponse(webhookOpts);
+              if (responseBody && intgNode.responseMappings?.length) {
+                const getNestedValue = (obj: any, path: string): any => {
+                  const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+                  return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+                };
+                for (const mapping of intgNode.responseMappings) {
+                  if (!mapping.responsePath || !mapping.variableId) continue;
+                  const value = getNestedValue(responseBody, mapping.responsePath);
+                  if (value !== undefined) {
+                    const mappedVar = f?.variables?.find(v => v.id === mapping.variableId);
+                    const varKey = mappedVar ? `__var_${mappedVar.name}` : `__var_${mapping.variableId}`;
+                    currentAns = { ...currentAns, [varKey]: String(value) };
+                  }
+                }
               }
+            } catch (err) {
+              console.error('Webhook (with mappings) error:', err);
             }
+          } else {
+            // Fire-and-forget — never blocks the flow
+            enqueueTask(() => fireWebhookWithResponse(webhookOpts).then(() => {}), `webhook:${intgNode.webhookUrl}`);
           }
         }
         currentNodeId = target;
@@ -911,31 +917,31 @@ export default function FormPreview() {
         currentNodeId = target;
         continue;
       }
-      // Intermediate: WhatsApp node — send message via edge function
+      // Intermediate: WhatsApp node — fire-and-forget via background queue
       if (target.startsWith('wa-')) {
         const waId = target.replace('wa-', '');
         const waNode = f?.whatsappNodes?.find(n => n.id === waId);
         if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
-          try {
-            const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
-            const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
-            const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
+          // Resolve variables NOW (sync) so the closure captures correct values
+          const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
+          const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
+          const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
 
-            const body: Record<string, any> = {
-              instanceId: waNode.instanceId,
-              recipientNumber: resolvedNumber,
-              messageText: resolvedMessage,
-            };
-            if (waNode.sendMedia && resolvedMediaUrl) {
-              body.mediaUrl = resolvedMediaUrl;
-              body.mediaType = waNode.mediaType || 'image';
-              if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
-            }
-
-            await supabase.functions.invoke('whatsapp-send', { body });
-          } catch (err) {
-            console.error('WhatsApp workflow node error:', err);
+          const body: Record<string, any> = {
+            instanceId: waNode.instanceId,
+            recipientNumber: resolvedNumber,
+            messageText: resolvedMessage,
+          };
+          if (waNode.sendMedia && resolvedMediaUrl) {
+            body.mediaUrl = resolvedMediaUrl;
+            body.mediaType = waNode.mediaType || 'image';
+            if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
           }
+
+          enqueueTask(
+            () => supabase.functions.invoke('whatsapp-send', { body }).then(() => {}),
+            `whatsapp:${resolvedNumber}`,
+          );
         }
         currentNodeId = target;
         continue;
