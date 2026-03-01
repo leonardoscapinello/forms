@@ -419,9 +419,9 @@ img.emoji {
   font-size: 0.85em;
 }
 .wa-preview .wa-var {
-  color: hsl(var(--primary));
+  color: hsl(35 40% 30%);
   font-weight: 500;
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(40 30% 88%);
   padding: 0 3px;
   border-radius: 2px;
   font-size: 0.9em;
@@ -436,19 +436,19 @@ img.emoji {
   color: transparent;
 }
 .var-highlight-variable {
-  background: hsl(var(--primary) / 0.15);
+  background: hsl(45 30% 85%);
 }
 .var-highlight-webhook {
-  background: hsl(var(--node-webhook-accent) / 0.18);
+  background: hsl(30 25% 85%);
 }
 .var-highlight-field {
-  background: hsl(var(--node-whatsapp-accent) / 0.18);
+  background: hsl(80 20% 85%);
 }
 .var-highlight-param {
-  background: hsl(30 90% 50% / 0.15);
+  background: hsl(25 30% 85%);
 }
 .var-highlight-context {
-  background: hsl(210 80% 55% / 0.15);
+  background: hsl(200 20% 85%);
 }
 
 .var-highlight-readable {
@@ -464,24 +464,24 @@ img.emoji {
   -webkit-box-decoration-break: clone;
 }
 .var-highlight-readable .var-highlight-variable {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.12);
+  color: hsl(40 35% 28%);
+  background: hsl(45 30% 88%);
 }
 .var-highlight-readable .var-highlight-webhook {
-  color: hsl(var(--node-webhook-accent));
-  background: hsl(var(--node-webhook-accent) / 0.14);
+  color: hsl(25 30% 30%);
+  background: hsl(30 25% 88%);
 }
 .var-highlight-readable .var-highlight-field {
-  color: hsl(var(--node-whatsapp-accent) / 0.85);
-  background: hsl(var(--node-whatsapp-accent) / 0.14);
+  color: hsl(80 25% 28%);
+  background: hsl(80 20% 88%);
 }
 .var-highlight-readable .var-highlight-param {
-  color: hsl(30 80% 35%);
-  background: hsl(30 90% 50% / 0.12);
+  color: hsl(25 35% 30%);
+  background: hsl(25 30% 88%);
 }
 .var-highlight-readable .var-highlight-context {
-  color: hsl(210 70% 40%);
-  background: hsl(210 80% 55% / 0.12);
+  color: hsl(200 25% 32%);
+  background: hsl(200 20% 88%);
 }
 
 /* Container for the highlight backdrop */
@@ -520,22 +520,22 @@ img.emoji {
   white-space: nowrap;
 }
 .var-token-variable {
-  color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.12);
+  color: hsl(40 35% 28%);
+  background: hsl(45 30% 88%);
 }
 .var-token-webhook {
-  color: hsl(var(--node-webhook-accent));
-  background: hsl(var(--node-webhook-accent) / 0.14);
+  color: hsl(25 30% 30%);
+  background: hsl(30 25% 88%);
 }
 .var-token-field {
-  color: hsl(var(--node-whatsapp-accent) / 0.85);
-  background: hsl(var(--node-whatsapp-accent) / 0.14);
+  color: hsl(80 25% 28%);
+  background: hsl(80 20% 88%);
 }
 .var-token-param {
-  color: hsl(30 80% 35%);
-  background: hsl(30 90% 50% / 0.12);
+  color: hsl(25 35% 30%);
+  background: hsl(25 30% 88%);
 }
 .var-token-context {
-  color: hsl(210 70% 40%);
-  background: hsl(210 80% 55% / 0.12);
+  color: hsl(200 25% 32%);
+  background: hsl(200 20% 88%);
 }
