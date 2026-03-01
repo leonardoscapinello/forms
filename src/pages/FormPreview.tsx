@@ -2065,8 +2065,8 @@ function InteractiveElement({
   const withFieldHeader = (content: React.ReactNode) => (
     <div className={`space-y-3 md:space-y-6 ${fieldError ? 'animate-shake' : ''}`}>
       <div className="flex items-start gap-1.5 md:gap-3">
-        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>{stepNumber}</span>
-        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : 'text-primary'}`}>→</span>
+        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>{stepNumber}</span>
+        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>→</span>
         <div>
           <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
             {t(element.label) || 'Sem título'}
