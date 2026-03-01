@@ -421,6 +421,9 @@ export type WaitUnit = 'seconds' | 'minutes' | 'hours';
 /** Visual feedback shown to the user during a Wait node */
 export type WaitFeedbackMode = 'button_countdown' | 'button_text' | 'loading_screen';
 
+/** Action to take when user skips the wait */
+export type WaitSkipAction = 'continue' | 'go_to_page' | 'reduce_time';
+
 export interface WaitFeedbackConfig {
   mode: WaitFeedbackMode;
   /** Custom text shown on the button or loading screen */
@@ -431,6 +434,14 @@ export interface WaitFeedbackConfig {
   loadingLabel?: string;
   /** Allow user to skip/cancel the wait and advance immediately */
   allowSkip?: boolean;
+  /** What happens when user skips — defaults to 'continue' */
+  skipAction?: WaitSkipAction;
+  /** For 'go_to_page': which page to navigate to */
+  skipTargetPageId?: string;
+  /** For 'reduce_time': how many units to reduce */
+  skipReduceAmount?: number;
+  /** For 'reduce_time': unit of the reduction */
+  skipReduceUnit?: WaitUnit;
 }
 
 export interface WaitNodeData {

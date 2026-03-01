@@ -1102,6 +1102,7 @@ export default function FormPreview() {
         const fb = pendingWait.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
         const mode = fb.mode || 'button_countdown';
         const durationMs = pendingWait.durationMs;
+        const skipAction = fb.skipAction || 'continue';
 
         // Set up the feedback state
         const allowSkip = fb.allowSkip || false;
@@ -1118,36 +1119,67 @@ export default function FormPreview() {
 
         // Countdown interval for button_countdown mode
         const startTime = Date.now();
+        let effectiveDuration = durationMs;
         const countdownInterval = mode === 'button_countdown'
           ? setInterval(() => {
               const elapsed = Date.now() - startTime;
-              const remaining = Math.max(0, durationMs - elapsed);
+              const remaining = Math.max(0, effectiveDuration - elapsed);
               setWaitFeedback(prev => prev ? { ...prev, remainingMs: remaining } : null);
             }, 100)
           : null;
 
-        // Wait for the duration — but allow cancellation via ref
-        const waitCancelRef = { cancelled: false };
+        // Wait for the duration — but allow cancellation/reduction via ref
+        const waitCancelRef = { cancelled: false, reduced: false };
         (window as any).__waitCancelRef = waitCancelRef;
-        await new Promise<void>(resolve => {
-          const timer = setTimeout(resolve, durationMs);
+        (window as any).__waitSkipAction = skipAction;
+        (window as any).__waitSkipFeedback = fb;
+
+        const wasSkipped = await new Promise<boolean>(resolve => {
+          const timer = setTimeout(() => resolve(false), durationMs);
           const checkCancel = setInterval(() => {
             if (waitCancelRef.cancelled) {
               clearTimeout(timer);
               clearInterval(checkCancel);
-              resolve();
+              resolve(true);
+            }
+            if (waitCancelRef.reduced) {
+              waitCancelRef.reduced = false;
+              // Reduce the effective duration — recalculate remaining
+              const reduceUnit = fb.skipReduceUnit || 'seconds';
+              const reduceAmount = fb.skipReduceAmount || 5;
+              const reduceMs = reduceAmount * (reduceUnit === 'hours' ? 3600000 : reduceUnit === 'minutes' ? 60000 : 1000);
+              effectiveDuration = Math.max(0, effectiveDuration - reduceMs);
+              const elapsed = Date.now() - startTime;
+              const remaining = Math.max(0, effectiveDuration - elapsed);
+              setWaitFeedback(prev => prev ? { ...prev, remainingMs: remaining, durationMs: effectiveDuration } : null);
+              if (remaining <= 0) {
+                clearTimeout(timer);
+                clearInterval(checkCancel);
+                resolve(false); // Not skipped — just reached 0
+              }
             }
           }, 50);
-          // Also clear checkCancel when timer fires naturally
-          const origResolve = resolve;
           setTimeout(() => clearInterval(checkCancel), durationMs + 100);
         });
 
         if (countdownInterval) clearInterval(countdownInterval);
         setWaitFeedback(null);
         delete (window as any).__waitCancelRef;
+        delete (window as any).__waitSkipAction;
+        delete (window as any).__waitSkipFeedback;
 
-        // Now navigate to the resolved destination
+        // Handle skip actions
+        if (wasSkipped && skipAction === 'go_to_page' && fb.skipTargetPageId) {
+          const targetIndex = pages.findIndex(p => p.id === fb.skipTargetPageId);
+          if (targetIndex !== -1) {
+            setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
+            setCurrentPageIndex(targetIndex);
+            return;
+          }
+        }
+        // For 'continue' and 'reduce_time' (when timer hits 0), fall through to normal navigation
+
+        // Navigate to the resolved destination
         if (nextNodeId === 'end') {
           setAnswers(updatedAnswers);
           answersRef.current = updatedAnswers;
@@ -1688,10 +1720,30 @@ export default function FormPreview() {
               </Button>
               {waitFeedback && waitFeedback.allowSkip && waitFeedback.mode !== 'loading_screen' ? (
                 <button
-                  onClick={() => { const ref = (window as any).__waitCancelRef; if (ref) ref.cancelled = true; }}
+                  onClick={() => {
+                    const ref = (window as any).__waitCancelRef;
+                    const action = (window as any).__waitSkipAction || 'continue';
+                    if (ref) {
+                      if (action === 'reduce_time') {
+                        ref.reduced = true;
+                      } else {
+                        ref.cancelled = true;
+                      }
+                    }
+                  }}
                   className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 pl-1 pr-1"
                 >
-                  Pular espera
+                  {(() => {
+                    const action = (window as any).__waitSkipAction || 'continue';
+                    if (action === 'reduce_time') {
+                      const fb = (window as any).__waitSkipFeedback;
+                      const amt = fb?.skipReduceAmount || 5;
+                      const unit = fb?.skipReduceUnit || 'seconds';
+                      const unitLabel = unit === 'hours' ? 'h' : unit === 'minutes' ? 'min' : 's';
+                      return `−${amt}${unitLabel}`;
+                    }
+                    return 'Pular espera';
+                  })()}
                 </button>
               ) : !waitFeedback ? (
                 <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/60 pl-1 pr-1">
@@ -1731,10 +1783,30 @@ export default function FormPreview() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => { const ref = (window as any).__waitCancelRef; if (ref) ref.cancelled = true; }}
+                  onClick={() => {
+                    const ref = (window as any).__waitCancelRef;
+                    const action = (window as any).__waitSkipAction || 'continue';
+                    if (ref) {
+                      if (action === 'reduce_time') {
+                        ref.reduced = true;
+                      } else {
+                        ref.cancelled = true;
+                      }
+                    }
+                  }}
                   className="text-xs text-muted-foreground hover:text-foreground"
                 >
-                  Pular espera
+                  {(() => {
+                    const action = (window as any).__waitSkipAction || 'continue';
+                    if (action === 'reduce_time') {
+                      const fb = (window as any).__waitSkipFeedback;
+                      const amt = fb?.skipReduceAmount || 5;
+                      const unit = fb?.skipReduceUnit || 'seconds';
+                      const unitLabel = unit === 'hours' ? 'h' : unit === 'minutes' ? 'min' : 's';
+                      return `−${amt}${unitLabel}`;
+                    }
+                    return 'Pular espera';
+                  })()}
                 </Button>
               )}
             </div>

@@ -438,6 +438,7 @@ function FlowCanvasInner({
           nodeData: w,
           onChange: (patch: Partial<WaitNodeData>) => onWaitChange(w.id, patch),
           onDelete: () => onWaitDelete(w.id),
+          pages,
         },
       });
     });
