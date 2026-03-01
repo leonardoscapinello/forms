@@ -469,7 +469,7 @@ function FunnelRow({
       </div>
       <div className="h-2 rounded-full bg-background overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all ${isLast ? 'bg-[#8A7D4A]' : 'bg-[#B3AB86]'}`}
+          className={`h-full rounded-full transition-all ${isLast ? 'bg-[#6B5D2F]' : 'bg-[#8A7D4A]'}`}
           style={{ width: `${Math.max(pct, 1)}%` }}
         />
       </div>
