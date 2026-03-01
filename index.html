@@ -10,12 +10,10 @@
     <link rel="preconnect" href="https://mbryndcvumhfjgmogifs.supabase.co" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Non-blocking font load -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-    <!-- Borna font -->
-    <link href="https://static.twobrain.com.br/global/tipography/borna/font.css" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://static.twobrain.com.br/global/tipography/borna/font.css" rel="stylesheet" /></noscript>
+    <!-- Borna font (primary) — loaded eagerly -->
+    <link href="https://static.twobrain.com.br/global/tipography/borna/font.css" rel="stylesheet" />
+    <!-- Inter (fallback) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       html, body, #root { min-height: 100%; }
       body { margin: 0; background: hsl(30 20% 98%); }

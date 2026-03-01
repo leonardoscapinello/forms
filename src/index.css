@@ -162,6 +162,7 @@ img.emoji {
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Borna', 'Inter', ui-sans-serif, system-ui, sans-serif;
   }
 }
 
