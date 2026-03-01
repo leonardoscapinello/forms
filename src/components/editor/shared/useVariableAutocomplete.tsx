@@ -1,14 +1,15 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { FormVariable, IntegrationNodeData } from '@/types/form';
+import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { cn } from '@/lib/utils';
-import { Webhook, Variable, Replace, FileText } from 'lucide-react';
+import { Webhook, Variable, Replace, FileText, Globe, Monitor } from 'lucide-react';
+import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import type { InputElementGroup } from '../VariableAssignPanel';
 
 export interface AutocompleteItem {
   id: string;
   label: string;
   syntax: string;
-  category: 'variable' | 'webhook' | 'field';
+  category: 'variable' | 'webhook' | 'field' | 'context' | 'param';
   detail?: string;
   group?: string;
 }
@@ -21,6 +22,7 @@ interface Props {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
+  trackedParams?: TrackedParam[];
 }
 
 /** Find the {{...}} token that contains the given cursor position */
@@ -43,6 +45,7 @@ export function useVariableAutocomplete({
   variables = [],
   integrationNodes = [],
   allInputElements = [],
+  trackedParams,
 }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [filter, setFilter] = useState('');
@@ -59,6 +62,11 @@ export function useVariableAutocomplete({
     () => (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0),
     [integrationNodes]
   );
+
+  const activeParams = useMemo(() => {
+    const params = trackedParams ?? DEFAULT_TRACKED_PARAMS;
+    return params.filter(p => p.enabled && p.key);
+  }, [trackedParams]);
 
   const allItems = useMemo<AutocompleteItem[]>(() => {
     const items: AutocompleteItem[] = [];
@@ -97,8 +105,26 @@ export function useVariableAutocomplete({
         });
       }
     }
+    for (const p of activeParams) {
+      items.push({
+        id: `param-${p.id}`,
+        label: p.label || p.key,
+        syntax: `{{param.${p.key}}}`,
+        category: 'param',
+        detail: p.key,
+      });
+    }
+    for (const ctx of CONTEXT_KEYS) {
+      items.push({
+        id: `ctx-${ctx.key}`,
+        label: ctx.label,
+        syntax: `{{ctx.${ctx.key}}}`,
+        category: 'context',
+        detail: ctx.category,
+      });
+    }
     return items;
-  }, [variables, allInputElements, webhookNodesWithFields]);
+  }, [variables, allInputElements, webhookNodesWithFields, activeParams]);
 
   const filtered = useMemo(() => {
     if (!filter) return allItems;
@@ -177,18 +203,17 @@ export function useVariableAutocomplete({
 
   /** Call this on click/mouseup to detect if cursor is inside a {{token}} */
   const handleClick = useCallback(() => {
-    if (showDropdown) return; // don't interfere with autocomplete
+    if (showDropdown) return;
     const el = inputRef.current;
     if (!el) return;
     const cursor = el.selectionStart ?? 0;
-    if (el.selectionStart !== el.selectionEnd) return; // text is selected, skip
+    if (el.selectionStart !== el.selectionEnd) return;
 
     const token = findTokenAtCursor(localValue, cursor);
     if (token && allItems.length > 0) {
       setReplaceRange({ start: token.start, end: token.end });
       setShowReplace(true);
       setFilter('');
-      // Select the token text for visual feedback
       requestAnimationFrame(() => {
         el.setSelectionRange(token.start, token.end);
       });
@@ -199,7 +224,6 @@ export function useVariableAutocomplete({
   }, [showDropdown, inputRef, localValue, allItems.length]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Handle replace mode
     if (showReplace && allItems.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -244,6 +268,16 @@ export function useVariableAutocomplete({
   const itemList = showReplace ? allItems : filtered;
   const isVisible = (showDropdown && filtered.length > 0) || (showReplace && allItems.length > 0);
 
+  const categoryIcon = (cat: AutocompleteItem['category']) => {
+    switch (cat) {
+      case 'variable': return <Variable className="h-3 w-3 text-primary flex-shrink-0" />;
+      case 'field': return <FileText className="h-3 w-3 text-node-whatsapp-accent flex-shrink-0" />;
+      case 'param': return <Globe className="h-3 w-3 text-orange-500 flex-shrink-0" />;
+      case 'context': return <Monitor className="h-3 w-3 text-blue-500 flex-shrink-0" />;
+      case 'webhook': return <Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />;
+    }
+  };
+
   const DropdownUI = isVisible ? (
     <div
       ref={dropdownRef}
@@ -263,7 +297,7 @@ export function useVariableAutocomplete({
           </p>
         )}
       </div>
-      <div className="max-h-[160px] overflow-y-auto p-1">
+      <div className="max-h-[200px] overflow-y-auto p-1">
         {itemList.map((item, idx) => (
           <button
             key={item.id}
@@ -275,13 +309,7 @@ export function useVariableAutocomplete({
             onClick={() => showReplace ? replaceItem(item) : insertItem(item)}
             onMouseEnter={() => setSelectedIdx(idx)}
           >
-            {item.category === 'variable' ? (
-              <Variable className="h-3 w-3 text-primary flex-shrink-0" />
-            ) : item.category === 'field' ? (
-              <FileText className="h-3 w-3 text-node-whatsapp-accent flex-shrink-0" />
-            ) : (
-              <Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />
-            )}
+            {categoryIcon(item.category)}
             <span className="font-mono text-[11px] font-medium truncate flex-1">{item.label}</span>
             {item.detail && (
               <span className="text-[9px] text-muted-foreground flex-shrink-0">{item.detail}</span>

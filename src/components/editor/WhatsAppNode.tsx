@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { WhatsAppNodeData, FormVariable, IntegrationNodeData } from '@/types/form';
+import type { WhatsAppNodeData, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { VariableInput } from './shared';
 import WhatsAppMessageEditor from './whatsapp/WhatsAppMessageEditor';
@@ -31,10 +31,11 @@ export interface WhatsAppNodeProps {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
+  trackedParams?: TrackedParam[];
 }
 
 function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps }) {
-  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [] } = data;
+  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [], trackedParams } = data;
   const [expanded, setExpanded] = useState(true);
   const [instances, setInstances] = useState<EvolutionInstance[]>([]);
   const [testing, setTesting] = useState(false);
@@ -176,6 +177,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                     variables={variables}
                     integrationNodes={integrationNodes}
                     allInputElements={allInputElements}
+                    trackedParams={trackedParams}
                     placeholder="5511999999999 ou {{telefone}}"
                     className="h-8 text-xs"
                   />
@@ -192,6 +194,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                     variables={variables}
                     integrationNodes={integrationNodes}
                     allInputElements={allInputElements}
+                    trackedParams={trackedParams}
                     placeholder="Olá {{nome}}, obrigado!"
                     sendMedia={nodeData.sendMedia}
                     mediaType={nodeData.mediaType}

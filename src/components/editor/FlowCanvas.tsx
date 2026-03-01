@@ -262,6 +262,7 @@ function FlowCanvasInner({
           variables,
           integrationNodes,
           allInputElements: prevElements,
+          trackedParams: form.trackedParams,
           isDisconnected: !reachableNodeIds.has(nodeId),
           onCreateVariable,
         },
@@ -359,6 +360,7 @@ function FlowCanvasInner({
           variables,
           integrationNodes,
           allInputElements: prevElements,
+          trackedParams: form.trackedParams,
         },
       });
     });
