@@ -37,8 +37,14 @@ export function interpolateText(
   });
 
   // Handle GET param references: {{param.utm_source}}, etc.
-  result = result.replace(/\{\{param\.(\w+)\}\}/g, (_match, key: string) => {
+  result = result.replace(/\{\{param\.([^}]+)\}\}/g, (_match, key: string) => {
     const val = answers[`__param_${key}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+
+  // Handle field references: {{field:elementId}}
+  result = result.replace(/\{\{field:([^}]+)\}\}/g, (_match, elementId: string) => {
+    const val = answers[elementId];
     return val !== undefined && val !== null ? String(val) : '';
   });
 
