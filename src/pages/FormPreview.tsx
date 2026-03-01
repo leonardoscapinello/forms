@@ -1631,42 +1631,32 @@ export default function FormPreview() {
               <Button
                 variant="default"
                 size="sm"
-                onClick={waitFeedback && waitFeedback.allowSkip
-                  ? () => { const ref = (window as any).__waitCancelRef; if (ref) ref.cancelled = true; }
-                  : waitFeedback ? undefined : goNext
-                }
-                disabled={isPageBlocked || (!!waitFeedback && !waitFeedback.allowSkip)}
+                onClick={waitFeedback ? undefined : goNext}
+                disabled={isPageBlocked || !!waitFeedback}
                 className="h-9 px-4 rounded-full gap-1.5 text-xs"
                 aria-label={isLastPage ? 'Enviar' : 'Avançar'}
               >
                 {waitFeedback && waitFeedback.mode !== 'loading_screen' ? (
-                  waitFeedback.allowSkip ? (
-                    <>
-                      <span>Pular</span>
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </>
-                  ) : (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>
-                        {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
-                        {waitFeedback.mode === 'button_countdown' && (
-                          <span className="ml-1 tabular-nums">
-                            {(() => {
-                              const totalSec = Math.ceil(waitFeedback.remainingMs / 1000);
-                              const h = Math.floor(totalSec / 3600);
-                              const m = Math.floor((totalSec % 3600) / 60);
-                              const s = totalSec % 60;
-                              const pad = (n: number) => String(n).padStart(2, '0');
-                              if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
-                              if (m > 0) return `${pad(m)}m ${pad(s)}s`;
-                              return `${pad(s)}s`;
-                            })()}
-                          </span>
-                        )}
-                      </span>
-                    </>
-                  )
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>
+                      {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
+                      {waitFeedback.mode === 'button_countdown' && (
+                        <span className="ml-1 tabular-nums">
+                          {(() => {
+                            const totalSec = Math.ceil(waitFeedback.remainingMs / 1000);
+                            const h = Math.floor(totalSec / 3600);
+                            const m = Math.floor((totalSec % 3600) / 60);
+                            const s = totalSec % 60;
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+                            if (m > 0) return `${pad(m)}m ${pad(s)}s`;
+                            return `${pad(s)}s`;
+                          })()}
+                        </span>
+                      )}
+                    </span>
+                  </>
                 ) : isPageBlocked ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : isLastPage ? (
@@ -1681,12 +1671,21 @@ export default function FormPreview() {
                   </>
                 )}
               </Button>
-              <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/60 pl-1 pr-1">
-                <span>ou</span>
-                <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted/50 px-1 py-0.5 font-mono text-[10px]">
-                  Enter <CornerDownLeft className="h-2.5 w-2.5" />
-                </kbd>
-              </div>
+              {waitFeedback && waitFeedback.allowSkip && waitFeedback.mode !== 'loading_screen' ? (
+                <button
+                  onClick={() => { const ref = (window as any).__waitCancelRef; if (ref) ref.cancelled = true; }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 pl-1 pr-1"
+                >
+                  Pular espera
+                </button>
+              ) : !waitFeedback ? (
+                <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/60 pl-1 pr-1">
+                  <span>ou</span>
+                  <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted/50 px-1 py-0.5 font-mono text-[10px]">
+                    Enter <CornerDownLeft className="h-2.5 w-2.5" />
+                  </kbd>
+                </div>
+              ) : null}
             </div>
           </div>
         );
