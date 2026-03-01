@@ -13,7 +13,7 @@ export default {
       },
     },
     fontFamily: {
-      sans: ["'Borna'", "'Inter'", "ui-sans-serif", "system-ui", "sans-serif"],
+      sans: ["'Borna'", "ui-sans-serif", "system-ui", "sans-serif"],
     },
     extend: {
       colors: {

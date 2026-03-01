@@ -63,9 +63,20 @@ function buildDefaults(form: AppFormData | null) {
   return defaults;
 }
 
+const BORNA_FONT_STACK = "'Borna', ui-sans-serif, system-ui, sans-serif";
+
 function normalizeFontFamily(fontFamily?: string) {
-  if (!fontFamily || fontFamily.trim() === '' || fontFamily === 'Inter') return 'Borna';
-  return fontFamily;
+  const raw = (fontFamily ?? '').trim();
+  if (!raw) return BORNA_FONT_STACK;
+
+  const normalized = raw.replace(/["']/g, '').toLowerCase();
+  const firstFamily = normalized.split(',')[0]?.trim() || '';
+
+  if (!firstFamily || firstFamily === 'inter' || firstFamily === 'borna') {
+    return BORNA_FONT_STACK;
+  }
+
+  return raw;
 }
 
 /** Resolve userData (email, phone, name) from a UserDataMapping and current answers */

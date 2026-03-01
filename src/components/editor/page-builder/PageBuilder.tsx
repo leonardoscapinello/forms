@@ -88,6 +88,19 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const selectedElement = findElementById(selectedId);
   const activeElement = elements.find(e => e.id === activeId) || null;
 
+  const normalizeFontFamily = (fontFamily?: string) => {
+    const raw = (fontFamily ?? '').trim();
+    if (!raw) return "'Borna', ui-sans-serif, system-ui, sans-serif";
+
+    const normalized = raw.replace(/["']/g, '').toLowerCase();
+    const firstFamily = normalized.split(',')[0]?.trim() || '';
+    if (!firstFamily || firstFamily === 'inter' || firstFamily === 'borna') {
+      return "'Borna', ui-sans-serif, system-ui, sans-serif";
+    }
+
+    return raw;
+  };
+
   const effectiveStyle: FunnelPageStyle = {
     backgroundColor: '',
     fontFamily: 'Borna',
@@ -391,7 +404,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onDrop={handleCanvasDrop}
         style={{
           backgroundColor: isExternalDragOver ? undefined : (effectiveStyle.backgroundColor || undefined),
-          fontFamily: effectiveStyle.fontFamily || undefined,
+          fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),
         }}
       >
         {/* Pinned notification elements */}

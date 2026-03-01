@@ -3,7 +3,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const FONT_OPTIONS = [
   { value: 'Borna', label: 'Borna' },
-  { value: 'Inter', label: 'Inter' },
   { value: 'DM Sans', label: 'DM Sans' },
   { value: 'Poppins', label: 'Poppins' },
   { value: 'Roboto', label: 'Roboto' },
