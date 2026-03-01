@@ -1452,7 +1452,7 @@ export default function FormPreview() {
                   className="h-9 px-3 rounded-full text-muted-foreground hover:text-foreground gap-1.5 text-xs"
                   aria-label="Voltar"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <ArrowUp className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Voltar</span>
                 </Button>
               )}
@@ -1475,7 +1475,7 @@ export default function FormPreview() {
                 ) : (
                   <>
                     <span>Continuar</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    <ArrowDown className="h-3.5 w-3.5" />
                   </>
                 )}
               </Button>
