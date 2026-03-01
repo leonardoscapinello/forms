@@ -177,9 +177,8 @@ export default function VariableInput(props: Props) {
         {DropdownUI}
       </div>
 
-      {/* Variable picker trigger */}
-      {hasVars && (
-        <Popover open={open} onOpenChange={setOpen}>
+      {/* Variable picker trigger — always render Popover to keep hook count stable */}
+      <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               type="button"
@@ -294,8 +293,7 @@ export default function VariableInput(props: Props) {
               </p>
             </div>
           </PopoverContent>
-        </Popover>
-      )}
+      </Popover>
     </div>
   );
 }
