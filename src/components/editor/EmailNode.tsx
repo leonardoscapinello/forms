@@ -156,31 +156,27 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
                 {/* From */}
                 <div className="space-y-1">
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Remetente</span>
-                  <div className="grid grid-cols-2 gap-1.5 min-w-0">
-                    <div className="min-w-0 overflow-hidden">
-                      <VariableInput
-                        value={nodeData.fromName || ''}
-                        onChange={v => onChange({ fromName: v })}
-                        variables={variables}
-                        integrationNodes={integrationNodes}
-                        allInputElements={allInputElements}
-                        trackedParams={trackedParams}
-                        placeholder="Nome (opcional)"
-                        className="h-8 text-xs w-full"
-                      />
-                    </div>
-                    <div className="min-w-0 overflow-hidden">
-                      <VariableInput
-                        value={nodeData.fromEmail || ''}
-                        onChange={v => onChange({ fromEmail: v })}
-                        variables={variables}
-                        integrationNodes={integrationNodes}
-                        allInputElements={allInputElements}
-                        trackedParams={trackedParams}
-                        placeholder="email@dominio.com"
-                        className="h-8 text-xs w-full"
-                      />
-                    </div>
+                  <div className="space-y-1.5 min-w-0">
+                    <VariableInput
+                      value={nodeData.fromName || ''}
+                      onChange={v => onChange({ fromName: v })}
+                      variables={variables}
+                      integrationNodes={integrationNodes}
+                      allInputElements={allInputElements}
+                      trackedParams={trackedParams}
+                      placeholder="Nome (opcional)"
+                      className="h-8 text-xs w-full"
+                    />
+                    <VariableInput
+                      value={nodeData.fromEmail || ''}
+                      onChange={v => onChange({ fromEmail: v })}
+                      variables={variables}
+                      integrationNodes={integrationNodes}
+                      allInputElements={allInputElements}
+                      trackedParams={trackedParams}
+                      placeholder="email@dominio.com"
+                      className="h-8 text-xs w-full"
+                    />
                   </div>
                 </div>
 
