@@ -87,7 +87,7 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="relative">
-        <div className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
+        <div className={`w-80 max-w-80 rounded-xl border bg-card shadow-sm transition-all overflow-hidden ${
           selected
             ? 'border-node-email-accent shadow-md ring-2 ring-node-email-accent/20'
             : 'border-border'
@@ -123,7 +123,7 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
 
           {expanded && (
             <div className="nodrag nopan nowheel" onMouseDown={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
-              <div className="px-3 py-3 space-y-3">
+              <div className="px-3 py-3 space-y-3 min-w-0 overflow-hidden">
 
                 {/* Instance */}
                 <div className="space-y-1">
@@ -156,27 +156,31 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
                 {/* From */}
                 <div className="space-y-1">
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Remetente</span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <VariableInput
-                      value={nodeData.fromName || ''}
-                      onChange={v => onChange({ fromName: v })}
-                      variables={variables}
-                      integrationNodes={integrationNodes}
-                      allInputElements={allInputElements}
-                      trackedParams={trackedParams}
-                      placeholder="Nome (opcional)"
-                      className="h-8 text-xs"
-                    />
-                    <VariableInput
-                      value={nodeData.fromEmail || ''}
-                      onChange={v => onChange({ fromEmail: v })}
-                      variables={variables}
-                      integrationNodes={integrationNodes}
-                      allInputElements={allInputElements}
-                      trackedParams={trackedParams}
-                      placeholder="email@dominio.com"
-                      className="h-8 text-xs"
-                    />
+                  <div className="grid grid-cols-2 gap-1.5 min-w-0">
+                    <div className="min-w-0 overflow-hidden">
+                      <VariableInput
+                        value={nodeData.fromName || ''}
+                        onChange={v => onChange({ fromName: v })}
+                        variables={variables}
+                        integrationNodes={integrationNodes}
+                        allInputElements={allInputElements}
+                        trackedParams={trackedParams}
+                        placeholder="Nome (opcional)"
+                        className="h-8 text-xs w-full"
+                      />
+                    </div>
+                    <div className="min-w-0 overflow-hidden">
+                      <VariableInput
+                        value={nodeData.fromEmail || ''}
+                        onChange={v => onChange({ fromEmail: v })}
+                        variables={variables}
+                        integrationNodes={integrationNodes}
+                        allInputElements={allInputElements}
+                        trackedParams={trackedParams}
+                        placeholder="email@dominio.com"
+                        className="h-8 text-xs w-full"
+                      />
+                    </div>
                   </div>
                 </div>
 
