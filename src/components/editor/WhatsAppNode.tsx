@@ -236,17 +236,59 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                     }}
                   />
                   {nodeData.mediaUrl ? (
-                    <div className="flex items-center gap-1.5 p-1.5 bg-muted/50 rounded text-[10px]">
-                      <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
-                      <span className="truncate flex-1" title={nodeData.mediaFileName || nodeData.mediaUrl}>
-                        {nodeData.mediaFileName || 'Arquivo enviado'}
-                      </span>
-                      <button
-                        onClick={() => onChange({ mediaUrl: '', mediaFileName: '' })}
-                        className="text-muted-foreground hover:text-destructive flex-shrink-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                    <div className="space-y-1.5">
+                      {/* Thumbnail preview for images/videos */}
+                      {(nodeData.mediaType === 'image' || nodeData.mediaType === 'video') && (
+                        <div className="relative rounded overflow-hidden border border-border bg-muted/30">
+                          {nodeData.mediaType === 'image' ? (
+                            <img
+                              src={nodeData.mediaUrl}
+                              alt={nodeData.mediaFileName || 'Preview'}
+                              className="w-full max-h-[120px] object-cover"
+                              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <video
+                              src={nodeData.mediaUrl}
+                              className="w-full max-h-[120px] object-cover"
+                              muted
+                              preload="metadata"
+                            />
+                          )}
+                        </div>
+                      )}
+                      {/* Audio preview */}
+                      {nodeData.mediaType === 'audio' && (
+                        <audio src={nodeData.mediaUrl} controls className="w-full h-7" preload="metadata" />
+                      )}
+                      {/* Document icon preview */}
+                      {nodeData.mediaType === 'document' && (
+                        <div className="flex items-center gap-2 p-2 bg-muted/30 rounded border border-border">
+                          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <span className="text-[10px] text-muted-foreground truncate">{nodeData.mediaFileName || 'Documento'}</span>
+                        </div>
+                      )}
+                      {/* File info + remove */}
+                      <div className="flex items-center gap-1.5 text-[10px]">
+                        <CheckCircle2 className="h-3 w-3 text-primary flex-shrink-0" />
+                        <span className="truncate flex-1 text-muted-foreground" title={nodeData.mediaFileName || nodeData.mediaUrl}>
+                          {nodeData.mediaFileName || 'Arquivo enviado'}
+                        </span>
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-muted-foreground hover:text-foreground flex-shrink-0"
+                          title="Trocar arquivo"
+                        >
+                          <Upload className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => onChange({ mediaUrl: '', mediaFileName: '' })}
+                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                          title="Remover"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <Button
