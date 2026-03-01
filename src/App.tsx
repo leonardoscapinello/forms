@@ -68,6 +68,7 @@ const App = () => {
   if (isPublicFormPath) {
     return (
       <BrowserRouter>
+        <Sonner />
         <Routes>
           <Route path="/f/:id" element={<FormPreview />} />
           <Route path="*" element={<Navigate to="/" replace />} />
