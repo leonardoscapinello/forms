@@ -418,11 +418,26 @@ export interface ABTestNodeData {
 
 export type WaitUnit = 'seconds' | 'minutes' | 'hours';
 
+/** Visual feedback shown to the user during a Wait node */
+export type WaitFeedbackMode = 'button_countdown' | 'button_text' | 'loading_screen';
+
+export interface WaitFeedbackConfig {
+  mode: WaitFeedbackMode;
+  /** Custom text shown on the button or loading screen */
+  buttonText?: string;
+  /** For loading_screen: which loading style to use */
+  loadingStyle?: 'bar' | 'circular' | 'infinite';
+  /** For loading_screen: label shown above the loading indicator */
+  loadingLabel?: string;
+}
+
 export interface WaitNodeData {
   id: string;
   label?: string;
   duration: number;
   unit: WaitUnit;
+  /** Visual feedback config — defaults to button_countdown */
+  feedback?: WaitFeedbackConfig;
 }
 
 // ── Jump Node ───────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable } from '@/types/form';
+import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
@@ -169,6 +169,15 @@ export default function FormPreview() {
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [waitFeedback, setWaitFeedback] = useState<{
+    active: boolean;
+    mode: WaitFeedbackMode;
+    durationMs: number;
+    remainingMs: number;
+    buttonText?: string;
+    loadingStyle?: 'bar' | 'circular' | 'infinite';
+    loadingLabel?: string;
+  } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
@@ -685,7 +694,7 @@ export default function FormPreview() {
   const walkWorkflow = useCallback(async (
     fromNodeId: string,
     currentAnswers: Record<string, any>,
-  ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any> }> => {
+  ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any>; pendingWait?: { durationMs: number; feedback?: WaitFeedbackConfig; remainingNodeId: string } }> => {
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
@@ -994,14 +1003,19 @@ export default function FormPreview() {
         continue;
       }
 
-      // Intermediate: Wait node — delay before continuing
+      // Intermediate: Wait node — return wait info instead of blocking
       if (target.startsWith('wt-')) {
         const wtId = target.replace('wt-', '');
         const wtNode = f?.waitNodes?.find(n => n.id === wtId);
         if (wtNode) {
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
-          const delayMs = (wtNode.duration || 1) * multiplier;
-          await new Promise(resolve => setTimeout(resolve, Math.min(delayMs, 30000))); // cap at 30s for UX
+          const durationMs = Math.min((wtNode.duration || 1) * multiplier, 30000); // cap at 30s
+          // Walk the rest of the workflow from the wait node to find the destination
+          const restResult = await walkWorkflow(target, currentAns);
+          return {
+            ...restResult,
+            pendingWait: { durationMs, feedback: wtNode.feedback, remainingNodeId: target },
+          };
         }
         currentNodeId = target;
         continue;
@@ -1058,7 +1072,67 @@ export default function FormPreview() {
 
       // Use answersRef.current to always get the latest state — avoids stale closure
       const latestAnswers = answersRef.current;
-      const { nextNodeId, updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
+      const { nextNodeId, updatedAnswers, pendingWait } = await walkWorkflow(fromNodeId, latestAnswers);
+
+      // If there's a wait node in the path, show feedback and delay navigation
+      if (pendingWait) {
+        const fb = pendingWait.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
+        const mode = fb.mode || 'button_countdown';
+        const durationMs = pendingWait.durationMs;
+
+        // Set up the feedback state
+        setWaitFeedback({
+          active: true,
+          mode,
+          durationMs,
+          remainingMs: durationMs,
+          buttonText: fb.buttonText,
+          loadingStyle: fb.loadingStyle,
+          loadingLabel: fb.loadingLabel,
+        });
+
+        // Countdown interval for button_countdown mode
+        const startTime = Date.now();
+        const countdownInterval = mode === 'button_countdown'
+          ? setInterval(() => {
+              const elapsed = Date.now() - startTime;
+              const remaining = Math.max(0, durationMs - elapsed);
+              setWaitFeedback(prev => prev ? { ...prev, remainingMs: remaining } : null);
+            }, 100)
+          : null;
+
+        // Wait for the duration
+        await new Promise(resolve => setTimeout(resolve, durationMs));
+
+        if (countdownInterval) clearInterval(countdownInterval);
+        setWaitFeedback(null);
+
+        // Now navigate to the resolved destination
+        if (nextNodeId === 'end') {
+          setAnswers(updatedAnswers);
+          answersRef.current = updatedAnswers;
+          setFinished(true);
+          return;
+        }
+        if (nextNodeId && nextNodeId.startsWith('p-')) {
+          const pageId = nextNodeId.replace('p-', '');
+          const targetIndex = pages.findIndex(p => p.id === pageId);
+          if (targetIndex !== -1) {
+            setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
+            setCurrentPageIndex(targetIndex);
+            return;
+          }
+        }
+        // Fallback: navigate sequentially
+        const seqNext = currentPageIndex !== null ? currentPageIndex + 1 : 0;
+        if (seqNext < pages.length) {
+          setAnswers(applyPageVariableAssignments(pages[seqNext], updatedAnswers));
+          setCurrentPageIndex(seqNext);
+        } else {
+          setFinished(true);
+        }
+        return;
+      }
 
       if (nextNodeId === 'end') {
         // Apply any variable ops that ran along the path to 'end'
@@ -1532,12 +1606,24 @@ export default function FormPreview() {
               <Button
                 variant="default"
                 size="sm"
-                onClick={goNext}
-                disabled={isPageBlocked}
+                onClick={waitFeedback ? undefined : goNext}
+                disabled={isPageBlocked || !!waitFeedback}
                 className="h-9 px-4 rounded-full gap-1.5 text-xs"
                 aria-label={isLastPage ? 'Enviar' : 'Avançar'}
               >
-                {isPageBlocked ? (
+                {waitFeedback && waitFeedback.mode !== 'loading_screen' ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>
+                      {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
+                      {waitFeedback.mode === 'button_countdown' && (
+                        <span className="ml-1 tabular-nums">
+                          {Math.ceil(waitFeedback.remainingMs / 1000)}s
+                        </span>
+                      )}
+                    </span>
+                  </>
+                ) : isPageBlocked ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : isLastPage ? (
                   <>
@@ -1561,6 +1647,32 @@ export default function FormPreview() {
           </div>
         );
       })()}
+
+      {/* Loading screen overlay for wait feedback mode 'loading_screen' */}
+      <AnimatePresence>
+        {waitFeedback && waitFeedback.mode === 'loading_screen' && (
+          <motion.div
+            key="wait-loading-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background"
+          >
+            <div className="w-full max-w-xs px-6">
+              <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}>
+                <LoadingPreview
+                  style={waitFeedback.loadingStyle || 'bar'}
+                  duration={waitFeedback.durationMs / 1000}
+                  targetPercent={100}
+                  label={waitFeedback.loadingLabel || 'Carregando...'}
+                  interactive
+                />
+              </Suspense>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
