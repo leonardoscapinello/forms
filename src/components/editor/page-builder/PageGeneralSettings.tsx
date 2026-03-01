@@ -82,8 +82,8 @@ export default function PageGeneralSettings({ pageStyle, onChange }: Props) {
           <div className="space-y-3">
             <TypographySelector
               label="Tipografia"
-              fontFamily={pageStyle.fontFamily || 'Inter'}
-              onFontFamilyChange={v => onChange({ fontFamily: v || 'Inter' })}
+              fontFamily={pageStyle.fontFamily || 'Borna'}
+              onFontFamilyChange={v => onChange({ fontFamily: v || 'Borna' })}
               fontWeight={undefined}
               onFontWeightChange={() => {}}
             />
