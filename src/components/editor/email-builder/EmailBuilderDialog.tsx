@@ -452,7 +452,7 @@ function ColumnZone({
           <span className="text-[10px] text-muted-foreground/40">Coluna vazia</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-border/50 text-muted-foreground/60 hover:border-primary/40 hover:text-primary/70 transition-colors text-[10px]">
+              <button className="w-full py-2 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-[10px] font-medium">
                 <Plus className="h-3 w-3" />
                 Adicionar
               </button>
@@ -526,8 +526,9 @@ function ColumnZone({
       {elements.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-full mt-1 py-1.5 rounded-md border border-dashed border-transparent hover:border-border/40 text-muted-foreground/30 hover:text-primary/60 transition-all flex items-center justify-center gap-1 text-[10px]">
+            <button className="w-full mt-1 py-2 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-[10px] font-medium">
               <Plus className="h-3 w-3" />
+              Adicionar
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-36">

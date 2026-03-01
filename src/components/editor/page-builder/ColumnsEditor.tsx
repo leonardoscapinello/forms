@@ -231,7 +231,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
               <span className="text-[11px] text-muted-foreground/50">Coluna {colIdx + 1} vazia</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 text-primary/70 hover:bg-primary/10 hover:border-primary/50 transition-colors text-xs font-medium">
+                  <button className="w-full py-2.5 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-xs font-medium">
                     <Plus className="h-3.5 w-3.5" />
                     Adicionar elemento
                   </button>
