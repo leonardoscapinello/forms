@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Variable, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { FormVariable, VariableOpNodeData, VariableOperation, VariableOpType, VariableOperandType, IntegrationNodeData } from '@/types/form';
 import VariableSelect from './shared/VariableSelect';
-import { Input } from '@/components/ui/input';
+import { LocalInput } from './shared/LocalInput';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -104,9 +104,9 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
 
       {/* Node label */}
       <div className="px-3 pt-2.5 pb-1">
-        <Input
+        <LocalInput
           value={label}
-          onChange={e => onChange({ label: e.target.value })}
+          onCommit={v => onChange({ label: v })}
           placeholder="Nome do nó"
           className="text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent h-8"
         />
@@ -206,9 +206,9 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
                     </Select>
                   )
                 ) : (
-                  <Input
+                  <LocalInput
                     value={op.operand}
-                    onChange={e => updateOp(op.id, { operand: e.target.value })}
+                    onCommit={v => updateOp(op.id, { operand: v })}
                     placeholder={op.op === 'set' ? 'Valor ou {{var}}...' : 'Número ou {{var}}...'}
                     className="h-7 text-xs"
                   />
