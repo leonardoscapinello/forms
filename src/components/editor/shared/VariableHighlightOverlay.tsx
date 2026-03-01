@@ -1,8 +1,14 @@
 import { useMemo } from 'react';
+import { CONTEXT_KEYS } from '@/lib/sessionContext';
 
 type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
 
 export type ElementLookup = Record<string, string>; // elementId → label
+
+const CTX_LABEL_MAP: Record<string, string> = {};
+for (const c of CONTEXT_KEYS) {
+  CTX_LABEL_MAP[c.key] = c.label;
+}
 
 export function formatFieldTokensForDisplay(text: string, elementLookup?: ElementLookup): string {
   if (!text) return text;
@@ -12,10 +18,33 @@ export function formatFieldTokensForDisplay(text: string, elementLookup?: Elemen
   });
 }
 
+function getReadableDisplay(raw: string, varType: VarType, elementLookup?: ElementLookup): string {
+  if (varType === 'field') {
+    return formatFieldTokensForDisplay(raw, elementLookup);
+  }
+  if (varType === 'context') {
+    // {{ctx.device}} → {{Dispositivo}}
+    const key = raw.slice(6, -2); // remove {{ctx. and }}
+    const label = CTX_LABEL_MAP[key];
+    return label ? `{{${label}}}` : raw;
+  }
+  if (varType === 'param') {
+    // {{param.utm_source}} → {{utm_source}}
+    const key = raw.slice(8, -2); // remove {{param. and }}
+    return `{{${key}}}`;
+  }
+  if (varType === 'webhook') {
+    // {{webhook:id:field}} → {{field}}
+    const parts = raw.slice(2, -2).split(':'); // webhook, id, field
+    const fieldName = parts.length >= 3 ? parts.slice(2).join(':') : parts[parts.length - 1];
+    return `{{${fieldName}}}`;
+  }
+  return raw;
+}
+
 /**
  * Renders text with {{variables}}, {{field:...}}, {{webhook:...}} etc. highlighted
- * as colored inline spans. When an elementLookup is provided, field references
- * show the human-readable label instead of the raw UUID.
+ * as colored inline spans with human-readable labels.
  */
 export function VariableHighlightOverlay({
   text,
@@ -42,13 +71,9 @@ export function VariableHighlightOverlay({
 
       const raw = match[1];
       let varType: VarType = 'variable';
-      let display = raw;
 
       if (raw.startsWith('{{field:')) {
         varType = 'field';
-        if (displayFieldLabels) {
-          display = formatFieldTokensForDisplay(raw, elementLookup);
-        }
       } else if (raw.startsWith('{{webhook:')) {
         varType = 'webhook';
       } else if (raw.startsWith('{{param.')) {
@@ -56,6 +81,8 @@ export function VariableHighlightOverlay({
       } else if (raw.startsWith('{{ctx.')) {
         varType = 'context';
       }
+
+      const display = displayFieldLabels ? getReadableDisplay(raw, varType, elementLookup) : raw;
 
       result.push({ text: raw, display, isVar: true, varType });
       lastIndex = regex.lastIndex;

@@ -60,6 +60,21 @@ export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLooku
         : token;
       return `<span class="wa-var">{{${safeLabel}}}</span>`;
     }
+    if (token.startsWith('ctx.')) {
+      const key = token.slice('ctx.'.length);
+      const ctx = CONTEXT_KEYS.find(c => c.key === key);
+      const label = ctx ? ctx.label : key;
+      return `<span class="wa-var">{{${label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}}}</span>`;
+    }
+    if (token.startsWith('param.')) {
+      const key = token.slice('param.'.length);
+      return `<span class="wa-var">{{${key}}}</span>`;
+    }
+    if (token.startsWith('webhook:')) {
+      const parts = token.split(':');
+      const fieldName = parts.length >= 3 ? parts.slice(2).join(':') : parts[parts.length - 1];
+      return `<span class="wa-var">{{${fieldName}}}</span>`;
+    }
     return `<span class="wa-var">{{${token}}}</span>`;
   });
   html = html.replace(/\n/g, '<br/>');
