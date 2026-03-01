@@ -73,13 +73,13 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
       <SidebarContent className="gap-0">
-        <section className="p-4">
+        <div className="px-5 pt-5 pb-4 border-b border-sidebar-border">
           <img
             src="/images/twobrain-logo-dark.svg"
             alt="twobrain"
             className="h-6 w-auto max-w-[127px] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-5"
           />
-        </section>
+        </div>
 
         <section className="p-4 group-data-[collapsible=icon]:p-2">
           <nav className="flex flex-col gap-1.5">{mainItems.map((item) => renderNavItem(item, 'main'))}</nav>
