@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from '@/lib/utils';
 import { ColorPickerField, ImageSourcePicker } from '@/components/editor/shared';
 import VariableInput from '@/components/editor/shared/VariableInput';
+import { VariableHighlightOverlay } from '@/components/editor/shared/VariableHighlightOverlay';
+import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 import { toast } from 'sonner';
 
 import {
@@ -342,14 +344,14 @@ function BlockSettingsDispatch({ block, onChange, variables, trackedParams, allI
 }
 
 // ─── Element preview ────────────────────────────────────────────────
-function ElementPreview({ block }: { block: EmailBlock }) {
+function ElementPreview({ block, elementLookup }: { block: EmailBlock; elementLookup?: Record<string, string> }) {
   const pad = block.padding;
   const ps = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
   switch (block.type) {
     case 'text':
       return (
         <div style={{ ...ps, textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-          {block.content.split('\n').map((line, i) => <span key={i}>{line}{i < block.content.split('\n').length - 1 && <br />}</span>)}
+          <VariableHighlightOverlay text={block.content} elementLookup={elementLookup} displayFieldLabels />
         </div>
       );
     case 'image':
@@ -394,7 +396,7 @@ function ElementPreview({ block }: { block: EmailBlock }) {
 // ─── Column zone ────────────────────────────────────────────────────
 function ColumnZone({
   elements, colIdx, structureId, selectedId,
-  onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn, totalCols,
+  onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn, totalCols, elementLookup,
 }: {
   elements: EmailBlock[]; colIdx: number; structureId: string; selectedId: string | null;
   onSelectElement: (id: string) => void;
@@ -403,6 +405,7 @@ function ColumnZone({
   onMoveElement: (structureId: string, colIdx: number, elementId: string, dir: -1 | 1) => void;
   onMoveToColumn: (structureId: string, fromCol: number, toCol: number, elementId: string) => void;
   totalCols: number;
+  elementLookup?: ElementLookup;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
@@ -486,7 +489,7 @@ function ColumnZone({
                 : 'hover:ring-1 hover:ring-primary/15 hover:ring-offset-1 hover:ring-offset-background'
             )}
           >
-            <ElementPreview block={el} />
+            <ElementPreview block={el} elementLookup={elementLookup} />
 
             {/* Floating mini toolbar */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-0.5 opacity-0 group-hover/el:opacity-100 transition-all
@@ -549,7 +552,7 @@ function ColumnZone({
 function StructureRow({
   structure, isSelected, selectedElementId,
   onSelect, onRemove, onMoveRow, rowIndex, totalRows,
-  onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn,
+  onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn, elementLookup,
 }: {
   structure: ColumnsBlock; isSelected: boolean; selectedElementId: string | null;
   onSelect: () => void; onRemove: () => void; onMoveRow: (dir: -1 | 1) => void;
@@ -559,6 +562,7 @@ function StructureRow({
   onRemoveElement: (structureId: string, colIdx: number, elementId: string) => void;
   onMoveElement: (structureId: string, colIdx: number, elementId: string, dir: -1 | 1) => void;
   onMoveToColumn: (structureId: string, fromCol: number, toCol: number, elementId: string) => void;
+  elementLookup?: ElementLookup;
 }) {
   const pad = structure.padding;
   const ps = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
@@ -601,6 +605,7 @@ function StructureRow({
                 onDropElement={onDropElement} onRemoveElement={onRemoveElement}
                 onMoveElement={onMoveElement} onMoveToColumn={onMoveToColumn}
                 totalCols={structure.columns.length}
+                elementLookup={elementLookup}
               />
             </div>
           ))}
@@ -786,6 +791,19 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const [contentBg, setContentBg] = useState(() => extractBlocksFromHtml(value)?.contentBg || '#FFFFFF');
   const [showStylePanel, setShowStylePanel] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  // Build elementLookup for friendly variable labels
+  const elementLookup = useMemo<ElementLookup>(() => {
+    const map: ElementLookup = {};
+    if (allInputElements) {
+      for (const page of allInputElements) {
+        for (const el of page.elements) {
+          map[el.elementId] = el.elementLabel;
+        }
+      }
+    }
+    return map;
+  }, [allInputElements]);
 
   // Track initial value to detect unsaved changes
   const initialValueRef = useRef(value);
@@ -1013,6 +1031,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                           onSelectElement={id => { setSelectedElementId(id); setSelectedStructureId(null); }}
                           onDropElement={dropElement} onRemoveElement={removeElement}
                           onMoveElement={moveElement} onMoveToColumn={moveToColumn}
+                          elementLookup={elementLookup}
                         />
                       </div>
                     ))}
