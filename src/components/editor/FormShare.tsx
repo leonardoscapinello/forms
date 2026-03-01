@@ -336,10 +336,13 @@ export default function FormShare({ form, onUpdate }: Props) {
           <div className="space-y-3 pt-2">
             <CopyField label="Link" value={previewUrl} />
             <Button variant="outline" size="sm" asChild>
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Abrir em nova aba
+              <a href={`${previewUrl}?editorPreview=1`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Testar em nova aba
               </a>
             </Button>
+            <p className="text-[11px] text-muted-foreground">
+              O link de teste não dispara WhatsApp, e-mails, webhooks nem salva respostas.
+            </p>
           </div>
         </DialogContent>
       </Dialog>
