@@ -128,9 +128,18 @@ function FlowCanvasInner({
     const allNodes = getNodes();
     const node = allNodes.find(n => n.id === nodeId);
     if (!node) return;
-    const x = (node.position?.x ?? 0) + ((node.measured?.width ?? (node as any).width ?? 200) / 2);
-    const y = (node.position?.y ?? 0) + ((node.measured?.height ?? (node as any).height ?? 100) / 2);
-    setCenter(x, y, { zoom: 1.5, duration: 400 });
+    const nodeW = node.measured?.width ?? (node as any).width ?? 320;
+    const nodeH = node.measured?.height ?? (node as any).height ?? 200;
+    const x = (node.position?.x ?? 0) + nodeW / 2;
+    const y = (node.position?.y ?? 0) + nodeH / 2;
+    // Smart zoom: fit the node with padding, clamped between 0.5 and 1.5
+    const vw = window.innerWidth * 0.7; // approximate flow canvas width
+    const vh = window.innerHeight * 0.8;
+    const padding = 80;
+    const zoomX = vw / (nodeW + padding * 2);
+    const zoomY = vh / (nodeH + padding * 2);
+    const zoom = Math.min(Math.max(Math.min(zoomX, zoomY), 0.5), 1.5);
+    setCenter(x, y, { zoom, duration: 400 });
     setFocusedNodeId(nodeId);
   }, [getNodes, setCenter]);
 
