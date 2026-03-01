@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 /**
  * A controlled input that keeps local state while typing
@@ -29,6 +30,7 @@ export function LocalInput({
     <Input
       {...rest}
       value={local}
+      className={cn('nodrag nopan nowheel', rest.className)}
       onChange={e => {
         setLocal(e.target.value);
         ref.current = e.target.value;
@@ -40,9 +42,10 @@ export function LocalInput({
         if (e.key === 'Enter') {
           e.currentTarget.blur();
         }
-        // Prevent React Flow keyboard shortcuts from firing while typing
         e.stopPropagation();
       }}
+      onMouseDown={e => e.stopPropagation()}
+      onPointerDown={e => e.stopPropagation()}
     />
   );
 }

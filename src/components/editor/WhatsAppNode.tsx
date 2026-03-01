@@ -132,7 +132,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
         </div>
 
         {expanded && (
-          <div className="p-3 space-y-3 text-xs">
+          <div className="p-3 space-y-3 text-xs nodrag nopan nowheel" onMouseDown={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
             {/* Instance selector */}
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Instância</Label>
