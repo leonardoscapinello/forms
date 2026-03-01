@@ -2,7 +2,8 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
   AlignLeft, AlignCenter, AlignRight, ArrowLeft, ArrowRight,
-  LayoutTemplate, PanelLeft, PanelRight, Settings2,
+  LayoutTemplate, PanelLeft, Settings2, ChevronRight,
+  Type, Image, MousePointerClick, Minus, Space, Columns,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,53 +26,87 @@ import { EMAIL_TEMPLATES, type EmailTemplate } from './emailTemplates';
 
 // ─── Shared micro-components ────────────────────────────────────────
 
-function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange: (p: BlockPadding) => void }) {
+const BLOCK_ICONS: Record<string, React.ElementType> = {
+  text: Type, image: Image, button: MousePointerClick,
+  divider: Minus, spacer: Space, columns: Columns,
+};
+
+function SettingsSection({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-1.5 min-w-0">
-      <label className="text-[10px] font-medium text-muted-foreground uppercase">Espaçamento interno</label>
-      <div className="grid grid-cols-2 gap-1.5">
-        {(['top', 'right', 'bottom', 'left'] as const).map(side => (
-          <div key={side} className="flex items-center gap-1 min-w-0">
-            <span className="text-[9px] text-muted-foreground w-3 shrink-0">{side === 'top' ? '↑' : side === 'right' ? '→' : side === 'bottom' ? '↓' : '←'}</span>
-            <Input
-              type="number"
-              value={padding[side]}
-              onChange={e => onChange({ ...padding, [side]: Math.max(0, Number(e.target.value)) })}
-              className="h-7 text-[10px] w-full"
-              min={0}
-              max={100}
-            />
-          </div>
-        ))}
-      </div>
+    <div className="border-b border-border/50 last:border-b-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+      >
+        {title}
+        <ChevronRight className={cn('h-3 w-3 transition-transform', open && 'rotate-90')} />
+      </button>
+      {open && <div className="pb-3 space-y-2.5">{children}</div>}
+    </div>
+  );
+}
+
+function FieldRow({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('min-w-0', className)}>
+      <label className="text-[10px] font-medium text-muted-foreground block mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function InlineRow({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-2">{children}</div>;
+}
+
+function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange: (p: BlockPadding) => void }) {
+  const sides = [
+    { key: 'top' as const, icon: '↑' },
+    { key: 'right' as const, icon: '→' },
+    { key: 'bottom' as const, icon: '↓' },
+    { key: 'left' as const, icon: '←' },
+  ];
+  return (
+    <div className="grid grid-cols-4 gap-1">
+      {sides.map(({ key, icon }) => (
+        <div key={key} className="min-w-0">
+          <span className="text-[8px] text-muted-foreground text-center block mb-0.5">{icon}</span>
+          <Input
+            type="number"
+            value={padding[key]}
+            onChange={e => onChange({ ...padding, [key]: Math.max(0, Number(e.target.value)) })}
+            className="h-7 text-[10px] text-center px-1"
+            min={0} max={100}
+          />
+        </div>
+      ))}
     </div>
   );
 }
 
 function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left' | 'center' | 'right') => void }) {
   return (
-    <div>
-      <label className="text-[10px] font-medium text-muted-foreground uppercase">Alinhamento</label>
-      <div className="flex gap-1 mt-1">
-        {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([v, Icon]) => (
-          <button
-            key={v}
-            onClick={() => onChange(v)}
-            className={cn('p-1.5 rounded border transition-colors', value === v ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
-      </div>
+    <div className="flex gap-0.5 bg-muted/50 rounded-md p-0.5">
+      {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([v, Icon]) => (
+        <button
+          key={v}
+          onClick={() => onChange(v)}
+          className={cn(
+            'flex-1 flex items-center justify-center py-1.5 rounded text-xs transition-all',
+            value === v
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </button>
+      ))}
     </div>
   );
 }
 
 // ─── Settings panels ────────────────────────────────────────────────
-
-function SectionDivider() {
-  return <div className="border-t border-border my-1" />;
-}
 
 function TextSettings({ block, onChange, variables, trackedParams, allInputElements }: {
   block: TextBlock;
@@ -81,53 +116,45 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
   allInputElements?: Props['allInputElements'];
 }) {
   return (
-    <div className="space-y-3 min-w-0 w-full overflow-hidden">
-      {/* Conteúdo */}
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">Conteúdo</label>
+    <div className="min-w-0 w-full">
+      <SettingsSection title="Conteúdo">
         <VariableInput
           as="textarea"
           value={block.content}
           onChange={val => onChange({ ...block, content: val })}
           placeholder="Seu texto aqui..."
-          rows={4}
+          rows={3}
           variables={variables as any}
           trackedParams={trackedParams as any}
           allInputElements={allInputElements as any}
-          className="mt-1"
         />
-      </div>
+      </SettingsSection>
 
-      <SectionDivider />
-
-      {/* Tipografia */}
-      <div className="grid grid-cols-1 gap-2">
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Tamanho</label>
-          <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-8 text-xs mt-1 w-full" />
-        </div>
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Peso</label>
-          <Select value={block.fontWeight} onValueChange={v => onChange({ ...block, fontWeight: v as any })}>
-            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="normal">Normal</SelectItem>
-              <SelectItem value="bold">Bold</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="min-w-0">
+      <SettingsSection title="Tipografia">
+        <InlineRow>
+          <FieldRow label="Tamanho">
+            <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-7 text-xs" />
+          </FieldRow>
+          <FieldRow label="Peso">
+            <Select value={block.fontWeight} onValueChange={v => onChange({ ...block, fontWeight: v as any })}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="bold">Bold</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldRow>
+        </InlineRow>
         <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
-      </div>
+      </SettingsSection>
 
-      <SectionDivider />
+      <SettingsSection title="Alinhamento">
+        <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      </SettingsSection>
 
-      <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
-
-      <SectionDivider />
-
-      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      <SettingsSection title="Espaçamento" defaultOpen={false}>
+        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </SettingsSection>
     </div>
   );
 }
@@ -140,61 +167,49 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
   allInputElements?: Props['allInputElements'];
 }) {
   return (
-    <div className="space-y-3 min-w-0 w-full overflow-hidden">
-      {/* Upload / Galeria / URL */}
-      <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} showPreview={!!block.src && !block.src.includes('{{')} hideSaveToGallery />
-
-      {/* URL com variável */}
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">URL da imagem (variável)</label>
-        <VariableInput
-          value={block.src}
-          onChange={val => onChange({ ...block, src: val })}
-          placeholder="https://... ou {{variavel}}"
-          variables={variables as any}
-          trackedParams={trackedParams as any}
-          allInputElements={allInputElements as any}
-          className="mt-1"
-        />
-      </div>
-
-      <SectionDivider />
-
-      {/* Alt text */}
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto alternativo</label>
-        <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-8 text-xs mt-1" />
-      </div>
-
-      <SectionDivider />
-
-      {/* Largura + Link */}
-      <div className="space-y-2">
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Largura</label>
-          <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-8 text-xs mt-1" />
-        </div>
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Link</label>
+    <div className="min-w-0 w-full">
+      <SettingsSection title="Imagem">
+        <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} showPreview={!!block.src && !block.src.includes('{{')} hideSaveToGallery />
+        <FieldRow label="URL (variável)">
           <VariableInput
-            value={block.link}
-            onChange={val => onChange({ ...block, link: val })}
-            placeholder="https://... ou {{…}}"
+            value={block.src}
+            onChange={val => onChange({ ...block, src: val })}
+            placeholder="https://... ou {{variavel}}"
             variables={variables as any}
             trackedParams={trackedParams as any}
             allInputElements={allInputElements as any}
-            className="mt-1"
           />
-        </div>
-      </div>
+        </FieldRow>
+      </SettingsSection>
 
-      <SectionDivider />
+      <SettingsSection title="Configurações">
+        <FieldRow label="Texto alternativo">
+          <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-7 text-xs" />
+        </FieldRow>
+        <InlineRow>
+          <FieldRow label="Largura">
+            <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-7 text-xs" />
+          </FieldRow>
+          <FieldRow label="Link">
+            <VariableInput
+              value={block.link}
+              onChange={val => onChange({ ...block, link: val })}
+              placeholder="https://..."
+              variables={variables as any}
+              trackedParams={trackedParams as any}
+              allInputElements={allInputElements as any}
+            />
+          </FieldRow>
+        </InlineRow>
+      </SettingsSection>
 
-      <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      <SettingsSection title="Alinhamento">
+        <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      </SettingsSection>
 
-      <SectionDivider />
-
-      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      <SettingsSection title="Espaçamento" defaultOpen={false}>
+        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </SettingsSection>
     </div>
   );
 }
@@ -209,134 +224,126 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
   const LINK_MODES: { value: ButtonLinkMode; label: string }[] = [
     { value: 'custom', label: 'Link personalizado' },
     { value: 'variable', label: 'Variável de link' },
-    { value: 'pass_all_params', label: 'Repassar todos os parâmetros' },
+    { value: 'pass_all_params', label: 'Repassar parâmetros' },
     { value: 'pass_utms', label: 'Repassar UTMs' },
     { value: 'pass_variables', label: 'Repassar variáveis' },
   ];
 
   return (
-    <div className="space-y-3 min-w-0 w-full overflow-hidden">
-      {/* Texto */}
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto do botão</label>
-        <VariableInput
-          value={block.text}
-          onChange={val => onChange({ ...block, text: val })}
-          placeholder="Texto do botão"
-          variables={variables as any}
-          trackedParams={trackedParams as any}
-          allInputElements={allInputElements as any}
-          className="mt-1"
-        />
-      </div>
-
-      <SectionDivider />
-
-      {/* Link */}
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">Tipo de link</label>
-        <Select value={block.linkMode || 'custom'} onValueChange={v => onChange({ ...block, linkMode: v as ButtonLinkMode })}>
-          <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {LINK_MODES.map(m => (
-              <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {(block.linkMode === 'custom' || !block.linkMode) && (
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">URL</label>
+    <div className="min-w-0 w-full">
+      <SettingsSection title="Conteúdo">
+        <FieldRow label="Texto do botão">
           <VariableInput
-            value={block.href}
-            onChange={val => onChange({ ...block, href: val })}
-            placeholder="https://... ou {{variavel}}"
+            value={block.text}
+            onChange={val => onChange({ ...block, text: val })}
+            placeholder="Texto do botão"
             variables={variables as any}
             trackedParams={trackedParams as any}
             allInputElements={allInputElements as any}
-            className="mt-1"
           />
-        </div>
-      )}
-      {block.linkMode === 'variable' && (
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Variável</label>
-          <Select value={block.href} onValueChange={v => onChange({ ...block, href: v })}>
-            <SelectTrigger className="h-8 text-xs mt-1"><SelectValue placeholder="Selecionar variável…" /></SelectTrigger>
+        </FieldRow>
+      </SettingsSection>
+
+      <SettingsSection title="Link">
+        <FieldRow label="Tipo de link">
+          <Select value={block.linkMode || 'custom'} onValueChange={v => onChange({ ...block, linkMode: v as ButtonLinkMode })}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {(variables || []).map(v => (
-                <SelectItem key={v.id} value={`{{${v.name}}}`} className="text-xs">{v.name}</SelectItem>
+              {LINK_MODES.map(m => (
+                <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
               ))}
-              {(allInputElements || []).flatMap(g => g.elements.map(el => (
-                <SelectItem key={el.elementId} value={`{{${el.elementId}}}`} className="text-xs">{g.pageTitle} › {el.elementLabel}</SelectItem>
-              )))}
             </SelectContent>
           </Select>
+        </FieldRow>
+        {(block.linkMode === 'custom' || !block.linkMode) && (
+          <FieldRow label="URL">
+            <VariableInput
+              value={block.href}
+              onChange={val => onChange({ ...block, href: val })}
+              placeholder="https://... ou {{variavel}}"
+              variables={variables as any}
+              trackedParams={trackedParams as any}
+              allInputElements={allInputElements as any}
+            />
+          </FieldRow>
+        )}
+        {block.linkMode === 'variable' && (
+          <FieldRow label="Variável">
+            <Select value={block.href} onValueChange={v => onChange({ ...block, href: v })}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+              <SelectContent>
+                {(variables || []).map(v => (
+                  <SelectItem key={v.id} value={`{{${v.name}}}`} className="text-xs">{v.name}</SelectItem>
+                ))}
+                {(allInputElements || []).flatMap(g => g.elements.map(el => (
+                  <SelectItem key={el.elementId} value={`{{${el.elementId}}}`} className="text-xs">{g.pageTitle} › {el.elementLabel}</SelectItem>
+                )))}
+              </SelectContent>
+            </Select>
+          </FieldRow>
+        )}
+        {(block.linkMode === 'pass_all_params' || block.linkMode === 'pass_utms' || block.linkMode === 'pass_variables') && (
+          <FieldRow label="URL base">
+            <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://destino.com" className="h-7 text-xs" />
+          </FieldRow>
+        )}
+      </SettingsSection>
+
+      <SettingsSection title="Aparência">
+        <InlineRow>
+          <ColorPickerField label="Fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
+          <ColorPickerField label="Texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
+        </InlineRow>
+        <div className="grid grid-cols-3 gap-1.5">
+          <FieldRow label="Raio">
+            <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-7 text-xs text-center px-1" />
+          </FieldRow>
+          <FieldRow label="Pad. H">
+            <Input type="number" value={block.paddingX} onChange={e => onChange({ ...block, paddingX: Number(e.target.value) })} className="h-7 text-xs text-center px-1" />
+          </FieldRow>
+          <FieldRow label="Pad. V">
+            <Input type="number" value={block.paddingY} onChange={e => onChange({ ...block, paddingY: Number(e.target.value) })} className="h-7 text-xs text-center px-1" />
+          </FieldRow>
         </div>
-      )}
-      {(block.linkMode === 'pass_all_params' || block.linkMode === 'pass_utms' || block.linkMode === 'pass_variables') && (
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">URL base</label>
-          <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://destino.com" className="h-8 text-xs mt-1" />
-        </div>
-      )}
+      </SettingsSection>
 
-      <SectionDivider />
+      <SettingsSection title="Alinhamento">
+        <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      </SettingsSection>
 
-      {/* Aparência */}
-      <div className="space-y-2">
-        <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
-        <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Raio</label>
-          <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-8 text-xs mt-1" />
-        </div>
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Pad. H</label>
-          <Input type="number" value={block.paddingX} onChange={e => onChange({ ...block, paddingX: Number(e.target.value) })} className="h-8 text-xs mt-1" />
-        </div>
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Pad. V</label>
-          <Input type="number" value={block.paddingY} onChange={e => onChange({ ...block, paddingY: Number(e.target.value) })} className="h-8 text-xs mt-1" />
-        </div>
-      </div>
-
-      <SectionDivider />
-
-      <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
-
-      <SectionDivider />
-
-      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      <SettingsSection title="Espaçamento" defaultOpen={false}>
+        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </SettingsSection>
     </div>
   );
 }
 
 function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (b: DividerBlock) => void }) {
   return (
-    <div className="space-y-3 min-w-0 w-full overflow-hidden">
-      <div className="space-y-2">
-        <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
-        <div className="min-w-0">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Espessura</label>
-          <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-8 text-xs mt-1" />
-        </div>
-      </div>
-      <SectionDivider />
-      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+    <div className="min-w-0 w-full">
+      <SettingsSection title="Aparência">
+        <InlineRow>
+          <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
+          <FieldRow label="Espessura">
+            <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-7 text-xs" />
+          </FieldRow>
+        </InlineRow>
+      </SettingsSection>
+      <SettingsSection title="Espaçamento" defaultOpen={false}>
+        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </SettingsSection>
     </div>
   );
 }
 
 function SpacerSettings({ block, onChange }: { block: SpacerBlock; onChange: (b: SpacerBlock) => void }) {
   return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">Altura (px)</label>
-        <Input type="number" value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="h-8 text-xs mt-1 w-24" />
-      </div>
+    <div className="min-w-0 w-full">
+      <SettingsSection title="Configuração">
+        <FieldRow label="Altura (px)">
+          <Input type="number" value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="h-7 text-xs w-20" />
+        </FieldRow>
+      </SettingsSection>
     </div>
   );
 }
@@ -347,7 +354,6 @@ function StructureSettings({ block, onChange }: { block: ColumnsBlock; onChange:
     if (n > current.length) {
       onChange({ ...block, columns: [...current, ...Array(n - current.length).fill(null).map(() => [] as EmailBlock[])] });
     } else if (n < current.length) {
-      // Merge overflow columns into last kept column
       const kept = current.slice(0, n);
       const overflow = current.slice(n).flat();
       kept[kept.length - 1] = [...kept[kept.length - 1], ...overflow];
@@ -356,28 +362,28 @@ function StructureSettings({ block, onChange }: { block: ColumnsBlock; onChange:
   };
 
   return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">Colunas</label>
-        <div className="flex gap-1 mt-1">
+    <div className="min-w-0 w-full">
+      <SettingsSection title="Colunas">
+        <div className="flex gap-0.5 bg-muted/50 rounded-md p-0.5">
           {[1, 2, 3, 4].map(n => (
             <button
               key={n}
               onClick={() => setColCount(n)}
               className={cn(
-                'flex-1 py-1.5 rounded border text-xs font-medium transition-colors',
+                'flex-1 py-1.5 rounded text-xs font-medium transition-all',
                 block.columns.length === n
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/20'
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {n}
             </button>
           ))}
         </div>
-      </div>
-      <SectionDivider />
-      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </SettingsSection>
+      <SettingsSection title="Espaçamento" defaultOpen={false}>
+        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </SettingsSection>
     </div>
   );
 }
@@ -1026,32 +1032,43 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
               {/* Settings panel */}
               {showRightPanel && (
-                <div
-                  className="w-64 sm:w-72 md:w-80 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3"
-                  style={{ minWidth: 0 }}
-                >
+                <div className="w-64 sm:w-72 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden min-w-0">
                   {settingsTarget ? (
-                    <div className="w-full min-w-0 max-w-full overflow-hidden">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold truncate">{BLOCK_LABELS[settingsTarget.type]}</span>
-                        <button onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+                    <div className="w-full min-w-0 max-w-full">
+                      {/* Panel header */}
+                      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30 sticky top-0 z-10">
+                        {(() => {
+                          const Icon = BLOCK_ICONS[settingsTarget.type] || Type;
+                          return <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />;
+                        })()}
+                        <span className="text-xs font-semibold truncate flex-1">{BLOCK_LABELS[settingsTarget.type]}</span>
+                        <button
+                          onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }}
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+                        >
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <BlockSettingsDispatch
-                        block={settingsTarget}
-                        onChange={b => {
-                          if (b.type === 'columns') updateStructure(b as ColumnsBlock);
-                          else updateElement(b);
-                        }}
-                        variables={variables}
-                        trackedParams={trackedParams}
-                        allInputElements={allInputElements}
-                      />
+                      {/* Panel body */}
+                      <div className="px-3 pt-1 pb-3">
+                        <BlockSettingsDispatch
+                          block={settingsTarget}
+                          onChange={b => {
+                            if (b.type === 'columns') updateStructure(b as ColumnsBlock);
+                            else updateElement(b);
+                          }}
+                          variables={variables}
+                          trackedParams={trackedParams}
+                          allInputElements={allInputElements}
+                        />
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <p className="text-xs">Selecione um elemento para editar</p>
+                    <div className="flex flex-col items-center justify-center h-full py-16 px-4 text-center">
+                      <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+                        <Settings2 className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">Selecione um elemento<br/>para editar</p>
                     </div>
                   )}
                 </div>
