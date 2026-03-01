@@ -13,6 +13,7 @@ import FormPreview from "./pages/FormPreview";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const FormEditor = lazy(() => import("./pages/FormEditor"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Gallery = lazy(() => import("./pages/Gallery"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AppLayout = lazy(() => import("./components/AppLayout"));
@@ -92,6 +93,7 @@ const App = () => {
                 <Routes>
                   <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
                   <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+                  <Route path="/gallery" element={<ProtectedRoute><AppLayout><Gallery /></AppLayout></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
                   <Route path="/editor/:id" element={<ProtectedRoute><FormEditor /></ProtectedRoute>} />
                   <Route path="/f/:id" element={<FormPreview />} />

@@ -1,8 +1,8 @@
-import { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { memo, useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
   MessageSquare, Trash2, Phone, FileText, ChevronDown, ChevronUp,
-  Loader2, CheckCircle2, XCircle, Upload, X, Paperclip, Send,
+  Loader2, CheckCircle2, XCircle, Upload, X, Paperclip, Send, Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,6 +40,8 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
   const [instances, setInstances] = useState<EvolutionInstance[]>([]);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const GalleryPicker = useMemo(() => lazy(() => import('./GalleryPicker')), []);
 
   useEffect(() => {
     supabase.from('integration_settings')
@@ -300,15 +302,24 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                           </div>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          disabled={uploading}
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border hover:border-node-whatsapp-accent/40 text-muted-foreground hover:text-node-whatsapp-accent transition-colors text-xs"
-                        >
-                          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                          {uploading ? 'Enviando…' : 'Selecionar arquivo'}
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            disabled={uploading}
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border hover:border-node-whatsapp-accent/40 text-muted-foreground hover:text-node-whatsapp-accent transition-colors text-xs"
+                          >
+                            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            {uploading ? 'Enviando…' : 'Upload'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setGalleryOpen(true)}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border hover:border-node-whatsapp-accent/40 text-muted-foreground hover:text-node-whatsapp-accent transition-colors text-xs"
+                          >
+                            <ImageIcon className="h-3.5 w-3.5" /> Galeria
+                          </button>
+                        </div>
                       )}
 
                       {nodeData.mediaType === 'document' && nodeData.mediaUrl && (
@@ -359,6 +370,25 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
             mediaFileName={nodeData.mediaFileName}
             elementLookup={elementLookup}
           />
+        )}
+
+        {/* Gallery Picker */}
+        {galleryOpen && (
+          <Suspense fallback={null}>
+            <GalleryPicker
+              open={galleryOpen}
+              onClose={() => setGalleryOpen(false)}
+              accept={
+                nodeData.mediaType === 'image' ? 'image/*' :
+                nodeData.mediaType === 'video' ? 'video/*' :
+                nodeData.mediaType === 'audio' ? 'audio/*' : undefined
+              }
+              onSelect={file => {
+                onChange({ mediaUrl: file.url, mediaFileName: file.name });
+                setGalleryOpen(false);
+              }}
+            />
+          </Suspense>
         )}
       </div>
     </TooltipProvider>

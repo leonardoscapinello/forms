@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  Settings, LogOut, LayoutDashboard,
+  Settings, LogOut, LayoutDashboard, Image,
 } from 'lucide-react';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -11,6 +11,7 @@ import {
 
 const mainItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'Galeria', url: '/gallery', icon: Image },
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
 
