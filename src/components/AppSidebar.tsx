@@ -30,14 +30,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <div className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-xs font-bold text-primary-foreground">FF</span>
-          </div>
-          <span className="text-base font-semibold text-sidebar-primary tracking-tight">
-            twobrain
-          </span>
-        </div>
+        <img src="/images/twobrain-logo-dark.svg" alt="twobrain" className="h-7" />
       </div>
 
       <SidebarContent>
