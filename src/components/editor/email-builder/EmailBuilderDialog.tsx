@@ -885,7 +885,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden [&>button]:z-50">
         {/* ─── Top bar ─── */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border/50 flex-shrink-0 bg-background">
           <div className="flex items-center gap-3 min-w-0">
@@ -944,8 +944,8 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                 {/* Canvas */}
                 <div className="flex-1 overflow-y-auto min-w-0 relative" style={{ backgroundColor: emailBg }}
                   onClick={clearSelection}>
-                  <div className="max-w-[600px] mx-auto my-8 rounded-xl shadow-sm relative"
-                    style={{ backgroundColor: contentBg, paddingLeft: 40 }}>
+                  <div className="w-full max-w-[600px] mx-auto my-8 rounded-xl shadow-sm relative box-border"
+                    style={{ backgroundColor: contentBg, paddingLeft: 'clamp(8px, 3vw, 40px)', paddingRight: 'clamp(0px, 1vw, 8px)' }}>
                     
                     {blocks.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
