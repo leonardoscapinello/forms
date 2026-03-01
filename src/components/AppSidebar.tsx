@@ -34,11 +34,11 @@ export function AppSidebar() {
         onClick={() => navigate(item.url)}
         className={`mx-3 px-3 py-2.5 rounded-full text-[13px] transition-all ${
           isActive(item.url)
-            ? 'bg-primary text-primary-foreground font-medium'
-            : 'bg-transparent text-foreground/70 hover:bg-accent hover:text-foreground'
+            ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
+            : 'bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
         }`}
       >
-        <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
+        <item.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${isActive(item.url) ? '' : 'text-[#B7B790]'}`} />
         <span>{item.title}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
