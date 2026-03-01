@@ -45,9 +45,10 @@ interface Props {
   lockElement?: (elementId: string) => void;
   unlockElement?: () => void;
   isLockedByOther?: (elementId: string) => CollaboratorPresence | null;
+  formStyle?: import('@/types/form').FormStyle;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -423,7 +424,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onDragLeave={handleCanvasDragLeave}
         onDrop={handleCanvasDrop}
         style={{
-          backgroundColor: isExternalDragOver ? undefined : (effectiveStyle.backgroundColor || undefined),
+          backgroundColor: isExternalDragOver ? undefined : (() => { const raw = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAF6'; return raw.startsWith('#') ? raw : `hsl(${raw})`; })(),
           fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),
         }}
       >

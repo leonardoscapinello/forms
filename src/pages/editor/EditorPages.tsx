@@ -76,6 +76,7 @@ export default function EditorPages() {
           lockElement={lockElement}
           unlockElement={unlockElement}
           isLockedByOther={isLockedByOther}
+          formStyle={form.style}
         />
       ) : editingThankYou ? (
         <PageBuilder
@@ -92,6 +93,7 @@ export default function EditorPages() {
           lockElement={lockElement}
           unlockElement={unlockElement}
           isLockedByOther={isLockedByOther}
+          formStyle={form.style}
         />
       ) : editingPage ? (
         <PageBuilder
@@ -108,6 +110,7 @@ export default function EditorPages() {
           lockElement={lockElement}
           unlockElement={unlockElement}
           isLockedByOther={isLockedByOther}
+          formStyle={form.style}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
