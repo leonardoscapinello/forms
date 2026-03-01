@@ -42,10 +42,11 @@ async function processQueue() {
     } catch (err) {
       const attempt = task.maxRetries - task.retries + 1;
       if (task.retries > 0) {
-        console.warn(`[BackgroundQueue] "${task.label}" failed (attempt ${attempt}/${task.maxRetries}), retrying…`, err);
+        console.warn(`[BackgroundQueue] "${task.label}" failed (attempt ${attempt}/${task.maxRetries}), retrying…`);
         scheduleRetry({ ...task, retries: task.retries - 1 }, attempt);
       } else {
-        console.error(`[BackgroundQueue] "${task.label}" failed after ${task.maxRetries} attempts`, err);
+        // Silently drop — never block form flow
+        console.warn(`[BackgroundQueue] "${task.label}" failed after ${task.maxRetries} attempts — dropped`);
       }
     }
   }
