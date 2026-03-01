@@ -157,8 +157,20 @@ export default function FormPreview() {
   }, [id, storeForm]);
 
   const form = storeForm || publicForm;
-  const hasEditorPreviewFlag = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('editorPreview') === '1';
-  const isEditorPreview = !!storeForm || hasEditorPreviewFlag; // preview must never trigger side-effects
+
+  // ── Preview mode detection — IMMUTABLE after first detection ─────────────
+  // Once true, it NEVER becomes false. Prevents stale-closure side-effect leaks.
+  const isEditorPreviewRef = useRef(false);
+  const computedPreview = !!storeForm || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('editorPreview') === '1');
+  if (computedPreview && !isEditorPreviewRef.current) {
+    isEditorPreviewRef.current = true;
+  }
+  const isEditorPreview = isEditorPreviewRef.current;
+
+  // Debug: log preview mode once on mount
+  useEffect(() => {
+    console.log('[FormPreview] isEditorPreview =', isEditorPreviewRef.current, '| storeForm =', !!storeForm, '| search =', window.location.search);
+  }, []);
 
   useEffect(() => {
     if (!publicLoading) setShowPublicSkeleton(false);
@@ -698,6 +710,8 @@ export default function FormPreview() {
     currentAnswers: Record<string, any>,
     skipSideEffects = false,
   ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any>; pendingWait?: { durationMs: number; feedback?: WaitFeedbackConfig; remainingNodeId: string } }> => {
+    // SAFETY NET: always skip side-effects in preview mode, regardless of caller
+    const effectiveSkip = skipSideEffects || isEditorPreviewRef.current;
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
@@ -793,7 +807,7 @@ export default function FormPreview() {
 
       // Intermediate: webhook integration node
       if (target.startsWith('int-')) {
-        if (!skipSideEffects) {
+        if (!effectiveSkip) {
           const intgId = target.replace('int-', '');
           const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
           if (intgNode && f) {
@@ -865,7 +879,7 @@ export default function FormPreview() {
 
       // Intermediate: analytics node — fire server-side with retry (AdBlock-proof)
       if (target.startsWith('an-')) {
-        if (!skipSideEffects) {
+        if (!effectiveSkip) {
           const anId = target.replace('an-', '');
           const anNode = f?.analyticsNodes?.find(n => n.id === anId);
           if (anNode && f) {
@@ -918,7 +932,7 @@ export default function FormPreview() {
       }
       // Intermediate: WhatsApp node — fire-and-forget via background queue
       if (target.startsWith('wa-')) {
-        if (!skipSideEffects) {
+        if (!effectiveSkip) {
           const waId = target.replace('wa-', '');
           const waNode = f?.whatsappNodes?.find(n => n.id === waId);
           if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
@@ -949,7 +963,7 @@ export default function FormPreview() {
 
       // Intermediate: Email node — fire-and-forget via background queue
       if (target.startsWith('em-')) {
-        if (!skipSideEffects) {
+        if (!effectiveSkip) {
           const emId = target.replace('em-', '');
           const emNode = f?.emailNodes?.find(n => n.id === emId);
           if (emNode && f && emNode.instanceId && emNode.toEmail) {
@@ -1020,7 +1034,7 @@ export default function FormPreview() {
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
           const durationMs = (wtNode.duration || 1) * multiplier;
           // Walk the rest of the workflow from the wait node to find the destination
-          const restResult = await walkWorkflow(target, currentAns, skipSideEffects);
+          const restResult = await walkWorkflow(target, currentAns, effectiveSkip);
           return {
             ...restResult,
             pendingWait: { durationMs, feedback: wtNode.feedback, remainingNodeId: target },
