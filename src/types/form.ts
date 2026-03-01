@@ -385,6 +385,28 @@ export interface WhatsAppNodeData {
   mediaFileName?: string;
 }
 
+// ── Email (Resend) Node ─────────────────────────────────────────────────────
+
+export interface EmailNodeData {
+  id: string;
+  /** ID of the integration_settings row for the Resend instance */
+  instanceId?: string;
+  /** Sender email address — may contain {{var}} interpolation */
+  fromEmail?: string;
+  /** Sender display name — may contain {{var}} interpolation */
+  fromName?: string;
+  /** Recipient email — may contain {{var}} interpolation */
+  toEmail?: string;
+  /** Email subject — may contain {{var}} interpolation */
+  subject?: string;
+  /** Plain text body — may contain {{var}} interpolation */
+  bodyText?: string;
+  /** Whether to use HTML body instead of plain text */
+  useHtml?: boolean;
+  /** HTML body — may contain {{var}} interpolation */
+  bodyHtml?: string;
+}
+
 /** A pixel event fired automatically when the form loads */
 export interface FormPixelEvent {
   id: string;
@@ -492,6 +514,8 @@ export interface FormData {
   analyticsNodes?: AnalyticsNodeData[];
   /** WhatsApp (Evolution API) nodes */
   whatsappNodes?: WhatsAppNodeData[];
+  /** Email (Resend) nodes */
+  emailNodes?: EmailNodeData[];
   /** Pixel events fired automatically when the form is loaded */
   pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];

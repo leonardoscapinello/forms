@@ -15,6 +15,7 @@ import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
 import PixelIntegrationsCard from '@/components/settings/PixelIntegrationsCard';
 import GoogleOAuthCard from '@/components/settings/GoogleOAuthCard';
 import EvolutionApiCard from '@/components/settings/EvolutionApiCard';
+import ResendApiCard from '@/components/settings/ResendApiCard';
 import EmailValidationsTab from '@/components/settings/EmailValidationsTab';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -431,6 +432,7 @@ function IntegrationsTab() {
     <GoogleOAuthCard />
     <ReoonIntegrationCard />
     <EvolutionApiCard />
+    <ResendApiCard />
     </div>
   );
 }

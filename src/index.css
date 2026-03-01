@@ -124,6 +124,9 @@ img.emoji {
     /* WhatsApp = green */
     --node-whatsapp: 142 70% 92%;
     --node-whatsapp-accent: 142 65% 38%;
+    /* Email = blue-indigo */
+    --node-email: 230 70% 94%;
+    --node-email-accent: 230 60% 50%;
   }
 
   .dark {
@@ -184,6 +187,8 @@ img.emoji {
     --node-analytics-accent: 258 50% 70%;
     --node-whatsapp: 142 35% 18%;
     --node-whatsapp-accent: 142 55% 50%;
+    --node-email: 230 35% 22%;
+    --node-email-accent: 230 50% 65%;
   }
 }
 

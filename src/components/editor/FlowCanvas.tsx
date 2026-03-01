@@ -24,7 +24,7 @@ import '@xyflow/react/dist/style.css';
 import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
-  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, FormVariable,
+  VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData, FormVariable,
 } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
@@ -35,6 +35,7 @@ import VariableOpNode from './VariableOpNode';
 import IntegrationNode from './IntegrationNode';
 import AnalyticsNode from './AnalyticsNode';
 import WhatsAppNode from './WhatsAppNode';
+import EmailNode from './EmailNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import { FileText, Trash2, LayoutGrid } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
@@ -52,6 +53,7 @@ const nodeTypes = {
   integrationNode: IntegrationNode,
   analyticsNode: AnalyticsNode,
   whatsappNode: WhatsAppNode,
+  emailNode: EmailNode,
 };
 
 const edgeTypes = {
@@ -86,6 +88,9 @@ interface Props {
   onWhatsAppAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onWhatsAppChange: (nodeId: string, patch: Partial<WhatsAppNodeData>) => void;
   onWhatsAppDelete: (nodeId: string) => void;
+  onEmailAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onEmailChange: (nodeId: string, patch: Partial<EmailNodeData>) => void;
+  onEmailDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
   onCreateVariable?: (variable: FormVariable) => void;
@@ -103,6 +108,7 @@ function FlowCanvasInner({
   onIntegrationAddAtPosition, onIntegrationChange, onIntegrationDelete,
   onAnalyticsAddAtPosition, onAnalyticsChange, onAnalyticsDelete,
   onWhatsAppAddAtPosition, onWhatsAppChange, onWhatsAppDelete,
+  onEmailAddAtPosition, onEmailChange, onEmailDelete,
   onFormUpdate, onPageSelect, onCreateVariable,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -161,6 +167,7 @@ function FlowCanvasInner({
   const integrationNodes = form.integrationNodes || [];
   const analyticsNodes = form.analyticsNodes || [];
   const whatsappNodes = form.whatsappNodes || [];
+  const emailNodes = form.emailNodes || [];
 
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
@@ -366,8 +373,27 @@ function FlowCanvasInner({
       });
     });
 
+    emailNodes.forEach((em, i) => {
+      const nodeId = `em-${em.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
+      n.push({
+        id: nodeId,
+        type: 'emailNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 6) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: em,
+          onChange: (patch: Partial<EmailNodeData>) => onEmailChange(em.id, patch),
+          onDelete: () => onEmailDelete(em.id),
+          variables,
+          integrationNodes,
+          allInputElements: prevElements,
+          trackedParams: form.trackedParams,
+        },
+      });
+    });
+
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -410,10 +436,11 @@ function FlowCanvasInner({
     const analyticsChanged = prev.analyticsNodes !== form.analyticsNodes;
     const intgChanged = prev.integrationNodes !== form.integrationNodes;
     const whatsappChanged = prev.whatsappNodes !== form.whatsappNodes;
+    const emailChanged = prev.emailNodes !== form.emailNodes;
     const varsChanged = prev.variables !== form.variables;
     const edgesChanged = prev.flowEdges !== form.flowEdges;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || varsChanged || edgesChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || varsChanged || edgesChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
@@ -609,6 +636,8 @@ function FlowCanvasInner({
         onAnalyticsDelete(nodeId.replace('an-', ''));
       } else if (nodeId.startsWith('wa-')) {
         onWhatsAppDelete(nodeId.replace('wa-', ''));
+      } else if (nodeId.startsWith('em-')) {
+        onEmailDelete(nodeId.replace('em-', ''));
       }
     }
 
@@ -621,7 +650,7 @@ function FlowCanvasInner({
 
     onNodesChangeBase(nodeIds.map(id => ({ type: 'remove' as const, id })));
     setDeleteConfirm(null);
-  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, onIntegrationDelete, onWhatsAppDelete, setEdges, saveEdges, onNodesChangeBase]);
+  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, onIntegrationDelete, onWhatsAppDelete, onEmailDelete, setEdges, saveEdges, onNodesChangeBase]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);
@@ -712,6 +741,12 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onWhatsAppAddAtPosition]);
 
+  const handleDropAddEmail = useCallback(() => {
+    if (!dropMenu) return;
+    onEmailAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onEmailAddAtPosition]);
+
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -757,6 +792,12 @@ function FlowCanvasInner({
     onWhatsAppAddAtPosition(contextMenu.flowPos, 'start');
     setContextMenu(null);
   }, [contextMenu, onWhatsAppAddAtPosition]);
+
+  const handleCtxAddEmail = useCallback(() => {
+    if (!contextMenu) return;
+    onEmailAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onEmailAddAtPosition]);
 
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
@@ -841,6 +882,7 @@ function FlowCanvasInner({
             if (node.type === 'integrationNode') return 'hsl(var(--node-webhook-accent))';
             if (node.type === 'analyticsNode') return 'hsl(var(--node-analytics-accent))';
             if (node.type === 'whatsappNode') return 'hsl(var(--node-whatsapp-accent))';
+            if (node.type === 'emailNode') return 'hsl(var(--node-email-accent))';
             if (node.type === 'pageNode') return 'hsl(var(--muted-foreground))';
             return 'hsl(var(--muted))';
           }}
@@ -869,6 +911,7 @@ function FlowCanvasInner({
           if (t === 'integrationNode') return 'Integração';
           if (t === 'analyticsNode') return 'Analytics';
           if (t === 'whatsappNode') return 'WhatsApp';
+          if (t === 'emailNode') return 'E-mail';
           return 'Nó';
         };
 
@@ -883,6 +926,7 @@ function FlowCanvasInner({
           if (t === 'integrationNode') return '🔗';
           if (t === 'analyticsNode') return '📊';
           if (t === 'whatsappNode') return '💬';
+          if (t === 'emailNode') return '📧';
           return '○';
         };
 
@@ -932,6 +976,7 @@ function FlowCanvasInner({
           onAddIntegration={handleDropAddIntegration}
           onAddAnalytics={handleDropAddAnalytics}
           onAddWhatsApp={handleDropAddWhatsApp}
+          onAddEmail={handleDropAddEmail}
           onClose={() => setDropMenu(null)}
         />
       )}
@@ -945,6 +990,7 @@ function FlowCanvasInner({
           onAddIntegration={handleCtxAddIntegration}
           onAddAnalytics={handleCtxAddAnalytics}
           onAddWhatsApp={handleCtxAddWhatsApp}
+          onAddEmail={handleCtxAddEmail}
           onClose={() => setContextMenu(null)}
         />
       )}
