@@ -1006,7 +1006,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                     showStylePanel ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
                   )}>
                   <Palette className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Cores</span>
+                  <span className="hidden sm:inline">Estilo</span>
                 </button>
               </>
             )}
