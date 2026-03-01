@@ -1,11 +1,12 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   Type, ImageIcon, MousePointer2, Minus, Space, Columns2, 
-  Trash2, GripVertical, ChevronUp, ChevronDown, Plus, Eye, Code, X,
-  AlignLeft, AlignCenter, AlignRight, Bold, Italic, Link, Palette
+  Trash2, ChevronUp, ChevronDown, Plus, X,
+  AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -13,9 +14,17 @@ import { cn } from '@/lib/utils';
 // ─── Block types ────────────────────────────────────────────────────
 type BlockType = 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'columns';
 
+interface BlockPadding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 interface BaseBlock {
   id: string;
   type: BlockType;
+  padding: BlockPadding;
 }
 
 interface TextBlock extends BaseBlock {
@@ -31,7 +40,7 @@ interface ImageBlock extends BaseBlock {
   type: 'image';
   src: string;
   alt: string;
-  width: string; // e.g. '100%' or '300px'
+  width: string;
   align: 'left' | 'center' | 'right';
   link: string;
 }
@@ -71,41 +80,69 @@ type EmailBlock = TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBl
 // ─── Defaults ────────────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
+const DEFAULT_PADDING: BlockPadding = { top: 8, right: 24, bottom: 8, left: 24 };
+
 function createBlock(type: BlockType): EmailBlock {
   const id = uid();
+  const padding = { ...DEFAULT_PADDING };
   switch (type) {
-    case 'text': return { id, type, content: 'Seu texto aqui...', align: 'left', fontSize: 16, fontWeight: 'normal', color: '#333333' };
-    case 'image': return { id, type, src: '', alt: '', width: '100%', align: 'center', link: '' };
-    case 'button': return { id, type, text: 'Clique aqui', href: '#', bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
-    case 'divider': return { id, type, color: '#E5E7EB', thickness: 1, width: '100%' };
-    case 'spacer': return { id, type, height: 20 };
-    case 'columns': return { id, type, columns: [[], []] };
+    case 'text': return { id, type, padding, content: 'Seu texto aqui...', align: 'left', fontSize: 16, fontWeight: 'normal', color: '#333333' };
+    case 'image': return { id, type, padding, src: '', alt: '', width: '100%', align: 'center', link: '' };
+    case 'button': return { id, type, padding: { top: 16, right: 24, bottom: 16, left: 24 }, text: 'Clique aqui', href: '#', bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
+    case 'divider': return { id, type, padding, color: '#E5E7EB', thickness: 1, width: '100%' };
+    case 'spacer': return { id, type, padding: { top: 0, right: 0, bottom: 0, left: 0 }, height: 20 };
+    case 'columns': return { id, type, padding: { top: 8, right: 20, bottom: 8, left: 20 }, columns: [[], []] };
   }
 }
 
+// ─── Blocks JSON embed (hidden comment in HTML) ─────────────────────
+const BLOCKS_MARKER_START = '<!--BLOCKS:';
+const BLOCKS_MARKER_END = ':BLOCKS-->';
+
+function embedBlocksInHtml(html: string, blocks: EmailBlock[], emailBg: string, contentBg: string): string {
+  const meta = JSON.stringify({ blocks, emailBg, contentBg });
+  return html + `\n${BLOCKS_MARKER_START}${btoa(unescape(encodeURIComponent(meta)))}${BLOCKS_MARKER_END}`;
+}
+
+function extractBlocksFromHtml(html: string): { blocks: EmailBlock[]; emailBg: string; contentBg: string } | null {
+  const startIdx = html.indexOf(BLOCKS_MARKER_START);
+  const endIdx = html.indexOf(BLOCKS_MARKER_END);
+  if (startIdx === -1 || endIdx === -1) return null;
+  try {
+    const b64 = html.slice(startIdx + BLOCKS_MARKER_START.length, endIdx);
+    const json = decodeURIComponent(escape(atob(b64)));
+    return JSON.parse(json);
+  } catch { return null; }
+}
+
 // ─── Block to HTML ──────────────────────────────────────────────────
+function padStr(p: BlockPadding) {
+  return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
+}
+
 function blockToHtml(block: EmailBlock): string {
+  const pad = padStr(block.padding);
   switch (block.type) {
     case 'text':
-      return `<tr><td style="padding:8px 24px;text-align:${block.align};font-size:${block.fontSize}px;font-weight:${block.fontWeight};color:${block.color};font-family:Arial,Helvetica,sans-serif;line-height:1.5;">${block.content.replace(/\n/g, '<br/>')}</td></tr>`;
+      return `<tr><td style="padding:${pad};text-align:${block.align};font-size:${block.fontSize}px;font-weight:${block.fontWeight};color:${block.color};font-family:Arial,Helvetica,sans-serif;line-height:1.5;">${block.content.replace(/\n/g, '<br/>')}</td></tr>`;
     case 'image': {
       const img = `<img src="${block.src}" alt="${block.alt}" style="display:block;max-width:100%;width:${block.width};height:auto;border:0;" />`;
       const linked = block.link ? `<a href="${block.link}" target="_blank">${img}</a>` : img;
-      return `<tr><td style="padding:8px 24px;text-align:${block.align};">${linked}</td></tr>`;
+      return `<tr><td style="padding:${pad};text-align:${block.align};">${linked}</td></tr>`;
     }
     case 'button':
-      return `<tr><td style="padding:16px 24px;text-align:${block.align};"><a href="${block.href}" target="_blank" style="display:inline-block;background-color:${block.bgColor};color:${block.textColor};font-size:${block.fontSize}px;font-family:Arial,Helvetica,sans-serif;font-weight:bold;text-decoration:none;padding:${block.paddingY}px ${block.paddingX}px;border-radius:${block.borderRadius}px;mso-padding-alt:0;">${block.text}</a></td></tr>`;
+      return `<tr><td style="padding:${pad};text-align:${block.align};"><a href="${block.href}" target="_blank" style="display:inline-block;background-color:${block.bgColor};color:${block.textColor};font-size:${block.fontSize}px;font-family:Arial,Helvetica,sans-serif;font-weight:bold;text-decoration:none;padding:${block.paddingY}px ${block.paddingX}px;border-radius:${block.borderRadius}px;mso-padding-alt:0;">${block.text}</a></td></tr>`;
     case 'divider':
-      return `<tr><td style="padding:8px 24px;"><table role="presentation" width="${block.width}" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="border-top:${block.thickness}px solid ${block.color};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`;
+      return `<tr><td style="padding:${pad};"><table role="presentation" width="${block.width}" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="border-top:${block.thickness}px solid ${block.color};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`;
     case 'spacer':
       return `<tr><td style="padding:0;height:${block.height}px;font-size:0;line-height:0;">&nbsp;</td></tr>`;
     case 'columns': {
       const colWidth = Math.floor(100 / block.columns.length);
       const cols = block.columns.map(col => {
         const inner = col.map(b => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${blockToHtml(b)}</table>`).join('');
-        return `<td style="width:${colWidth}%;vertical-align:top;padding:0 4px;">${inner || '&nbsp;'}</td>`;
+        return `<!--[if mso]><td style="width:${colWidth}%;vertical-align:top;padding:0 4px;"><![endif]--><div class="email-col" style="display:inline-block;width:100%;max-width:${colWidth}%;vertical-align:top;padding:0 4px;box-sizing:border-box;">${inner || '&nbsp;'}</div><!--[if mso]></td><![endif]-->`;
       }).join('');
-      return `<tr><td style="padding:8px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cols}</tr></table></td></tr>`;
+      return `<tr><td style="padding:${pad};"><!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><![endif]-->${cols}<!--[if mso]></tr></table><![endif]--></td></tr>`;
     }
   }
 }
@@ -116,33 +153,58 @@ function blocksToHtml(blocks: EmailBlock[], bgColor = '#F9FAFB', contentBg = '#F
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Email</title>
+<style>
+@media only screen and (max-width: 620px) {
+  .email-container { width: 100% !important; min-width: 100% !important; }
+  .email-col { display: block !important; width: 100% !important; max-width: 100% !important; }
+  td { padding-left: 16px !important; padding-right: 16px !important; }
+}
+</style>
 <!--[if mso]><style>table,td{font-family:Arial,Helvetica,sans-serif!important;}</style><![endif]-->
 </head>
-<body style="margin:0;padding:0;background-color:${bgColor};font-family:Arial,Helvetica,sans-serif;">
+<body style="margin:0;padding:0;background-color:${bgColor};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${bgColor};">
 <tr><td align="center" style="padding:24px 0;">
-<table role="presentation" width="${contentWidth}" cellpadding="0" cellspacing="0" style="background-color:${contentBg};border-radius:8px;max-width:${contentWidth}px;width:100%;">
+<table role="presentation" class="email-container" width="${contentWidth}" cellpadding="0" cellspacing="0" style="background-color:${contentBg};border-radius:8px;max-width:${contentWidth}px;width:100%;">
 ${rows}
 </table>
 </td></tr></table>
 </body></html>`;
 }
 
-function htmlToBlocks(html: string): EmailBlock[] | null {
-  // Very basic parser — if we can't parse, return null (user edited raw HTML)
-  if (!html || !html.includes('role="presentation"')) return null;
-  return null; // For now, always start fresh or keep existing blocks
-}
-
 // ─── Block palette items ────────────────────────────────────────────
-const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Type; desc: string }[] = [
-  { type: 'text', label: 'Texto', icon: Type, desc: 'Parágrafo de texto' },
-  { type: 'image', label: 'Imagem', icon: ImageIcon, desc: 'Imagem com link opcional' },
-  { type: 'button', label: 'Botão', icon: MousePointer2, desc: 'Call-to-action' },
-  { type: 'divider', label: 'Divisor', icon: Minus, desc: 'Linha horizontal' },
-  { type: 'spacer', label: 'Espaço', icon: Space, desc: 'Espaçamento vertical' },
-  { type: 'columns', label: 'Colunas', icon: Columns2, desc: 'Layout 2 colunas' },
+const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Type }[] = [
+  { type: 'text', label: 'Texto', icon: Type },
+  { type: 'image', label: 'Imagem', icon: ImageIcon },
+  { type: 'button', label: 'Botão', icon: MousePointer2 },
+  { type: 'divider', label: 'Divisor', icon: Minus },
+  { type: 'spacer', label: 'Espaço', icon: Space },
+  { type: 'columns', label: 'Colunas', icon: Columns2 },
 ];
+
+// ─── Padding editor ─────────────────────────────────────────────────
+function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange: (p: BlockPadding) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-medium text-muted-foreground uppercase">Espaçamento interno</label>
+      <div className="grid grid-cols-2 gap-1.5">
+        {(['top', 'right', 'bottom', 'left'] as const).map(side => (
+          <div key={side} className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground w-3 shrink-0">{side === 'top' ? '↑' : side === 'right' ? '→' : side === 'bottom' ? '↓' : '←'}</span>
+            <Input
+              type="number"
+              value={padding[side]}
+              onChange={e => onChange({ ...padding, [side]: Math.max(0, Number(e.target.value)) })}
+              className="h-7 text-[10px] w-full"
+              min={0}
+              max={100}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ─── Settings panels ────────────────────────────────────────────────
 function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: TextBlock) => void }) {
@@ -175,11 +237,11 @@ function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: Tex
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Cor</label>
           <div className="flex items-center gap-1 mt-1">
             <input type="color" value={block.color} onChange={e => onChange({ ...block, color: e.target.value })} className="h-8 w-8 rounded border border-input cursor-pointer" />
-            <Input value={block.color} onChange={e => onChange({ ...block, color: e.target.value })} className="h-8 text-xs flex-1" />
           </div>
         </div>
       </div>
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
 }
@@ -193,12 +255,12 @@ function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: I
       </div>
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto alternativo</label>
-        <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição da imagem" className="h-8 text-xs mt-1" />
+        <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-8 text-xs mt-1" />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Largura</label>
-          <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100% ou 300px" className="h-8 text-xs mt-1" />
+          <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-8 text-xs mt-1" />
         </div>
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Link</label>
@@ -206,6 +268,7 @@ function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: I
         </div>
       </div>
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
 }
@@ -241,7 +304,7 @@ function ButtonSettings({ block, onChange }: { block: ButtonBlock; onChange: (b:
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Raio borda</label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase">Raio</label>
           <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
         <div>
@@ -254,6 +317,7 @@ function ButtonSettings({ block, onChange }: { block: ButtonBlock; onChange: (b:
         </div>
       </div>
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
 }
@@ -274,15 +338,18 @@ function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (
           <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
       </div>
+      <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
 }
 
 function SpacerSettings({ block, onChange }: { block: SpacerBlock; onChange: (b: SpacerBlock) => void }) {
   return (
-    <div>
-      <label className="text-[10px] font-medium text-muted-foreground uppercase">Altura (px)</label>
-      <Input type="number" value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="h-8 text-xs mt-1 w-24" />
+    <div className="space-y-3">
+      <div>
+        <label className="text-[10px] font-medium text-muted-foreground uppercase">Altura (px)</label>
+        <Input type="number" value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="h-8 text-xs mt-1 w-24" />
+      </div>
     </div>
   );
 }
@@ -306,18 +373,21 @@ function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left'
   );
 }
 
-// ─── Block preview (inside editor canvas) ───────────────────────────
+// ─── Block preview ──────────────────────────────────────────────────
 function BlockPreview({ block }: { block: EmailBlock }) {
+  const pad = block.padding;
+  const padStyle = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
+
   switch (block.type) {
     case 'text':
       return (
-        <div style={{ textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif', padding: '8px 24px' }}>
+        <div style={{ ...padStyle, textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' }}>
           {block.content.split('\n').map((line, i) => <span key={i}>{line}{i < block.content.split('\n').length - 1 && <br />}</span>)}
         </div>
       );
     case 'image':
       return (
-        <div style={{ textAlign: block.align, padding: '8px 24px' }}>
+        <div style={{ ...padStyle, textAlign: block.align }}>
           {block.src ? (
             <img src={block.src} alt={block.alt} style={{ maxWidth: '100%', width: block.width, height: 'auto', display: 'inline-block' }} />
           ) : (
@@ -329,7 +399,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
       );
     case 'button':
       return (
-        <div style={{ textAlign: block.align, padding: '16px 24px' }}>
+        <div style={{ ...padStyle, textAlign: block.align }}>
           <span style={{
             display: 'inline-block', backgroundColor: block.bgColor, color: block.textColor,
             fontSize: block.fontSize, fontWeight: 'bold', padding: `${block.paddingY}px ${block.paddingX}px`,
@@ -341,7 +411,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
       );
     case 'divider':
       return (
-        <div style={{ padding: '8px 24px' }}>
+        <div style={padStyle}>
           <hr style={{ border: 'none', borderTop: `${block.thickness}px solid ${block.color}`, width: block.width, margin: '0 auto' }} />
         </div>
       );
@@ -349,7 +419,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
       return <div style={{ height: block.height }} />;
     case 'columns':
       return (
-        <div style={{ display: 'flex', gap: 8, padding: '8px 20px' }}>
+        <div style={{ ...padStyle, display: 'flex', gap: 8 }}>
           {block.columns.map((col, ci) => (
             <div key={ci} style={{ flex: 1, minWidth: 0 }}>
               {col.length === 0 ? (
@@ -367,38 +437,50 @@ function BlockPreview({ block }: { block: EmailBlock }) {
 }
 
 // ─── Settings dispatcher ────────────────────────────────────────────
-function BlockSettings({ block, onChange }: { block: EmailBlock; onChange: (b: EmailBlock) => void }) {
+function BlockSettingsDispatch({ block, onChange }: { block: EmailBlock; onChange: (b: EmailBlock) => void }) {
   switch (block.type) {
     case 'text': return <TextSettings block={block} onChange={onChange} />;
     case 'image': return <ImageSettings block={block} onChange={onChange} />;
     case 'button': return <ButtonSettings block={block} onChange={onChange} />;
     case 'divider': return <DividerSettings block={block} onChange={onChange} />;
     case 'spacer': return <SpacerSettings block={block} onChange={onChange} />;
-    case 'columns': return <div className="text-xs text-muted-foreground">Arraste blocos para dentro das colunas no preview.</div>;
+    case 'columns': return (
+      <div className="space-y-3">
+        <div className="text-xs text-muted-foreground">Arraste blocos para dentro das colunas no preview.</div>
+        <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
+      </div>
+    );
   }
 }
+
+const BLOCK_LABELS: Record<BlockType, string> = {
+  text: 'Texto', image: 'Imagem', button: 'Botão', divider: 'Divisor', spacer: 'Espaço', columns: 'Colunas',
+};
 
 // ─── Main component ─────────────────────────────────────────────────
 interface Props {
   open: boolean;
   onClose: () => void;
-  value: string; // HTML string
+  value: string;
   onChange: (html: string) => void;
 }
 
 export default function EmailBuilderDialog({ open, onClose, value, onChange }: Props) {
   const [blocks, setBlocks] = useState<EmailBlock[]>(() => {
-    // Try to restore from stored blocks metadata, otherwise start with default
-    return [
-      createBlock('text'),
-      createBlock('divider'),
-      createBlock('button'),
-    ];
+    const restored = extractBlocksFromHtml(value);
+    if (restored) return restored.blocks;
+    return [createBlock('text'), createBlock('divider'), createBlock('button')];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<'editor' | 'preview' | 'code'>('editor');
-  const [emailBg, setEmailBg] = useState('#F9FAFB');
-  const [contentBg, setContentBg] = useState('#FFFFFF');
+  const [emailBg, setEmailBg] = useState(() => {
+    const restored = extractBlocksFromHtml(value);
+    return restored?.emailBg || '#F9FAFB';
+  });
+  const [contentBg, setContentBg] = useState(() => {
+    const restored = extractBlocksFromHtml(value);
+    return restored?.contentBg || '#FFFFFF';
+  });
 
   const selectedBlock = useMemo(() => blocks.find(b => b.id === selectedId) || null, [blocks, selectedId]);
 
@@ -435,10 +517,11 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
     });
   }, []);
 
-  const handleSave = () => {
-    onChange(html);
+  const handleSave = useCallback(() => {
+    const fullHtml = embedBlocksInHtml(html, blocks, emailBg, contentBg);
+    onChange(fullHtml);
     onClose();
-  };
+  }, [html, blocks, emailBg, contentBg, onChange, onClose]);
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -510,7 +593,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
                   {blocks.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                       <Plus className="h-8 w-8 mb-2 opacity-30" />
-                      <p className="text-sm">Arraste blocos da paleta à esquerda</p>
+                      <p className="text-sm">Clique em um bloco à esquerda para adicionar</p>
                     </div>
                   )}
                   {blocks.map((block, idx) => (
@@ -523,7 +606,6 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
                       )}
                     >
                       <BlockPreview block={block} />
-                      {/* Hover actions */}
                       <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 rounded-md border border-border shadow-sm p-0.5">
                         <button onClick={e => { e.stopPropagation(); moveBlock(block.id, -1); }} className="p-0.5 rounded hover:bg-muted" disabled={idx === 0}>
                           <ChevronUp className="h-3 w-3" />
@@ -535,7 +617,6 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
-                      {/* Add between */}
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={e => { e.stopPropagation(); addBlock('text', idx + 1); }}
@@ -554,16 +635,16 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange }: P
                 {selectedBlock ? (
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-semibold capitalize">{selectedBlock.type === 'text' ? 'Texto' : selectedBlock.type === 'image' ? 'Imagem' : selectedBlock.type === 'button' ? 'Botão' : selectedBlock.type === 'divider' ? 'Divisor' : selectedBlock.type === 'spacer' ? 'Espaço' : 'Colunas'}</span>
+                      <span className="text-xs font-semibold">{BLOCK_LABELS[selectedBlock.type]}</span>
                       <button onClick={() => setSelectedId(null)} className="text-muted-foreground hover:text-foreground">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <BlockSettings block={selectedBlock} onChange={updateBlock} />
+                    <BlockSettingsDispatch block={selectedBlock} onChange={updateBlock} />
                   </div>
                 ) : (
                   <div className="text-center py-10 text-muted-foreground">
-                    <p className="text-xs">Selecione um bloco para editar suas propriedades</p>
+                    <p className="text-xs">Selecione um bloco para editar</p>
                   </div>
                 )}
               </div>
