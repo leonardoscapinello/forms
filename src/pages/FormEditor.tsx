@@ -9,7 +9,7 @@ import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings, Monitor } from 'lucide-react';
+import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, MessageSquare, Share2, BarChart2, Settings, Monitor, Palette } from 'lucide-react';
 import { useEffect, useCallback, useState, useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 
@@ -22,8 +22,9 @@ const FormShare = lazy(() => import('@/components/editor/FormShare'));
 const FormSettings = lazy(() => import('@/components/editor/FormSettings'));
 const FormAnalytics = lazy(() => import('@/components/editor/FormAnalytics'));
 const ResponsivePreview = lazy(() => import('@/components/editor/ResponsivePreview'));
+const FormDesignSettings = lazy(() => import('@/components/editor/FormDesignSettings'));
 
-type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings' | 'analytics';
+type EditorView = 'pages' | 'workflow' | 'responses' | 'share' | 'settings' | 'analytics' | 'design';
 
 export default function FormEditor() {
   const { id } = useParams<{ id: string }>();
@@ -431,6 +432,7 @@ export default function FormEditor() {
             {([
               { view: 'pages', icon: LayoutPanelLeft, label: 'Páginas' },
               { view: 'workflow', icon: GitBranch, label: 'Workflow' },
+              { view: 'design', icon: Palette, label: 'Design' },
               { view: 'responses', icon: MessageSquare, label: 'Respostas' },
               { view: 'share', icon: Share2, label: 'Compartilhar' },
               { view: 'analytics', icon: BarChart2, label: 'Análises' },
@@ -653,6 +655,15 @@ export default function FormEditor() {
         {/* Analytics view */}
         {editorView === 'analytics' && (
           <FormAnalytics form={form} onUpdate={(patch) => updateForm(form.id, patch)} />
+        )}
+
+        {/* Design view */}
+        {editorView === 'design' && (
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-2xl mx-auto p-6">
+              <FormDesignSettings form={form} onUpdate={(patch) => updateForm(form.id, patch)} />
+            </div>
+          </div>
         )}
 
         {/* Settings view */}

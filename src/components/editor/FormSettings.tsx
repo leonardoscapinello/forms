@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp } from 'lucide-react';
-import FormDesignSettings from './FormDesignSettings';
+
 
 interface Props {
   form: FormData;
@@ -152,8 +152,6 @@ export default function FormSettings({ form, onUpdate }: Props) {
           </p>
         </div>
 
-        {/* ─── Design & Aparência ─── */}
-        <FormDesignSettings form={form} onUpdate={onUpdate} />
 
         {/* ─── Tracked GET Parameters ─── */}
         <div className="space-y-4">
