@@ -399,9 +399,9 @@ img.emoji {
 
 /* Variable highlight overlay in inputs */
 .var-highlight {
-  border-radius: 3px;
-  padding: 1px 2px;
-  color: transparent; /* text is invisible, only background shows through */
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: transparent;
 }
 .var-highlight-variable {
   background: hsl(var(--primary) / 0.15);
@@ -420,10 +420,32 @@ img.emoji {
 }
 
 .var-highlight-readable {
-  color: hsl(var(--foreground));
+  color: transparent;
 }
 .var-highlight-readable .var-highlight {
-  color: hsl(var(--foreground));
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+.var-highlight-readable .var-highlight-variable {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.12);
+}
+.var-highlight-readable .var-highlight-webhook {
+  color: hsl(var(--node-webhook-accent));
+  background: hsl(var(--node-webhook-accent) / 0.14);
+}
+.var-highlight-readable .var-highlight-field {
+  color: hsl(var(--node-whatsapp-accent) / 0.85);
+  background: hsl(var(--node-whatsapp-accent) / 0.14);
+}
+.var-highlight-readable .var-highlight-param {
+  color: hsl(30 80% 35%);
+  background: hsl(30 90% 50% / 0.12);
+}
+.var-highlight-readable .var-highlight-context {
+  color: hsl(210 70% 40%);
+  background: hsl(210 80% 55% / 0.12);
 }
 
 /* Container for the highlight backdrop */
