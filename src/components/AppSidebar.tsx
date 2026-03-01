@@ -32,7 +32,7 @@ export function AppSidebar() {
     .join('')
     .toUpperCase();
 
-  const renderNavItem = (item: typeof mainItems[0]) => {
+  const renderNavItem = (item: typeof mainItems[0], section: 'main' | 'system' = 'main') => {
     const active = isActive(item.url);
 
     return (
@@ -42,18 +42,27 @@ export function AppSidebar() {
         onClick={() => navigate(item.url)}
         aria-current={active ? 'page' : undefined}
         title={collapsed ? item.title : undefined}
-        className={cn(
-          'flex h-10 w-full items-center gap-3 rounded-lg px-4 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-          'group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0',
+        style={
           active
-            ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold'
+            ? {
+                background:
+                  'linear-gradient(90deg, hsl(var(--sidebar-primary)) 0%, hsl(var(--sidebar-primary) / 0.92) 100%)',
+              }
+            : undefined
+        }
+        className={cn(
+          'group/item flex h-10 w-full items-center gap-3 rounded-lg px-4 text-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+          'group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0',
+          !collapsed && section === 'main' && '-mr-4 rounded-r-none',
+          active
+            ? 'text-sidebar-primary-foreground font-semibold shadow-sm'
             : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         )}
       >
         <item.icon
           className={cn(
-            'h-[18px] w-[18px] shrink-0',
-            active ? 'text-sidebar-primary-foreground' : 'text-sidebar-foreground/60',
+            'h-[18px] w-[18px] shrink-0 transition-colors',
+            active ? 'text-sidebar-primary-foreground' : 'text-sidebar-foreground/55',
           )}
         />
         <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
@@ -64,23 +73,23 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
       <SidebarContent className="gap-0">
-        <div className="p-4 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-4">
+        <section className="p-4">
           <img
             src="/images/twobrain-logo-dark.svg"
             alt="twobrain"
             className="h-6 w-auto max-w-[127px] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-5"
           />
-        </div>
-
-        <section className="p-4 pt-0 group-data-[collapsible=icon]:p-2">
-          <nav className="flex flex-col gap-1">{mainItems.map(renderNavItem)}</nav>
         </section>
 
-        <section className="border-t border-sidebar-border p-4 group-data-[collapsible=icon]:border-t-0 group-data-[collapsible=icon]:p-2">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
+        <section className="p-4 group-data-[collapsible=icon]:p-2">
+          <nav className="flex flex-col gap-1.5">{mainItems.map((item) => renderNavItem(item, 'main'))}</nav>
+        </section>
+
+        <section className="p-4 group-data-[collapsible=icon]:p-2">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
             Sistema
           </p>
-          <nav className="flex flex-col gap-1">{systemItems.map(renderNavItem)}</nav>
+          <nav className="flex flex-col gap-1">{systemItems.map((item) => renderNavItem(item, 'system'))}</nav>
         </section>
       </SidebarContent>
 
@@ -90,12 +99,8 @@ export function AppSidebar() {
             {initials}
           </div>
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">
-              {profile?.display_name || 'Usuário'}
-            </p>
-            <p className="truncate text-xs text-sidebar-foreground/60">
-              {profile?.email || ''}
-            </p>
+            <p className="truncate text-sm font-medium text-sidebar-foreground">{profile?.display_name || 'Usuário'}</p>
+            <p className="truncate text-xs text-sidebar-foreground/60">{profile?.email || ''}</p>
           </div>
         </div>
 
@@ -133,5 +138,6 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
 
 
