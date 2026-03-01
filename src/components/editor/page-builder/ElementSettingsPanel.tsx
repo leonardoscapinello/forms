@@ -2051,7 +2051,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Arraste elementos da barra lateral para dentro de cada coluna, ou use o botão "Adicionar" dentro de cada coluna.
+                Use o botão "Adicionar elemento" dentro de cada coluna para inserir conteúdo.
               </p>
             </div>
           )}
