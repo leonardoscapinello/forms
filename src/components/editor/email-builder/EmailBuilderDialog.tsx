@@ -679,7 +679,7 @@ function TemplatePicker({ onSelect, onBlank }: { onSelect: (t: EmailTemplate) =>
 // ─── Floating bottom toolbar ────────────────────────────────────────
 function FloatingToolbar({ onAddElement, onAddStructure }: {
   onAddElement: (structureId: string, colIdx: number, type: ElementType) => void;
-  onAddStructure: (cols: number) => void;
+  onAddStructure: (cols: number, elementType?: ElementType | number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -698,35 +698,29 @@ function FloatingToolbar({ onAddElement, onAddStructure }: {
         ) : (
           <div className="space-y-2">
             <div className="flex items-center justify-between px-2 pt-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-background/50">Elementos</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-background/50">Seções</span>
               <button onClick={() => setExpanded(false)} className="p-0.5 rounded-full hover:bg-background/10">
                 <X className="h-3 w-3 text-background/60" />
               </button>
             </div>
             <div className="flex gap-1">
-              {ELEMENT_TYPES.map(et => (
-                <div key={et.type}
-                  draggable
-                  onDragStart={e => {
-                    e.dataTransfer.setData('application/email-element-type', et.type);
-                    e.dataTransfer.effectAllowed = 'copy';
-                    setExpanded(false);
-                  }}
-                  className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl cursor-grab active:cursor-grabbing
-                    hover:bg-background/10 transition-colors min-w-[52px]">
-                  <et.icon className="h-4 w-4" />
-                  <span className="text-[9px] font-medium">{et.label}</span>
-                </div>
+              {STRUCTURE_PRESETS.map(sp => (
+                <button key={sp.cols} onClick={() => { onAddStructure(sp.cols); setExpanded(false); }}
+                  className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl hover:bg-background/10 transition-colors min-w-[52px]">
+                  <sp.icon className="h-4 w-4" />
+                  <span className="text-[9px] font-medium">{sp.label}</span>
+                </button>
               ))}
             </div>
             <div className="border-t border-background/10 pt-2 px-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-background/50 block mb-1.5 px-1">Estruturas</span>
-              <div className="flex gap-1">
-                {STRUCTURE_PRESETS.map(sp => (
-                  <button key={sp.cols} onClick={() => { onAddStructure(sp.cols); setExpanded(false); }}
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-background/50 block mb-1.5 px-1">Seção com elemento</span>
+              <div className="flex gap-1 flex-wrap">
+                {ELEMENT_TYPES.map(et => (
+                  <button key={et.type}
+                    onClick={() => { onAddStructure(1, et.type); setExpanded(false); }}
                     className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl hover:bg-background/10 transition-colors min-w-[52px]">
-                    <sp.icon className="h-4 w-4" />
-                    <span className="text-[9px] font-medium">{sp.label}</span>
+                    <et.icon className="h-4 w-4" />
+                    <span className="text-[9px] font-medium">{et.label}</span>
                   </button>
                 ))}
               </div>
@@ -802,8 +796,13 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const html = useMemo(() => blocksToHtml(blocks as EmailBlock[], emailBg, contentBg), [blocks, emailBg, contentBg]);
 
   // ── Operations ──
-  const addStructure = useCallback((colCount: number, index?: number) => {
+  const addStructure = useCallback((colCount: number, indexOrElementType?: number | ElementType) => {
     const s = createStructure(colCount);
+    const index = typeof indexOrElementType === 'number' ? indexOrElementType : undefined;
+    const elementType = typeof indexOrElementType === 'string' ? indexOrElementType as ElementType : undefined;
+    if (elementType) {
+      s.columns[0] = [createElement(elementType)];
+    }
     setBlocks(prev => { const arr = [...prev]; arr.splice(index ?? arr.length, 0, s); return arr; });
     setSelectedStructureId(s.id); setSelectedElementId(null);
   }, []);
