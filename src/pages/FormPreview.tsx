@@ -1201,9 +1201,21 @@ export default function FormPreview() {
         return (
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-auto flex flex-col"
+            className="flex-1 overflow-auto flex flex-col relative"
             style={containerStyle}
           >
+            {/* Company Logo */}
+            {formStyle.logoUrl && (
+              <div className="absolute top-4 left-4 z-10 md:top-6 md:left-6">
+                <img
+                  src={formStyle.logoUrl}
+                  alt="Logo"
+                  className="object-contain"
+                  style={{ height: formStyle.logoHeight || 40, maxWidth: 160 }}
+                />
+              </div>
+            )}
+
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
