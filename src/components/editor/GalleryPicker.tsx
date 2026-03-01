@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useGallery, GalleryFile } from '@/hooks/useGallery';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Image, FileText, Film, Music, File as FileIcon, ArrowLeft, FolderOpen, Check } from 'lucide-react';
+import { Search, Image, FileText, Film, Music, File as FileIcon, FolderOpen, Check, FolderPlus, Upload, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -33,10 +33,14 @@ function matchesAccept(fileType: string, accept?: string) {
 }
 
 export default function GalleryPicker({ open, onClose, onSelect, accept }: Props) {
-  const { folders, files, loading } = useGallery();
+  const { folders, files, loading, createFolder, uploadFile } = useGallery();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentFolders = useMemo(() =>
     folders.filter(f => f.parent_folder_id === currentFolderId),
@@ -62,6 +66,19 @@ export default function GalleryPicker({ open, onClose, onSelect, accept }: Props
     return trail;
   }, [folders, currentFolderId]);
 
+  const handleUpload = async (fileList: FileList) => {
+    setUploading(true);
+    await Promise.all(Array.from(fileList).map(file => uploadFile(file, currentFolderId)));
+    setUploading(false);
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    await createFolder(newFolderName.trim(), currentFolderId);
+    setNewFolderName('');
+    setCreatingFolder(false);
+  };
+
   const handleConfirm = () => {
     const file = files.find(f => f.id === selected);
     if (file) {
@@ -76,6 +93,47 @@ export default function GalleryPicker({ open, onClose, onSelect, accept }: Props
         <DialogHeader>
           <DialogTitle>Selecionar da Galeria</DialogTitle>
         </DialogHeader>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCreatingFolder(true)}>
+              <FolderPlus className="h-3.5 w-3.5 mr-1" /> Nova pasta
+            </Button>
+            <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+              Enviar
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={e => e.target.files && handleUpload(e.target.files)}
+            />
+          </div>
+        </div>
+
+        {creatingFolder && (
+          <div className="flex items-center gap-2">
+            <Input
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              placeholder="Nome da pasta..."
+              className="h-8 text-xs"
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCreateFolder();
+                if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); }
+              }}
+            />
+            <button onClick={handleCreateFolder} className="text-primary">
+              <Check className="h-4 w-4" />
+            </button>
+            <button onClick={() => { setCreatingFolder(false); setNewFolderName(''); }} className="text-muted-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm px-1">
