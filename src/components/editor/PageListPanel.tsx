@@ -160,7 +160,7 @@ export default function PageListPanel({
             <div
               className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
                 isWelcomeSelected
-                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  ? 'bg-accent text-foreground border border-border'
                   : 'hover:bg-muted border border-transparent'
               }`}
               onClick={() => showWelcomeScreen && onSelectWelcome?.()}
@@ -189,7 +189,7 @@ export default function PageListPanel({
                   key={page.id}
                   className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
                     selectedPageId === page.id
-                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      ? 'bg-accent text-foreground border border-border'
                       : isDisconnected
                         ? 'hover:bg-muted border border-destructive/30 bg-destructive/5'
                         : 'hover:bg-muted border border-transparent'
@@ -226,7 +226,7 @@ export default function PageListPanel({
             <div
               className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
                 isThankYouSelected
-                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  ? 'bg-accent text-foreground border border-border'
                   : 'hover:bg-muted border border-transparent'
               }`}
               onClick={() => onSelectThankYou?.()}
@@ -286,7 +286,7 @@ export default function PageListPanel({
                         autoFocus
                         onKeyDown={e => { if (e.key === 'Enter') confirmEditVar(); if (e.key === 'Escape') setEditingVarId(null); }}
                       />
-                      <button onClick={confirmEditVar} className="p-0.5 text-primary flex-shrink-0"><Check className="h-3 w-3" /></button>
+                      <button onClick={confirmEditVar} className="p-0.5 text-foreground flex-shrink-0"><Check className="h-3 w-3" /></button>
                       <button onClick={() => setEditingVarId(null)} className="p-0.5 text-muted-foreground flex-shrink-0"><X className="h-3 w-3" /></button>
                     </div>
                   ) : (
@@ -327,7 +327,7 @@ export default function PageListPanel({
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-sm">
-                  <Braces className="h-4 w-4 text-primary" />
+                  <Braces className="h-4 w-4 text-foreground" />
                   <code className="font-mono">{`{{${settingsVar.name}}}`}</code>
                 </DialogTitle>
               </DialogHeader>
