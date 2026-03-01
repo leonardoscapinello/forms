@@ -1,6 +1,6 @@
-import { memo, useState, useEffect, useCallback, useMemo } from 'react';
+import { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { MessageSquare, Trash2, Phone, Image, FileText, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { MessageSquare, Trash2, Phone, Image, FileText, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Upload, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { WhatsAppNodeData, FormVariable, IntegrationNodeData } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { VariableInput } from './shared';
+import { toast } from 'sonner';
 
 /** Local input to prevent cursor jumping */
 function LocalInput({ value, onCommit, ...rest }: Omit<React.ComponentProps<typeof Input>, 'onChange' | 'onBlur'> & { value: string; onCommit: (v: string) => void }) {
@@ -67,6 +68,36 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
   }, []);
 
   const activeInstances = useMemo(() => instances.filter(i => i.is_active), [instances]);
+
+  // File upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `whatsapp/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', path);
+
+      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+
+      if (error || !res?.success) {
+        toast.error(res?.message || 'Falha no upload do arquivo');
+        return;
+      }
+
+      onChange({ mediaUrl: res.url, mediaFileName: file.name });
+      toast.success('Arquivo enviado com sucesso');
+    } catch {
+      toast.error('Erro ao enviar arquivo');
+    } finally {
+      setUploading(false);
+    }
+  }, [onChange]);
 
   const handleTest = useCallback(async () => {
     if (!nodeData.instanceId || !nodeData.recipientNumber) return;
@@ -188,15 +219,47 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">URL da mídia</Label>
-                  <VariableInput
-                    value={nodeData.mediaUrl || ''}
-                    onChange={v => onChange({ mediaUrl: v })}
-                    variables={variables}
-                    integrationNodes={integrationNodes}
-                    placeholder="https://... ou {{url_variavel}}"
-                    className="h-7 text-xs"
+                  <Label className="text-[10px] text-muted-foreground">Arquivo de mídia</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept={
+                      nodeData.mediaType === 'image' ? 'image/*' :
+                      nodeData.mediaType === 'video' ? 'video/*' :
+                      nodeData.mediaType === 'audio' ? 'audio/*' : '*'
+                    }
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload(f);
+                      e.target.value = '';
+                    }}
                   />
+                  {nodeData.mediaUrl ? (
+                    <div className="flex items-center gap-1.5 p-1.5 bg-muted/50 rounded text-[10px]">
+                      <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
+                      <span className="truncate flex-1" title={nodeData.mediaFileName || nodeData.mediaUrl}>
+                        {nodeData.mediaFileName || 'Arquivo enviado'}
+                      </span>
+                      <button
+                        onClick={() => onChange({ mediaUrl: '', mediaFileName: '' })}
+                        className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs h-7"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploading ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Upload className="mr-1.5 h-3 w-3" />}
+                      {uploading ? 'Enviando...' : 'Enviar arquivo'}
+                    </Button>
+                  )}
                 </div>
                 {nodeData.mediaType === 'document' && (
                   <div className="space-y-1">
