@@ -1,16 +1,15 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { 
   Type, ImageIcon, MousePointer2, Minus, Space, Columns2, 
   Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
-  AlignLeft, AlignCenter, AlignRight, Upload, FolderOpen, Link, Save,
+  AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useGallery } from '@/hooks/useGallery';
-import GalleryPicker from '@/components/editor/GalleryPicker';
+import { ColorPickerField, ImageSourcePicker } from '@/components/editor/shared';
 import { toast } from 'sonner';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -248,10 +247,7 @@ function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: Tex
           </Select>
         </div>
         <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Cor</label>
-          <div className="flex items-center gap-1 mt-1">
-            <input type="color" value={block.color} onChange={e => onChange({ ...block, color: e.target.value })} className="h-8 w-8 rounded border border-input cursor-pointer" />
-          </div>
+          <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
         </div>
       </div>
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
@@ -261,92 +257,14 @@ function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: Tex
 }
 
 function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: ImageBlock) => void }) {
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile } = useGallery();
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
-    setUploading(true);
-    try {
-      const gf = await uploadFile(file);
-      if (gf) {
-        onChange({ ...block, src: gf.url });
-        toast.success('Imagem enviada e salva na galeria');
-      }
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleSaveToGallery = async () => {
-    if (!block.src) { toast.error('Nenhuma imagem para salvar'); return; }
-    try {
-      setUploading(true);
-      const response = await fetch(block.src);
-      const blob = await response.blob();
-      const ext = block.src.split('.').pop()?.split('?')[0] || 'png';
-      const file = new File([blob], `email-image-${Date.now()}.${ext}`, { type: blob.type || 'image/png' });
-      const gf = await uploadFile(file);
-      if (gf) toast.success('Imagem salva na galeria');
-    } catch {
-      toast.error('Erro ao salvar na galeria');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <div className="space-y-3">
-      {/* Image preview */}
-      {block.src && (
-        <div className="rounded-md border border-border overflow-hidden bg-muted/30">
-          <img src={block.src} alt={block.alt} className="w-full max-h-40 object-contain" />
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          <Upload className="h-3 w-3" /> Upload
-        </Button>
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => setGalleryOpen(true)}>
-          <FolderOpen className="h-3 w-3" /> Galeria
-        </Button>
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => setShowUrlInput(!showUrlInput)}>
-          <Link className="h-3 w-3" /> URL
-        </Button>
-      </div>
-
-      {/* Save to gallery */}
-      {block.src && (
-        <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 w-full" onClick={handleSaveToGallery} disabled={uploading}>
-          <Save className="h-3 w-3" /> Salvar na galeria
-        </Button>
-      )}
-
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-
-      <GalleryPicker
-        open={galleryOpen}
-        onClose={() => setGalleryOpen(false)}
-        onSelect={(file) => onChange({ ...block, src: file.url })}
+      <ImageSourcePicker
+        value={block.src}
+        onChange={url => onChange({ ...block, src: url })}
         accept="image/*"
+        alt={block.alt}
       />
-
-      {/* URL input (togglable) */}
-      {showUrlInput && (
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">URL da Imagem</label>
-          <Input value={block.src} onChange={e => onChange({ ...block, src: e.target.value })} placeholder="https://..." className="h-8 text-xs mt-1" />
-        </div>
-      )}
-
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto alternativo</label>
         <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-8 text-xs mt-1" />
@@ -446,20 +364,8 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Cor do fundo</label>
-          <div className="flex items-center gap-1 mt-1">
-            <input type="color" value={block.bgColor} onChange={e => onChange({ ...block, bgColor: e.target.value })} className="h-8 w-8 rounded border border-input cursor-pointer" />
-            <Input value={block.bgColor} onChange={e => onChange({ ...block, bgColor: e.target.value })} className="h-8 text-xs flex-1" />
-          </div>
-        </div>
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Cor do texto</label>
-          <div className="flex items-center gap-1 mt-1">
-            <input type="color" value={block.textColor} onChange={e => onChange({ ...block, textColor: e.target.value })} className="h-8 w-8 rounded border border-input cursor-pointer" />
-            <Input value={block.textColor} onChange={e => onChange({ ...block, textColor: e.target.value })} className="h-8 text-xs flex-1" />
-          </div>
-        </div>
+        <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
+        <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div>
@@ -485,13 +391,7 @@ function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-[10px] font-medium text-muted-foreground uppercase">Cor</label>
-          <div className="flex items-center gap-1 mt-1">
-            <input type="color" value={block.color} onChange={e => onChange({ ...block, color: e.target.value })} className="h-8 w-8 rounded border border-input cursor-pointer" />
-            <Input value={block.color} onChange={e => onChange({ ...block, color: e.target.value })} className="h-8 text-xs flex-1" />
-          </div>
-        </div>
+        <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Espessura</label>
           <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-8 text-xs mt-1" />
