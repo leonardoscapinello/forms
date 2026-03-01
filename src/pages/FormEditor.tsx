@@ -586,6 +586,7 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                pageId="welcome"
                 variables={form.variables || []}
                 integrationNodes={editorIntegrationNodes}
                 allInputElements={editorInputElements}
@@ -606,6 +607,7 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                pageId="thank-you"
                 variables={form.variables || []}
                 integrationNodes={editorIntegrationNodes}
                 allInputElements={editorInputElements}
@@ -626,6 +628,7 @@ export default function FormEditor() {
                   updateForm(form.id, { globalPageStyle: { ...current, ...patch } });
                 }}
                 pages={form.pages || []}
+                pageId={editingPage.id}
                 variables={form.variables || []}
                 integrationNodes={editorIntegrationNodes}
                 allInputElements={editorInputElements}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
 import {
@@ -36,6 +36,7 @@ interface Props {
   pageStyle?: FunnelPageStyle;
   onPageStyleChange?: (patch: Partial<FunnelPageStyle>) => void;
   pages?: FunnelPage[];
+  pageId?: string;
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: import('../VariableAssignPanel').InputElementGroup[];
@@ -45,7 +46,7 @@ interface Props {
   isLockedByOther?: (elementId: string) => CollaboratorPresence | null;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -90,6 +91,32 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
   const selectedElement = findElementById(selectedId);
   const activeElement = elements.find(e => e.id === activeId) || null;
+
+  // Filter allInputElements to only show fields BEFORE the selected element
+  const filteredInputElements = useMemo(() => {
+    if (!selectedId || !allInputElements || !pageId) return allInputElements || [];
+    const pageIdx = allInputElements.findIndex(g => g.pageId === pageId);
+    if (pageIdx === -1) return allInputElements;
+
+    // Find the selected element's position within the current page's elements list
+    const currentPageGroup = allInputElements[pageIdx];
+    // Get the base element ID (strip sub-key like ".street")
+    const baseSelectedId = selectedId.includes('.') ? selectedId : selectedId;
+    const elIdx = currentPageGroup.elements.findIndex(
+      el => el.elementId === baseSelectedId || el.elementId.startsWith(baseSelectedId + '.')
+    );
+
+    return allInputElements.map((group, gIdx) => {
+      if (gIdx < pageIdx) return group; // previous pages: show all
+      if (gIdx > pageIdx) return { ...group, elements: [] }; // later pages: show none
+      // Current page: only elements before the selected one
+      if (elIdx <= 0) return { ...group, elements: [] };
+      return { ...group, elements: group.elements.filter((el) => {
+        const thisElIdx = currentPageGroup.elements.indexOf(el);
+        return thisElIdx < elIdx;
+      })};
+    }).filter(g => g.elements.length > 0);
+  }, [selectedId, allInputElements, pageId]);
 
   const normalizeFontFamily = (fontFamily?: string) => {
     const raw = (fontFamily ?? '').trim();
@@ -526,7 +553,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             pages={pages}
             variables={variables}
             integrationNodes={integrationNodes}
-            allInputElements={allInputElements}
+            allInputElements={filteredInputElements}
             trackedParams={trackedParams}
           />
         </div>
