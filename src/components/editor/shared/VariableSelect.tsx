@@ -140,7 +140,7 @@ export default function VariableSelect({
           })()}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent position="popper" side="top" align="start" className="z-[9999] max-h-60">
         {/* Variables section */}
         {variables.length > 0 && (
           <div className="px-2 pt-1.5 pb-0.5">
