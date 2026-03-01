@@ -21,10 +21,12 @@ export function VariableHighlightOverlay({
   text,
   className,
   elementLookup,
+  displayFieldLabels = false,
 }: {
   text: string;
   className?: string;
   elementLookup?: ElementLookup;
+  displayFieldLabels?: boolean;
 }) {
   const parts = useMemo(() => {
     if (!text) return [];
@@ -40,9 +42,13 @@ export function VariableHighlightOverlay({
 
       const raw = match[1];
       let varType: VarType = 'variable';
+      let display = raw;
 
       if (raw.startsWith('{{field:')) {
         varType = 'field';
+        if (displayFieldLabels) {
+          display = formatFieldTokensForDisplay(raw, elementLookup);
+        }
       } else if (raw.startsWith('{{webhook:')) {
         varType = 'webhook';
       } else if (raw.startsWith('{{param.')) {
@@ -51,14 +57,14 @@ export function VariableHighlightOverlay({
         varType = 'context';
       }
 
-      result.push({ text: raw, display: raw, isVar: true, varType });
+      result.push({ text: raw, display, isVar: true, varType });
       lastIndex = regex.lastIndex;
     }
     if (lastIndex < text.length) {
       result.push({ text: text.slice(lastIndex), display: text.slice(lastIndex), isVar: false, varType: 'variable' });
     }
     return result;
-  }, [text, elementLookup]);
+  }, [text, elementLookup, displayFieldLabels]);
 
   if (!text) return null;
 

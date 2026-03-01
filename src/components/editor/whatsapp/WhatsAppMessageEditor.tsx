@@ -279,6 +279,7 @@ export default function WhatsAppMessageEditor({
   const [local, setLocal] = useState(value);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [varOpen, setVarOpen] = useState(false);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
   const isFocusedRef = useRef(false);
   const [expanded, setExpanded] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -413,6 +414,7 @@ export default function WhatsAppMessageEditor({
     stopProp,
   };
 
+  const showReadableOverlay = local.includes('{{') && !isEditorFocused;
   const previewText = local ? formatFieldTokensForDisplay(local, elementLookup) : (placeholder || 'Escreva sua mensagem…');
   const isPlaceholder = !local;
   const previewHtml = useMemo(() => parseWhatsAppMarkdown(local || '', elementLookup), [local, elementLookup]);
@@ -519,7 +521,11 @@ export default function WhatsAppMessageEditor({
                           <VariableHighlightOverlay
                             text={local}
                             elementLookup={elementLookup}
-                            className="var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-sm"
+                            displayFieldLabels={showReadableOverlay}
+                            className={cn(
+                              'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-sm',
+                              showReadableOverlay && 'var-highlight-readable'
+                            )}
                           />
                         )}
                         <Textarea
@@ -530,10 +536,10 @@ export default function WhatsAppMessageEditor({
                           rows={10}
                           className={cn(
                             'text-sm min-h-[280px] resize-none relative nodrag nopan nowheel',
-                            local.includes('{{') && 'bg-transparent'
+                            showReadableOverlay ? 'bg-transparent text-transparent caret-transparent' : local.includes('{{') && 'bg-transparent'
                           )}
-                          onFocus={() => { isFocusedRef.current = true; }}
-                          onBlur={() => { isFocusedRef.current = false; acDismiss(); }}
+                          onFocus={() => { isFocusedRef.current = true; setIsEditorFocused(true); }}
+                          onBlur={() => { isFocusedRef.current = false; setIsEditorFocused(false); acDismiss(); }}
                           onKeyDown={e => {
                             acHandleKeyDown(e);
                             e.stopPropagation();
