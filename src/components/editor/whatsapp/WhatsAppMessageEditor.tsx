@@ -1,12 +1,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Bold, Italic, Strikethrough, Code, Smile, Type } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Braces } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FormVariable, IntegrationNodeData } from '@/types/form';
-import { toast } from 'sonner';
+import { useVariableAutocomplete } from '../shared/useVariableAutocomplete';
 
 const COMMON_EMOJIS = [
   '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊',
@@ -90,9 +89,19 @@ export default function WhatsAppMessageEditor({
     if (!isFocusedRef.current) setLocal(value);
   }, [value]);
 
-  const commitValue = useCallback(() => {
-    if (local !== value) onChange(local);
+  const commitValue = useCallback((v?: string) => {
+    const val = v ?? local;
+    if (val !== value) onChange(val);
   }, [local, value, onChange]);
+
+  const { handleChange: acHandleChange, handleKeyDown: acHandleKeyDown, dismiss: acDismiss, DropdownUI } = useVariableAutocomplete({
+    inputRef: textareaRef,
+    localValue: local,
+    setLocalValue: setLocal,
+    onCommit: (v) => onChange(v),
+    variables,
+    integrationNodes,
+  });
 
   const applyFormatting = useCallback((type: keyof typeof FORMATTING) => {
     const el = textareaRef.current;
@@ -267,19 +276,22 @@ export default function WhatsAppMessageEditor({
       </div>
 
       {/* Textarea */}
-      <Textarea
-        ref={textareaRef}
-        value={local}
-        onChange={e => setLocal(e.target.value)}
-        placeholder={placeholder}
-        rows={3}
-        className="text-xs min-h-[60px] nodrag nopan nowheel resize-none"
-        onFocus={() => { isFocusedRef.current = true; setFocused(true); }}
-        onBlur={() => { isFocusedRef.current = false; setFocused(false); commitValue(); }}
-        onKeyDown={e => e.stopPropagation()}
-        onMouseDown={stopProp}
-        onPointerDown={stopProp}
-      />
+      <div className="relative">
+        <Textarea
+          ref={textareaRef}
+          value={local}
+          onChange={e => acHandleChange(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          className="text-xs min-h-[60px] nodrag nopan nowheel resize-none"
+          onFocus={() => { isFocusedRef.current = true; setFocused(true); }}
+          onBlur={() => { isFocusedRef.current = false; setFocused(false); acDismiss(); commitValue(); }}
+          onKeyDown={e => { acHandleKeyDown(e); e.stopPropagation(); }}
+          onMouseDown={stopProp}
+          onPointerDown={stopProp}
+        />
+        {DropdownUI}
+      </div>
 
       {/* Live preview floating card */}
       {focused && local && (
