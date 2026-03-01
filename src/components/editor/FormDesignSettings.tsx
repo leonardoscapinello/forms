@@ -252,14 +252,14 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
           <div className="flex items-center gap-2">
             <input
               type="color"
-              value={style.textColor || '#1c1e26'}
+              value={style.textColor || '#203300'}
               onChange={e => updateStyle({ textColor: e.target.value })}
               className="w-10 h-8 rounded border border-border cursor-pointer"
             />
             <Input
               value={style.textColor || ''}
               onChange={e => updateStyle({ textColor: e.target.value })}
-              placeholder="#1c1e26 (padrão)"
+              placeholder="#203300 (padrão)"
               className="h-8 text-xs font-mono flex-1"
             />
             {style.textColor && (
