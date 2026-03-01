@@ -40,11 +40,9 @@ export function VariableHighlightOverlay({
 
       const raw = match[1];
       let varType: VarType = 'variable';
-      let display = raw;
 
       if (raw.startsWith('{{field:')) {
         varType = 'field';
-        display = formatFieldTokensForDisplay(raw, elementLookup);
       } else if (raw.startsWith('{{webhook:')) {
         varType = 'webhook';
       } else if (raw.startsWith('{{param.')) {
@@ -53,7 +51,7 @@ export function VariableHighlightOverlay({
         varType = 'context';
       }
 
-      result.push({ text: raw, display, isVar: true, varType });
+      result.push({ text: raw, display: raw, isVar: true, varType });
       lastIndex = regex.lastIndex;
     }
     if (lastIndex < text.length) {
