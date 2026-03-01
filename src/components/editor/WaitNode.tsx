@@ -1,6 +1,6 @@
 import { Handle, Position } from '@xyflow/react';
 import { Clock, Trash2 } from 'lucide-react';
-import { WaitNodeData, WaitUnit, WaitFeedbackMode } from '@/types/form';
+import { WaitNodeData, WaitUnit, WaitFeedbackMode, WaitSkipAction, FunnelPage } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -18,18 +18,26 @@ const FEEDBACK_LABELS: Record<WaitFeedbackMode, string> = {
   loading_screen: '🔄 Tela de carregamento',
 };
 
+const SKIP_ACTION_LABELS: Record<WaitSkipAction, string> = {
+  continue: '▶ Continuar fluxo',
+  go_to_page: '📄 Ir para página',
+  reduce_time: '⏩ Diminuir tempo',
+};
+
 interface Props {
   data: {
     nodeData: WaitNodeData;
     onChange: (patch: Partial<WaitNodeData>) => void;
     onDelete: () => void;
+    pages?: FunnelPage[];
   };
 }
 
 export default function WaitNode({ data }: Props) {
-  const { nodeData, onChange, onDelete } = data;
+  const { nodeData, onChange, onDelete, pages } = data;
   const feedback = nodeData.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
   const mode = feedback.mode || 'button_countdown';
+  const skipAction = feedback.skipAction || 'continue';
 
   const updateFeedback = (patch: Partial<typeof feedback>) => {
     onChange({ feedback: { ...feedback, ...patch } });
@@ -141,6 +149,76 @@ export default function WaitNode({ data }: Props) {
             className="nodrag nopan"
           />
         </div>
+
+        {/* Skip action config — only when allowSkip is true */}
+        {feedback.allowSkip && (
+          <div className="space-y-2 pl-1 border-l-2 border-node-wait-accent/20 ml-1">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ação ao pular</Label>
+              <Select value={skipAction} onValueChange={(v: WaitSkipAction) => updateFeedback({ skipAction: v })}>
+                <SelectTrigger className="h-8 text-sm nodrag nopan">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(SKIP_ACTION_LABELS).map(([k, label]) => (
+                    <SelectItem key={k} value={k}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Go to page: select target */}
+            {skipAction === 'go_to_page' && pages && pages.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-muted-foreground">Página destino</Label>
+                <Select
+                  value={feedback.skipTargetPageId || ''}
+                  onValueChange={(v) => updateFeedback({ skipTargetPageId: v })}
+                >
+                  <SelectTrigger className="h-8 text-sm nodrag nopan">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pages.map((p, i) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.title || `Página ${i + 1}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Reduce time: amount + unit */}
+            {skipAction === 'reduce_time' && (
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-muted-foreground">Reduzir em</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={feedback.skipReduceAmount || 5}
+                    onChange={e => updateFeedback({ skipReduceAmount: Number(e.target.value) })}
+                    className="w-16 h-8 text-sm text-center nodrag nopan"
+                  />
+                  <Select
+                    value={feedback.skipReduceUnit || 'seconds'}
+                    onValueChange={(v: WaitUnit) => updateFeedback({ skipReduceUnit: v })}
+                  >
+                    <SelectTrigger className="h-8 text-sm flex-1 nodrag nopan">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(UNIT_LABELS).map(([k, label]) => (
+                        <SelectItem key={k} value={k}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-node-wait-accent !border-2 !border-card" />
