@@ -85,8 +85,8 @@ export default function ElementToolbar({ onAdd }: Props) {
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
                   >
-                    <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors flex-shrink-0">
-                      <Icon className="h-3.5 w-3.5" />
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center group-hover:bg-muted transition-colors flex-shrink-0">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </div>
                     <span className="text-[13px] font-medium">{PAGE_ELEMENT_LABELS[type]}</span>
                   </button>
