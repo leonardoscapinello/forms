@@ -1,6 +1,7 @@
 import React from 'react';
 import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType, ALL_COMPANY_FIELDS, COMPANY_FIELD_LABELS, CompanyFieldKey } from '@/types/pageElements';
-import { FunnelPage, FormVariable } from '@/types/form';
+import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
+import type { InputElementGroup } from '../VariableAssignPanel';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -29,11 +30,15 @@ interface Props {
   onClose: () => void;
   pages?: FunnelPage[];
   variables?: FormVariable[];
+  integrationNodes?: IntegrationNodeData[];
+  allInputElements?: InputElementGroup[];
+  trackedParams?: TrackedParam[];
 }
 
 const isFormField = (type: string) => type.startsWith('input_');
 
-export default function ElementSettingsPanel({ element, onChange, onClose, pages, variables = [] }: Props) {
+export default function ElementSettingsPanel({ element, onChange, onClose, pages, variables = [], integrationNodes, allInputElements, trackedParams }: Props) {
+  const varProps = { variables, integrationNodes, allInputElements, trackedParams };
   const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [openSections, setOpenSections] = useState({ content: true, appearance: false, exterior: false });
@@ -120,7 +125,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 value={element.label || ''}
                 onChange={v => onChange({ label: v })}
                 placeholder="Pergunta ou instrução"
-                variables={variables}
+                {...varProps}
               />
             </div>
           )}
@@ -135,7 +140,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 onChange={v => onChange({ description: v })}
                 placeholder="Texto de apoio..."
                 rows={2}
-                variables={variables}
+                {...varProps}
               />
             </div>
           )}
@@ -147,7 +152,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
               <VariableInput
                 value={element.placeholder || ''}
                 onChange={v => onChange({ placeholder: v })}
-                variables={variables}
+                {...varProps}
                 placeholder="Texto de exemplo..."
               />
             </div>
@@ -352,7 +357,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 value={String(element.defaultValue ?? '')}
                 onChange={v => onChange({ defaultValue: v || undefined })}
                 placeholder="Deixe vazio para não preencher"
-                variables={variables}
+                {...varProps}
               />
               <p className="text-xs text-muted-foreground">
                 Valor que aparecerá preenchido ao abrir o formulário. Use <code className="bg-muted px-0.5 rounded font-mono text-[10px]">{`{{variavel}}`}</code> para preencher dinamicamente.
@@ -832,13 +837,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   value={element.content || ''}
                   onChange={v => onChange({ content: v })}
                   rows={element.type === 'alert' ? 3 : 4}
-                  variables={variables}
+                  {...varProps}
                 />
               ) : (
                 <VariableInput
                   value={element.content || ''}
                   onChange={v => onChange({ content: v })}
-                  variables={variables}
+                  {...varProps}
                 />
               )}
             </div>

@@ -3,7 +3,8 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData } from '@/types/form';
-import { PageElement, createDefaultPageElement } from '@/types/pageElements';
+import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
+import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
@@ -109,6 +110,29 @@ export default function FormEditor() {
     elements: [],
     pageStyle: form?.globalPageStyle,
   };
+
+  // Compute all input elements grouped by page for VariableInput selectors
+  const editorInputElements = useMemo<InputElementGroup[]>(() => {
+    return (form?.pages || []).map(page => {
+      const elements: { elementId: string; elementLabel: string }[] = [];
+      for (const el of page.elements || []) {
+        if (!el.type.startsWith('input_')) continue;
+        const baseLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
+        const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
+        if (subKeys) {
+          elements.push({ elementId: el.id, elementLabel: baseLabel });
+          for (const sk of subKeys) {
+            elements.push({ elementId: `${el.id}.${sk}`, elementLabel: `${baseLabel} › ${sk}` });
+          }
+        } else {
+          elements.push({ elementId: el.id, elementLabel: baseLabel });
+        }
+      }
+      return { pageId: page.id, pageTitle: page.title, elements };
+    });
+  }, [form?.pages]);
+
+  const editorIntegrationNodes = useMemo(() => form?.integrationNodes || [], [form?.integrationNodes]);
 
   // ---- Page CRUD ----
 
@@ -563,6 +587,9 @@ export default function FormEditor() {
                 }}
                 pages={form.pages || []}
                 variables={form.variables || []}
+                integrationNodes={editorIntegrationNodes}
+                allInputElements={editorInputElements}
+                trackedParams={form.trackedParams}
                 lockElement={lockElement}
                 unlockElement={unlockElement}
                 isLockedByOther={isLockedByOther}
@@ -580,6 +607,9 @@ export default function FormEditor() {
                 }}
                 pages={form.pages || []}
                 variables={form.variables || []}
+                integrationNodes={editorIntegrationNodes}
+                allInputElements={editorInputElements}
+                trackedParams={form.trackedParams}
                 lockElement={lockElement}
                 unlockElement={unlockElement}
                 isLockedByOther={isLockedByOther}
@@ -597,6 +627,9 @@ export default function FormEditor() {
                 }}
                 pages={form.pages || []}
                 variables={form.variables || []}
+                integrationNodes={editorIntegrationNodes}
+                allInputElements={editorInputElements}
+                trackedParams={form.trackedParams}
                 lockElement={lockElement}
                 unlockElement={unlockElement}
                 isLockedByOther={isLockedByOther}
