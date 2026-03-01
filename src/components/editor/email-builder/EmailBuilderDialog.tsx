@@ -994,9 +994,9 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
               </div>
 
               {/* Settings panel */}
-              <div className="w-60 border-l border-border flex-shrink-0 overflow-y-auto p-3">
+              <div className="w-60 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-3 min-w-0">
                 {settingsTarget ? (
-                  <div>
+                  <div className="min-w-0 max-w-full">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold">{BLOCK_LABELS[settingsTarget.type]}</span>
                       <button onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }} className="text-muted-foreground hover:text-foreground">
