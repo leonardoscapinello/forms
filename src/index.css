@@ -411,6 +411,10 @@ img.emoji {
   background: hsl(var(--chart-4) / 0.15);
   box-shadow: 0 0 0 1px hsl(var(--chart-4) / 0.2);
 }
+.var-highlight-field {
+  background: hsl(var(--chart-2) / 0.15);
+  box-shadow: 0 0 0 1px hsl(var(--chart-2) / 0.2);
+}
 
 /* Container for the highlight backdrop */
 .var-highlight-backdrop {
