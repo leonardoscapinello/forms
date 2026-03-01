@@ -339,25 +339,30 @@ function BlockSettingsDispatch({ block, onChange, variables, trackedParams, allI
 }
 
 // ─── Element preview ────────────────────────────────────────────────
-function ElementPreview({ block, elementLookup, onUpdateBlock }: { block: EmailBlock; elementLookup?: Record<string, string>; onUpdateBlock?: (b: EmailBlock) => void }) {
+function ElementPreview({ block, elementLookup, onUpdateBlock, onSelect, variables, trackedParams, allInputElements }: {
+  block: EmailBlock; elementLookup?: Record<string, string>; onUpdateBlock?: (b: EmailBlock) => void;
+  onSelect?: () => void;
+  variables?: Props['variables']; trackedParams?: Props['trackedParams']; allInputElements?: Props['allInputElements'];
+}) {
   const pad = block.padding;
   const ps = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
   switch (block.type) {
     case 'text':
       return (
-        <div
-          contentEditable
-          suppressContentEditableWarning
-          style={{ ...ps, textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif', outline: 'none', cursor: 'text', minHeight: '1.5em' }}
-          onBlur={e => {
-            const newContent = e.currentTarget.innerText;
-            if (onUpdateBlock && newContent !== block.content) {
-              onUpdateBlock({ ...block, content: newContent } as EmailBlock);
-            }
-          }}
-          onClick={e => e.stopPropagation()}
-          dangerouslySetInnerHTML={{ __html: block.content.replace(/\n/g, '<br/>') }}
-        />
+        <div style={{ ...ps, textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' }}
+          onClick={e => e.stopPropagation()} onFocus={() => onSelect?.()}>
+          <VariableInput
+            as="textarea"
+            value={block.content}
+            onChange={val => onUpdateBlock?.({ ...block, content: val } as EmailBlock)}
+            variables={variables as any}
+            trackedParams={trackedParams as any}
+            allInputElements={allInputElements as any}
+            placeholder="Digite seu texto..."
+            rows={1}
+            className="!border-none !ring-0 !shadow-none !bg-transparent !p-0 !min-h-0 !rounded-none !text-inherit !font-inherit !leading-inherit"
+          />
+        </div>
       );
     case 'image': {
       const isVariable = block.src && /\{\{.*?\}\}/.test(block.src);
@@ -415,6 +420,7 @@ function ElementPreview({ block, elementLookup, onUpdateBlock }: { block: EmailB
 function ColumnZone({
   elements, colIdx, structureId, selectedId,
   onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn, totalCols, elementLookup, onUpdateElement,
+  variables, trackedParams, allInputElements,
 }: {
   elements: EmailBlock[]; colIdx: number; structureId: string; selectedId: string | null;
   onSelectElement: (id: string) => void;
@@ -425,6 +431,7 @@ function ColumnZone({
   totalCols: number;
   elementLookup?: ElementLookup;
   onUpdateElement?: (b: EmailBlock) => void;
+  variables?: Props['variables']; trackedParams?: Props['trackedParams']; allInputElements?: Props['allInputElements'];
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
@@ -504,7 +511,7 @@ function ColumnZone({
                 : 'hover:ring-1 hover:ring-primary/15 hover:ring-offset-1 hover:ring-offset-background'
             )}
           >
-            <ElementPreview block={el} elementLookup={elementLookup} onUpdateBlock={onUpdateElement} />
+            <ElementPreview block={el} elementLookup={elementLookup} onUpdateBlock={onUpdateElement} onSelect={() => onSelectElement(el.id)} variables={variables} trackedParams={trackedParams} allInputElements={allInputElements} />
 
             {/* Floating mini toolbar */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-0.5 opacity-0 group-hover/el:opacity-100 transition-all
@@ -567,6 +574,7 @@ function StructureRow({
   structure, isSelected, selectedElementId,
   onSelect, onRemove, onMoveRow, rowIndex, totalRows,
   onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn, elementLookup, onUpdateElement,
+  variables, trackedParams, allInputElements,
 }: {
   structure: ColumnsBlock; isSelected: boolean; selectedElementId: string | null;
   onSelect: () => void; onRemove: () => void; onMoveRow: (dir: -1 | 1) => void;
@@ -578,6 +586,7 @@ function StructureRow({
   onMoveToColumn: (structureId: string, fromCol: number, toCol: number, elementId: string) => void;
   elementLookup?: ElementLookup;
   onUpdateElement?: (b: EmailBlock) => void;
+  variables?: Props['variables']; trackedParams?: Props['trackedParams']; allInputElements?: Props['allInputElements'];
 }) {
   const pad = structure.padding;
   const ps = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
@@ -622,6 +631,7 @@ function StructureRow({
                 totalCols={structure.columns.length}
                 elementLookup={elementLookup}
                 onUpdateElement={onUpdateElement}
+                variables={variables} trackedParams={trackedParams} allInputElements={allInputElements}
               />
             </div>
           ))}
@@ -1049,6 +1059,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                           onMoveElement={moveElement} onMoveToColumn={moveToColumn}
                           elementLookup={elementLookup}
                           onUpdateElement={updateElement}
+                          variables={variables} trackedParams={trackedParams} allInputElements={allInputElements}
                         />
                       </div>
                     ))}
