@@ -77,7 +77,8 @@ export default function ElementToolbar({ onAdd }: Props) {
                 return (
                   <button
                     key={type}
-                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-left group"
+                    type="button"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-muted-foreground bg-transparent hover:text-foreground hover:bg-muted transition-colors text-left group"
                     onClick={() => onAdd(createDefaultPageElement(type))}
                     draggable
                     onDragStart={(e) => {
@@ -85,7 +86,7 @@ export default function ElementToolbar({ onAdd }: Props) {
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
                   >
-                    <div className="w-7 h-7 rounded-md flex items-center justify-center group-hover:bg-muted transition-colors flex-shrink-0">
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center bg-transparent group-hover:bg-muted transition-colors flex-shrink-0">
                       <Icon className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </div>
                     <span className="text-[13px] font-medium">{PAGE_ELEMENT_LABELS[type]}</span>
