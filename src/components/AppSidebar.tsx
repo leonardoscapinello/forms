@@ -38,7 +38,7 @@ export function AppSidebar() {
             : 'bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
         }`}
       >
-        <item.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${isActive(item.url) ? 'text-sidebar-primary-foreground' : 'text-[#B7B790]'}`} />
+        <item.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${isActive(item.url) ? 'text-sidebar-primary-foreground' : 'text-[hsl(var(--sidebar-icon))]'}`} />
         <span>{item.title}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
