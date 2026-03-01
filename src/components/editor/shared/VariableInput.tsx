@@ -55,6 +55,7 @@ export default function VariableInput(props: Props) {
   }, [allInputElements]);
 
   const [local, setLocal] = useState(value);
+  const [isFocused, setIsFocused] = useState(false);
   const isFocusedRef = useRef(false);
 
   useEffect(() => {
@@ -117,8 +118,16 @@ export default function VariableInput(props: Props) {
   const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
   const inputHandlers = {
-    onFocus: () => { isFocusedRef.current = true; },
-    onBlur: () => { isFocusedRef.current = false; dismiss(); commitValue(); },
+    onFocus: () => {
+      isFocusedRef.current = true;
+      setIsFocused(true);
+    },
+    onBlur: () => {
+      isFocusedRef.current = false;
+      setIsFocused(false);
+      dismiss();
+      commitValue();
+    },
     onKeyDown: (e: React.KeyboardEvent) => { acHandleKeyDown(e); e.stopPropagation(); },
     onClick: () => { acHandleClick(); },
     onMouseDown: stopProp,
@@ -126,6 +135,7 @@ export default function VariableInput(props: Props) {
   };
 
   const hasHighlight = local.includes('{{');
+  const showReadableOverlay = hasHighlight && !isFocused;
 
   const PopoverRow = ({ syntax, icon, label, detail, onClick }: { syntax: string; icon: React.ReactNode; label: string; detail?: string; onClick: () => void }) => (
     <div className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={onClick}>
@@ -149,8 +159,10 @@ export default function VariableInput(props: Props) {
               <VariableHighlightOverlay
                 text={local}
                 elementLookup={elementLookup}
+                displayFieldLabels={showReadableOverlay}
                 className={cn(
                   'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-base md:text-sm',
+                  showReadableOverlay && 'var-highlight-readable',
                   className
                 )}
               />
@@ -161,7 +173,7 @@ export default function VariableInput(props: Props) {
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
               rows={props.rows ?? 2}
-              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent', className)}
+              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-transparent' : hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
@@ -171,8 +183,10 @@ export default function VariableInput(props: Props) {
               <VariableHighlightOverlay
                 text={local}
                 elementLookup={elementLookup}
+                displayFieldLabels={showReadableOverlay}
                 className={cn(
                   'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-base md:text-sm whitespace-nowrap',
+                  showReadableOverlay && 'var-highlight-readable',
                   className
                 )}
               />
@@ -182,7 +196,7 @@ export default function VariableInput(props: Props) {
               value={local}
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
-              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent', className)}
+              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-transparent' : hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>

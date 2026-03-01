@@ -419,6 +419,13 @@ img.emoji {
   background: hsl(210 80% 55% / 0.15);
 }
 
+.var-highlight-readable {
+  color: hsl(var(--foreground));
+}
+.var-highlight-readable .var-highlight {
+  color: hsl(var(--foreground));
+}
+
 /* Container for the highlight backdrop */
 .var-highlight-backdrop {
   position: absolute;
