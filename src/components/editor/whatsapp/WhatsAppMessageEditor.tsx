@@ -1,13 +1,13 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Bold, Italic, Strikethrough, Code, Smile, Maximize2, X, MessageSquare, FileText } from 'lucide-react';
+import { Bold, Italic, Strikethrough, Code, Smile, Maximize2, X, MessageSquare, FileText, Globe, Monitor, Webhook, Braces } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Braces } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
+import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import type { InputElementGroup } from '../VariableAssignPanel';
 import { useVariableAutocomplete } from '../shared/useVariableAutocomplete';
 import { VariableHighlightOverlay } from '../shared/VariableHighlightOverlay';
+import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 
@@ -79,10 +79,12 @@ function FormattingToolbar({
   insertEmoji,
   varOpen,
   setVarOpen,
-  hasVars,
   variables,
-  webhookNodesWithFields,
+  integrationNodes,
+  allInputElements,
+  trackedParams,
   insertVariable,
+  insertSyntax,
   stopProp,
 }: {
   onFormat: (type: keyof typeof FORMATTING) => void;
@@ -91,12 +93,18 @@ function FormattingToolbar({
   insertEmoji: (e: string) => void;
   varOpen: boolean;
   setVarOpen: (v: boolean) => void;
-  hasVars: boolean;
   variables: FormVariable[];
-  webhookNodesWithFields: IntegrationNodeData[];
+  integrationNodes: IntegrationNodeData[];
+  allInputElements: InputElementGroup[];
+  trackedParams?: TrackedParam[];
   insertVariable: (name: string) => void;
+  insertSyntax: (syntax: string) => void;
   stopProp: (e: React.SyntheticEvent) => void;
 }) {
+  const webhookNodesWithFields = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
+  const activeParams = (trackedParams ?? DEFAULT_TRACKED_PARAMS).filter(p => p.enabled && p.key);
+  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0 || allInputElements.some(g => g.elements.length > 0) || activeParams.length > 0 || CONTEXT_KEYS.length > 0;
+
   return (
     <div className="flex items-center gap-0.5 bg-muted/40 rounded-md p-0.5">
       {Object.entries(FORMATTING).map(([key, fmt]) => (
@@ -154,28 +162,87 @@ function FormattingToolbar({
               <Braces className="h-3 w-3" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" sideOffset={4} className="w-64 p-0 z-[9999]" onPointerDown={stopProp}>
+          <PopoverContent align="start" sideOffset={4} className="w-72 p-0 z-[9999]" onPointerDown={stopProp}>
             <div className="p-2 border-b border-border">
-              <p className="text-xs font-semibold text-foreground">Inserir variável</p>
+              <p className="text-xs font-semibold text-foreground">Inserir referência</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Clique para inserir no cursor</p>
             </div>
-            <div className="p-1.5 space-y-0.5 max-h-48 overflow-y-auto">
-              {variables.map(v => (
-                <button key={v.id} type="button" onClick={() => insertVariable(v.name)} className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors">
-                  <span className="font-mono text-primary">{`{{${v.name}}}`}</span>
-                </button>
-              ))}
-              {webhookNodesWithFields.map(wn => (
-                <div key={wn.id}>
-                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1.5">
-                    🔗 Webhook {(() => { try { return new URL(wn.webhookUrl || '').hostname; } catch { return wn.id.slice(0, 8); } })()}
-                  </p>
-                  {wn.responseFields?.map(f => (
-                    <button key={f} type="button" onClick={() => insertVariable(`webhook:${wn.id}:${f}`)} className="w-full text-left px-2 py-1 rounded text-xs hover:bg-muted transition-colors font-mono">
-                      {f}
+            <div className="p-1.5 space-y-0.5 max-h-64 overflow-y-auto">
+              {/* Variables */}
+              {variables.length > 0 && (
+                <>
+                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1">Variáveis</p>
+                  {variables.map(v => (
+                    <button key={v.id} type="button" onClick={() => insertVariable(v.name)} className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium flex-shrink-0">{v.name}</span>
+                      <span className="text-muted-foreground">({v.type})</span>
+                    </button>
+                  ))}
+                </>
+              )}
+              {/* Fields */}
+              {allInputElements.some(g => g.elements.length > 0) && (
+                <>
+                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Campos do formulário</p>
+                  {allInputElements.filter(g => g.elements.length > 0).map(group => (
+                    <div key={group.pageId}>
+                      <p className="text-[8px] text-muted-foreground/60 px-2 pt-1">📄 {group.pageTitle}</p>
+                      {group.elements.map(el => (
+                        <button key={el.elementId} type="button" onClick={() => insertSyntax(`{{field:${el.elementId}}}`)} className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center gap-2">
+                          <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span>{el.elementLabel}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </>
+              )}
+              {/* Webhooks */}
+              {webhookNodesWithFields.length > 0 && (
+                <>
+                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Retorno Webhook</p>
+                  {webhookNodesWithFields.map(wn => (
+                    <div key={wn.id}>
+                      {wn.responseFields?.map(f => (
+                        <button key={f} type="button" onClick={() => insertSyntax(`{{webhook:${wn.id}:${f}}}`)} className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center gap-2">
+                          <Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />
+                          <span className="font-mono">{f}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </>
+              )}
+              {/* GET Params */}
+              {activeParams.length > 0 && (
+                <>
+                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Parâmetros GET</p>
+                  {activeParams.map(p => (
+                    <button key={p.id} type="button" onClick={() => insertSyntax(`{{param.${p.key}}}`)} className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center gap-2">
+                      <Globe className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                      <span>{p.label || p.key}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+              {/* Context */}
+              <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Contexto</p>
+              {[...new Set(CONTEXT_KEYS.map(c => c.category))].map(cat => (
+                <div key={cat}>
+                  <p className="text-[8px] text-muted-foreground/60 px-2 pt-1">{cat}</p>
+                  {CONTEXT_KEYS.filter(c => c.category === cat).map(ctx => (
+                    <button key={ctx.key} type="button" onClick={() => insertSyntax(`{{ctx.${ctx.key}}}`)} className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-center gap-2">
+                      <Monitor className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                      <span>{ctx.label}</span>
                     </button>
                   ))}
                 </div>
               ))}
+            </div>
+            <div className="p-2 border-t border-border bg-muted/30">
+              <p className="text-[10px] text-muted-foreground">
+                Use <code className="font-mono bg-muted px-1 rounded">{`{{nome}}`}</code>, <code className="font-mono bg-muted px-1 rounded">{`{{ctx.device}}`}</code> ou <code className="font-mono bg-muted px-1 rounded">{`{{param.utm_source}}`}</code>
+              </p>
             </div>
           </PopoverContent>
         </Popover>
@@ -277,11 +344,19 @@ export default function WhatsAppMessageEditor({
     });
   }, [local, onChange, activeRef]);
 
-  const webhookNodesWithFields = useMemo(
-    () => (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0),
-    [integrationNodes]
-  );
-  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0;
+  const insertSyntaxDirect = useCallback((syntax: string) => {
+    const el = activeRef.current;
+    const pos = el?.selectionStart ?? local.length;
+    const next = local.slice(0, pos) + syntax + local.slice(pos);
+    setLocal(next);
+    onChange(next);
+    setVarOpen(false);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const newPos = pos + syntax.length;
+      el?.setSelectionRange(newPos, newPos);
+    });
+  }, [local, onChange, activeRef]);
 
   const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
@@ -308,10 +383,12 @@ export default function WhatsAppMessageEditor({
     insertEmoji,
     varOpen,
     setVarOpen,
-    hasVars,
     variables,
-    webhookNodesWithFields,
+    integrationNodes,
+    allInputElements,
+    trackedParams,
     insertVariable,
+    insertSyntax: insertSyntaxDirect,
     stopProp,
   };
 
