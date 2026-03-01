@@ -277,12 +277,34 @@ serve(async (req) => {
 
     // ── Webhook ───────────────────────────────────────────────────────────────
     if (platform === 'webhook') {
-      const url = body.webhookUrl;
+      let url = body.webhookUrl;
       const method = body.webhookMethod || 'POST';
 
       if (!url) {
         results.webhook = { skipped: true, reason: 'No URL configured on the node' };
       } else {
+        // Append query params
+        const queryParams = body.webhookQueryParams || [];
+        if (Array.isArray(queryParams) && queryParams.length > 0) {
+          const sep = url.includes('?') ? '&' : '?';
+          url += sep + queryParams.filter((p: any) => p.key).map((p: any) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+        }
+
+        // Build headers
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const customHeaders = body.webhookHeaders || [];
+        if (Array.isArray(customHeaders)) {
+          for (const h of customHeaders) {
+            if (h.key) headers[h.key] = h.value || '';
+          }
+        }
+
+        // Build body with extra params
+        const bodyParams = body.webhookBodyParams || [];
+        const extraBody = Array.isArray(bodyParams)
+          ? Object.fromEntries(bodyParams.filter((p: any) => p.key).map((p: any) => [p.key, p.value]))
+          : {};
+
         const outPayload = webhookPayload || {
           event: {
             id: eventId,
@@ -299,19 +321,22 @@ serve(async (req) => {
           answers_raw: answers || {},
           variables: resolvedVariables,
           query_params: body.queryParams || {},
-          meta: Object.keys(body.webhookParams || {}).length > 0 ? body.webhookParams : undefined,
         };
+
+        // Merge extra body params into payload
+        const finalPayload = Object.keys(extraBody).length > 0
+          ? { ...outPayload, meta: extraBody }
+          : outPayload;
 
         let webhookResponseBody: Record<string, any> | null = null;
         try {
           const res = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
-            body: method !== 'GET' ? JSON.stringify(outPayload) : undefined,
+            headers,
+            body: method !== 'GET' ? JSON.stringify(finalPayload) : undefined,
           });
           results.webhook = { ok: res.ok, status: res.status };
           serverFired = res.ok;
-          // Try to parse response body (for variable mapping)
           const contentType = res.headers.get('content-type') || '';
           if (res.ok && contentType.includes('application/json')) {
             try { webhookResponseBody = await res.json(); } catch { /* ignore */ }

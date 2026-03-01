@@ -294,7 +294,7 @@ export type PixelEventType =
   | 'SubmitApplication'
   | 'custom';
 
-/** Extra key/value param to merge into webhook body */
+/** Extra key/value param for webhook headers, query params, or body */
 export interface WebhookParam {
   id: string;
   key: string;
@@ -317,8 +317,14 @@ export interface IntegrationNodeData {
   webhookUrl?: string;
   /** HTTP method */
   webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
-  /** Additional static params merged into the webhook body */
+  /** @deprecated — use webhookHeaders/webhookQueryParams/webhookBodyParams instead */
   webhookParams?: WebhookParam[];
+  /** Custom HTTP headers */
+  webhookHeaders?: WebhookParam[];
+  /** Query string parameters appended to the URL */
+  webhookQueryParams?: WebhookParam[];
+  /** Extra key/value pairs merged into the JSON body */
+  webhookBodyParams?: WebhookParam[];
   /** Map response fields back to form variables */
   responseMappings?: WebhookResponseMapping[];
   /** Persisted: flattened dot-notation paths from the last successful test */
