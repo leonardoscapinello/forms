@@ -69,6 +69,10 @@ function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left'
 
 // ─── Settings panels ────────────────────────────────────────────────
 
+function SectionDivider() {
+  return <div className="border-t border-border my-1" />;
+}
+
 function TextSettings({ block, onChange, variables, trackedParams, allInputElements }: {
   block: TextBlock;
   onChange: (b: TextBlock) => void;
@@ -78,6 +82,7 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
 }) {
   return (
     <div className="space-y-3">
+      {/* Conteúdo */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Conteúdo</label>
         <VariableInput
@@ -92,6 +97,10 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
           className="mt-1"
         />
       </div>
+
+      <SectionDivider />
+
+      {/* Tipografia */}
       <div className="grid grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Tamanho</label>
@@ -111,7 +120,13 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
           <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
         </div>
       </div>
+
+      <SectionDivider />
+
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+
+      <SectionDivider />
+
       <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
@@ -126,7 +141,10 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
 }) {
   return (
     <div className="space-y-3">
-      <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} />
+      {/* Upload / Galeria / URL */}
+      <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} showPreview={!!block.src && !block.src.includes('{{')} />
+
+      {/* URL com variável */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">URL da imagem (variável)</label>
         <VariableInput
@@ -139,10 +157,18 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
           className="mt-1"
         />
       </div>
+
+      <SectionDivider />
+
+      {/* Alt text */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto alternativo</label>
         <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-8 text-xs mt-1" />
       </div>
+
+      <SectionDivider />
+
+      {/* Largura + Link */}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Largura</label>
@@ -153,7 +179,7 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
           <VariableInput
             value={block.link}
             onChange={val => onChange({ ...block, link: val })}
-            placeholder="https://... ou {{variavel}}"
+            placeholder="https://... ou {{…}}"
             variables={variables as any}
             trackedParams={trackedParams as any}
             allInputElements={allInputElements as any}
@@ -161,7 +187,13 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
           />
         </div>
       </div>
+
+      <SectionDivider />
+
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+
+      <SectionDivider />
+
       <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
@@ -174,16 +206,17 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
   trackedParams?: Props['trackedParams'];
   allInputElements?: Props['allInputElements'];
 }) {
-  const LINK_MODES: { value: ButtonLinkMode; label: string; desc: string }[] = [
-    { value: 'custom', label: 'Link personalizado', desc: 'URL fixa ou com variáveis {{…}}' },
-    { value: 'variable', label: 'Variável de link', desc: 'Usa o valor de uma variável como URL' },
-    { value: 'pass_all_params', label: 'Repassar todos os parâmetros', desc: 'Anexa todos os parâmetros GET recebidos ao link' },
-    { value: 'pass_utms', label: 'Repassar UTMs', desc: 'Anexa apenas utm_source, utm_medium, utm_campaign, etc.' },
-    { value: 'pass_variables', label: 'Repassar variáveis', desc: 'Anexa variáveis como parâmetros no link' },
+  const LINK_MODES: { value: ButtonLinkMode; label: string }[] = [
+    { value: 'custom', label: 'Link personalizado' },
+    { value: 'variable', label: 'Variável de link' },
+    { value: 'pass_all_params', label: 'Repassar todos os parâmetros' },
+    { value: 'pass_utms', label: 'Repassar UTMs' },
+    { value: 'pass_variables', label: 'Repassar variáveis' },
   ];
 
   return (
     <div className="space-y-3">
+      {/* Texto */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto do botão</label>
         <VariableInput
@@ -196,15 +229,17 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
           className="mt-1"
         />
       </div>
+
+      <SectionDivider />
+
+      {/* Link */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Tipo de link</label>
         <Select value={block.linkMode || 'custom'} onValueChange={v => onChange({ ...block, linkMode: v as ButtonLinkMode })}>
           <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {LINK_MODES.map(m => (
-              <SelectItem key={m.value} value={m.value} className="text-xs">
-                <span className="font-medium">{m.label}</span>
-              </SelectItem>
+              <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -245,6 +280,10 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
           <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://destino.com" className="h-8 text-xs mt-1" />
         </div>
       )}
+
+      <SectionDivider />
+
+      {/* Aparência */}
       <div className="grid grid-cols-2 gap-2">
         <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
         <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
@@ -263,7 +302,13 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
           <Input type="number" value={block.paddingY} onChange={e => onChange({ ...block, paddingY: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
       </div>
+
+      <SectionDivider />
+
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
+
+      <SectionDivider />
+
       <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
@@ -279,6 +324,7 @@ function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (
           <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-8 text-xs mt-1" />
         </div>
       </div>
+      <SectionDivider />
       <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
@@ -330,6 +376,7 @@ function StructureSettings({ block, onChange }: { block: ColumnsBlock; onChange:
           ))}
         </div>
       </div>
+      <SectionDivider />
       <PaddingEditor padding={block.padding} onChange={p => onChange({ ...block, padding: p })} />
     </div>
   );
