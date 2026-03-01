@@ -32,7 +32,7 @@ export function AppSidebar() {
     <SidebarMenuItem key={item.title}>
       <SidebarMenuButton
         onClick={() => navigate(item.url)}
-        className={`mx-2 px-3 py-2.5 rounded-full text-[13px] transition-all ${
+        className={`mx-3 px-3 py-2.5 rounded-full text-[13px] transition-all ${
           isActive(item.url)
             ? 'bg-primary text-primary-foreground font-medium'
             : 'bg-transparent text-foreground/70 hover:bg-accent hover:text-foreground'
