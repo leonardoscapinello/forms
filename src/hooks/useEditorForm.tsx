@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { createContext, useContext, useCallback, useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
