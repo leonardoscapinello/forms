@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { 
-  Type, ImageIcon, MousePointer2, Minus, Space, Columns2, 
+import {
   Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
   AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react';
@@ -21,181 +20,16 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// ─── Block types ────────────────────────────────────────────────────
-type BlockType = 'text' | 'image' | 'button' | 'divider' | 'spacer' | 'columns';
+import {
+  type BlockType, type EmailBlock, type BlockPadding,
+  type TextBlock, type ImageBlock, type ButtonBlock, type ButtonLinkMode,
+  type DividerBlock, type SpacerBlock, type ColumnsBlock,
+  createBlock, blocksToHtml, embedBlocksInHtml, extractBlocksFromHtml,
+  BLOCK_TYPES, COL_BLOCK_TYPES, BLOCK_LABELS,
+} from './emailBlockTypes';
 
-interface BlockPadding {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-}
+// ─── Shared micro-components ────────────────────────────────────────
 
-interface BaseBlock {
-  id: string;
-  type: BlockType;
-  padding: BlockPadding;
-}
-
-interface TextBlock extends BaseBlock {
-  type: 'text';
-  content: string;
-  align: 'left' | 'center' | 'right';
-  fontSize: number;
-  fontWeight: 'normal' | 'bold';
-  color: string;
-}
-
-interface ImageBlock extends BaseBlock {
-  type: 'image';
-  src: string;
-  alt: string;
-  width: string;
-  align: 'left' | 'center' | 'right';
-  link: string;
-}
-
-type ButtonLinkMode = 'custom' | 'variable' | 'pass_all_params' | 'pass_utms' | 'pass_variables';
-
-interface ButtonBlock extends BaseBlock {
-  type: 'button';
-  text: string;
-  href: string;
-  linkMode: ButtonLinkMode;
-  bgColor: string;
-  textColor: string;
-  borderRadius: number;
-  align: 'left' | 'center' | 'right';
-  fontSize: number;
-  paddingX: number;
-  paddingY: number;
-}
-
-interface DividerBlock extends BaseBlock {
-  type: 'divider';
-  color: string;
-  thickness: number;
-  width: string;
-}
-
-interface SpacerBlock extends BaseBlock {
-  type: 'spacer';
-  height: number;
-}
-
-interface ColumnsBlock extends BaseBlock {
-  type: 'columns';
-  columns: EmailBlock[][];
-}
-
-type EmailBlock = TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock | ColumnsBlock;
-
-// ─── Defaults ────────────────────────────────────────────────────────
-function uid() { return Math.random().toString(36).slice(2, 10); }
-
-const DEFAULT_PADDING: BlockPadding = { top: 8, right: 24, bottom: 8, left: 24 };
-
-function createBlock(type: BlockType): EmailBlock {
-  const id = uid();
-  const padding = { ...DEFAULT_PADDING };
-  switch (type) {
-    case 'text': return { id, type, padding, content: 'Seu texto aqui...', align: 'left', fontSize: 16, fontWeight: 'normal', color: '#333333' };
-    case 'image': return { id, type, padding, src: '', alt: '', width: '100%', align: 'center', link: '' };
-    case 'button': return { id, type, padding: { top: 16, right: 24, bottom: 16, left: 24 }, text: 'Clique aqui', href: '#', linkMode: 'custom' as ButtonLinkMode, bgColor: '#4F46E5', textColor: '#FFFFFF', borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12 };
-    case 'divider': return { id, type, padding, color: '#E5E7EB', thickness: 1, width: '100%' };
-    case 'spacer': return { id, type, padding: { top: 0, right: 0, bottom: 0, left: 0 }, height: 20 };
-    case 'columns': return { id, type, padding: { top: 8, right: 20, bottom: 8, left: 20 }, columns: [[], []] };
-  }
-}
-
-// ─── Blocks JSON embed (hidden comment in HTML) ─────────────────────
-const BLOCKS_MARKER_START = '<!--BLOCKS:';
-const BLOCKS_MARKER_END = ':BLOCKS-->';
-
-function embedBlocksInHtml(html: string, blocks: EmailBlock[], emailBg: string, contentBg: string): string {
-  const meta = JSON.stringify({ blocks, emailBg, contentBg });
-  return html + `\n${BLOCKS_MARKER_START}${btoa(unescape(encodeURIComponent(meta)))}${BLOCKS_MARKER_END}`;
-}
-
-function extractBlocksFromHtml(html: string): { blocks: EmailBlock[]; emailBg: string; contentBg: string } | null {
-  const startIdx = html.indexOf(BLOCKS_MARKER_START);
-  const endIdx = html.indexOf(BLOCKS_MARKER_END);
-  if (startIdx === -1 || endIdx === -1) return null;
-  try {
-    const b64 = html.slice(startIdx + BLOCKS_MARKER_START.length, endIdx);
-    const json = decodeURIComponent(escape(atob(b64)));
-    return JSON.parse(json);
-  } catch { return null; }
-}
-
-// ─── Block to HTML ──────────────────────────────────────────────────
-function padStr(p: BlockPadding) {
-  return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
-}
-
-function blockToHtml(block: EmailBlock): string {
-  const pad = padStr(block.padding);
-  switch (block.type) {
-    case 'text':
-      return `<tr><td style="padding:${pad};text-align:${block.align};font-size:${block.fontSize}px;font-weight:${block.fontWeight};color:${block.color};font-family:Arial,Helvetica,sans-serif;line-height:1.5;">${block.content.replace(/\n/g, '<br/>')}</td></tr>`;
-    case 'image': {
-      const img = `<img src="${block.src}" alt="${block.alt}" style="display:block;max-width:100%;width:${block.width};height:auto;border:0;" />`;
-      const linked = block.link ? `<a href="${block.link}" target="_blank">${img}</a>` : img;
-      return `<tr><td style="padding:${pad};text-align:${block.align};">${linked}</td></tr>`;
-    }
-    case 'button':
-      return `<tr><td style="padding:${pad};text-align:${block.align};"><a href="${block.href}" target="_blank" style="display:inline-block;background-color:${block.bgColor};color:${block.textColor};font-size:${block.fontSize}px;font-family:Arial,Helvetica,sans-serif;font-weight:bold;text-decoration:none;padding:${block.paddingY}px ${block.paddingX}px;border-radius:${block.borderRadius}px;mso-padding-alt:0;">${block.text}</a></td></tr>`;
-    case 'divider':
-      return `<tr><td style="padding:${pad};"><table role="presentation" width="${block.width}" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="border-top:${block.thickness}px solid ${block.color};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`;
-    case 'spacer':
-      return `<tr><td style="padding:0;height:${block.height}px;font-size:0;line-height:0;">&nbsp;</td></tr>`;
-    case 'columns': {
-      const colWidth = Math.floor(100 / block.columns.length);
-      const cols = block.columns.map(col => {
-        const inner = col.map(b => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${blockToHtml(b)}</table>`).join('');
-        return `<!--[if mso]><td style="width:${colWidth}%;vertical-align:top;padding:0 4px;"><![endif]--><div class="email-col" style="display:inline-block;width:100%;max-width:${colWidth}%;vertical-align:top;padding:0 4px;box-sizing:border-box;">${inner || '&nbsp;'}</div><!--[if mso]></td><![endif]-->`;
-      }).join('');
-      return `<tr><td style="padding:${pad};"><!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><![endif]-->${cols}<!--[if mso]></tr></table><![endif]--></td></tr>`;
-    }
-  }
-}
-
-function blocksToHtml(blocks: EmailBlock[], bgColor = '#F9FAFB', contentBg = '#FFFFFF', contentWidth = 600): string {
-  const rows = blocks.map(blockToHtml).join('\n');
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Email</title>
-<style>
-@media only screen and (max-width: 620px) {
-  .email-container { width: 100% !important; min-width: 100% !important; }
-  .email-col { display: block !important; width: 100% !important; max-width: 100% !important; }
-  td { padding-left: 16px !important; padding-right: 16px !important; }
-}
-</style>
-<!--[if mso]><style>table,td{font-family:Arial,Helvetica,sans-serif!important;}</style><![endif]-->
-</head>
-<body style="margin:0;padding:0;background-color:${bgColor};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${bgColor};">
-<tr><td align="center" style="padding:24px 0;">
-<table role="presentation" class="email-container" width="${contentWidth}" cellpadding="0" cellspacing="0" style="background-color:${contentBg};border-radius:8px;max-width:${contentWidth}px;width:100%;">
-${rows}
-</table>
-</td></tr></table>
-</body></html>`;
-}
-
-// ─── Block palette items ────────────────────────────────────────────
-const BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Type }[] = [
-  { type: 'text', label: 'Texto', icon: Type },
-  { type: 'image', label: 'Imagem', icon: ImageIcon },
-  { type: 'button', label: 'Botão', icon: MousePointer2 },
-  { type: 'divider', label: 'Divisor', icon: Minus },
-  { type: 'spacer', label: 'Espaço', icon: Space },
-  { type: 'columns', label: 'Colunas', icon: Columns2 },
-];
-
-// ─── Padding editor ─────────────────────────────────────────────────
 function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange: (p: BlockPadding) => void }) {
   return (
     <div className="space-y-1.5">
@@ -219,7 +53,27 @@ function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange:
   );
 }
 
+function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left' | 'center' | 'right') => void }) {
+  return (
+    <div>
+      <label className="text-[10px] font-medium text-muted-foreground uppercase">Alinhamento</label>
+      <div className="flex gap-1 mt-1">
+        {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([v, Icon]) => (
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            className={cn('p-1.5 rounded border transition-colors', value === v ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Settings panels ────────────────────────────────────────────────
+
 function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: TextBlock) => void }) {
   return (
     <div className="space-y-3">
@@ -413,92 +267,6 @@ function SpacerSettings({ block, onChange }: { block: SpacerBlock; onChange: (b:
   );
 }
 
-function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left' | 'center' | 'right') => void }) {
-  return (
-    <div>
-      <label className="text-[10px] font-medium text-muted-foreground uppercase">Alinhamento</label>
-      <div className="flex gap-1 mt-1">
-        {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([v, Icon]) => (
-          <button
-            key={v}
-            onClick={() => onChange(v)}
-            className={cn('p-1.5 rounded border transition-colors', value === v ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Block preview ──────────────────────────────────────────────────
-function BlockPreview({ block }: { block: EmailBlock }) {
-  const pad = block.padding;
-  const padStyle = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
-
-  switch (block.type) {
-    case 'text':
-      return (
-        <div style={{ ...padStyle, textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-          {block.content.split('\n').map((line, i) => <span key={i}>{line}{i < block.content.split('\n').length - 1 && <br />}</span>)}
-        </div>
-      );
-    case 'image':
-      return (
-        <div style={{ ...padStyle, textAlign: block.align }}>
-          {block.src ? (
-            <img src={block.src} alt={block.alt} style={{ maxWidth: '100%', width: block.width, height: 'auto', display: 'inline-block' }} />
-          ) : (
-            <div className="flex items-center justify-center h-24 bg-muted/50 rounded border border-dashed border-border">
-              <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
-            </div>
-          )}
-        </div>
-      );
-    case 'button':
-      return (
-        <div style={{ ...padStyle, textAlign: block.align }}>
-          <span style={{
-            display: 'inline-block', backgroundColor: block.bgColor, color: block.textColor,
-            fontSize: block.fontSize, fontWeight: 'bold', padding: `${block.paddingY}px ${block.paddingX}px`,
-            borderRadius: block.borderRadius, fontFamily: 'Arial, Helvetica, sans-serif', textDecoration: 'none',
-          }}>
-            {block.text}
-          </span>
-        </div>
-      );
-    case 'divider':
-      return (
-        <div style={padStyle}>
-          <hr style={{ border: 'none', borderTop: `${block.thickness}px solid ${block.color}`, width: block.width, margin: '0 auto' }} />
-        </div>
-      );
-    case 'spacer':
-      return <div style={{ height: block.height }} />;
-    case 'columns':
-      return (
-        <div style={{ ...padStyle, display: 'flex', gap: 8 }}>
-          {block.columns.map((col, ci) => (
-            <div key={ci} style={{ flex: 1, minWidth: 0 }}>
-              {col.length === 0 ? (
-                <div className="h-16 rounded border border-dashed border-border flex flex-col items-center justify-center text-[10px] text-muted-foreground gap-1">
-                  <span>Coluna {ci + 1}</span>
-                  <span className="text-[9px] opacity-60">Selecione para adicionar</span>
-                </div>
-              ) : (
-                col.map(b => <BlockPreview key={b.id} block={b} />)
-              )}
-            </div>
-          ))}
-        </div>
-      );
-  }
-}
-
-// ─── Column block types (no nested columns) ────────────────────────
-const COL_BLOCK_TYPES: { type: BlockType; label: string; icon: typeof Type }[] = BLOCK_TYPES.filter(b => b.type !== 'columns');
-
 // ─── Columns settings ───────────────────────────────────────────────
 function ColumnsSettings({ block, onChange }: { block: ColumnsBlock; onChange: (b: ColumnsBlock) => void }) {
   const addToColumn = (colIndex: number, type: BlockType) => {
@@ -562,7 +330,6 @@ function ColumnsSettings({ block, onChange }: { block: ColumnsBlock; onChange: (
             )}
           </div>
 
-          {/* Existing blocks in column */}
           {col.map((b, bi) => (
             <div key={b.id} className="flex items-center gap-1 rounded bg-muted/50 px-1.5 py-1 text-[10px]">
               <span className="flex-1 truncate">{BLOCK_LABELS[b.type]}: {b.type === 'text' ? (b as TextBlock).content.slice(0, 20) : b.type === 'button' ? (b as ButtonBlock).text : ''}</span>
@@ -572,7 +339,6 @@ function ColumnsSettings({ block, onChange }: { block: ColumnsBlock; onChange: (
             </div>
           ))}
 
-          {/* Add block buttons */}
           <div className="flex flex-wrap gap-1 pt-1">
             {COL_BLOCK_TYPES.map(bt => (
               <button
@@ -611,9 +377,69 @@ function BlockSettingsDispatch({ block, onChange, variables, trackedParams, allI
   }
 }
 
-const BLOCK_LABELS: Record<BlockType, string> = {
-  text: 'Texto', image: 'Imagem', button: 'Botão', divider: 'Divisor', spacer: 'Espaço', columns: 'Colunas',
-};
+// ─── Block preview ──────────────────────────────────────────────────
+function BlockPreview({ block }: { block: EmailBlock }) {
+  const pad = block.padding;
+  const padStyle = { paddingTop: pad.top, paddingRight: pad.right, paddingBottom: pad.bottom, paddingLeft: pad.left };
+
+  switch (block.type) {
+    case 'text':
+      return (
+        <div style={{ ...padStyle, textAlign: block.align, fontSize: block.fontSize, fontWeight: block.fontWeight, color: block.color, lineHeight: 1.5, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+          {block.content.split('\n').map((line, i) => <span key={i}>{line}{i < block.content.split('\n').length - 1 && <br />}</span>)}
+        </div>
+      );
+    case 'image':
+      return (
+        <div style={{ ...padStyle, textAlign: block.align }}>
+          {block.src ? (
+            <img src={block.src} alt={block.alt} style={{ maxWidth: '100%', width: block.width, height: 'auto', display: 'inline-block' }} />
+          ) : (
+            <div className="flex items-center justify-center h-24 bg-muted/50 rounded border border-dashed border-border">
+              <span className="text-muted-foreground/40 text-xs">Imagem</span>
+            </div>
+          )}
+        </div>
+      );
+    case 'button':
+      return (
+        <div style={{ ...padStyle, textAlign: block.align }}>
+          <span style={{
+            display: 'inline-block', backgroundColor: block.bgColor, color: block.textColor,
+            fontSize: block.fontSize, fontWeight: 'bold', padding: `${block.paddingY}px ${block.paddingX}px`,
+            borderRadius: block.borderRadius, fontFamily: 'Arial, Helvetica, sans-serif', textDecoration: 'none',
+          }}>
+            {block.text}
+          </span>
+        </div>
+      );
+    case 'divider':
+      return (
+        <div style={padStyle}>
+          <hr style={{ border: 'none', borderTop: `${block.thickness}px solid ${block.color}`, width: block.width, margin: '0 auto' }} />
+        </div>
+      );
+    case 'spacer':
+      return <div style={{ height: block.height }} />;
+    case 'columns':
+      return (
+        <div style={{ ...padStyle, display: 'flex', gap: 8 }}>
+          {block.columns.map((col, ci) => (
+            <div key={ci} style={{ flex: 1, minWidth: 0 }}>
+              {col.length === 0 ? (
+                <div className="h-16 rounded border border-dashed border-border flex flex-col items-center justify-center text-[10px] text-muted-foreground gap-1">
+                  <span>Coluna {ci + 1}</span>
+                  <span className="text-[9px] opacity-60">Selecione para adicionar</span>
+                </div>
+              ) : (
+                col.map(b => <BlockPreview key={b.id} block={b} />)
+              )}
+            </div>
+          ))}
+        </div>
+      );
+  }
+}
 
 // ─── Sortable block wrapper ─────────────────────────────────────────
 function SortableBlock({ block, isSelected, isDragOverlay, onSelect, onRemove, onAddAfter }: {
@@ -644,7 +470,6 @@ function SortableBlock({ block, isSelected, isDragOverlay, onSelect, onRemove, o
       )}
     >
       <BlockPreview block={block} />
-      {/* Drag handle + actions */}
       <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           {...attributes}
@@ -798,20 +623,8 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
                 <div className="pt-4 space-y-3">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estilo Global</span>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Fundo do e-mail</label>
-                    <div className="flex items-center gap-1 mt-1">
-                      <input type="color" value={emailBg} onChange={e => setEmailBg(e.target.value)} className="h-7 w-7 rounded border border-input cursor-pointer" />
-                      <Input value={emailBg} onChange={e => setEmailBg(e.target.value)} className="h-7 text-[10px] flex-1" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Fundo do conteúdo</label>
-                    <div className="flex items-center gap-1 mt-1">
-                      <input type="color" value={contentBg} onChange={e => setContentBg(e.target.value)} className="h-7 w-7 rounded border border-input cursor-pointer" />
-                      <Input value={contentBg} onChange={e => setContentBg(e.target.value)} className="h-7 text-[10px] flex-1" />
-                    </div>
-                  </div>
+                  <ColorPickerField label="Fundo do e-mail" value={emailBg} onChange={c => setEmailBg(c || '#F9FAFB')} allowTransparent={false} />
+                  <ColorPickerField label="Fundo do conteúdo" value={contentBg} onChange={c => setContentBg(c || '#FFFFFF')} allowTransparent={false} />
                 </div>
               </div>
 

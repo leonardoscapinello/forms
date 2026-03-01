@@ -100,6 +100,48 @@ export function useEditorForm() {
   return ctx;
 }
 
+// ─── Generic node CRUD factory ──────────────────────────────────────
+// Eliminates repetitive add/change/delete patterns across all node types.
+
+type Position = { x: number; y: number };
+
+function useNodeCrud<T extends { id: string }>(
+  form: FormData | null,
+  updateForm: (id: string, patch: Partial<FormData>) => void,
+  prefix: string,
+  listKey: keyof FormData,
+) {
+  const add = useCallback((node: T, position: Position, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const nodeId = `${prefix}-${node.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    updateForm(form.id, {
+      [listKey]: [...((form as any)[listKey] || []), node],
+      flowEdges: [...(form.flowEdges || []), newEdge],
+      nodePositions: [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }],
+    });
+  }, [form, updateForm, prefix, listKey]);
+
+  const change = useCallback((nodeId: string, patch: Partial<T>) => {
+    if (!form) return;
+    updateForm(form.id, {
+      [listKey]: ((form as any)[listKey] || []).map((n: T) => n.id === nodeId ? { ...n, ...patch } : n),
+    });
+  }, [form, updateForm, listKey]);
+
+  const del = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `${prefix}-${nodeId}`;
+    updateForm(form.id, {
+      [listKey]: ((form as any)[listKey] || []).filter((n: T) => n.id !== nodeId),
+      flowEdges: (form.flowEdges || []).filter(e => e.source !== rfNodeId && e.target !== rfNodeId),
+      nodePositions: (form.nodePositions || []).filter(p => p.id !== rfNodeId),
+    });
+  }, [form, updateForm, prefix, listKey]);
+
+  return { add, change, del };
+}
+
 // ─── Provider ────────────────────────────────────────────────────────
 
 export function EditorFormProvider({ children }: { children: React.ReactNode }) {
@@ -176,12 +218,14 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
 
   const editingPage = (editingWelcome || editingThankYou) ? null : (form?.pages?.find(p => p.id === editingPageId) || null);
 
-  // ─── CRUD helpers ─────────────────────────────────────────────────
+  // ─── Form update ──────────────────────────────────────────────────
 
   const updateFormData = useCallback((patch: Partial<FormData>) => {
     if (!form) return;
     updateForm(form.id, patch);
   }, [form, updateForm]);
+
+  // ─── Page CRUD ────────────────────────────────────────────────────
 
   const handleAddPage = useCallback(() => {
     if (!form) return;
@@ -218,7 +262,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     navigate(`/editor/${id}/pages`);
   }, [navigate, id]);
 
-  const handlePageAddAtPosition = useCallback((page: FunnelPage, position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+  const handlePageAddAtPosition = useCallback((page: FunnelPage, position: Position, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
     const newNodeId = `p-${page.id}`;
     const newEdge = { id: `e-${sourceNodeId}-${newNodeId}`, source: sourceNodeId, sourceHandle, target: newNodeId };
@@ -229,41 +273,10 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     });
   }, [form, updateForm]);
 
-  // Generic node CRUD factory
-  const makeNodeCrud = <T extends { id: string }>(
-    prefix: string,
-    listKey: keyof FormData,
-  ) => {
-    const add = (position: { x: number; y: number }, sourceNodeId: string, sourceHandle: string | undefined, node: T) => {
-      if (!form) return;
-      const nodeId = `${prefix}-${node.id}`;
-      const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
-      updateForm(form.id, {
-        [listKey]: [...((form as any)[listKey] || []), node],
-        flowEdges: [...(form.flowEdges || []), newEdge],
-        nodePositions: [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }],
-      });
-    };
-    const change = (nodeId: string, patch: Partial<T>) => {
-      if (!form) return;
-      updateForm(form.id, {
-        [listKey]: ((form as any)[listKey] || []).map((n: T) => n.id === nodeId ? { ...n, ...patch } : n),
-      });
-    };
-    const del = (nodeId: string) => {
-      if (!form) return;
-      const rfNodeId = `${prefix}-${nodeId}`;
-      updateForm(form.id, {
-        [listKey]: ((form as any)[listKey] || []).filter((n: T) => n.id !== nodeId),
-        flowEdges: (form.flowEdges || []).filter(e => e.source !== rfNodeId && e.target !== rfNodeId),
-        nodePositions: (form.nodePositions || []).filter(p => p.id !== rfNodeId),
-      });
-    };
-    return { add, change, del };
-  };
+  // ─── Node CRUD via factory ────────────────────────────────────────
+  // Conditions need special handling (branches), so they stay manual.
 
-  // Conditions (special: has branches)
-  const handleConditionAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+  const handleConditionAddAtPosition = useCallback((position: Position, sourceNodeId: string, sourceHandle?: string) => {
     if (!form) return;
     const cond: ConditionNodeData = {
       id: crypto.randomUUID(), label: 'Nova condição',
@@ -292,111 +305,85 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     });
   }, [form, updateForm]);
 
-  // VariableOp
-  const handleVariableOpAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
-    if (!form) return;
-    const vop: VariableOpNodeData = { id: crypto.randomUUID(), label: 'Operação', operations: [] };
-    const nodeId = `vo-${vop.id}`;
-    updateForm(form.id, {
-      variableOpNodes: [...(form.variableOpNodes || []), vop],
-      flowEdges: [...(form.flowEdges || []), { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId }],
-      nodePositions: [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }],
-    });
-  }, [form, updateForm]);
+  // All other node types use the factory
+  const varOp = useNodeCrud<VariableOpNodeData>(form, updateForm, 'vo', 'variableOpNodes');
+  const intg = useNodeCrud<IntegrationNodeData>(form, updateForm, 'int', 'integrationNodes');
+  const analytics = useNodeCrud<AnalyticsNodeData>(form, updateForm, 'an', 'analyticsNodes');
+  const wa = useNodeCrud<WhatsAppNodeData>(form, updateForm, 'wa', 'whatsappNodes');
+  const email = useNodeCrud<EmailNodeData>(form, updateForm, 'em', 'emailNodes');
+  const abTest = useNodeCrud<ABTestNodeData>(form, updateForm, 'ab', 'abTestNodes');
+  const wait = useNodeCrud<WaitNodeData>(form, updateForm, 'wt', 'waitNodes');
+  const jump = useNodeCrud<JumpNodeData>(form, updateForm, 'jp', 'jumpNodes');
 
-  const handleVariableOpChange = useCallback((nodeId: string, patch: Partial<VariableOpNodeData>) => {
-    if (!form) return;
-    updateForm(form.id, { variableOpNodes: (form.variableOpNodes || []).map(v => v.id === nodeId ? { ...v, ...patch } : v) });
-  }, [form, updateForm]);
+  // Wrappers that create default nodes and call factory.add
+  const handleVariableOpAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    varOp.add({ id: crypto.randomUUID(), label: 'Operação', operations: [] }, pos, src, sh);
+  }, [varOp]);
+  const handleVariableOpChange = varOp.change;
+  const handleVariableOpDelete = varOp.del;
 
-  const handleVariableOpDelete = useCallback((nodeId: string) => {
-    if (!form) return;
-    const rfNodeId = `vo-${nodeId}`;
-    updateForm(form.id, {
-      variableOpNodes: (form.variableOpNodes || []).filter(v => v.id !== nodeId),
-      flowEdges: (form.flowEdges || []).filter(e => e.source !== rfNodeId && e.target !== rfNodeId),
-      nodePositions: (form.nodePositions || []).filter(p => p.id !== rfNodeId),
-    });
-  }, [form, updateForm]);
+  const handleIntegrationAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    intg.add({ id: crypto.randomUUID(), platform: 'webhook' }, pos, src, sh);
+  }, [intg]);
+  const handleIntegrationChange = intg.change;
+  const handleIntegrationDelete = intg.del;
 
-  // Integration
-  const handleIntegrationAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const intg: IntegrationNodeData = { id: crypto.randomUUID(), platform: 'webhook' };
-    const nid = `int-${intg.id}`;
-    updateForm(form.id, { integrationNodes: [...(form.integrationNodes || []), intg], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleIntegrationChange = useCallback((nid: string, patch: Partial<IntegrationNodeData>) => { if (!form) return; updateForm(form.id, { integrationNodes: (form.integrationNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleIntegrationDelete = useCallback((nid: string) => { if (!form) return; const r = `int-${nid}`; updateForm(form.id, { integrationNodes: (form.integrationNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  const handleAnalyticsAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    analytics.add({ id: crypto.randomUUID(), platform: 'meta_pixel', eventType: 'Lead' }, pos, src, sh);
+  }, [analytics]);
+  const handleAnalyticsChange = analytics.change;
+  const handleAnalyticsDelete = analytics.del;
 
-  // Analytics
-  const handleAnalyticsAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const an: AnalyticsNodeData = { id: crypto.randomUUID(), platform: 'meta_pixel', eventType: 'Lead' };
-    const nid = `an-${an.id}`;
-    updateForm(form.id, { analyticsNodes: [...(form.analyticsNodes || []), an], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleAnalyticsChange = useCallback((nid: string, patch: Partial<AnalyticsNodeData>) => { if (!form) return; updateForm(form.id, { analyticsNodes: (form.analyticsNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleAnalyticsDelete = useCallback((nid: string) => { if (!form) return; const r = `an-${nid}`; updateForm(form.id, { analyticsNodes: (form.analyticsNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  const handleWhatsAppAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    wa.add({ id: crypto.randomUUID() }, pos, src, sh);
+  }, [wa]);
+  const handleWhatsAppChange = wa.change;
+  const handleWhatsAppDelete = wa.del;
 
-  // WhatsApp
-  const handleWhatsAppAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const wa: WhatsAppNodeData = { id: crypto.randomUUID() };
-    const nid = `wa-${wa.id}`;
-    updateForm(form.id, { whatsappNodes: [...(form.whatsappNodes || []), wa], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleWhatsAppChange = useCallback((nid: string, patch: Partial<WhatsAppNodeData>) => { if (!form) return; updateForm(form.id, { whatsappNodes: (form.whatsappNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleWhatsAppDelete = useCallback((nid: string) => { if (!form) return; const r = `wa-${nid}`; updateForm(form.id, { whatsappNodes: (form.whatsappNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  const handleEmailAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    email.add({ id: crypto.randomUUID() }, pos, src, sh);
+  }, [email]);
+  const handleEmailChange = email.change;
+  const handleEmailDelete = email.del;
 
-  // Email
-  const handleEmailAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const em: EmailNodeData = { id: crypto.randomUUID() };
-    const nid = `em-${em.id}`;
-    updateForm(form.id, { emailNodes: [...(form.emailNodes || []), em], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleEmailChange = useCallback((nid: string, patch: Partial<EmailNodeData>) => { if (!form) return; updateForm(form.id, { emailNodes: (form.emailNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleEmailDelete = useCallback((nid: string) => { if (!form) return; const r = `em-${nid}`; updateForm(form.id, { emailNodes: (form.emailNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  const handleABTestAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    abTest.add({
+      id: crypto.randomUUID(), label: 'Teste A/B',
+      variants: [{ id: crypto.randomUUID(), label: 'A', weight: 50 }, { id: crypto.randomUUID(), label: 'B', weight: 50 }],
+    }, pos, src, sh);
+  }, [abTest]);
+  const handleABTestChange = abTest.change;
+  const handleABTestDelete = abTest.del;
 
-  // ABTest
-  const handleABTestAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const ab: ABTestNodeData = { id: crypto.randomUUID(), label: 'Teste A/B', variants: [{ id: crypto.randomUUID(), label: 'A', weight: 50 }, { id: crypto.randomUUID(), label: 'B', weight: 50 }] };
-    const nid = `ab-${ab.id}`;
-    updateForm(form.id, { abTestNodes: [...(form.abTestNodes || []), ab], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleABTestChange = useCallback((nid: string, patch: Partial<ABTestNodeData>) => { if (!form) return; updateForm(form.id, { abTestNodes: (form.abTestNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleABTestDelete = useCallback((nid: string) => { if (!form) return; const r = `ab-${nid}`; updateForm(form.id, { abTestNodes: (form.abTestNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  const handleWaitAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    wait.add({ id: crypto.randomUUID(), label: 'Espera', duration: 5, unit: 'seconds' }, pos, src, sh);
+  }, [wait]);
+  const handleWaitChange = wait.change;
+  const handleWaitDelete = wait.del;
 
-  // Wait
-  const handleWaitAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const w: WaitNodeData = { id: crypto.randomUUID(), label: 'Espera', duration: 5, unit: 'seconds' };
-    const nid = `wt-${w.id}`;
-    updateForm(form.id, { waitNodes: [...(form.waitNodes || []), w], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleWaitChange = useCallback((nid: string, patch: Partial<WaitNodeData>) => { if (!form) return; updateForm(form.id, { waitNodes: (form.waitNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleWaitDelete = useCallback((nid: string) => { if (!form) return; const r = `wt-${nid}`; updateForm(form.id, { waitNodes: (form.waitNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  const handleJumpAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    jump.add({ id: crypto.randomUUID(), label: 'Pular para' }, pos, src, sh);
+  }, [jump]);
+  const handleJumpChange = jump.change;
+  const handleJumpDelete = jump.del;
 
-  // Jump
-  const handleJumpAddAtPosition = useCallback((pos: { x: number; y: number }, src: string, sh?: string) => {
-    if (!form) return;
-    const j: JumpNodeData = { id: crypto.randomUUID(), label: 'Pular para' };
-    const nid = `jp-${j.id}`;
-    updateForm(form.id, { jumpNodes: [...(form.jumpNodes || []), j], flowEdges: [...(form.flowEdges || []), { id: `e-${src}-${nid}`, source: src, sourceHandle: sh, target: nid }], nodePositions: [...(form.nodePositions || []), { id: nid, x: pos.x, y: pos.y }] });
-  }, [form, updateForm]);
-  const handleJumpChange = useCallback((nid: string, patch: Partial<JumpNodeData>) => { if (!form) return; updateForm(form.id, { jumpNodes: (form.jumpNodes || []).map(n => n.id === nid ? { ...n, ...patch } : n) }); }, [form, updateForm]);
-  const handleJumpDelete = useCallback((nid: string) => { if (!form) return; const r = `jp-${nid}`; updateForm(form.id, { jumpNodes: (form.jumpNodes || []).filter(n => n.id !== nid), flowEdges: (form.flowEdges || []).filter(e => e.source !== r && e.target !== r), nodePositions: (form.nodePositions || []).filter(p => p.id !== r) }); }, [form, updateForm]);
+  // ─── Variables CRUD ───────────────────────────────────────────────
 
-  // Variables
   const handleAddVariable = useCallback(() => {
     if (!form) return;
     const newVar: FormVariable = { id: crypto.randomUUID(), name: `variavel_${(form.variables?.length || 0) + 1}`, type: 'text', defaultValue: '' };
     updateForm(form.id, { variables: [...(form.variables || []), newVar] });
   }, [form, updateForm]);
-  const handleUpdateVariable = useCallback((varId: string, patch: Partial<FormVariable>) => { if (!form) return; updateForm(form.id, { variables: (form.variables || []).map(v => v.id === varId ? { ...v, ...patch } : v) }); }, [form, updateForm]);
-  const handleDeleteVariable = useCallback((varId: string) => { if (!form) return; updateForm(form.id, { variables: (form.variables || []).filter(v => v.id !== varId) }); }, [form, updateForm]);
+
+  const handleUpdateVariable = useCallback((varId: string, patch: Partial<FormVariable>) => {
+    if (!form) return;
+    updateForm(form.id, { variables: (form.variables || []).map(v => v.id === varId ? { ...v, ...patch } : v) });
+  }, [form, updateForm]);
+
+  const handleDeleteVariable = useCallback((varId: string) => {
+    if (!form) return;
+    updateForm(form.id, { variables: (form.variables || []).filter(v => v.id !== varId) });
+  }, [form, updateForm]);
 
   if (!form) return null;
 
