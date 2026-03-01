@@ -181,6 +181,10 @@ export interface FormStyle {
   headingFontFamily?: string;
   /** Body/paragraph font family */
   bodyFontFamily?: string;
+  /** Company logo URL displayed in top-left corner */
+  logoUrl?: string;
+  /** Logo max height in px */
+  logoHeight?: number;
 }
 
 export interface NodePosition {

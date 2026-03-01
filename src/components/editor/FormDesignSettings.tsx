@@ -4,7 +4,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Palette, Type, Image, Upload, Loader2, X } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Palette, Type, Image, Upload, Loader2, X, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -35,7 +36,9 @@ const GRADIENT_PRESETS = [
 export default function FormDesignSettings({ form, onUpdate }: Props) {
   const style = form.style;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const updateStyle = useCallback((patch: Partial<typeof style>) => {
     onUpdate({ style: { ...style, ...patch } });
@@ -60,6 +63,28 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
       toast.error('Erro ao enviar imagem');
     } finally {
       setUploading(false);
+    }
+  }, [updateStyle]);
+
+  const handleLogoUpload = useCallback(async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `form-logos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', path);
+      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+      if (error || !res?.success) {
+        toast.error(res?.message || 'Falha no upload do logotipo');
+        return;
+      }
+      updateStyle({ logoUrl: res.url });
+      toast.success('Logotipo enviado com sucesso');
+    } catch {
+      toast.error('Erro ao enviar logotipo');
+    } finally {
+      setUploadingLogo(false);
     }
   }, [updateStyle]);
 
@@ -312,6 +337,79 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               Este é um texto de corpo para visualizar como ficará no formulário publicado.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* ─── Logotipo ─── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Logotipo</h3>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Exibido no canto superior esquerdo do formulário publicado.
+          </p>
+
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) handleLogoUpload(f);
+              e.target.value = '';
+            }}
+          />
+
+          {style.logoUrl ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+                <img
+                  src={style.logoUrl}
+                  alt="Logotipo"
+                  className="max-h-12 max-w-[160px] object-contain"
+                  style={{ height: style.logoHeight || 40 }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => logoInputRef.current?.click()}>
+                  <Upload className="h-3 w-3 mr-1.5" />Trocar logotipo
+                </Button>
+                <Button
+                  variant="outline" size="sm" className="text-xs"
+                  onClick={() => updateStyle({ logoUrl: '', logoHeight: undefined })}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Altura</Label>
+                  <span className="text-xs text-muted-foreground font-mono">{style.logoHeight || 40}px</span>
+                </div>
+                <Slider
+                  value={[style.logoHeight || 40]}
+                  onValueChange={([v]) => updateStyle({ logoHeight: v })}
+                  min={20}
+                  max={80}
+                  step={4}
+                />
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full h-16 text-xs border-dashed"
+              disabled={uploadingLogo}
+              onClick={() => logoInputRef.current?.click()}
+            >
+              {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+              {uploadingLogo ? 'Enviando...' : 'Enviar logotipo'}
+            </Button>
+          )}
         </div>
       </div>
     </div>
