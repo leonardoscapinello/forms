@@ -347,6 +347,7 @@ function FlowCanvasInner({
 
     whatsappNodes.forEach((wa, i) => {
       const nodeId = `wa-${wa.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
       n.push({
         id: nodeId,
         type: 'whatsappNode',
@@ -357,6 +358,7 @@ function FlowCanvasInner({
           onDelete: () => onWhatsAppDelete(wa.id),
           variables,
           integrationNodes,
+          allInputElements: prevElements,
         },
       });
     });

@@ -15,6 +15,7 @@ import WhatsAppMessageEditor from './whatsapp/WhatsAppMessageEditor';
 import WhatsAppPreviewCard from './whatsapp/WhatsAppPreviewCard';
 import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
+import type { InputElementGroup } from './VariableAssignPanel';
 
 interface EvolutionInstance {
   id: string;
@@ -29,10 +30,11 @@ export interface WhatsAppNodeProps {
   onDelete: () => void;
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
+  allInputElements?: InputElementGroup[];
 }
 
 function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps }) {
-  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [] } = data;
+  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [] } = data;
   const [expanded, setExpanded] = useState(true);
   const [instances, setInstances] = useState<EvolutionInstance[]>([]);
   const [testing, setTesting] = useState(false);
@@ -173,6 +175,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                     onChange={v => onChange({ recipientNumber: v })}
                     variables={variables}
                     integrationNodes={integrationNodes}
+                    allInputElements={allInputElements}
                     placeholder="5511999999999 ou {{telefone}}"
                     className="h-8 text-xs"
                   />
@@ -188,6 +191,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                     onChange={v => onChange({ messageText: v })}
                     variables={variables}
                     integrationNodes={integrationNodes}
+                    allInputElements={allInputElements}
                     placeholder="Olá {{nome}}, obrigado!"
                     sendMedia={nodeData.sendMedia}
                     mediaType={nodeData.mediaType}
