@@ -10,6 +10,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ColorPickerField, ImageSourcePicker } from '@/components/editor/shared';
+import VariableInput from '@/components/editor/shared/VariableInput';
 import { toast } from 'sonner';
 
 import {
@@ -68,15 +69,27 @@ function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left'
 
 // ─── Settings panels ────────────────────────────────────────────────
 
-function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: TextBlock) => void }) {
+function TextSettings({ block, onChange, variables, trackedParams, allInputElements }: {
+  block: TextBlock;
+  onChange: (b: TextBlock) => void;
+  variables?: Props['variables'];
+  trackedParams?: Props['trackedParams'];
+  allInputElements?: Props['allInputElements'];
+}) {
   return (
     <div className="space-y-3">
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Conteúdo</label>
-        <textarea
+        <VariableInput
+          as="textarea"
           value={block.content}
-          onChange={e => onChange({ ...block, content: e.target.value })}
-          className="w-full min-h-[80px] mt-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm resize-y focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          onChange={val => onChange({ ...block, content: val })}
+          placeholder="Seu texto aqui..."
+          rows={4}
+          variables={variables as any}
+          trackedParams={trackedParams as any}
+          allInputElements={allInputElements as any}
+          className="mt-1"
         />
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -104,10 +117,28 @@ function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: Tex
   );
 }
 
-function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: ImageBlock) => void }) {
+function ImageSettings({ block, onChange, variables, trackedParams, allInputElements }: {
+  block: ImageBlock;
+  onChange: (b: ImageBlock) => void;
+  variables?: Props['variables'];
+  trackedParams?: Props['trackedParams'];
+  allInputElements?: Props['allInputElements'];
+}) {
   return (
     <div className="space-y-3">
       <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} />
+      <div>
+        <label className="text-[10px] font-medium text-muted-foreground uppercase">URL da imagem (variável)</label>
+        <VariableInput
+          value={block.src}
+          onChange={val => onChange({ ...block, src: val })}
+          placeholder="https://... ou {{variavel}}"
+          variables={variables as any}
+          trackedParams={trackedParams as any}
+          allInputElements={allInputElements as any}
+          className="mt-1"
+        />
+      </div>
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto alternativo</label>
         <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-8 text-xs mt-1" />
@@ -119,7 +150,15 @@ function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: I
         </div>
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Link</label>
-          <Input value={block.link} onChange={e => onChange({ ...block, link: e.target.value })} placeholder="https://..." className="h-8 text-xs mt-1" />
+          <VariableInput
+            value={block.link}
+            onChange={val => onChange({ ...block, link: val })}
+            placeholder="https://... ou {{variavel}}"
+            variables={variables as any}
+            trackedParams={trackedParams as any}
+            allInputElements={allInputElements as any}
+            className="mt-1"
+          />
         </div>
       </div>
       <AlignButtons value={block.align} onChange={v => onChange({ ...block, align: v })} />
@@ -147,7 +186,15 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
     <div className="space-y-3">
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto do botão</label>
-        <Input value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} className="h-8 text-xs mt-1" />
+        <VariableInput
+          value={block.text}
+          onChange={val => onChange({ ...block, text: val })}
+          placeholder="Texto do botão"
+          variables={variables as any}
+          trackedParams={trackedParams as any}
+          allInputElements={allInputElements as any}
+          className="mt-1"
+        />
       </div>
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Tipo de link</label>
@@ -165,7 +212,15 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
       {(block.linkMode === 'custom' || !block.linkMode) && (
         <div>
           <label className="text-[10px] font-medium text-muted-foreground uppercase">URL</label>
-          <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://..." className="h-8 text-xs mt-1" />
+          <VariableInput
+            value={block.href}
+            onChange={val => onChange({ ...block, href: val })}
+            placeholder="https://... ou {{variavel}}"
+            variables={variables as any}
+            trackedParams={trackedParams as any}
+            allInputElements={allInputElements as any}
+            className="mt-1"
+          />
         </div>
       )}
       {block.linkMode === 'variable' && (
@@ -289,8 +344,8 @@ function BlockSettingsDispatch({ block, onChange, variables, trackedParams, allI
   allInputElements?: Props['allInputElements'];
 }) {
   switch (block.type) {
-    case 'text': return <TextSettings block={block} onChange={onChange} />;
-    case 'image': return <ImageSettings block={block} onChange={onChange} />;
+    case 'text': return <TextSettings block={block} onChange={onChange} variables={variables} trackedParams={trackedParams} allInputElements={allInputElements} />;
+    case 'image': return <ImageSettings block={block} onChange={onChange} variables={variables} trackedParams={trackedParams} allInputElements={allInputElements} />;
     case 'button': return <ButtonSettings block={block} onChange={onChange} variables={variables} trackedParams={trackedParams} allInputElements={allInputElements} />;
     case 'divider': return <DividerSettings block={block} onChange={onChange} />;
     case 'spacer': return <SpacerSettings block={block} onChange={onChange} />;
