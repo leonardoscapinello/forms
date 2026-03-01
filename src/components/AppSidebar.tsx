@@ -34,7 +34,7 @@ export function AppSidebar() {
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton
           onClick={() => navigate(item.url)}
-          className={`!mx-3 !rounded-lg text-[14px] ${
+          className={`!mx-4 !rounded-lg text-[14px] ${
             active
               ? '!bg-[#203300] !text-white font-medium'
               : '!bg-transparent !text-[#474738] hover:!bg-[#F1F1E9]'
@@ -61,7 +61,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       {/* Logo */}
-      <div className="px-5 pt-6 pb-5">
+      <div className="px-4 pt-4 pb-4">
         <img
           src="/images/twobrain-logo-dark.svg"
           alt="twobrain"
@@ -80,7 +80,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="pt-4">
-          <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B7B790] px-5 mb-1">
+          <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#B7B790] px-4 mb-1">
             Sistema
           </SidebarGroupLabel>
           <SidebarGroupContent>
