@@ -135,8 +135,9 @@ export function blockToHtml(block: EmailBlock): string {
   }
 }
 
-export function blocksToHtml(blocks: EmailBlock[], bgColor = '#F9FAFB', contentBg = '#FFFFFF', contentWidth = 600): string {
+export function blocksToHtml(blocks: EmailBlock[], bgColor = '#F9FAFB', contentBg = '#FFFFFF', contentWidth = 600, contentPadding = { top: 24, right: 0, bottom: 24, left: 0 }): string {
   const rows = blocks.map(blockToHtml).join('\n');
+  const outerPad = `${contentPadding.top}px ${contentPadding.right}px ${contentPadding.bottom}px ${contentPadding.left}px`;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -152,7 +153,7 @@ export function blocksToHtml(blocks: EmailBlock[], bgColor = '#F9FAFB', contentB
 </head>
 <body style="margin:0;padding:0;background-color:${bgColor};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${bgColor};">
-<tr><td align="center" style="padding:24px 0;">
+<tr><td align="center" style="padding:${outerPad};">
 <table role="presentation" class="email-container" width="${contentWidth}" cellpadding="0" cellspacing="0" style="background-color:${contentBg};border-radius:8px;max-width:${contentWidth}px;width:100%;">
 ${rows}
 </table>
@@ -164,12 +165,12 @@ ${rows}
 const BLOCKS_MARKER_START = '<!--BLOCKS:';
 const BLOCKS_MARKER_END = ':BLOCKS-->';
 
-export function embedBlocksInHtml(html: string, blocks: EmailBlock[], emailBg: string, contentBg: string): string {
-  const meta = JSON.stringify({ blocks, emailBg, contentBg });
+export function embedBlocksInHtml(html: string, blocks: EmailBlock[], emailBg: string, contentBg: string, contentPadding?: BlockPadding): string {
+  const meta = JSON.stringify({ blocks, emailBg, contentBg, contentPadding });
   return html + `\n${BLOCKS_MARKER_START}${btoa(unescape(encodeURIComponent(meta)))}${BLOCKS_MARKER_END}`;
 }
 
-export function extractBlocksFromHtml(html: string): { blocks: EmailBlock[]; emailBg: string; contentBg: string } | null {
+export function extractBlocksFromHtml(html: string): { blocks: EmailBlock[]; emailBg: string; contentBg: string; contentPadding?: BlockPadding } | null {
   const startIdx = html.indexOf(BLOCKS_MARKER_START);
   const endIdx = html.indexOf(BLOCKS_MARKER_END);
   if (startIdx === -1 || endIdx === -1) return null;
