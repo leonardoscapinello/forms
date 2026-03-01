@@ -51,51 +51,51 @@ img.emoji {
 
 @layer base {
   :root {
-    --background: 30 20% 98%;
-    --foreground: 220 20% 14%;
+    --background: 45 33% 97%;       /* PAPER 01 #FBFAF6 */
+    --foreground: 48 32% 13%;       /* PAPER 11 #2C2A18 */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 14%;
+    --card-foreground: 48 32% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 14%;
+    --popover-foreground: 48 32% 13%;
 
-    --primary: 220 18% 20%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 75 95% 55%;          /* GREEN 05 #C0FA21 */
+    --primary-foreground: 48 32% 13%; /* dark text on lime */
 
-    --secondary: 30 15% 95%;
-    --secondary-foreground: 220 18% 20%;
+    --secondary: 45 24% 94%;       /* PAPER 02 */
+    --secondary-foreground: 48 32% 13%;
 
-    --muted: 30 10% 94%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 45 24% 94%;           /* PAPER 02 */
+    --muted-foreground: 42 23% 41%; /* PAPER 09 #9A9266 approx */
 
-    --accent: 30 15% 93%;
-    --accent-foreground: 220 18% 20%;
+    --accent: 45 28% 91%;          /* PAPER 03 */
+    --accent-foreground: 48 32% 13%;
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 12% 90%;
-    --input: 30 12% 90%;
-    --ring: 220 18% 20%;
+    --border: 45 22% 90%;          /* PAPER 03 */
+    --input: 45 22% 90%;
+    --ring: 75 95% 55%;            /* GREEN 05 */
 
     --radius: 0.625rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 10% 46%;
-    --sidebar-primary: 220 18% 20%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 15% 96%;
-    --sidebar-accent-foreground: 220 18% 20%;
-    --sidebar-border: 30 12% 92%;
-    --sidebar-ring: 220 18% 20%;
+    --sidebar-foreground: 42 23% 41%;
+    --sidebar-primary: 75 95% 55%;
+    --sidebar-primary-foreground: 48 32% 13%;
+    --sidebar-accent: 45 24% 96%;
+    --sidebar-accent-foreground: 48 32% 13%;
+    --sidebar-border: 45 22% 92%;
+    --sidebar-ring: 75 95% 55%;
 
     /* Semantic extras */
-    --success: 152 60% 42%;
+    --success: 80 83% 23%;         /* GREEN 08 */
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --notification-surface: 229 31% 7%; /* #0C0E17 */
+    --notification-surface: 229 31% 7%;
     --notification-foreground: 220 20% 97%;
     --notification-muted: 220 12% 74%;
     --notification-border: 228 28% 24%;
@@ -143,38 +143,38 @@ img.emoji {
   }
 
   .dark {
-    --background: 220 18% 10%;
-    --foreground: 30 10% 94%;
-    --card: 220 16% 13%;
-    --card-foreground: 30 10% 94%;
-    --popover: 220 16% 13%;
-    --popover-foreground: 30 10% 94%;
-    --primary: 30 15% 95%;
-    --primary-foreground: 220 18% 10%;
-    --secondary: 220 14% 18%;
-    --secondary-foreground: 30 10% 94%;
-    --muted: 220 14% 18%;
-    --muted-foreground: 220 10% 55%;
-    --accent: 220 14% 20%;
-    --accent-foreground: 30 10% 94%;
+    --background: 48 20% 8%;
+    --foreground: 45 24% 94%;
+    --card: 48 18% 11%;
+    --card-foreground: 45 24% 94%;
+    --popover: 48 18% 11%;
+    --popover-foreground: 45 24% 94%;
+    --primary: 75 95% 55%;
+    --primary-foreground: 48 32% 13%;
+    --secondary: 48 16% 16%;
+    --secondary-foreground: 45 24% 94%;
+    --muted: 48 14% 16%;
+    --muted-foreground: 42 15% 55%;
+    --accent: 48 14% 18%;
+    --accent-foreground: 45 24% 94%;
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 14% 20%;
-    --input: 220 14% 20%;
-    --ring: 30 15% 95%;
-    --sidebar-background: 220 16% 11%;
-    --sidebar-foreground: 220 10% 55%;
-    --sidebar-primary: 30 15% 95%;
-    --sidebar-primary-foreground: 220 18% 10%;
-    --sidebar-accent: 220 14% 16%;
-    --sidebar-accent-foreground: 30 10% 94%;
-    --sidebar-border: 220 14% 18%;
-    --sidebar-ring: 30 15% 95%;
-    --success: 152 60% 42%;
+    --border: 48 14% 18%;
+    --input: 48 14% 18%;
+    --ring: 75 95% 55%;
+    --sidebar-background: 48 18% 9%;
+    --sidebar-foreground: 42 15% 55%;
+    --sidebar-primary: 75 95% 55%;
+    --sidebar-primary-foreground: 48 32% 13%;
+    --sidebar-accent: 48 14% 14%;
+    --sidebar-accent-foreground: 45 24% 94%;
+    --sidebar-border: 48 14% 16%;
+    --sidebar-ring: 75 95% 55%;
+    --success: 80 83% 23%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --notification-surface: 229 31% 7%; /* #0C0E17 */
+    --notification-surface: 229 31% 7%;
     --notification-foreground: 220 20% 97%;
     --notification-muted: 220 12% 74%;
     --notification-border: 228 28% 24%;
