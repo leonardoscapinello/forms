@@ -51,11 +51,11 @@ export default function Settings() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                 tab === t.id
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-accent text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
-              <t.icon className="h-4 w-4" />
+              <t.icon className={`h-4 w-4 ${tab === t.id ? 'text-primary-foreground' : ''}`} />
               <span className="hidden md:inline">{t.label}</span>
             </button>
           ))}
@@ -258,7 +258,7 @@ function UsersTab() {
                 </td>
                 <td className="px-4 py-3">
                   <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
-                    u.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                    u.role === 'admin' ? 'bg-accent text-primary-foreground' : 'bg-muted text-muted-foreground'
                   }`}>
                     {u.role === 'admin' ? 'Admin' : 'Usuário'}
                   </span>
@@ -360,14 +360,14 @@ function IntegrationsTab() {
                 {card.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground transition-colors">
                   {card.label}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                   {card.description}
                 </p>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary/60 transition-colors mt-0.5 flex-shrink-0" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground/60 transition-colors mt-0.5 flex-shrink-0" />
             </div>
           </button>
         ))}
