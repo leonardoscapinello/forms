@@ -130,19 +130,19 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  value={style.backgroundColor ? `#${hslToHex(style.backgroundColor)}` : '#faf9f7'}
-                  onChange={e => updateStyle({ backgroundColor: hexToHsl(e.target.value) })}
+                  value={resolveHex(style.backgroundColor, '#FAFAF6')}
+                  onChange={e => updateStyle({ backgroundColor: e.target.value })}
                   className="w-10 h-8 rounded border border-border cursor-pointer"
                 />
                 <Input
-                  value={style.backgroundColor ? `#${hslToHex(style.backgroundColor)}` : '#faf9f7'}
+                  value={resolveHex(style.backgroundColor, '#FAFAF6')}
                   onChange={e => {
                     const hex = e.target.value;
-                    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-                      updateStyle({ backgroundColor: hexToHsl(hex) });
+                    if (/^#[0-9a-fA-F]{6}$/i.test(hex)) {
+                      updateStyle({ backgroundColor: hex });
                     }
                   }}
-                  placeholder="#faf9f7"
+                  placeholder="#FAFAF6"
                   className="h-8 text-xs font-mono flex-1"
                 />
               </div>
@@ -462,4 +462,12 @@ function hslToHex(hsl: string): string {
     b = hue2rgb(p, q, h - 1 / 3);
   }
   return [r, g, b].map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('');
+}
+
+/** Resolve a color value (hex or HSL string) to a hex string for inputs */
+function resolveHex(value: string | undefined, fallback: string): string {
+  if (!value) return fallback;
+  if (value.startsWith('#')) return value;
+  // Assume HSL string like "30 20% 98%"
+  return `#${hslToHex(value)}`;
 }
