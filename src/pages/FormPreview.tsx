@@ -910,6 +910,36 @@ export default function FormPreview() {
         currentNodeId = target;
         continue;
       }
+      // Intermediate: WhatsApp node — send message via edge function
+      if (target.startsWith('wa-')) {
+        const waId = target.replace('wa-', '');
+        const waNode = f?.whatsappNodes?.find(n => n.id === waId);
+        if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
+          try {
+            const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
+            const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
+            const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
+
+            const body: Record<string, any> = {
+              instanceId: waNode.instanceId,
+              recipientNumber: resolvedNumber,
+              messageText: resolvedMessage,
+            };
+            if (waNode.sendMedia && resolvedMediaUrl) {
+              body.mediaUrl = resolvedMediaUrl;
+              body.mediaType = waNode.mediaType || 'image';
+              if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
+            }
+
+            await supabase.functions.invoke('whatsapp-send', { body });
+          } catch (err) {
+            console.error('WhatsApp workflow node error:', err);
+          }
+        }
+        currentNodeId = target;
+        continue;
+      }
+
       if (target.startsWith('c-')) {
         currentNodeId = target;
         continue;
