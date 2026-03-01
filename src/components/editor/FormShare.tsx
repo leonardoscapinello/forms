@@ -292,22 +292,22 @@ export default function FormShare({ form, onUpdate }: Props) {
                 onClick={() => !disabled && setOpenModal(integ.id)}
                 className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border p-6 transition-all aspect-square
                   ${connected
-                    ? 'border-emerald-500/40 bg-emerald-500/5 shadow-sm'
+                    ? 'border-[#B3AB86]/40 bg-[#B3AB86]/5 shadow-sm'
                     : disabled
                       ? 'border-dashed border-border bg-muted/20 opacity-40 cursor-not-allowed'
-                      : 'border-border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer'
+                      : 'border-border bg-card hover:border-[#B3AB86]/30 hover:shadow-sm cursor-pointer'
                   }`}
               >
                 {connected && (
                   <div className="absolute top-2.5 right-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <CheckCircle2 className="h-4 w-4 text-[#8A7D4A]" />
                   </div>
                 )}
                 <div className={`h-12 w-12 rounded-xl ${integ.color} flex items-center justify-center`}>
                   {integ.icon}
                 </div>
                 <span className="text-sm font-medium text-foreground">{integ.label}</span>
-                {connected && <span className="text-[10px] font-medium text-emerald-600">Conectado</span>}
+                {connected && <span className="text-[10px] font-medium text-[#8A7D4A]">Conectado</span>}
                 {disabled && <span className="text-[10px] text-muted-foreground">Em breve</span>}
               </button>
             );
@@ -352,14 +352,14 @@ export default function FormShare({ form, onUpdate }: Props) {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sheet className="h-4 w-4 text-emerald-500" /> Google Sheets
+              <Sheet className="h-4 w-4 text-[#8A7D4A]" /> Google Sheets
             </DialogTitle>
             <DialogDescription>Sincronize respostas automaticamente.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             {isSheetConnected ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-emerald-600">
+                <div className="flex items-center gap-2 text-sm text-[#8A7D4A]">
                   <CheckCircle2 className="h-4 w-4" /> Planilha conectada
                 </div>
                 {form.googleSheetUrl && (
@@ -419,7 +419,7 @@ export default function FormShare({ form, onUpdate }: Props) {
 
             {/* Test result feedback */}
             {webhookTestResult && (
-              <div className={`flex items-center gap-1.5 text-xs ${webhookTestResult.ok ? 'text-emerald-600' : 'text-destructive'}`}>
+              <div className={`flex items-center gap-1.5 text-xs ${webhookTestResult.ok ? 'text-[#8A7D4A]' : 'text-destructive'}`}>
                 {webhookTestResult.ok
                   ? <><CheckCircle2 className="h-3.5 w-3.5" /> Conectado — status {webhookTestResult.status}</>
                   : <><X className="h-3.5 w-3.5" /> Falhou — status {webhookTestResult.status || 'erro de rede'}</>
@@ -428,7 +428,7 @@ export default function FormShare({ form, onUpdate }: Props) {
             )}
 
             {isWebhookConnected && !webhookTestResult && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+              <div className="flex items-center gap-1.5 text-xs text-[#8A7D4A]">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Ativo — será disparado ao completar
               </div>
             )}
