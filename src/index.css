@@ -370,3 +370,29 @@ img.emoji {
 .nps-mobile-slider::-ms-fill-upper {
   border-radius: 9999px;
 }
+
+/* WhatsApp message preview styles */
+.wa-preview strong {
+  font-weight: 700;
+}
+.wa-preview em {
+  font-style: italic;
+}
+.wa-preview del {
+  text-decoration: line-through;
+}
+.wa-preview .wa-mono {
+  font-family: monospace;
+  background: hsl(var(--muted));
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+.wa-preview .wa-var {
+  color: hsl(var(--primary));
+  font-weight: 500;
+  background: hsl(var(--primary) / 0.1);
+  padding: 0 3px;
+  border-radius: 2px;
+  font-size: 0.9em;
+}

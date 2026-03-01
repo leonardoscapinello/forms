@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { WhatsAppNodeData, FormVariable, IntegrationNodeData } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { VariableInput } from './shared';
+import WhatsAppMessageEditor from './whatsapp/WhatsAppMessageEditor';
 import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
 
@@ -168,14 +169,12 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
             {/* Message */}
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Mensagem</Label>
-              <VariableInput
-                as="textarea"
+              <WhatsAppMessageEditor
                 value={nodeData.messageText || ''}
                 onChange={v => onChange({ messageText: v })}
                 variables={variables}
                 integrationNodes={integrationNodes}
                 placeholder="Olá {{nome}}, obrigado!"
-                className="text-xs min-h-[60px]"
               />
             </div>
 
