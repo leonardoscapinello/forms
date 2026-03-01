@@ -279,7 +279,6 @@ export default function WhatsAppMessageEditor({
   const [local, setLocal] = useState(value);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [varOpen, setVarOpen] = useState(false);
-  const [isEditorFocused, setIsEditorFocused] = useState(false);
   const isFocusedRef = useRef(false);
   const [expanded, setExpanded] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -534,12 +533,13 @@ export default function WhatsAppMessageEditor({
                           onChange={e => acHandleChange(e.target.value)}
                           placeholder={placeholder}
                           rows={10}
+                          spellCheck={false}
                           className={cn(
                             'text-sm min-h-[280px] resize-none relative nodrag nopan nowheel',
-                            showReadableOverlay ? 'bg-transparent text-transparent caret-foreground' : local.includes('{{') && 'bg-transparent'
+                            showReadableOverlay ? 'bg-transparent text-transparent caret-foreground selection:bg-transparent selection:text-transparent' : local.includes('{{') && 'bg-transparent'
                           )}
-                          onFocus={() => { isFocusedRef.current = true; setIsEditorFocused(true); }}
-                          onBlur={() => { isFocusedRef.current = false; setIsEditorFocused(false); acDismiss(); }}
+                          onFocus={() => { isFocusedRef.current = true; }}
+                          onBlur={() => { isFocusedRef.current = false; acDismiss(); }}
                           onKeyDown={e => {
                             acHandleKeyDown(e);
                             e.stopPropagation();

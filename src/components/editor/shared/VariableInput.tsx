@@ -55,7 +55,6 @@ export default function VariableInput(props: Props) {
   }, [allInputElements]);
 
   const [local, setLocal] = useState(value);
-  const [isFocused, setIsFocused] = useState(false);
   const isFocusedRef = useRef(false);
 
   useEffect(() => {
@@ -120,11 +119,9 @@ export default function VariableInput(props: Props) {
   const inputHandlers = {
     onFocus: () => {
       isFocusedRef.current = true;
-      setIsFocused(true);
     },
     onBlur: () => {
       isFocusedRef.current = false;
-      setIsFocused(false);
       dismiss();
       commitValue();
     },
@@ -173,7 +170,8 @@ export default function VariableInput(props: Props) {
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
               rows={props.rows ?? 2}
-              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-foreground' : hasHighlight && 'bg-transparent', className)}
+              spellCheck={false}
+              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-foreground selection:bg-transparent selection:text-transparent' : hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
@@ -196,7 +194,8 @@ export default function VariableInput(props: Props) {
               value={local}
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
-              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-foreground' : hasHighlight && 'bg-transparent', className)}
+              spellCheck={false}
+              className={cn('nodrag nopan nowheel relative', showReadableOverlay ? 'bg-transparent text-transparent caret-foreground selection:bg-transparent selection:text-transparent' : hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
