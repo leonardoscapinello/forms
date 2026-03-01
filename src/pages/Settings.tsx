@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   HardDrive, Save, TestTube, Loader2, CheckCircle2, XCircle, Eye, EyeOff,
   Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail, Radio, Tag,
-  Pencil, Check, X,
+  Pencil, Check, X, MessageSquare, BarChart3, ChevronRight,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
 import PixelIntegrationsCard from '@/components/settings/PixelIntegrationsCard';
 import GoogleOAuthCard from '@/components/settings/GoogleOAuthCard';
@@ -281,6 +282,151 @@ function UsersTab() {
 }
 
 // ─── Integrations Tab ───
+
+interface IntegrationCardDef {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  bgColor: string;
+}
+
+const INTEGRATION_CARDS: IntegrationCardDef[] = [
+  {
+    id: 'minio',
+    label: 'MinIO S3',
+    description: 'Armazenamento de arquivos compatível com S3',
+    icon: <HardDrive className="h-5 w-5 text-node-integration-accent" />,
+    bgColor: 'bg-node-integration',
+  },
+  {
+    id: 'google',
+    label: 'Google OAuth2',
+    description: 'Google Sheets, Drive e mais',
+    icon: (
+      <svg className="h-5 w-5" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+      </svg>
+    ),
+    bgColor: 'bg-blue-500/10',
+  },
+  {
+    id: 'reoon',
+    label: 'Reoon Email Verifier',
+    description: 'Validação de e-mails em tempo real',
+    icon: <Mail className="h-5 w-5 text-blue-500" />,
+    bgColor: 'bg-blue-500/10',
+  },
+  {
+    id: 'pixels',
+    label: 'Pixels & Webhooks',
+    description: 'Meta, GA4, TikTok, LinkedIn e Webhooks',
+    icon: <BarChart3 className="h-5 w-5 text-orange-500" />,
+    bgColor: 'bg-orange-500/10',
+  },
+  {
+    id: 'evolution',
+    label: 'WhatsApp (Evolution API)',
+    description: 'Enviar mensagens no workflow',
+    icon: <MessageSquare className="h-5 w-5 text-node-whatsapp-accent" />,
+    bgColor: 'bg-node-whatsapp',
+  },
+  {
+    id: 'resend',
+    label: 'E-mail (Resend)',
+    description: 'Enviar e-mails transacionais no workflow',
+    icon: <Mail className="h-5 w-5 text-node-email-accent" />,
+    bgColor: 'bg-node-email',
+  },
+];
+
+function IntegrationsTab() {
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {INTEGRATION_CARDS.map(card => (
+          <button
+            key={card.id}
+            onClick={() => setOpenDialog(card.id)}
+            className="group rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <div className="flex items-start gap-3">
+              <div className={`h-10 w-10 rounded-lg ${card.bgColor} flex items-center justify-center flex-shrink-0`}>
+                {card.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {card.label}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  {card.description}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary/60 transition-colors mt-0.5 flex-shrink-0" />
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* MinIO Dialog */}
+      <Dialog open={openDialog === 'minio'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-node-integration flex items-center justify-center">
+                <HardDrive className="h-4 w-4 text-node-integration-accent" />
+              </div>
+              MinIO S3
+            </DialogTitle>
+          </DialogHeader>
+          <MinioForm />
+        </DialogContent>
+      </Dialog>
+
+      {/* Google OAuth Dialog */}
+      <Dialog open={openDialog === 'google'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <GoogleOAuthCard />
+        </DialogContent>
+      </Dialog>
+
+      {/* Reoon Dialog */}
+      <Dialog open={openDialog === 'reoon'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <ReoonIntegrationCard />
+        </DialogContent>
+      </Dialog>
+
+      {/* Pixels Dialog */}
+      <Dialog open={openDialog === 'pixels'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <PixelIntegrationsCard />
+        </DialogContent>
+      </Dialog>
+
+      {/* Evolution API Dialog */}
+      <Dialog open={openDialog === 'evolution'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <EvolutionApiCard />
+        </DialogContent>
+      </Dialog>
+
+      {/* Resend Dialog */}
+      <Dialog open={openDialog === 'resend'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <ResendApiCard />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Extracted MinIO form (was inline in IntegrationsTab)
 interface MinioConfig {
   endpoint: string;
   port: string;
@@ -296,7 +442,7 @@ const EMPTY_MINIO: MinioConfig = {
   bucket: '', useSSL: true, region: 'us-east-1',
 };
 
-function IntegrationsTab() {
+function MinioForm() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -357,68 +503,55 @@ function IntegrationsTab() {
     setTesting(false);
   }, [config, toast]);
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <div className="space-y-6">
-    <div className="rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-node-integration flex items-center justify-center">
-            <HardDrive className="h-5 w-5 text-node-integration-accent" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-foreground">MinIO S3</h2>
-            <p className="text-xs text-muted-foreground">Armazenamento de arquivos compatível com S3</p>
-          </div>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
         <Switch checked={isActive} onCheckedChange={setIsActive} />
+        <Label className="text-sm">Ativo</Label>
       </div>
-
-      <div className="p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Endpoint</Label>
-            <Input value={config.endpoint} onChange={e => updateConfig({ endpoint: e.target.value })} placeholder="minio.exemplo.com" className="text-sm" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Porta</Label>
-            <Input value={config.port} onChange={e => updateConfig({ port: e.target.value })} placeholder="9000" className="text-sm w-28" />
-          </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Endpoint</Label>
+          <Input value={config.endpoint} onChange={e => updateConfig({ endpoint: e.target.value })} placeholder="minio.exemplo.com" className="text-sm" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Access Key</Label>
-          <Input value={config.accessKey} onChange={e => updateConfig({ accessKey: e.target.value })} placeholder="minioadmin" className="text-sm font-mono" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Secret Key</Label>
-          <div className="relative">
-            <Input type={showSecret ? 'text' : 'password'} value={config.secretKey} onChange={e => updateConfig({ secretKey: e.target.value })} placeholder="••••••••" className="text-sm font-mono pr-10" />
-            <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Bucket</Label>
-            <Input value={config.bucket} onChange={e => updateConfig({ bucket: e.target.value })} placeholder="form-uploads" className="text-sm" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Região</Label>
-            <Input value={config.region} onChange={e => updateConfig({ region: e.target.value })} placeholder="us-east-1" className="text-sm" />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 pt-2">
-          <Switch checked={config.useSSL} onCheckedChange={v => updateConfig({ useSSL: v })} id="ssl" />
-          <Label htmlFor="ssl" className="text-xs text-muted-foreground cursor-pointer">Usar SSL (HTTPS)</Label>
+          <Label className="text-xs text-muted-foreground">Porta</Label>
+          <Input value={config.port} onChange={e => updateConfig({ port: e.target.value })} placeholder="9000" className="text-sm" />
         </div>
       </div>
-
-      <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30 rounded-b-xl">
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Access Key</Label>
+        <Input value={config.accessKey} onChange={e => updateConfig({ accessKey: e.target.value })} placeholder="minioadmin" className="text-sm font-mono" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Secret Key</Label>
+        <div className="relative">
+          <Input type={showSecret ? 'text' : 'password'} value={config.secretKey} onChange={e => updateConfig({ secretKey: e.target.value })} placeholder="••••••••" className="text-sm font-mono pr-10" />
+          <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Bucket</Label>
+          <Input value={config.bucket} onChange={e => updateConfig({ bucket: e.target.value })} placeholder="form-uploads" className="text-sm" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Região</Label>
+          <Input value={config.region} onChange={e => updateConfig({ region: e.target.value })} placeholder="us-east-1" className="text-sm" />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch checked={config.useSSL} onCheckedChange={v => updateConfig({ useSSL: v })} id="ssl" />
+        <Label htmlFor="ssl" className="text-xs text-muted-foreground cursor-pointer">Usar SSL (HTTPS)</Label>
+      </div>
+      <div className="flex items-center gap-2 pt-2 border-t border-border">
         <Button variant="outline" size="sm" onClick={handleTest} disabled={testing || !config.endpoint}>
           {testing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <TestTube className="mr-2 h-3.5 w-3.5" />}
-          Testar conexão
+          Testar
           {testResult === 'success' && <CheckCircle2 className="ml-2 h-3.5 w-3.5 text-success" />}
           {testResult === 'error' && <XCircle className="ml-2 h-3.5 w-3.5 text-destructive" />}
         </Button>
@@ -427,12 +560,6 @@ function IntegrationsTab() {
           Salvar
         </Button>
       </div>
-    </div>
-
-    <GoogleOAuthCard />
-    <ReoonIntegrationCard />
-    <EvolutionApiCard />
-    <ResendApiCard />
     </div>
   );
 }
