@@ -46,7 +46,7 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
       }`}
       onDoubleClick={onSelect}
     >
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
       {!(question.routingMode === 'per_option' && ['multiple_choice', 'single_choice', 'dropdown', 'ranking', 'yes_no'].includes(question.type)) && (
         <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-primary !border-2 !border-card" />
       )}

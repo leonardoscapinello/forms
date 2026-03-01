@@ -103,7 +103,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
             : 'border-border'
         }`}>
 
-          <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-whatsapp-accent !border-2 !border-card" />
+          <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-whatsapp-accent !border-2 !border-card" />
           <Handle type="source" position={Position.Right} id="default" className="!w-3 !h-3 !bg-node-whatsapp-accent !border-2 !border-card" />
 
           {/* Header — matches other nodes */}

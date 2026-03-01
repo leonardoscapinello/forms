@@ -67,7 +67,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
             : 'border-border'
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-variable-op-accent !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-variable-op-accent !border-2 !border-card" />
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-node-variable-op-accent !border-2 !border-card" />
 
       {/* Header */}
