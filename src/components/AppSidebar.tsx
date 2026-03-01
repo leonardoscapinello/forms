@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Settings, LogOut, LayoutDashboard, Image } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 
 const mainItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
@@ -17,6 +17,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut, role } = useAuth();
+  const { state } = useSidebar();
+  const collapsed = state === 'collapsed';
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -39,8 +41,10 @@ export function AppSidebar() {
         type="button"
         onClick={() => navigate(item.url)}
         aria-current={active ? 'page' : undefined}
+        title={collapsed ? item.title : undefined}
         className={cn(
           'flex h-10 w-full items-center gap-3 rounded-lg px-4 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+          'group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0',
           active
             ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold'
             : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -52,40 +56,40 @@ export function AppSidebar() {
             active ? 'text-sidebar-primary-foreground' : 'text-sidebar-foreground/60',
           )}
         />
-        <span className="truncate">{item.title}</span>
+        <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
       </button>
     );
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
       <SidebarContent className="gap-0">
-        <div className="p-4">
+        <div className="p-4 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-4">
           <img
             src="/images/twobrain-logo-dark.svg"
             alt="twobrain"
-            className="h-6 w-auto max-w-[127px]"
+            className="h-6 w-auto max-w-[127px] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-5"
           />
         </div>
 
-        <section className="p-4">
+        <section className="p-4 pt-0 group-data-[collapsible=icon]:p-2">
           <nav className="flex flex-col gap-1">{mainItems.map(renderNavItem)}</nav>
         </section>
 
-        <section className="p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60">
+        <section className="border-t border-sidebar-border p-4 group-data-[collapsible=icon]:border-t-0 group-data-[collapsible=icon]:p-2">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
             Sistema
           </p>
           <nav className="flex flex-col gap-1">{systemItems.map(renderNavItem)}</nav>
         </section>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
-        <div className="mb-3 flex items-center gap-3">
+      <SidebarFooter className="border-t border-sidebar-border p-4 group-data-[collapsible=icon]:p-2">
+        <div className="mb-3 flex items-center gap-3 group-data-[collapsible=icon]:mb-2 group-data-[collapsible=icon]:justify-center">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">
             {initials}
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-medium text-sidebar-foreground">
               {profile?.display_name || 'Usuário'}
             </p>
@@ -95,32 +99,39 @@ export function AppSidebar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
           {role === 'admin' && (
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              title={collapsed ? 'Admin' : undefined}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                collapsed && 'w-8 justify-center px-0',
+              )}
             >
               <Settings className="h-3.5 w-3.5" />
-              <span>Admin</span>
+              <span className={cn(collapsed && 'hidden')}>Admin</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={signOut}
+            title={collapsed ? 'Sair' : undefined}
             className={cn(
               'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-              role === 'admin' && 'ml-auto',
+              role === 'admin' && !collapsed && 'ml-auto',
+              collapsed && 'w-8 justify-center px-0',
             )}
           >
             <LogOut className="h-3.5 w-3.5" />
-            <span>Sair</span>
+            <span className={cn(collapsed && 'hidden')}>Sair</span>
           </button>
         </div>
       </SidebarFooter>
     </Sidebar>
   );
 }
+
 
