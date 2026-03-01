@@ -50,7 +50,7 @@ interface ParamSectionProps {
   hint?: string;
 }
 
-function ParamSection({ label, items, onAdd, onUpdate, onRemove, keyPlaceholder = 'chave', valuePlaceholder = 'valor', hint }: ParamSectionProps) {
+function ParamSection({ label, items, onAdd, onUpdate, onRemove, keyPlaceholder = 'chave', valuePlaceholder = 'valor', hint }: ParamSectionProps): JSX.Element {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
