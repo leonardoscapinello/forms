@@ -15,6 +15,7 @@ interface BaseProps {
   allInputElements?: InputElementGroup[];
   trackedParams?: TrackedParam[];
   className?: string;
+  hidePickerButton?: boolean;
 }
 
 interface InputProps extends BaseProps {
@@ -262,7 +263,7 @@ export default function VariableInput(props: Props) {
       </div>
 
       {/* Variable picker popover */}
-      <Popover open={open} onOpenChange={setOpen}>
+      {!props.hidePickerButton && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -377,7 +378,7 @@ export default function VariableInput(props: Props) {
             </p>
           </div>
         </PopoverContent>
-      </Popover>
+      </Popover>}
     </div>
   );
 }
