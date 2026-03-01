@@ -51,7 +51,7 @@ export default function VariableInput(props: Props) {
     if (val !== value) onChange(val);
   }, [local, value, onChange]);
 
-  const { handleChange, handleKeyDown: acHandleKeyDown, dismiss, DropdownUI } = useVariableAutocomplete({
+  const { handleChange, handleKeyDown: acHandleKeyDown, handleClick: acHandleClick, dismiss, DropdownUI } = useVariableAutocomplete({
     inputRef,
     localValue: local,
     setLocalValue: setLocal,
@@ -101,6 +101,7 @@ export default function VariableInput(props: Props) {
     onFocus: () => { isFocusedRef.current = true; },
     onBlur: () => { isFocusedRef.current = false; dismiss(); commitValue(); },
     onKeyDown: (e: React.KeyboardEvent) => { acHandleKeyDown(e); e.stopPropagation(); },
+    onClick: () => { acHandleClick(); },
     onMouseDown: stopProp,
     onPointerDown: stopProp,
   };

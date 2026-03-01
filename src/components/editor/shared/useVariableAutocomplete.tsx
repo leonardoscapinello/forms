@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FormVariable, IntegrationNodeData } from '@/types/form';
 import { cn } from '@/lib/utils';
-import { Webhook, Variable } from 'lucide-react';
+import { Webhook, Variable, Replace } from 'lucide-react';
 
 export interface AutocompleteItem {
   id: string;
@@ -20,10 +20,18 @@ interface Props {
   integrationNodes?: IntegrationNodeData[];
 }
 
-/**
- * Hook that manages inline autocomplete state for {{ variable insertion.
- * Returns dropdown UI component and an onChange wrapper.
- */
+/** Find the {{...}} token that contains the given cursor position */
+function findTokenAtCursor(text: string, cursor: number): { start: number; end: number; content: string } | null {
+  const regex = /\{\{.*?\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(text)) !== null) {
+    if (cursor >= m.index && cursor <= m.index + m[0].length) {
+      return { start: m.index, end: m.index + m[0].length, content: m[0] };
+    }
+  }
+  return null;
+}
+
 export function useVariableAutocomplete({
   inputRef,
   localValue,
@@ -36,6 +44,11 @@ export function useVariableAutocomplete({
   const [filter, setFilter] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [triggerPos, setTriggerPos] = useState<number | null>(null);
+
+  // Replace mode: when clicking on an existing token
+  const [replaceRange, setReplaceRange] = useState<{ start: number; end: number } | null>(null);
+  const [showReplace, setShowReplace] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const webhookNodesWithFields = useMemo(
@@ -79,17 +92,16 @@ export function useVariableAutocomplete({
     );
   }, [allItems, filter]);
 
-  // Reset selected index when filtered list changes
   useEffect(() => {
     setSelectedIdx(0);
   }, [filtered.length]);
 
   const checkTrigger = useCallback((text: string, cursorPos: number) => {
-    // Look backwards from cursor for {{ pattern
     const before = text.slice(0, cursorPos);
     const match = before.match(/\{\{([^{}]*)$/);
     if (match && allItems.length > 0) {
       setShowDropdown(true);
+      setShowReplace(false);
       setFilter(match[1]);
       setTriggerPos(cursorPos - match[0].length);
     } else {
@@ -101,9 +113,10 @@ export function useVariableAutocomplete({
 
   const handleChange = useCallback((newValue: string) => {
     setLocalValue(newValue);
+    setShowReplace(false);
+    setReplaceRange(null);
     const el = inputRef.current;
     const cursorPos = el?.selectionStart ?? newValue.length;
-    // Use requestAnimationFrame to get updated cursor position
     requestAnimationFrame(() => {
       const pos = el?.selectionStart ?? cursorPos;
       checkTrigger(newValue, pos);
@@ -114,7 +127,6 @@ export function useVariableAutocomplete({
     if (triggerPos === null) return;
     const el = inputRef.current;
     const cursorPos = el?.selectionStart ?? localValue.length;
-    // Replace from {{ to cursor with the full syntax
     const before = localValue.slice(0, triggerPos);
     const after = localValue.slice(cursorPos);
     const next = before + item.syntax + after;
@@ -130,7 +142,65 @@ export function useVariableAutocomplete({
     });
   }, [triggerPos, localValue, setLocalValue, onCommit, inputRef]);
 
+  const replaceItem = useCallback((item: AutocompleteItem) => {
+    if (!replaceRange) return;
+    const el = inputRef.current;
+    const before = localValue.slice(0, replaceRange.start);
+    const after = localValue.slice(replaceRange.end);
+    const next = before + item.syntax + after;
+    setLocalValue(next);
+    onCommit(next);
+    setShowReplace(false);
+    setReplaceRange(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const newPos = replaceRange.start + item.syntax.length;
+      el?.setSelectionRange(newPos, newPos);
+    });
+  }, [replaceRange, localValue, setLocalValue, onCommit, inputRef]);
+
+  /** Call this on click/mouseup to detect if cursor is inside a {{token}} */
+  const handleClick = useCallback(() => {
+    if (showDropdown) return; // don't interfere with autocomplete
+    const el = inputRef.current;
+    if (!el) return;
+    const cursor = el.selectionStart ?? 0;
+    if (el.selectionStart !== el.selectionEnd) return; // text is selected, skip
+
+    const token = findTokenAtCursor(localValue, cursor);
+    if (token && allItems.length > 0) {
+      setReplaceRange({ start: token.start, end: token.end });
+      setShowReplace(true);
+      setFilter('');
+      // Select the token text for visual feedback
+      requestAnimationFrame(() => {
+        el.setSelectionRange(token.start, token.end);
+      });
+    } else {
+      setShowReplace(false);
+      setReplaceRange(null);
+    }
+  }, [showDropdown, inputRef, localValue, allItems.length]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle replace mode
+    if (showReplace && allItems.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIdx(prev => (prev + 1) % allItems.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIdx(prev => (prev - 1 + allItems.length) % allItems.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        replaceItem(allItems[selectedIdx]);
+      } else if (e.key === 'Escape') {
+        setShowReplace(false);
+        setReplaceRange(null);
+      }
+      return;
+    }
+
     if (!showDropdown || filtered.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -145,28 +215,40 @@ export function useVariableAutocomplete({
     } else if (e.key === 'Escape') {
       setShowDropdown(false);
     }
-  }, [showDropdown, filtered, selectedIdx, insertItem]);
+  }, [showDropdown, showReplace, filtered, allItems, selectedIdx, insertItem, replaceItem]);
 
   const dismiss = useCallback(() => {
     setShowDropdown(false);
+    setShowReplace(false);
     setFilter('');
     setTriggerPos(null);
+    setReplaceRange(null);
   }, []);
 
-  const DropdownUI = showDropdown && filtered.length > 0 ? (
+  const itemList = showReplace ? allItems : filtered;
+  const isVisible = (showDropdown && filtered.length > 0) || (showReplace && allItems.length > 0);
+
+  const DropdownUI = isVisible ? (
     <div
       ref={dropdownRef}
       className="absolute left-0 right-0 top-full mt-1 z-[300] bg-popover border border-border rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
       onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
       onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
     >
-      <div className="px-2 py-1.5 border-b border-border bg-muted/30">
-        <p className="text-[10px] text-muted-foreground font-medium">
-          Variáveis disponíveis {filter && <span className="text-primary">· "{filter}"</span>}
-        </p>
+      <div className="px-2 py-1.5 border-b border-border bg-muted/30 flex items-center gap-1.5">
+        {showReplace ? (
+          <>
+            <Replace className="h-3 w-3 text-primary" />
+            <p className="text-[10px] text-muted-foreground font-medium">Trocar variável</p>
+          </>
+        ) : (
+          <p className="text-[10px] text-muted-foreground font-medium">
+            Variáveis disponíveis {filter && <span className="text-primary">· "{filter}"</span>}
+          </p>
+        )}
       </div>
       <div className="max-h-[160px] overflow-y-auto p-1">
-        {filtered.map((item, idx) => (
+        {itemList.map((item, idx) => (
           <button
             key={item.id}
             type="button"
@@ -174,7 +256,7 @@ export function useVariableAutocomplete({
               'w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors',
               idx === selectedIdx ? 'bg-primary/10 text-foreground' : 'text-foreground hover:bg-muted'
             )}
-            onClick={() => insertItem(item)}
+            onClick={() => showReplace ? replaceItem(item) : insertItem(item)}
             onMouseEnter={() => setSelectedIdx(idx)}
           >
             {item.category === 'variable' ? (
@@ -195,8 +277,9 @@ export function useVariableAutocomplete({
   return {
     handleChange,
     handleKeyDown,
+    handleClick,
     dismiss,
-    showDropdown,
+    showDropdown: showDropdown || showReplace,
     DropdownUI,
   };
 }
