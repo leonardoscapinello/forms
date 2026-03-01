@@ -1,14 +1,17 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { 
   Type, ImageIcon, MousePointer2, Minus, Space, Columns2, 
   Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
-  AlignLeft, AlignCenter, AlignRight,
+  AlignLeft, AlignCenter, AlignRight, Upload, FolderOpen, Link, Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useGallery } from '@/hooks/useGallery';
+import GalleryPicker from '@/components/editor/GalleryPicker';
+import { toast } from 'sonner';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, DragOverlay, type DragStartEvent, type DragEndEvent,
@@ -258,12 +261,92 @@ function TextSettings({ block, onChange }: { block: TextBlock; onChange: (b: Tex
 }
 
 function ImageSettings({ block, onChange }: { block: ImageBlock; onChange: (b: ImageBlock) => void }) {
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile } = useGallery();
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
+    setUploading(true);
+    try {
+      const gf = await uploadFile(file);
+      if (gf) {
+        onChange({ ...block, src: gf.url });
+        toast.success('Imagem enviada e salva na galeria');
+      }
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveToGallery = async () => {
+    if (!block.src) { toast.error('Nenhuma imagem para salvar'); return; }
+    try {
+      setUploading(true);
+      const response = await fetch(block.src);
+      const blob = await response.blob();
+      const ext = block.src.split('.').pop()?.split('?')[0] || 'png';
+      const file = new File([blob], `email-image-${Date.now()}.${ext}`, { type: blob.type || 'image/png' });
+      const gf = await uploadFile(file);
+      if (gf) toast.success('Imagem salva na galeria');
+    } catch {
+      toast.error('Erro ao salvar na galeria');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <div>
-        <label className="text-[10px] font-medium text-muted-foreground uppercase">URL da Imagem</label>
-        <Input value={block.src} onChange={e => onChange({ ...block, src: e.target.value })} placeholder="https://..." className="h-8 text-xs mt-1" />
+      {/* Image preview */}
+      {block.src && (
+        <div className="rounded-md border border-border overflow-hidden bg-muted/30">
+          <img src={block.src} alt={block.alt} className="w-full max-h-40 object-contain" />
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="grid grid-cols-3 gap-1.5">
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          <Upload className="h-3 w-3" /> Upload
+        </Button>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => setGalleryOpen(true)}>
+          <FolderOpen className="h-3 w-3" /> Galeria
+        </Button>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => setShowUrlInput(!showUrlInput)}>
+          <Link className="h-3 w-3" /> URL
+        </Button>
       </div>
+
+      {/* Save to gallery */}
+      {block.src && (
+        <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 w-full" onClick={handleSaveToGallery} disabled={uploading}>
+          <Save className="h-3 w-3" /> Salvar na galeria
+        </Button>
+      )}
+
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+      <GalleryPicker
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        onSelect={(file) => onChange({ ...block, src: file.url })}
+        accept="image/*"
+      />
+
+      {/* URL input (togglable) */}
+      {showUrlInput && (
+        <div>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase">URL da Imagem</label>
+          <Input value={block.src} onChange={e => onChange({ ...block, src: e.target.value })} placeholder="https://..." className="h-8 text-xs mt-1" />
+        </div>
+      )}
+
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto alternativo</label>
         <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-8 text-xs mt-1" />
