@@ -60,8 +60,9 @@ const edgeTypes = {
 
 const defaultEdgeOptions = {
   type: 'deletable',
-  style: { stroke: 'hsl(var(--border))', strokeWidth: 2 },
-  markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))' },
+  style: { stroke: 'hsl(var(--border))', strokeWidth: 1.5 },
+  markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--muted-foreground))', width: 16, height: 16 },
+  animated: false,
 };
 
 
@@ -122,7 +123,7 @@ function FlowCanvasInner({
   } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ nodeIds: string[] } | null>(null);
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
-  const { screenToFlowPosition, setCenter, getZoom, getNodes } = useReactFlow();
+  const { screenToFlowPosition, setCenter, getZoom, getNodes, fitView } = useReactFlow();
 
   const focusNode = useCallback((nodeId: string) => {
     const allNodes = getNodes();
@@ -460,8 +461,8 @@ function FlowCanvasInner({
     const edgeList = form.flowEdges || [];
     if (allNodes.length === 0) return;
 
-    const X_GAP = 350;
-    const Y_GAP = 180;
+    const X_GAP = 80; // horizontal gap between columns
+    const Y_GAP = 40; // vertical gap between nodes in same column
 
     // BFS to assign layers
     const layers = new Map<string, number>();
@@ -499,11 +500,35 @@ function FlowCanvasInner({
       }
     }
 
+    // Measure actual node widths from DOM for accurate spacing
+    const nodeWidths = new Map<string, number>();
+    const nodeHeights = new Map<string, number>();
+    for (const node of allNodes) {
+      const measured = node.measured || node;
+      nodeWidths.set(node.id, (measured as any).width || 288);
+      nodeHeights.set(node.id, (measured as any).height || 80);
+    }
+
+    // Compute column X positions based on widest node in each layer
+    const layerX = new Map<number, number>();
+    let currentX = 0;
+    const sortedLayers = [...layerGroups.keys()].sort((a, b) => a - b);
+    for (const layer of sortedLayers) {
+      layerX.set(layer, currentX);
+      const nodeIds = layerGroups.get(layer)!;
+      const maxWidth = Math.max(...nodeIds.map(id => nodeWidths.get(id) || 288));
+      currentX += maxWidth + X_GAP;
+    }
+
+    // Position nodes vertically centered per layer
     const newPositions: { id: string; x: number; y: number }[] = [];
     for (const [layer, nodeIds] of layerGroups) {
-      const totalHeight = (nodeIds.length - 1) * Y_GAP;
+      const heights = nodeIds.map(id => nodeHeights.get(id) || 80);
+      const totalHeight = heights.reduce((s, h) => s + h, 0) + (nodeIds.length - 1) * Y_GAP;
+      let y = -totalHeight / 2;
       nodeIds.forEach((nid, i) => {
-        newPositions.push({ id: nid, x: layer * X_GAP, y: -totalHeight / 2 + i * Y_GAP });
+        newPositions.push({ id: nid, x: layerX.get(layer)!, y });
+        y += heights[i] + Y_GAP;
       });
     }
 
@@ -512,6 +537,11 @@ function FlowCanvasInner({
       return pos ? { ...n, position: { x: pos.x, y: pos.y } } : n;
     }));
     onFormUpdate({ nodePositions: newPositions });
+
+    // Fit view after layout with a small delay
+    setTimeout(() => {
+      fitView({ padding: 0.3, duration: 300 });
+    }, 50);
   };
 
 
