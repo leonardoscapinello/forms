@@ -1,4 +1,4 @@
-import { MoreHorizontal, Trash2, Tag, FolderInput, Folder, Check } from 'lucide-react';
+import { MoreHorizontal, Trash2, Tag, FolderInput, Folder, Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -42,10 +42,10 @@ export function FormCard({ form, tags, tagIds, folders, selectedFolderId, isDrag
       }}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`group cursor-pointer rounded-2xl border border-border bg-background p-5 transition-all hover:shadow-md hover:border-primary/30 ${isDragging ? 'opacity-50' : ''}`}
+      className={`group cursor-pointer rounded-xl border border-border bg-card p-5 transition-all hover:shadow-sm hover:border-primary/20 ${isDragging ? 'opacity-50' : ''}`}
     >
       <div className="flex items-start justify-between mb-3">
-        <Badge variant={status.variant}>{status.label}</Badge>
+        <Badge variant={status.variant} className="text-[10px]">{status.label}</Badge>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
@@ -83,7 +83,7 @@ export function FormCard({ form, tags, tagIds, folders, selectedFolderId, isDrag
         </DropdownMenu>
       </div>
 
-      <h3 className="font-semibold text-foreground truncate mb-1">{form.title}</h3>
+      <h3 className="font-semibold text-foreground truncate mb-1 text-sm">{form.title}</h3>
       <p className="text-xs text-muted-foreground mb-3">
         {form.questions.length} pergunta{form.questions.length !== 1 ? 's' : ''} · {form.responseCount} resposta{form.responseCount !== 1 ? 's' : ''}
       </p>
@@ -109,6 +109,11 @@ export function FormCard({ form, tags, tagIds, folders, selectedFolderId, isDrag
           ))}
         </div>
       )}
+
+      {/* Arrow icon like twobrain cards */}
+      <div className="flex justify-end mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+      </div>
     </div>
   );
 }
