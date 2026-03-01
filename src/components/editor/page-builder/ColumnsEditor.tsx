@@ -32,7 +32,7 @@ function ColumnDropZone({ columnsElementId, colIdx, col, dragState, handleColDra
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[80px] rounded-xl border-2 border-dashed p-2 space-y-2 transition-colors ${
+      className={`min-h-[100px] rounded-xl border-2 border-dashed p-3 space-y-2 transition-colors flex flex-col ${
         isOver ? 'border-primary/60 bg-primary/5' : 'border-border/60 hover:border-primary/30'
       }`}
       onDragOver={(e) => {
@@ -225,6 +225,35 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
           handleInternalDrop={handleInternalDrop}
           handleColDrop={handleColDrop}
         >
+          {/* Empty state */}
+          {col.elements.length === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center py-4 gap-2">
+              <span className="text-[11px] text-muted-foreground/50">Coluna {colIdx + 1} vazia</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 text-primary/70 hover:bg-primary/10 hover:border-primary/50 transition-colors text-xs font-medium">
+                    <Plus className="h-3.5 w-3.5" />
+                    Adicionar elemento
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-48">
+                  {allowedCategories.map(cat => (
+                    <DropdownMenuSub key={cat.key}>
+                      <DropdownMenuSubTrigger className="text-xs">{cat.label}</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-40">
+                        {cat.types.map(t => (
+                          <DropdownMenuItem key={t} className="text-xs" onClick={() => addElement(colIdx, t)}>
+                            {PAGE_ELEMENT_LABELS[t]}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           {col.elements.map((el, elIdx) => (
             <div
               key={el.id}
@@ -308,34 +337,36 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                 </button>
               </div>
 
-              {/* Element content — fully interactive, NO pointer-events-none */}
+              {/* Element content */}
               <ElementPreview element={el} />
             </div>
           ))}
 
-          {/* Add element button */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full py-2 rounded-lg border border-dashed border-border/50 text-muted-foreground/50 hover:border-primary/40 hover:text-primary/60 transition-colors flex items-center justify-center gap-1.5 text-xs">
-                <Plus className="h-3 w-3" />
-                Adicionar
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-48">
-              {allowedCategories.map(cat => (
-                <DropdownMenuSub key={cat.key}>
-                  <DropdownMenuSubTrigger className="text-xs">{cat.label}</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-40">
-                    {cat.types.map(t => (
-                      <DropdownMenuItem key={t} className="text-xs" onClick={() => addElement(colIdx, t)}>
-                        {PAGE_ELEMENT_LABELS[t]}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Always-visible add button */}
+          {col.elements.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full py-2.5 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-xs font-medium">
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar elemento
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-48">
+                {allowedCategories.map(cat => (
+                  <DropdownMenuSub key={cat.key}>
+                    <DropdownMenuSubTrigger className="text-xs">{cat.label}</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-40">
+                      {cat.types.map(t => (
+                        <DropdownMenuItem key={t} className="text-xs" onClick={() => addElement(colIdx, t)}>
+                          {PAGE_ELEMENT_LABELS[t]}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </ColumnDropZone>
       ))}
     </div>
