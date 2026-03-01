@@ -1,20 +1,22 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { FormVariable, IntegrationNodeData } from '@/types/form';
+import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Braces, Copy, Check, Webhook, FileText } from 'lucide-react';
+import { Braces, Copy, Check, Webhook, FileText, Globe, Monitor } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useVariableAutocomplete } from './useVariableAutocomplete';
 import { VariableHighlightOverlay } from './VariableHighlightOverlay';
+import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import type { InputElementGroup } from '../VariableAssignPanel';
 
 interface BaseProps {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
+  trackedParams?: TrackedParam[];
   className?: string;
 }
 
@@ -36,7 +38,7 @@ interface TextareaProps extends BaseProps {
 type Props = InputProps | TextareaProps;
 
 export default function VariableInput(props: Props) {
-  const { variables = [], integrationNodes = [], allInputElements = [], className, value, onChange, placeholder } = props;
+  const { variables = [], integrationNodes = [], allInputElements = [], trackedParams, className, value, onChange, placeholder } = props;
   const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export default function VariableInput(props: Props) {
     variables,
     integrationNodes,
     allInputElements,
+    trackedParams,
   });
 
   const insertSyntax = (syntax: string) => {
@@ -97,7 +100,8 @@ export default function VariableInput(props: Props) {
   };
 
   const webhookNodesWithFields = (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0);
-  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0 || allInputElements.some(g => g.elements.length > 0);
+  const activeParams = (trackedParams ?? DEFAULT_TRACKED_PARAMS).filter(p => p.enabled && p.key);
+  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0 || allInputElements.some(g => g.elements.length > 0) || activeParams.length > 0 || CONTEXT_KEYS.length > 0;
 
   const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
@@ -111,6 +115,19 @@ export default function VariableInput(props: Props) {
   };
 
   const hasHighlight = local.includes('{{');
+
+  const PopoverRow = ({ syntax, icon, label, detail, onClick }: { syntax: string; icon: React.ReactNode; label: string; detail?: string; onClick: () => void }) => (
+    <div className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={onClick}>
+      <div className="flex items-center gap-2 min-w-0">
+        {icon}
+        <span className="text-[10px] text-foreground truncate">{label}</span>
+        {detail && <span className="text-[9px] text-muted-foreground truncate">{detail}</span>}
+      </div>
+      <button onClick={(e) => copyVar(syntax, e)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted-foreground/10 transition-all" title="Copiar sintaxe">
+        {copied === syntax ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+      </button>
+    </div>
+  );
 
   return (
     <div className="relative flex items-start gap-1 nodrag nopan nowheel">
@@ -183,26 +200,22 @@ export default function VariableInput(props: Props) {
               <p className="text-xs font-semibold text-foreground">Inserir referência</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">Clique para inserir no cursor</p>
             </div>
-            <div className="p-1.5 space-y-0.5 max-h-52 overflow-y-auto">
+            <div className="p-1.5 space-y-0.5 max-h-64 overflow-y-auto">
+              {/* Variables */}
               {variables.length > 0 && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1">Variáveis</p>
                   {variables.map(v => {
                     const syntax = `{{${v.name}}}`;
                     return (
-                      <div key={v.id} className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={() => insertVariable(v.name)}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium flex-shrink-0">{syntax}</span>
-                          <span className="text-xs text-muted-foreground truncate capitalize">{v.type}</span>
-                        </div>
-                        <button onClick={(e) => copyVar(syntax, e)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted-foreground/10 transition-all" title="Copiar sintaxe">
-                          {copied === syntax ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
-                        </button>
-                      </div>
+                      <PopoverRow key={v.id} syntax={syntax} label={syntax} detail={v.type} onClick={() => insertVariable(v.name)}
+                        icon={<span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium flex-shrink-0">{v.name}</span>}
+                      />
                     );
                   })}
                 </>
               )}
+              {/* Fields */}
               {allInputElements.some(g => g.elements.length > 0) && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Campos do formulário</p>
@@ -212,21 +225,16 @@ export default function VariableInput(props: Props) {
                       {group.elements.map(el => {
                         const syntax = `{{field:${el.elementId}}}`;
                         return (
-                          <div key={el.elementId} className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={() => insertFieldRef(el.elementId)}>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <span className="text-[10px] text-foreground truncate">{el.elementLabel}</span>
-                            </div>
-                            <button onClick={(e) => copyVar(syntax, e)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted-foreground/10 transition-all" title="Copiar sintaxe">
-                              {copied === syntax ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
-                            </button>
-                          </div>
+                          <PopoverRow key={el.elementId} syntax={syntax} label={el.elementLabel} onClick={() => insertFieldRef(el.elementId)}
+                            icon={<FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                          />
                         );
                       })}
                     </div>
                   ))}
                 </>
               )}
+              {/* Webhooks */}
               {webhookNodesWithFields.length > 0 && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Retorno Webhook</p>
@@ -235,25 +243,54 @@ export default function VariableInput(props: Props) {
                     return (wn.responseFields || []).map(field => {
                       const syntax = `{{webhook:${wn.id}:${field}}}`;
                       return (
-                        <div key={`${wn.id}-${field}`} className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={() => insertWebhookRef(wn.id, field)}>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />
-                            <span className="text-[10px] font-mono text-foreground truncate">{field}</span>
-                            <span className="text-[9px] text-muted-foreground truncate">{host}</span>
-                          </div>
-                          <button onClick={(e) => copyVar(syntax, e)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted-foreground/10 transition-all" title="Copiar sintaxe">
-                            {copied === syntax ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
-                          </button>
-                        </div>
+                        <PopoverRow key={`${wn.id}-${field}`} syntax={syntax} label={field} detail={host} onClick={() => insertWebhookRef(wn.id, field)}
+                          icon={<Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />}
+                        />
                       );
                     });
                   })}
                 </>
               )}
+              {/* GET Params */}
+              {activeParams.length > 0 && (
+                <>
+                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Parâmetros GET</p>
+                  {activeParams.map(p => {
+                    const syntax = `{{param.${p.key}}}`;
+                    return (
+                      <PopoverRow key={p.id} syntax={syntax} label={p.label || p.key} detail={p.key} onClick={() => insertSyntax(syntax)}
+                        icon={<Globe className="h-3 w-3 text-orange-500 flex-shrink-0" />}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {/* Context */}
+              {(() => {
+                const categories = [...new Set(CONTEXT_KEYS.map(c => c.category))];
+                return (
+                  <>
+                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Contexto</p>
+                    {categories.map(cat => (
+                      <div key={cat}>
+                        <p className="text-[8px] text-muted-foreground/60 px-2 pt-1">{cat}</p>
+                        {CONTEXT_KEYS.filter(c => c.category === cat).map(ctx => {
+                          const syntax = `{{ctx.${ctx.key}}}`;
+                          return (
+                            <PopoverRow key={ctx.key} syntax={syntax} label={ctx.label} onClick={() => insertSyntax(syntax)}
+                              icon={<Monitor className="h-3 w-3 text-blue-500 flex-shrink-0" />}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
             <div className="p-2 border-t border-border bg-muted/30">
               <p className="text-[10px] text-muted-foreground">
-                Use <code className="font-mono bg-muted px-1 rounded">{`{{nome}}`}</code> ou <code className="font-mono bg-muted px-1 rounded">{`{{webhook:id:campo}}`}</code>
+                Use <code className="font-mono bg-muted px-1 rounded">{`{{nome}}`}</code>, <code className="font-mono bg-muted px-1 rounded">{`{{ctx.device}}`}</code> ou <code className="font-mono bg-muted px-1 rounded">{`{{param.utm_source}}`}</code>
               </p>
             </div>
           </PopoverContent>

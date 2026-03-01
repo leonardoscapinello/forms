@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Braces } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FormVariable, IntegrationNodeData } from '@/types/form';
+import { FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import type { InputElementGroup } from '../VariableAssignPanel';
 import { useVariableAutocomplete } from '../shared/useVariableAutocomplete';
 import { VariableHighlightOverlay } from '../shared/VariableHighlightOverlay';
@@ -63,6 +63,7 @@ interface Props {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
+  trackedParams?: TrackedParam[];
   placeholder?: string;
   sendMedia?: boolean;
   mediaType?: 'image' | 'document' | 'video' | 'audio';
@@ -189,6 +190,7 @@ export default function WhatsAppMessageEditor({
   variables = [],
   integrationNodes = [],
   allInputElements = [],
+  trackedParams,
   placeholder,
   sendMedia,
   mediaType,
@@ -224,6 +226,7 @@ export default function WhatsAppMessageEditor({
     variables,
     integrationNodes,
     allInputElements,
+    trackedParams,
   });
 
   const applyFormatting = useCallback((type: keyof typeof FORMATTING) => {
