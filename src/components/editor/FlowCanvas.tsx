@@ -532,16 +532,41 @@ function FlowCanvasInner({
       });
     }
 
-    setNodes(prev => prev.map(n => {
-      const pos = newPositions.find(p => p.id === n.id);
-      return pos ? { ...n, position: { x: pos.x, y: pos.y } } : n;
-    }));
-    onFormUpdate({ nodePositions: newPositions });
+    // Animate nodes to their new positions
+    const ANIM_DURATION = 400;
+    const ANIM_STEPS = 30;
+    const startPositions = new Map(allNodes.map(n => [n.id, { x: n.position.x, y: n.position.y }]));
+    const targetPositions = new Map(newPositions.map(p => [p.id, { x: p.x, y: p.y }]));
+    let step = 0;
 
-    // Fit view after layout with a small delay
-    setTimeout(() => {
-      fitView({ padding: 0.3, duration: 300 });
-    }, 50);
+    const animate = () => {
+      step++;
+      const t = Math.min(step / ANIM_STEPS, 1);
+      // Ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      setNodes(prev => prev.map(n => {
+        const start = startPositions.get(n.id);
+        const end = targetPositions.get(n.id);
+        if (!start || !end) return n;
+        return {
+          ...n,
+          position: {
+            x: start.x + (end.x - start.x) * ease,
+            y: start.y + (end.y - start.y) * ease,
+          },
+        };
+      }));
+
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        onFormUpdate({ nodePositions: newPositions });
+        setTimeout(() => fitView({ padding: 0.3, duration: 300 }), 50);
+      }
+    };
+
+    requestAnimationFrame(animate);
   };
 
 
