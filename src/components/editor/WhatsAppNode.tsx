@@ -1,7 +1,6 @@
 import { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { MessageSquare, Trash2, Phone, Image, FileText, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Upload, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,22 +10,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { WhatsAppNodeData, FormVariable, IntegrationNodeData } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { VariableInput } from './shared';
+import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
-
-/** Local input to prevent cursor jumping */
-function LocalInput({ value, onCommit, ...rest }: Omit<React.ComponentProps<typeof Input>, 'onChange' | 'onBlur'> & { value: string; onCommit: (v: string) => void }) {
-  const [local, setLocal] = useState(value);
-  useEffect(() => { setLocal(value); }, [value]);
-  return (
-    <Input
-      {...rest}
-      value={local}
-      onChange={e => setLocal(e.target.value)}
-      onBlur={() => onCommit(local)}
-      onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
-    />
-  );
-}
 
 interface EvolutionInstance {
   id: string;

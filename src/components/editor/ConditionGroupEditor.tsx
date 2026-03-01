@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { ConditionGroup, ConditionRule, ConditionOperator, LogicOperator, FormVariable, IntegrationNodeData } from '@/types/form';
 import VariableSelect from './shared/VariableSelect';
-import { Input } from '@/components/ui/input';
+import { LocalInput } from './shared/LocalInput';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Group } from 'lucide-react';
 import {
@@ -260,9 +260,9 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                     </SelectContent>
                   </Select>
                 ) : subjectType === 'param' ? (
-                  <Input
+                  <LocalInput
                     value={rule.paramKey || ''}
-                    onChange={e => updateRule(rule.id, { paramKey: e.target.value })}
+                    onCommit={v => updateRule(rule.id, { paramKey: v })}
                     placeholder="ex: utm_source"
                     className="h-7 text-xs flex-1 font-mono"
                   />
@@ -308,9 +308,9 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                   </SelectContent>
                 </Select>
                 {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (
-                  <Input
+                  <LocalInput
                     value={rule.value}
-                    onChange={e => updateRule(rule.id, { value: e.target.value })}
+                    onCommit={v => updateRule(rule.id, { value: v })}
                     placeholder="Valor..."
                     className="h-7 text-xs flex-1"
                   />

@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { ConditionBranch, ConditionGroup, FormVariable, IntegrationNodeData, createDefaultConditionGroup } from '@/types/form';
-import { Input } from '@/components/ui/input';
+import { LocalInput } from './shared/LocalInput';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ConditionGroupEditor from './ConditionGroupEditor';
@@ -91,9 +91,9 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
 
         {/* Label */}
         <div className="px-3 pt-2.5 pb-1">
-          <Input
+          <LocalInput
             value={label}
-            onChange={e => onChange({ label: e.target.value })}
+            onCommit={v => onChange({ label: v })}
             placeholder="Nome do nó"
             className="text-sm font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent h-8"
           />
@@ -152,9 +152,9 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                     : <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                   }
                   <span className="text-[11px] font-medium text-node-condition-accent flex-shrink-0 w-5">{idx + 1}.</span>
-                  <Input
+                  <LocalInput
                     value={branch.label}
-                    onChange={e => { e.stopPropagation(); updateBranch(branch.id, { label: e.target.value }); }}
+                    onCommit={v => updateBranch(branch.id, { label: v })}
                     onClick={e => e.stopPropagation()}
                     className="text-xs h-6 font-medium border-0 px-0 shadow-none focus-visible:ring-0 bg-transparent flex-1"
                     placeholder={`Se ${idx + 1}`}

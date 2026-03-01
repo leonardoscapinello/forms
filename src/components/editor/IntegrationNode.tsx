@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useEffect, useRef } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Webhook, Trash2, Plus, X, ArrowDownToLine, Play, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { IntegrationNodeData, WebhookParam, WebhookResponseMapping } from '@/types/form';
@@ -6,34 +6,8 @@ import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { LocalInput } from './shared/LocalInput';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-
-/**
- * A controlled input that keeps local state while typing
- * and only propagates via onBlur or Enter — prevents cursor jumping
- * inside React Flow nodes.
- */
-function LocalInput({ value, onCommit, ...rest }: Omit<React.ComponentProps<typeof Input>, 'onChange' | 'onBlur'> & { value: string; onCommit: (v: string) => void }) {
-  const [local, setLocal] = useState(value);
-  const ref = useRef(value);
-  // Sync external value only when not focused
-  useEffect(() => {
-    if (ref.current !== value) {
-      ref.current = value;
-      setLocal(value);
-    }
-  }, [value]);
-  return (
-    <Input
-      {...rest}
-      value={local}
-      onChange={e => { setLocal(e.target.value); ref.current = e.target.value; }}
-      onBlur={() => { if (local !== value) onCommit(local); }}
-      onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
-    />
-  );
-}
 
 const WEBHOOK_METHODS = ['GET', 'POST', 'PUT', 'PATCH'] as const;
 
