@@ -1102,16 +1102,59 @@ export default function FormPreview() {
       if (pendingWait) {
         const fb = pendingWait.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
         const mode = fb.mode || 'button_countdown';
-        const durationMs = pendingWait.durationMs;
+        const originalDurationMs = pendingWait.durationMs;
         const skipAction = fb.skipAction || 'continue';
+        const waitNodeId = pendingWait.remainingNodeId || 'wait';
+
+        // ── Session-aware wait: resume from where we left off ──
+        const waitStorageKey = `__wait_${id}_${waitNodeId}`;
+        let startTime: number;
+        let effectiveDuration: number;
+
+        const stored = sessionStorage.getItem(waitStorageKey);
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            startTime = parsed.startedAt;
+            effectiveDuration = parsed.effectiveDurationMs ?? originalDurationMs;
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= effectiveDuration) {
+              // Already completed in this session — skip wait entirely
+              sessionStorage.removeItem(waitStorageKey);
+              // fall through to navigation below (no wait needed)
+              goto_after_wait: {
+                if (nextNodeId === 'end') {
+                  setAnswers(updatedAnswers); answersRef.current = updatedAnswers; setFinished(true); return;
+                }
+                if (nextNodeId && nextNodeId.startsWith('p-')) {
+                  const pageId = nextNodeId.replace('p-', '');
+                  const targetIndex = pages.findIndex(p => p.id === pageId);
+                  if (targetIndex !== -1) { setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers)); setCurrentPageIndex(targetIndex); return; }
+                }
+                const seqNext = currentPageIndex !== null ? currentPageIndex + 1 : 0;
+                if (seqNext < pages.length) { setAnswers(applyPageVariableAssignments(pages[seqNext], updatedAnswers)); setCurrentPageIndex(seqNext); } else { setFinished(true); }
+                return;
+              }
+            }
+          } catch { startTime = Date.now(); effectiveDuration = originalDurationMs; }
+        } else {
+          startTime = Date.now();
+          effectiveDuration = originalDurationMs;
+        }
+
+        // Persist start info to sessionStorage
+        sessionStorage.setItem(waitStorageKey, JSON.stringify({ startedAt: startTime, effectiveDurationMs: effectiveDuration }));
+
+        const elapsedSoFar = Date.now() - startTime;
+        const remainingMs = Math.max(0, effectiveDuration - elapsedSoFar);
 
         // Set up the feedback state
         const allowSkip = fb.allowSkip || false;
         setWaitFeedback({
           active: true,
           mode,
-          durationMs,
-          remainingMs: durationMs,
+          durationMs: effectiveDuration,
+          remainingMs,
           buttonText: fb.buttonText,
           loadingStyle: fb.loadingStyle,
           loadingLabel: fb.loadingLabel,
@@ -1122,13 +1165,11 @@ export default function FormPreview() {
         if (fb.showToast) {
           sonnerToast(fb.toastTitle || 'Processando...', {
             description: fb.toastDescription || undefined,
-            duration: durationMs,
+            duration: remainingMs,
           });
         }
 
         // Countdown interval for button_countdown mode
-        const startTime = Date.now();
-        let effectiveDuration = durationMs;
         const countdownInterval = mode === 'button_countdown'
           ? setInterval(() => {
               const elapsed = Date.now() - startTime;
@@ -1137,14 +1178,14 @@ export default function FormPreview() {
             }, 100)
           : null;
 
-        // Wait for the duration — but allow cancellation/reduction via ref
+        // Wait for remaining duration — but allow cancellation/reduction via ref
         const waitCancelRef = { cancelled: false, reduced: false };
         (window as any).__waitCancelRef = waitCancelRef;
         (window as any).__waitSkipAction = skipAction;
         (window as any).__waitSkipFeedback = fb;
 
         const wasSkipped = await new Promise<boolean>(resolve => {
-          const timer = setTimeout(() => resolve(false), durationMs);
+          const timer = setTimeout(() => resolve(false), remainingMs);
           const checkCancel = setInterval(() => {
             if (waitCancelRef.cancelled) {
               clearTimeout(timer);
@@ -1153,26 +1194,28 @@ export default function FormPreview() {
             }
             if (waitCancelRef.reduced) {
               waitCancelRef.reduced = false;
-              // Reduce the effective duration — recalculate remaining
               const reduceUnit = fb.skipReduceUnit || 'seconds';
               const reduceAmount = fb.skipReduceAmount || 5;
               const reduceMs = reduceAmount * (reduceUnit === 'hours' ? 3600000 : reduceUnit === 'minutes' ? 60000 : 1000);
               effectiveDuration = Math.max(0, effectiveDuration - reduceMs);
+              // Update sessionStorage with new effective duration
+              sessionStorage.setItem(waitStorageKey, JSON.stringify({ startedAt: startTime, effectiveDurationMs: effectiveDuration }));
               const elapsed = Date.now() - startTime;
               const remaining = Math.max(0, effectiveDuration - elapsed);
               setWaitFeedback(prev => prev ? { ...prev, remainingMs: remaining, durationMs: effectiveDuration } : null);
               if (remaining <= 0) {
                 clearTimeout(timer);
                 clearInterval(checkCancel);
-                resolve(false); // Not skipped — just reached 0
+                resolve(false);
               }
             }
           }, 50);
-          setTimeout(() => clearInterval(checkCancel), durationMs + 100);
+          setTimeout(() => clearInterval(checkCancel), remainingMs + 100);
         });
 
         if (countdownInterval) clearInterval(countdownInterval);
         setWaitFeedback(null);
+        sessionStorage.removeItem(waitStorageKey);
         delete (window as any).__waitCancelRef;
         delete (window as any).__waitSkipAction;
         delete (window as any).__waitSkipFeedback;
