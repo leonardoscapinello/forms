@@ -7,3 +7,4 @@ export { default as SpacingControl } from './SpacingControl';
 export { default as ShadowSelector } from './ShadowSelector';
 export { default as WidthSelector } from './WidthSelector';
 export { default as VariableSelect } from './VariableSelect';
+export { default as ImageSourcePicker } from './ImageSourcePicker';
