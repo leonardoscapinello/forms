@@ -86,6 +86,7 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
   const editorRef = useRef<HTMLDivElement>(null);
   const isFocusedRef = useRef(false);
   const lastRawRef = useRef(value);
+  const savedRangeRef = useRef<Range | null>(null);
 
   const createTokenSpan = useCallback((raw: string) => {
     const info = resolveToken(raw);
@@ -239,8 +240,21 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
     const span = createTokenSpan(raw);
     const sel = window.getSelection();
 
+    // Try live selection first, then fall back to saved range from before blur
+    let range: Range | null = null;
     if (sel && sel.rangeCount > 0 && editor.contains(sel.focusNode)) {
-      const range = sel.getRangeAt(0);
+      range = sel.getRangeAt(0);
+    } else if (savedRangeRef.current && editor.contains(savedRangeRef.current.startContainer)) {
+      range = savedRangeRef.current;
+    }
+
+    if (range) {
+      // Restore selection into editor if needed
+      editor.focus();
+      const s = window.getSelection()!;
+      s.removeAllRanges();
+      s.addRange(range);
+
       range.deleteContents();
       range.insertNode(span);
       // Ensure text node after span
@@ -250,14 +264,15 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
       const r2 = document.createRange();
       r2.setStartAfter(span);
       r2.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(r2);
+      s.removeAllRanges();
+      s.addRange(r2);
     } else {
       editor.appendChild(span);
       editor.appendChild(document.createTextNode(''));
+      editor.focus();
     }
+    savedRangeRef.current = null;
     emitChange();
-    editor.focus();
   }, [createTokenSpan, emitChange]);
 
   const replaceRangeWithToken = useCallback((textNode: Text, start: number, end: number, raw: string) => {
@@ -293,7 +308,17 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
   const insertAtCursor = useCallback((text: string) => {
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    // Restore saved range if editor lost focus (e.g. popover click)
+    const sel = window.getSelection();
+    if (savedRangeRef.current && editor.contains(savedRangeRef.current.startContainer) && !(sel && sel.rangeCount > 0 && editor.contains(sel.focusNode))) {
+      editor.focus();
+      const s = window.getSelection()!;
+      s.removeAllRanges();
+      s.addRange(savedRangeRef.current);
+      savedRangeRef.current = null;
+    } else {
+      editor.focus();
+    }
     document.execCommand('insertText', false, text);
     emitChange();
   }, [emitChange]);
@@ -358,7 +383,16 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       onFocus={() => { isFocusedRef.current = true; onFocus?.(); }}
-      onBlur={() => { isFocusedRef.current = false; onBlur?.(); onAutocompleteDismiss?.(); }}
+      onBlur={() => {
+        // Save selection range before losing focus (for insert-at-cursor after popover click)
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.focusNode)) {
+          savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+        }
+        isFocusedRef.current = false;
+        onBlur?.();
+        onAutocompleteDismiss?.();
+      }}
       onMouseDown={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
       onClick={() => checkAutocomplete()}
