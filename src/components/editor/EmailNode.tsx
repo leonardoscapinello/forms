@@ -15,6 +15,7 @@ import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
 import type { InputElementGroup } from './VariableAssignPanel';
 import { Textarea } from '@/components/ui/textarea';
+import EmailPreviewCard from './email-builder/EmailPreviewCard';
 
 interface ResendInstance {
   id: string;
@@ -278,6 +279,19 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
             </div>
           )}
         </div>
+
+        {/* Preview card — right side when selected */}
+        {selected && expanded && (
+          <EmailPreviewCard
+            bodyHtml={nodeData.bodyHtml}
+            bodyText={nodeData.bodyText}
+            useHtml={nodeData.useHtml}
+            subject={nodeData.subject}
+            fromName={nodeData.fromName}
+            fromEmail={nodeData.fromEmail || selectedInstance?.config.defaultFrom}
+            toEmail={nodeData.toEmail}
+          />
+        )}
 
         {/* Email Builder Dialog */}
         {builderOpen && (
