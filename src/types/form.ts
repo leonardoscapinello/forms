@@ -429,6 +429,8 @@ export interface WaitFeedbackConfig {
   loadingStyle?: 'bar' | 'circular' | 'infinite';
   /** For loading_screen: label shown above the loading indicator */
   loadingLabel?: string;
+  /** Allow user to skip/cancel the wait and advance immediately */
+  allowSkip?: boolean;
 }
 
 export interface WaitNodeData {

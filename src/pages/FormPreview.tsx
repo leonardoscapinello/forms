@@ -177,6 +177,7 @@ export default function FormPreview() {
     buttonText?: string;
     loadingStyle?: 'bar' | 'circular' | 'infinite';
     loadingLabel?: string;
+    allowSkip?: boolean;
   } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
@@ -1088,6 +1089,7 @@ export default function FormPreview() {
         const durationMs = pendingWait.durationMs;
 
         // Set up the feedback state
+        const allowSkip = fb.allowSkip || false;
         setWaitFeedback({
           active: true,
           mode,
@@ -1096,6 +1098,7 @@ export default function FormPreview() {
           buttonText: fb.buttonText,
           loadingStyle: fb.loadingStyle,
           loadingLabel: fb.loadingLabel,
+          allowSkip,
         });
 
         // Countdown interval for button_countdown mode
@@ -1108,11 +1111,26 @@ export default function FormPreview() {
             }, 100)
           : null;
 
-        // Wait for the duration
-        await new Promise(resolve => setTimeout(resolve, durationMs));
+        // Wait for the duration — but allow cancellation via ref
+        const waitCancelRef = { cancelled: false };
+        (window as any).__waitCancelRef = waitCancelRef;
+        await new Promise<void>(resolve => {
+          const timer = setTimeout(resolve, durationMs);
+          const checkCancel = setInterval(() => {
+            if (waitCancelRef.cancelled) {
+              clearTimeout(timer);
+              clearInterval(checkCancel);
+              resolve();
+            }
+          }, 50);
+          // Also clear checkCancel when timer fires naturally
+          const origResolve = resolve;
+          setTimeout(() => clearInterval(checkCancel), durationMs + 100);
+        });
 
         if (countdownInterval) clearInterval(countdownInterval);
         setWaitFeedback(null);
+        delete (window as any).__waitCancelRef;
 
         // Now navigate to the resolved destination
         if (nextNodeId === 'end') {
@@ -1613,23 +1631,33 @@ export default function FormPreview() {
               <Button
                 variant="default"
                 size="sm"
-                onClick={waitFeedback ? undefined : goNext}
-                disabled={isPageBlocked || !!waitFeedback}
+                onClick={waitFeedback && waitFeedback.allowSkip
+                  ? () => { const ref = (window as any).__waitCancelRef; if (ref) ref.cancelled = true; }
+                  : waitFeedback ? undefined : goNext
+                }
+                disabled={isPageBlocked || (!!waitFeedback && !waitFeedback.allowSkip)}
                 className="h-9 px-4 rounded-full gap-1.5 text-xs"
                 aria-label={isLastPage ? 'Enviar' : 'Avançar'}
               >
                 {waitFeedback && waitFeedback.mode !== 'loading_screen' ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>
-                      {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
-                      {waitFeedback.mode === 'button_countdown' && (
-                        <span className="ml-1 tabular-nums">
-                          {Math.ceil(waitFeedback.remainingMs / 1000)}s
-                        </span>
-                      )}
-                    </span>
-                  </>
+                  waitFeedback.allowSkip ? (
+                    <>
+                      <span>Pular</span>
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>
+                        {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
+                        {waitFeedback.mode === 'button_countdown' && (
+                          <span className="ml-1 tabular-nums">
+                            {Math.ceil(waitFeedback.remainingMs / 1000)}s
+                          </span>
+                        )}
+                      </span>
+                    </>
+                  )
                 ) : isPageBlocked ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : isLastPage ? (
@@ -1666,7 +1694,7 @@ export default function FormPreview() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background"
           >
-            <div className="w-full max-w-xs px-6">
+            <div className="w-full max-w-xs px-6 flex flex-col items-center gap-4">
               <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}>
                 <LoadingPreview
                   style={waitFeedback.loadingStyle || 'bar'}
@@ -1676,6 +1704,16 @@ export default function FormPreview() {
                   interactive
                 />
               </Suspense>
+              {waitFeedback.allowSkip && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { const ref = (window as any).__waitCancelRef; if (ref) ref.cancelled = true; }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Pular espera
+                </Button>
+              )}
             </div>
           </motion.div>
         )}
