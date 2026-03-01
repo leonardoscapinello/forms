@@ -187,6 +187,15 @@ export default function WaitNode({ data }: Props) {
         {feedback.allowSkip && (
           <div className="space-y-2 pl-1 border-l-2 border-node-wait-accent/20 ml-1">
             <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">Texto do botão pular</Label>
+              <Input
+                value={feedback.skipButtonText || ''}
+                onChange={e => updateFeedback({ skipButtonText: e.target.value })}
+                placeholder="Pular espera"
+                className="h-8 text-sm nodrag nopan"
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ação ao pular</Label>
               <Select value={skipAction} onValueChange={(v: WaitSkipAction) => updateFeedback({ skipAction: v })}>
                 <SelectTrigger className="h-8 text-sm nodrag nopan">

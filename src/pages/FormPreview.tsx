@@ -1783,12 +1783,13 @@ export default function FormPreview() {
                       }
                     }
                   }}
-                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 pl-1 pr-1"
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 pl-1 pr-1 whitespace-nowrap shrink-0"
                 >
                   {(() => {
+                    const fb = (window as any).__waitSkipFeedback;
+                    if (fb?.skipButtonText) return fb.skipButtonText;
                     const action = (window as any).__waitSkipAction || 'continue';
                     if (action === 'reduce_time') {
-                      const fb = (window as any).__waitSkipFeedback;
                       const amt = fb?.skipReduceAmount || 5;
                       const unit = fb?.skipReduceUnit || 'seconds';
                       const unitLabel = unit === 'hours' ? 'h' : unit === 'minutes' ? 'min' : 's';
@@ -1849,9 +1850,10 @@ export default function FormPreview() {
                   className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   {(() => {
+                    const fb = (window as any).__waitSkipFeedback;
+                    if (fb?.skipButtonText) return fb.skipButtonText;
                     const action = (window as any).__waitSkipAction || 'continue';
                     if (action === 'reduce_time') {
-                      const fb = (window as any).__waitSkipFeedback;
                       const amt = fb?.skipReduceAmount || 5;
                       const unit = fb?.skipReduceUnit || 'seconds';
                       const unitLabel = unit === 'hours' ? 'h' : unit === 'minutes' ? 'min' : 's';
