@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Trash2, GripVertical, ChevronUp, ChevronDown, Plus, X,
   AlignLeft, AlignCenter, AlignRight, ArrowLeft, ArrowRight,
+  LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +16,11 @@ import {
   type BlockType, type ElementType, type EmailBlock, type BlockPadding,
   type TextBlock, type ImageBlock, type ButtonBlock, type ButtonLinkMode,
   type DividerBlock, type SpacerBlock, type ColumnsBlock,
-  createElement, createStructure, createBlock,
+  createElement, createStructure, createBlock, uid,
   blocksToHtml, embedBlocksInHtml, extractBlocksFromHtml,
   ELEMENT_TYPES, STRUCTURE_PRESETS, BLOCK_LABELS,
 } from './emailBlockTypes';
+import { EMAIL_TEMPLATES, type EmailTemplate } from './emailTemplates';
 
 // ─── Shared micro-components ────────────────────────────────────────
 
@@ -730,6 +732,26 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
     })));
   }, []);
 
+  const applyTemplate = useCallback((template: EmailTemplate) => {
+    // Deep-clone blocks to get fresh IDs
+    const cloned = JSON.parse(JSON.stringify(template.blocks)) as ColumnsBlock[];
+    // Assign fresh IDs to avoid collisions
+    const reassign = (b: EmailBlock): EmailBlock => {
+      const nb = { ...b, id: uid() };
+      if (nb.type === 'columns') {
+        (nb as ColumnsBlock).columns = (nb as ColumnsBlock).columns.map(col => col.map(reassign));
+      }
+      return nb;
+    };
+    const fresh = cloned.map(s => reassign(s) as ColumnsBlock);
+    setBlocks(fresh);
+    setEmailBg(template.emailBg);
+    setContentBg(template.contentBg);
+    setSelectedStructureId(null);
+    setSelectedElementId(null);
+    toast.success(`Template "${template.label}" aplicado`);
+  }, []);
+
   const handleSave = useCallback(() => {
     const fullHtml = embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg);
     onChange(fullHtml);
@@ -802,6 +824,26 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                         <et.icon className="h-4 w-4 text-muted-foreground" />
                         <span className="text-[9px] font-medium">{et.label}</span>
                       </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Templates */}
+                <div>
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Templates</span>
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    {EMAIL_TEMPLATES.map(tpl => (
+                      <button
+                        key={tpl.id}
+                        onClick={() => applyTemplate(tpl)}
+                        className="flex items-center gap-2 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left"
+                      >
+                        <tpl.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-medium block leading-tight">{tpl.label}</span>
+                          <span className="text-[9px] text-muted-foreground block leading-tight truncate">{tpl.description}</span>
+                        </div>
+                      </button>
                     ))}
                   </div>
                 </div>
