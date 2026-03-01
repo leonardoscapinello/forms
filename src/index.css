@@ -51,7 +51,7 @@ img.emoji {
 
 @layer base {
   :root {
-    --background: 45 33% 97%;       /* PAPER 01 #FBFAF6 */
+    --background: 60 20% 99%;       /* #FDFDFC */
     --foreground: 48 32% 13%;       /* PAPER 11 #2C2A18 */
 
     --card: 0 0% 100%;
