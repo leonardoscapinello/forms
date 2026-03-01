@@ -2,6 +2,7 @@ import { Handle, Position } from '@xyflow/react';
 import { Clock, Trash2 } from 'lucide-react';
 import { WaitNodeData, WaitUnit, WaitFeedbackMode, WaitSkipAction, FunnelPage } from '@/types/form';
 import { Input } from '@/components/ui/input';
+import { LocalInput } from '@/components/editor/shared/LocalInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -101,11 +102,11 @@ export default function WaitNode({ data }: Props) {
         {(mode === 'button_countdown' || mode === 'button_text') && (
           <div className="space-y-1.5">
             <Label className="text-[10px] text-muted-foreground">Texto do botão</Label>
-            <Input
+            <LocalInput
               value={feedback.buttonText || (mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
-              onChange={e => updateFeedback({ buttonText: e.target.value })}
+              onCommit={v => updateFeedback({ buttonText: v })}
               placeholder={mode === 'button_countdown' ? 'Aguarde' : 'Processando...'}
-              className="h-8 text-sm nodrag nopan"
+              className="h-8 text-sm"
             />
           </div>
         )}
@@ -130,11 +131,11 @@ export default function WaitNode({ data }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] text-muted-foreground">Texto</Label>
-              <Input
+              <LocalInput
                 value={feedback.loadingLabel || 'Carregando...'}
-                onChange={e => updateFeedback({ loadingLabel: e.target.value })}
+                onCommit={v => updateFeedback({ loadingLabel: v })}
                 placeholder="Carregando..."
-                className="h-8 text-sm nodrag nopan"
+                className="h-8 text-sm"
               />
             </div>
           </>
@@ -154,20 +155,20 @@ export default function WaitNode({ data }: Props) {
           <div className="space-y-2 pl-1 border-l-2 border-node-wait-accent/20 ml-1">
             <div className="space-y-1.5">
               <Label className="text-[10px] text-muted-foreground">Título</Label>
-              <Input
+              <LocalInput
                 value={feedback.toastTitle || ''}
-                onChange={e => updateFeedback({ toastTitle: e.target.value })}
+                onCommit={v => updateFeedback({ toastTitle: v })}
                 placeholder="Processando..."
-                className="h-8 text-sm nodrag nopan"
+                className="h-8 text-sm"
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[10px] text-muted-foreground">Descrição</Label>
-              <Input
+              <LocalInput
                 value={feedback.toastDescription || ''}
-                onChange={e => updateFeedback({ toastDescription: e.target.value })}
+                onCommit={v => updateFeedback({ toastDescription: v })}
                 placeholder="Estamos preparando tudo para você"
-                className="h-8 text-sm nodrag nopan"
+                className="h-8 text-sm"
               />
             </div>
           </div>
@@ -188,11 +189,11 @@ export default function WaitNode({ data }: Props) {
           <div className="space-y-2 pl-1 border-l-2 border-node-wait-accent/20 ml-1">
             <div className="space-y-1.5">
               <Label className="text-[10px] text-muted-foreground">Texto do botão pular</Label>
-              <Input
+              <LocalInput
                 value={feedback.skipButtonText || ''}
-                onChange={e => updateFeedback({ skipButtonText: e.target.value })}
+                onCommit={v => updateFeedback({ skipButtonText: v })}
                 placeholder="Pular espera"
-                className="h-8 text-sm nodrag nopan"
+                className="h-8 text-sm"
               />
             </div>
             <div className="space-y-1.5">
