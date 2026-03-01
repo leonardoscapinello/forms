@@ -359,21 +359,34 @@ function ElementPreview({ block, elementLookup, onUpdateBlock }: { block: EmailB
           dangerouslySetInnerHTML={{ __html: block.content.replace(/\n/g, '<br/>') }}
         />
       );
-    case 'image':
+    case 'image': {
+      const isVariable = block.src && /\{\{.*?\}\}/.test(block.src);
+      const hasRealSrc = block.src && !isVariable;
       return (
         <div style={{ ...ps, textAlign: block.align }}>
-          {block.src ? (
+          {hasRealSrc ? (
             <img src={block.src} alt={block.alt} style={{ maxWidth: '100%', width: block.width, height: 'auto', display: 'inline-block' }} />
           ) : (
-            <div className="flex items-center justify-center h-20 bg-muted/30 rounded-lg border border-dashed border-border/60">
+            <div className="flex items-center justify-center h-24 bg-muted/20 rounded-lg border border-dashed border-border/50" style={{ width: block.width || '100%', margin: block.align === 'center' ? '0 auto' : block.align === 'right' ? '0 0 0 auto' : undefined }}>
               <div className="text-center">
-                <Image className="h-5 w-5 text-muted-foreground/30 mx-auto mb-1" />
-                <span className="text-muted-foreground/40 text-[10px]">Clique para configurar</span>
+                <Image className="h-6 w-6 text-muted-foreground/30 mx-auto mb-1.5" />
+                <span className="text-muted-foreground/50 text-[10px]">
+                  {isVariable ? '📎 Imagem dinâmica' : 'Clique para configurar'}
+                </span>
+                {isVariable && (
+                  <span className="block text-[9px] text-primary/50 mt-0.5 font-mono truncate max-w-[160px] mx-auto">
+                    {block.src!.replace(/\{\{field:([^}]+)\}\}/g, (_, id) => {
+                      const label = elementLookup?.[id];
+                      return label ? `{{${label}}}` : `{{campo}}`;
+                    })}
+                  </span>
+                )}
               </div>
             </div>
           )}
         </div>
       );
+    }
     case 'button':
       return (
         <div style={{ ...ps, textAlign: block.align }}>
