@@ -95,6 +95,10 @@ img.emoji {
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    --notification-surface: 229 31% 7%; /* #0C0E17 */
+    --notification-foreground: 220 20% 97%;
+    --notification-muted: 220 12% 74%;
+    --notification-border: 228 28% 24%;
 
     /* Node category colors */
     --node-contact: 220 80% 94%;
@@ -170,6 +174,10 @@ img.emoji {
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    --notification-surface: 229 31% 7%; /* #0C0E17 */
+    --notification-foreground: 220 20% 97%;
+    --notification-muted: 220 12% 74%;
+    --notification-border: 228 28% 24%;
 
     /* Node category colors (dark) */
     --node-contact: 220 40% 20%;
