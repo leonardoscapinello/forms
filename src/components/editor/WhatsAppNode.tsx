@@ -189,6 +189,10 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
                     variables={variables}
                     integrationNodes={integrationNodes}
                     placeholder="Olá {{nome}}, obrigado!"
+                    sendMedia={nodeData.sendMedia}
+                    mediaType={nodeData.mediaType}
+                    mediaUrl={nodeData.mediaUrl}
+                    mediaFileName={nodeData.mediaFileName}
                   />
                 </div>
 
