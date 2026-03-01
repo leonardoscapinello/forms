@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import type { InputElementGroup } from '../VariableAssignPanel';
 import { useVariableAutocomplete } from '../shared/useVariableAutocomplete';
-import { VariableHighlightOverlay } from '../shared/VariableHighlightOverlay';
+import { VariableHighlightOverlay, formatFieldTokensForDisplay, type ElementLookup } from '../shared/VariableHighlightOverlay';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -41,7 +41,7 @@ const FORMATTING: Record<string, WhatsAppFormatting> = {
   monospace:     { prefix: '```', suffix: '```', label: 'Monoespaçado' },
 };
 
-export function parseWhatsAppMarkdown(text: string): string {
+export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLookup): string {
   let html = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -51,7 +51,17 @@ export function parseWhatsAppMarkdown(text: string): string {
   html = html.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
   html = html.replace(/_(.*?)_/g, '<em>$1</em>');
   html = html.replace(/~(.*?)~/g, '<del>$1</del>');
-  html = html.replace(/\{\{(.*?)\}\}/g, '<span class="wa-var">{{$1}}</span>');
+  html = html.replace(/\{\{(.*?)\}\}/g, (_match, token: string) => {
+    if (token.startsWith('field:')) {
+      const elementId = token.slice('field:'.length);
+      const fieldLabel = elementLookup?.[elementId];
+      const safeLabel = fieldLabel
+        ? fieldLabel.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        : token;
+      return `<span class="wa-var">{{${safeLabel}}}</span>`;
+    }
+    return `<span class="wa-var">{{${token}}}</span>`;
+  });
   html = html.replace(/\n/g, '<br/>');
 
   return html;
@@ -403,9 +413,9 @@ export default function WhatsAppMessageEditor({
     stopProp,
   };
 
-  const previewText = local || placeholder || 'Escreva sua mensagem…';
+  const previewText = local ? formatFieldTokensForDisplay(local, elementLookup) : (placeholder || 'Escreva sua mensagem…');
   const isPlaceholder = !local;
-  const previewHtml = useMemo(() => parseWhatsAppMarkdown(local || ''), [local]);
+  const previewHtml = useMemo(() => parseWhatsAppMarkdown(local || '', elementLookup), [local, elementLookup]);
   const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -520,7 +530,7 @@ export default function WhatsAppMessageEditor({
                           rows={10}
                           className={cn(
                             'text-sm min-h-[280px] resize-none relative nodrag nopan nowheel',
-                            local.includes('{{') && 'bg-transparent'
+                            local.includes('{{') && 'bg-transparent text-transparent caret-foreground'
                           )}
                           onFocus={() => { isFocusedRef.current = true; }}
                           onBlur={() => { isFocusedRef.current = false; acDismiss(); }}

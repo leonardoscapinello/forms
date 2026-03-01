@@ -56,6 +56,15 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
   }, []);
 
   const activeInstances = useMemo(() => instances.filter(i => i.is_active), [instances]);
+  const elementLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const group of allInputElements) {
+      for (const el of group.elements) {
+        map[el.elementId] = el.elementLabel;
+      }
+    }
+    return map;
+  }, [allInputElements]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -348,6 +357,7 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
             mediaType={nodeData.mediaType}
             mediaUrl={nodeData.mediaUrl}
             mediaFileName={nodeData.mediaFileName}
+            elementLookup={elementLookup}
           />
         )}
       </div>
