@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'; /* rebuild */
 import {
   Trash2, ChevronUp, ChevronDown, Plus, X,
   AlignLeft, AlignCenter, AlignRight, ArrowLeft, ArrowRight,
