@@ -62,8 +62,8 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const withFieldHeader = (content: React.ReactNode) => (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <span className="text-2xl font-semibold text-primary mt-0.5">{stepNumber ?? '?'}</span>
-        <span className="text-2xl font-semibold text-primary mt-0.5">→</span>
+        <span className="text-2xl font-semibold mt-0.5" style={{ color: '#203300' }}>{stepNumber ?? '?'}</span>
+        <span className="text-2xl font-semibold mt-0.5" style={{ color: '#203300' }}>→</span>
         <div>
           <h2 className="text-2xl font-semibold text-foreground leading-snug">
             {element.label || 'Sem título'}
