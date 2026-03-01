@@ -43,37 +43,111 @@ export default function VariableInput(props: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
-  // Build a lookup map: elementId → label for human-readable highlights
+  // Build display aliases so IDs are kept out of the editable text
+  const { displayInputElements, fieldAliasById, fieldIdByAlias } = useMemo(() => {
+    const aliasById: Record<string, string> = {};
+    const idByAlias: Record<string, string> = {};
+    let idx = 1;
+
+    const displayGroups: InputElementGroup[] = allInputElements.map(group => ({
+      ...group,
+      elements: group.elements.map(el => {
+        const alias = aliasById[el.elementId] ?? `f${idx++}`;
+        aliasById[el.elementId] = alias;
+        idByAlias[alias] = el.elementId;
+        return { ...el, elementId: alias };
+      }),
+    }));
+
+    return {
+      displayInputElements: displayGroups,
+      fieldAliasById: aliasById,
+      fieldIdByAlias: idByAlias,
+    };
+  }, [allInputElements]);
+
+  const { displayIntegrationNodes, webhookAliasById, webhookIdByAlias } = useMemo(() => {
+    const aliasById: Record<string, string> = {};
+    const idByAlias: Record<string, string> = {};
+    let idx = 1;
+
+    const displayNodes: IntegrationNodeData[] = integrationNodes.map(node => {
+      const alias = aliasById[node.id] ?? `w${idx++}`;
+      aliasById[node.id] = alias;
+      idByAlias[alias] = node.id;
+      return { ...node, id: alias };
+    });
+
+    return {
+      displayIntegrationNodes: displayNodes,
+      webhookAliasById: aliasById,
+      webhookIdByAlias: idByAlias,
+    };
+  }, [integrationNodes]);
+
+  const toDisplaySyntax = useCallback((text: string) => {
+    if (!text) return text;
+
+    let next = text.replace(/\{\{field:([^}]+)\}\}/g, (_raw, fieldId: string) => {
+      const alias = fieldAliasById[fieldId] ?? fieldId;
+      return `{{field:${alias}}}`;
+    });
+
+    next = next.replace(/\{\{webhook:([^:}]+):([^}]+)\}\}/g, (_raw, nodeId: string, path: string) => {
+      const alias = webhookAliasById[nodeId] ?? nodeId;
+      return `{{webhook:${alias}:${path}}}`;
+    });
+
+    return next;
+  }, [fieldAliasById, webhookAliasById]);
+
+  const toRawSyntax = useCallback((text: string) => {
+    if (!text) return text;
+
+    let next = text.replace(/\{\{field:([^}]+)\}\}/g, (_raw, token: string) => {
+      const resolved = fieldIdByAlias[token] ?? token;
+      return `{{field:${resolved}}}`;
+    });
+
+    next = next.replace(/\{\{webhook:([^:}]+):([^}]+)\}\}/g, (_raw, token: string, path: string) => {
+      const resolved = webhookIdByAlias[token] ?? token;
+      return `{{webhook:${resolved}:${path}}}`;
+    });
+
+    return next;
+  }, [fieldIdByAlias, webhookIdByAlias]);
+
+  // Build a lookup map: tokenKey → label for human-readable highlights
   const elementLookup = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const group of allInputElements) {
+    for (const group of displayInputElements) {
       for (const el of group.elements) {
         map[el.elementId] = el.elementLabel;
       }
     }
     return map;
-  }, [allInputElements]);
+  }, [displayInputElements]);
 
-  const [local, setLocal] = useState(value);
+  const [local, setLocal] = useState(() => toDisplaySyntax(value));
   const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    if (!isFocusedRef.current) setLocal(value);
-  }, [value]);
+    if (!isFocusedRef.current) setLocal(toDisplaySyntax(value));
+  }, [value, toDisplaySyntax]);
 
   const commitValue = useCallback((v?: string) => {
-    const val = v ?? local;
+    const val = toRawSyntax(v ?? local);
     if (val !== value) onChange(val);
-  }, [local, value, onChange]);
+  }, [local, value, onChange, toRawSyntax]);
 
   const { handleChange, handleKeyDown: acHandleKeyDown, handleClick: acHandleClick, dismiss, DropdownUI } = useVariableAutocomplete({
     inputRef,
     localValue: local,
     setLocalValue: setLocal,
-    onCommit: (v) => onChange(v),
+    onCommit: (v) => onChange(toRawSyntax(v)),
     variables,
-    integrationNodes,
-    allInputElements,
+    integrationNodes: displayIntegrationNodes,
+    allInputElements: displayInputElements,
     trackedParams,
   });
 
@@ -84,7 +158,7 @@ export default function VariableInput(props: Props) {
       const end = el.selectionEnd ?? local.length;
       const next = local.slice(0, start) + syntax + local.slice(end);
       setLocal(next);
-      onChange(next);
+      onChange(toRawSyntax(next));
       requestAnimationFrame(() => {
         el.focus();
         const pos = start + syntax.length;
@@ -93,7 +167,7 @@ export default function VariableInput(props: Props) {
     } else {
       const next = local + syntax;
       setLocal(next);
-      onChange(next);
+      onChange(toRawSyntax(next));
     }
     setOpen(false);
   };
@@ -110,9 +184,9 @@ export default function VariableInput(props: Props) {
     setTimeout(() => setCopied(null), 1500);
   };
 
-  const webhookNodesWithFields = (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0);
+  const webhookNodesWithFields = displayIntegrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
   const activeParams = (trackedParams ?? DEFAULT_TRACKED_PARAMS).filter(p => p.enabled && p.key);
-  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0 || allInputElements.some(g => g.elements.length > 0) || activeParams.length > 0 || CONTEXT_KEYS.length > 0;
+  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0 || displayInputElements.some(g => g.elements.length > 0) || activeParams.length > 0 || CONTEXT_KEYS.length > 0;
 
   const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
@@ -241,10 +315,10 @@ export default function VariableInput(props: Props) {
                 </>
               )}
               {/* Fields */}
-              {allInputElements.some(g => g.elements.length > 0) && (
+              {displayInputElements.some(g => g.elements.length > 0) && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Campos do formulário</p>
-                  {allInputElements.filter(g => g.elements.length > 0).map(group => (
+                  {displayInputElements.filter(g => g.elements.length > 0).map(group => (
                     <div key={group.pageId}>
                       <p className="text-[8px] text-muted-foreground/60 px-2 pt-1">📄 {group.pageTitle}</p>
                       {group.elements.map(el => {
