@@ -2,6 +2,38 @@
   display: none !important;
 }
 
+@font-face {
+  font-family: 'Borna';
+  src: url('/fonts/borna/Borna-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Borna';
+  src: url('/fonts/borna/Borna-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Borna';
+  src: url('/fonts/borna/Borna-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Borna';
+  src: url('/fonts/borna/Borna-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -160,7 +192,11 @@ img.emoji {
     @apply border-border;
   }
 
-  body {
+  body,
+  button,
+  input,
+  textarea,
+  select {
     @apply bg-background text-foreground antialiased;
     font-family: 'Borna', 'Inter', ui-sans-serif, system-ui, sans-serif;
   }
