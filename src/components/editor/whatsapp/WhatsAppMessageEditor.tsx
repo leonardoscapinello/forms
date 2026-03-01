@@ -530,7 +530,7 @@ export default function WhatsAppMessageEditor({
                           rows={10}
                           className={cn(
                             'text-sm min-h-[280px] resize-none relative nodrag nopan nowheel',
-                            local.includes('{{') && 'bg-transparent text-transparent caret-foreground'
+                            local.includes('{{') && 'bg-transparent'
                           )}
                           onFocus={() => { isFocusedRef.current = true; }}
                           onBlur={() => { isFocusedRef.current = false; acDismiss(); }}
