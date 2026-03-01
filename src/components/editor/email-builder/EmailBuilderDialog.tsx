@@ -685,32 +685,34 @@ function FloatingToolbar({ onAddStructure }: {
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
       <div className={cn(
-        "rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden border border-white/[0.06]",
+        "rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden",
         expanded ? "px-3 py-3 w-[380px]" : "px-1 py-1"
       )}
-        style={{ background: '#0C0E17' }}
+        style={{ background: '#0C0E17', color: '#ffffff', border: '1px solid rgba(255,255,255,0.06)' }}
       >
         {!expanded ? (
           <button onClick={() => setExpanded(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/[0.06] transition-colors">
+            style={{ color: 'rgba(255,255,255,0.9)' }}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.06)] transition-colors">
             <Plus className="h-4 w-4" />
             <span className="text-xs font-semibold tracking-wide">Adicionar</span>
           </button>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1 pt-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Adicionar seção</span>
-              <button onClick={() => setExpanded(false)} className="p-1 rounded-lg hover:bg-white/[0.08] transition-colors">
-                <X className="h-3.5 w-3.5 text-white/50" />
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Adicionar seção</span>
+              <button onClick={() => setExpanded(false)} className="p-1 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors">
+                <X className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
               </button>
             </div>
 
             <div>
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30 px-1 mb-1.5 block">Colunas</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider px-1 mb-1.5 block" style={{ color: 'rgba(255,255,255,0.3)' }}>Colunas</span>
               <div className="flex gap-1.5">
                 {STRUCTURE_PRESETS.map(sp => (
                   <button key={sp.cols} onClick={() => { onAddStructure(sp.cols); setExpanded(false); }}
-                    className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] hover:border-white/[0.12] transition-all text-white/70 hover:text-white">
+                    className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl transition-all hover:bg-[rgba(255,255,255,0.1)]"
+                    style={{ color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <sp.icon className="h-4 w-4" />
                     <span className="text-[9px] font-medium">{sp.label}</span>
                   </button>
@@ -719,12 +721,13 @@ function FloatingToolbar({ onAddStructure }: {
             </div>
 
             <div>
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/30 px-1 mb-1.5 block">Elementos</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider px-1 mb-1.5 block" style={{ color: 'rgba(255,255,255,0.3)' }}>Elementos</span>
               <div className="grid grid-cols-5 gap-1">
                 {ELEMENT_TYPES.map(et => (
                   <button key={et.type}
                     onClick={() => { onAddStructure(1, et.type); setExpanded(false); }}
-                    className="flex flex-col items-center gap-1 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.06] hover:border-white/[0.12] transition-all text-white/70 hover:text-white">
+                    className="flex flex-col items-center gap-1 py-2 rounded-xl transition-all hover:bg-[rgba(255,255,255,0.1)]"
+                    style={{ color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <et.icon className="h-3.5 w-3.5" />
                     <span className="text-[8px] font-medium leading-tight text-center">{et.label}</span>
                   </button>
