@@ -1,12 +1,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Bold, Italic, Strikethrough, Code, Smile, Maximize2, X, MessageSquare, FileText, Globe, Monitor, Webhook, Braces } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { FormVariable, IntegrationNodeData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import type { InputElementGroup } from '../VariableAssignPanel';
-import { useVariableAutocomplete } from '../shared/useVariableAutocomplete';
-import { VariableHighlightOverlay, formatFieldTokensForDisplay, type ElementLookup } from '../shared/VariableHighlightOverlay';
+import { VariableContentEditable, VariableContentEditableRef, VarTokenInfo, AutocompleteTriggerInfo } from '../shared/VariableContentEditable';
+import { formatFieldTokensForDisplay, type ElementLookup } from '../shared/VariableHighlightOverlay';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -28,18 +27,15 @@ const COMMON_EMOJIS = [
   '🔥','⭐','💯','✅','❌','⚠️','📌','📎','💡','🎯',
 ];
 
-interface WhatsAppFormatting {
-  prefix: string;
-  suffix: string;
-  label: string;
-}
-
-const FORMATTING: Record<string, WhatsAppFormatting> = {
+const FORMATTING: Record<string, { prefix: string; suffix: string; label: string }> = {
   bold:          { prefix: '*',   suffix: '*',   label: 'Negrito' },
   italic:        { prefix: '_',   suffix: '_',   label: 'Itálico' },
   strikethrough: { prefix: '~',   suffix: '~',   label: 'Tachado' },
   monospace:     { prefix: '```', suffix: '```', label: 'Monoespaçado' },
 };
+
+export { formatFieldTokensForDisplay };
+export type { ElementLookup };
 
 export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLookup): string {
   let html = text
@@ -78,7 +74,6 @@ export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLooku
     return `<span class="wa-var">{{${token}}}</span>`;
   });
   html = html.replace(/\n/g, '<br/>');
-
   return html;
 }
 
@@ -112,7 +107,7 @@ function FormattingToolbar({
   insertSyntax,
   stopProp,
 }: {
-  onFormat: (type: keyof typeof FORMATTING) => void;
+  onFormat: (type: string) => void;
   emojiOpen: boolean;
   setEmojiOpen: (v: boolean) => void;
   insertEmoji: (e: string) => void;
@@ -136,7 +131,7 @@ function FormattingToolbar({
         <button
           key={key}
           type="button"
-          onClick={() => onFormat(key as keyof typeof FORMATTING)}
+          onClick={() => onFormat(key)}
           className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
           title={fmt.label}
         >
@@ -151,14 +146,7 @@ function FormattingToolbar({
 
       <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
         <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              'p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground',
-              emojiOpen && 'bg-muted text-foreground'
-            )}
-            title="Emoji"
-          >
+          <button type="button" className={cn('p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground', emojiOpen && 'bg-muted text-foreground')} title="Emoji">
             <Smile className="h-3 w-3" />
           </button>
         </PopoverTrigger>
@@ -176,14 +164,7 @@ function FormattingToolbar({
       {hasVars && (
         <Popover open={varOpen} onOpenChange={setVarOpen}>
           <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                'p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground',
-                varOpen && 'bg-muted text-foreground'
-              )}
-              title="Inserir variável"
-            >
+            <button type="button" className={cn('p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground', varOpen && 'bg-muted text-foreground')} title="Inserir variável">
               <Braces className="h-3 w-3" />
             </button>
           </PopoverTrigger>
@@ -193,7 +174,6 @@ function FormattingToolbar({
               <p className="text-[11px] text-muted-foreground mt-0.5">Clique para inserir no cursor</p>
             </div>
             <div className="p-1.5 space-y-0.5 max-h-64 overflow-y-auto">
-              {/* Variables */}
               {variables.length > 0 && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1">Variáveis</p>
@@ -205,7 +185,6 @@ function FormattingToolbar({
                   ))}
                 </>
               )}
-              {/* Fields */}
               {allInputElements.some(g => g.elements.length > 0) && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Campos do formulário</p>
@@ -222,7 +201,6 @@ function FormattingToolbar({
                   ))}
                 </>
               )}
-              {/* Webhooks */}
               {webhookNodesWithFields.length > 0 && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Retorno Webhook</p>
@@ -238,7 +216,6 @@ function FormattingToolbar({
                   ))}
                 </>
               )}
-              {/* GET Params */}
               {activeParams.length > 0 && (
                 <>
                   <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Parâmetros GET</p>
@@ -250,7 +227,6 @@ function FormattingToolbar({
                   ))}
                 </>
               )}
-              {/* Context */}
               <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Contexto</p>
               {[...new Set(CONTEXT_KEYS.map(c => c.category))].map(cat => (
                 <div key={cat}>
@@ -289,15 +265,25 @@ export default function WhatsAppMessageEditor({
   mediaUrl,
   mediaFileName,
 }: Props) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const expandedTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const [local, setLocal] = useState(value);
+  const ceRef = useRef<VariableContentEditableRef>(null);
+  const expandedCeRef = useRef<VariableContentEditableRef>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [varOpen, setVarOpen] = useState(false);
-  const isFocusedRef = useRef(false);
   const [expanded, setExpanded] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
+
+  // Autocomplete state for expanded editor
+  const [acState, setAcState] = useState<{
+    show: boolean;
+    filter: string;
+    x: number;
+    y: number;
+    selectedIdx: number;
+    textNode: Text;
+    start: number;
+    end: number;
+  } | null>(null);
 
   // Build lookup for field ID → label
   const elementLookup = useMemo(() => {
@@ -310,107 +296,105 @@ export default function WhatsAppMessageEditor({
     return map;
   }, [allInputElements]);
 
-  useEffect(() => {
-    if (!isFocusedRef.current && !expanded) setLocal(value);
-  }, [value, expanded]);
+  const ctxLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of CONTEXT_KEYS) map[c.key] = c.label;
+    return map;
+  }, []);
 
-  const commitValue = useCallback((v?: string) => {
-    const val = v ?? local;
-    if (val !== value) onChange(val);
-  }, [local, value, onChange]);
+  const resolveToken = useCallback((raw: string): VarTokenInfo => {
+    if (raw.startsWith('{{field:')) {
+      const id = raw.slice(8, -2);
+      return { label: elementLookup[id] || id.slice(0, 8), varType: 'field' };
+    }
+    if (raw.startsWith('{{webhook:')) {
+      const parts = raw.slice(2, -2).split(':');
+      const fieldName = parts.length >= 3 ? parts.slice(2).join(':') : parts[parts.length - 1];
+      return { label: fieldName, varType: 'webhook' };
+    }
+    if (raw.startsWith('{{ctx.')) {
+      const key = raw.slice(6, -2);
+      return { label: ctxLabelMap[key] || key, varType: 'context' };
+    }
+    if (raw.startsWith('{{param.')) {
+      return { label: raw.slice(8, -2), varType: 'param' };
+    }
+    return { label: raw.slice(2, -2), varType: 'variable' };
+  }, [elementLookup, ctxLabelMap]);
 
-  const activeRef = expanded ? expandedTextareaRef : textareaRef;
+  // Autocomplete items
+  const allAcItems = useMemo(() => {
+    const items: { id: string; label: string; syntax: string; icon: string; detail?: string }[] = [];
+    for (const v of variables) items.push({ id: `var-${v.id}`, label: v.name, syntax: `{{${v.name}}}`, icon: 'var', detail: v.type });
+    for (const group of allInputElements) {
+      for (const el of group.elements) items.push({ id: `field-${el.elementId}`, label: el.elementLabel, syntax: `{{field:${el.elementId}}}`, icon: 'field', detail: group.pageTitle });
+    }
+    const whNodes = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
+    for (const wn of whNodes) for (const f of (wn.responseFields || [])) items.push({ id: `wh-${wn.id}-${f}`, label: f, syntax: `{{webhook:${wn.id}:${f}}}`, icon: 'webhook' });
+    const activeParams = (trackedParams ?? DEFAULT_TRACKED_PARAMS).filter(p => p.enabled && p.key);
+    for (const p of activeParams) items.push({ id: `param-${p.id}`, label: p.label || p.key, syntax: `{{param.${p.key}}}`, icon: 'param' });
+    for (const ctx of CONTEXT_KEYS) items.push({ id: `ctx-${ctx.key}`, label: ctx.label, syntax: `{{ctx.${ctx.key}}}`, icon: 'context' });
+    return items;
+  }, [variables, allInputElements, integrationNodes, trackedParams]);
 
-  const { handleChange: acHandleChange, handleKeyDown: acHandleKeyDown, handleClick: acHandleClick, dismiss: acDismiss, DropdownUI } = useVariableAutocomplete({
-    inputRef: activeRef,
-    localValue: local,
-    setLocalValue: setLocal,
-    onCommit: (v) => onChange(v),
-    variables,
-    integrationNodes,
-    allInputElements,
-    trackedParams,
-  });
+  const filteredAcItems = useMemo(() => {
+    if (!acState?.show) return [];
+    const f = acState.filter.toLowerCase();
+    if (!f) return allAcItems.slice(0, 12);
+    return allAcItems.filter(item => item.label.toLowerCase().includes(f) || item.syntax.toLowerCase().includes(f)).slice(0, 12);
+  }, [acState?.show, acState?.filter, allAcItems]);
 
-  const applyFormatting = useCallback((type: keyof typeof FORMATTING) => {
-    const el = activeRef.current;
-    if (!el) return;
+  const handleAcTrigger = useCallback((info: AutocompleteTriggerInfo) => {
+    setAcState({ show: true, filter: info.filter, x: info.x, y: info.y, selectedIdx: 0, textNode: info.textNode, start: info.start, end: info.end });
+  }, []);
+  const handleAcDismiss = useCallback(() => setAcState(null), []);
+  const handleAcSelect = useCallback((item: typeof allAcItems[0]) => {
+    if (!acState) return;
+    expandedCeRef.current?.replaceRangeWithToken(acState.textNode, acState.start, acState.end, item.syntax);
+    setAcState(null);
+  }, [acState]);
+  const handleAcKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!acState?.show || filteredAcItems.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setAcState(prev => prev ? { ...prev, selectedIdx: (prev.selectedIdx + 1) % filteredAcItems.length } : null); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setAcState(prev => prev ? { ...prev, selectedIdx: (prev.selectedIdx - 1 + filteredAcItems.length) % filteredAcItems.length } : null); }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAcSelect(filteredAcItems[acState.selectedIdx]); }
+    else if (e.key === 'Escape') { e.preventDefault(); setAcState(null); }
+  }, [acState, filteredAcItems, handleAcSelect]);
+
+  const activeRef = expanded ? expandedCeRef : ceRef;
+
+  const applyFormatting = useCallback((type: string) => {
     const { prefix, suffix } = FORMATTING[type];
-    const start = el.selectionStart ?? local.length;
-    const end = el.selectionEnd ?? local.length;
-    const selectedText = local.slice(start, end);
-    const formatted = `${prefix}${selectedText || 'texto'}${suffix}`;
-    const next = local.slice(0, start) + formatted + local.slice(end);
-    setLocal(next);
-    onChange(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      const newStart = start + prefix.length;
-      const newEnd = newStart + (selectedText.length || 5);
-      el.setSelectionRange(newStart, newEnd);
-    });
-  }, [local, onChange, activeRef]);
+    activeRef.current?.wrapSelection(prefix, suffix, 'texto');
+  }, [activeRef]);
 
   const insertEmoji = useCallback((emoji: string) => {
-    const el = activeRef.current;
-    const pos = el?.selectionStart ?? local.length;
-    const next = local.slice(0, pos) + emoji + local.slice(pos);
-    setLocal(next);
-    onChange(next);
+    activeRef.current?.insertAtCursor(emoji);
     setEmojiOpen(false);
-    requestAnimationFrame(() => {
-      el?.focus();
-      const newPos = pos + emoji.length;
-      el?.setSelectionRange(newPos, newPos);
-    });
-  }, [local, onChange, activeRef]);
+  }, [activeRef]);
 
   const insertVariable = useCallback((varName: string) => {
-    const el = activeRef.current;
-    const syntax = `{{${varName}}}`;
-    const pos = el?.selectionStart ?? local.length;
-    const next = local.slice(0, pos) + syntax + local.slice(pos);
-    setLocal(next);
-    onChange(next);
+    activeRef.current?.insertToken(`{{${varName}}}`);
     setVarOpen(false);
-    requestAnimationFrame(() => {
-      el?.focus();
-      const newPos = pos + syntax.length;
-      el?.setSelectionRange(newPos, newPos);
-    });
-  }, [local, onChange, activeRef]);
+  }, [activeRef]);
 
   const insertSyntaxDirect = useCallback((syntax: string) => {
-    const el = activeRef.current;
-    const pos = el?.selectionStart ?? local.length;
-    const next = local.slice(0, pos) + syntax + local.slice(pos);
-    setLocal(next);
-    onChange(next);
+    activeRef.current?.insertToken(syntax);
     setVarOpen(false);
-    requestAnimationFrame(() => {
-      el?.focus();
-      const newPos = pos + syntax.length;
-      el?.setSelectionRange(newPos, newPos);
-    });
-  }, [local, onChange, activeRef]);
+  }, [activeRef]);
 
   const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
   const handleExpand = useCallback(() => {
-    if (triggerRef.current) {
-      setOriginRect(triggerRef.current.getBoundingClientRect());
-    }
+    if (triggerRef.current) setOriginRect(triggerRef.current.getBoundingClientRect());
     setExpanded(true);
-    requestAnimationFrame(() => {
-      expandedTextareaRef.current?.focus();
-    });
+    requestAnimationFrame(() => expandedCeRef.current?.focus());
   }, []);
 
   const handleCollapse = useCallback(() => {
-    commitValue();
     setExpanded(false);
-    acDismiss();
-  }, [commitValue, acDismiss]);
+    setAcState(null);
+  }, []);
 
   const toolbarProps = {
     onFormat: applyFormatting,
@@ -428,11 +412,18 @@ export default function WhatsAppMessageEditor({
     stopProp,
   };
 
-  const showReadableOverlay = local.includes('{{');
-  const previewText = local ? formatFieldTokensForDisplay(local, elementLookup) : (placeholder || 'Escreva sua mensagem…');
-  const isPlaceholder = !local;
-  const previewHtml = useMemo(() => parseWhatsAppMarkdown(local || '', elementLookup), [local, elementLookup]);
+  const previewText = value ? formatFieldTokensForDisplay(value, elementLookup) : (placeholder || 'Escreva sua mensagem…');
+  const isPlaceholder = !value;
+  const previewHtml = useMemo(() => parseWhatsAppMarkdown(value || '', elementLookup), [value, elementLookup]);
   const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const acIconMap: Record<string, React.ReactNode> = {
+    var: <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium flex-shrink-0">x</span>,
+    field: <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />,
+    webhook: <Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />,
+    param: <Globe className="h-3 w-3 text-orange-500 flex-shrink-0" />,
+    context: <Monitor className="h-3 w-3 text-blue-500 flex-shrink-0" />,
+  };
 
   return (
     <>
@@ -531,40 +522,44 @@ export default function WhatsAppMessageEditor({
                     </div>
                     <div className="px-4 pb-4 pt-2 flex-1 overflow-auto">
                       <div className="relative">
-                        {local.includes('{{') && (
-                          <VariableHighlightOverlay
-                            text={local}
-                            elementLookup={elementLookup}
-                            displayFieldLabels={showReadableOverlay}
-                            className={cn(
-                              'var-highlight-backdrop rounded-md border border-transparent px-3 py-2 text-sm',
-                              showReadableOverlay && 'var-highlight-readable'
-                            )}
-                          />
-                        )}
-                        <Textarea
-                          ref={expandedTextareaRef}
-                          value={local}
-                          onChange={e => acHandleChange(e.target.value)}
-                          placeholder={placeholder}
+                        <VariableContentEditable
+                          ref={expandedCeRef}
+                          value={value}
+                          onChange={onChange}
+                          resolveToken={resolveToken}
+                          multiline
                           rows={10}
-                          spellCheck={false}
-                          className={cn(
-                            'text-sm min-h-[280px] resize-none relative nodrag nopan nowheel',
-                            showReadableOverlay ? 'bg-transparent text-transparent caret-foreground selection:bg-transparent selection:text-transparent' : local.includes('{{') && 'bg-transparent'
-                          )}
-                          onFocus={() => { isFocusedRef.current = true; }}
-                          onBlur={() => { isFocusedRef.current = false; acDismiss(); }}
-                          onKeyDown={e => {
-                            acHandleKeyDown(e);
-                            e.stopPropagation();
-                            if (e.key === 'Escape') handleCollapse();
+                          placeholder={placeholder}
+                          className="text-sm min-h-[280px]"
+                          onAutocompleteTrigger={handleAcTrigger}
+                          onAutocompleteDismiss={handleAcDismiss}
+                          onKeyDown={(e) => {
+                            handleAcKeyDown(e);
+                            if (e.key === 'Escape' && !acState?.show) handleCollapse();
                           }}
-                          onClick={() => acHandleClick()}
-                          onMouseDown={stopProp}
-                          onPointerDown={stopProp}
                         />
-                        {DropdownUI}
+                        {/* Autocomplete dropdown */}
+                        {acState?.show && filteredAcItems.length > 0 && (
+                          <div
+                            className="fixed z-[10000] bg-popover border border-border rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto min-w-[200px]"
+                            style={{ left: acState.x, top: acState.y + 4 }}
+                          >
+                            {filteredAcItems.map((item, i) => (
+                              <div
+                                key={item.id}
+                                className={cn(
+                                  'flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer transition-colors',
+                                  i === acState.selectedIdx ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+                                )}
+                                onMouseDown={(e) => { e.preventDefault(); handleAcSelect(item); }}
+                              >
+                                {acIconMap[item.icon]}
+                                <span className="truncate">{item.label}</span>
+                                {item.detail && <span className="text-muted-foreground ml-auto text-[10px] truncate">{item.detail}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -575,26 +570,19 @@ export default function WhatsAppMessageEditor({
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Preview</p>
                     </div>
                     <div className="flex-1 px-3 pb-3">
-                      {/* Phone frame */}
                       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                        {/* WhatsApp header bar */}
                         <div className="px-3 py-2 bg-[#075E54] dark:bg-node-whatsapp-accent flex items-center gap-2">
                           <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
                             <MessageSquare className="h-3 w-3 text-white" />
                           </div>
                           <span className="text-xs font-medium text-white">Destinatário</span>
                         </div>
-
-                        {/* Chat background */}
                         <div className="p-3 bg-[#ECE5DD] dark:bg-muted/30 min-h-[260px]">
-                          {(local || (sendMedia && mediaUrl)) ? (
+                          {(value || (sendMedia && mediaUrl)) ? (
                             <div className="bg-[#DCF8C6] dark:bg-primary/15 rounded-lg rounded-tl-none shadow-sm max-w-full overflow-hidden">
-                              {/* Media in preview */}
                               {sendMedia && mediaUrl && (
                                 <div className="border-b border-black/5">
-                                  {mediaType === 'image' && (
-                                    <img src={mediaUrl} alt="" className="w-full max-h-[120px] object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                  )}
+                                  {mediaType === 'image' && <img src={mediaUrl} alt="" className="w-full max-h-[120px] object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                                   {mediaType === 'video' && (
                                     <div className="relative">
                                       <video src={mediaUrl} className="w-full max-h-[120px] object-cover" muted preload="metadata" />
@@ -627,9 +615,7 @@ export default function WhatsAppMessageEditor({
                                   )}
                                 </div>
                               )}
-
-                              {/* Message text */}
-                              {local && (
+                              {value && (
                                 <div className="px-2.5 py-1.5">
                                   <div
                                     className="text-xs text-foreground leading-relaxed break-words [&_.wa-var]:bg-primary/15 [&_.wa-var]:text-primary [&_.wa-var]:rounded [&_.wa-var]:px-1 [&_.wa-mono]:bg-muted [&_.wa-mono]:rounded [&_.wa-mono]:px-1 [&_.wa-mono]:font-mono [&_.wa-mono]:text-[11px]"
@@ -637,7 +623,6 @@ export default function WhatsAppMessageEditor({
                                   />
                                 </div>
                               )}
-
                               <div className="flex justify-end px-2 pb-1">
                                 <span className="text-[8px] text-muted-foreground">{time}</span>
                               </div>
