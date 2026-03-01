@@ -4,6 +4,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, ArrowLeft, ArrowRight,
   LayoutTemplate, PanelLeft, Settings2, ChevronRight,
   Type, Image, MousePointerClick, Minus, Space, Columns,
+  FileText, Sparkles, ArrowLeftIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,12 +38,12 @@ function SettingsSection({ title, defaultOpen = true, children }: { title: strin
     <div className="border-b border-border/50 last:border-b-0">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        className="flex items-center justify-between w-full py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
       >
         {title}
         <ChevronRight className={cn('h-3 w-3 transition-transform', open && 'rotate-90')} />
       </button>
-      {open && <div className="pb-3 space-y-2.5">{children}</div>}
+      {open && <div className="pb-3 space-y-3">{children}</div>}
     </div>
   );
 }
@@ -50,7 +51,7 @@ function SettingsSection({ title, defaultOpen = true, children }: { title: strin
 function FieldRow({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <label className="text-[10px] font-medium text-muted-foreground block mb-1">{label}</label>
+      <label className="text-[11px] font-medium text-muted-foreground block mb-1">{label}</label>
       {children}
     </div>
   );
@@ -62,21 +63,21 @@ function InlineRow({ children }: { children: React.ReactNode }) {
 
 function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange: (p: BlockPadding) => void }) {
   const sides = [
-    { key: 'top' as const, icon: '↑' },
-    { key: 'right' as const, icon: '→' },
-    { key: 'bottom' as const, icon: '↓' },
-    { key: 'left' as const, icon: '←' },
+    { key: 'top' as const, label: 'Cima' },
+    { key: 'right' as const, label: 'Dir.' },
+    { key: 'bottom' as const, label: 'Baixo' },
+    { key: 'left' as const, label: 'Esq.' },
   ];
   return (
-    <div className="grid grid-cols-4 gap-1">
-      {sides.map(({ key, icon }) => (
+    <div className="grid grid-cols-4 gap-1.5">
+      {sides.map(({ key, label }) => (
         <div key={key} className="min-w-0">
-          <span className="text-[8px] text-muted-foreground text-center block mb-0.5">{icon}</span>
+          <span className="text-[9px] text-muted-foreground text-center block mb-0.5">{label}</span>
           <Input
             type="number"
             value={padding[key]}
             onChange={e => onChange({ ...padding, [key]: Math.max(0, Number(e.target.value)) })}
-            className="h-7 text-[10px] text-center px-1"
+            className="h-7 text-[11px] text-center px-1"
             min={0} max={100}
           />
         </div>
@@ -87,13 +88,13 @@ function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange:
 
 function AlignButtons({ value, onChange }: { value: string; onChange: (v: 'left' | 'center' | 'right') => void }) {
   return (
-    <div className="flex gap-0.5 bg-muted/50 rounded-md p-0.5">
+    <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5">
       {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([v, Icon]) => (
         <button
           key={v}
           onClick={() => onChange(v)}
           className={cn(
-            'flex-1 flex items-center justify-center py-1.5 rounded text-xs transition-all',
+            'flex-1 flex items-center justify-center py-1.5 rounded-md text-xs transition-all',
             value === v
               ? 'bg-background shadow-sm text-foreground'
               : 'text-muted-foreground hover:text-foreground'
@@ -133,11 +134,11 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
       <SettingsSection title="Tipografia">
         <InlineRow>
           <FieldRow label="Tamanho">
-            <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-7 text-xs" />
+            <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-8 text-xs" />
           </FieldRow>
           <FieldRow label="Peso">
             <Select value={block.fontWeight} onValueChange={v => onChange({ ...block, fontWeight: v as any })}>
-              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="normal">Normal</SelectItem>
                 <SelectItem value="bold">Bold</SelectItem>
@@ -145,7 +146,7 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
             </Select>
           </FieldRow>
         </InlineRow>
-        <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
+        <ColorPickerField label="Cor do texto" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
       </SettingsSection>
 
       <SettingsSection title="Alinhamento">
@@ -184,13 +185,13 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
 
       <SettingsSection title="Configurações">
         <FieldRow label="Texto alternativo">
-          <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição" className="h-7 text-xs" />
+          <Input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })} placeholder="Descrição da imagem" className="h-8 text-xs" />
         </FieldRow>
         <InlineRow>
           <FieldRow label="Largura">
-            <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-7 text-xs" />
+            <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-8 text-xs" />
           </FieldRow>
-          <FieldRow label="Link">
+          <FieldRow label="Link ao clicar">
             <VariableInput
               value={block.link}
               onChange={val => onChange({ ...block, link: val })}
@@ -247,7 +248,7 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
       <SettingsSection title="Link">
         <FieldRow label="Tipo de link">
           <Select value={block.linkMode || 'custom'} onValueChange={v => onChange({ ...block, linkMode: v as ButtonLinkMode })}>
-            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {LINK_MODES.map(m => (
                 <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
@@ -256,7 +257,7 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
           </Select>
         </FieldRow>
         {(block.linkMode === 'custom' || !block.linkMode) && (
-          <FieldRow label="URL">
+          <FieldRow label="URL de destino">
             <VariableInput
               value={block.href}
               onChange={val => onChange({ ...block, href: val })}
@@ -270,7 +271,7 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
         {block.linkMode === 'variable' && (
           <FieldRow label="Variável">
             <Select value={block.href} onValueChange={v => onChange({ ...block, href: v })}>
-              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar…" /></SelectTrigger>
               <SelectContent>
                 {(variables || []).map(v => (
                   <SelectItem key={v.id} value={`{{${v.name}}}`} className="text-xs">{v.name}</SelectItem>
@@ -284,25 +285,25 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
         )}
         {(block.linkMode === 'pass_all_params' || block.linkMode === 'pass_utms' || block.linkMode === 'pass_variables') && (
           <FieldRow label="URL base">
-            <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://destino.com" className="h-7 text-xs" />
+            <Input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })} placeholder="https://destino.com" className="h-8 text-xs" />
           </FieldRow>
         )}
       </SettingsSection>
 
       <SettingsSection title="Aparência">
         <InlineRow>
-          <ColorPickerField label="Fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
-          <ColorPickerField label="Texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
+          <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
+          <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
         </InlineRow>
         <div className="grid grid-cols-3 gap-1.5">
-          <FieldRow label="Raio">
-            <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-7 text-xs text-center px-1" />
+          <FieldRow label="Arredond.">
+            <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-8 text-xs text-center px-1" />
           </FieldRow>
-          <FieldRow label="Pad. H">
-            <Input type="number" value={block.paddingX} onChange={e => onChange({ ...block, paddingX: Number(e.target.value) })} className="h-7 text-xs text-center px-1" />
+          <FieldRow label="Pad. horiz.">
+            <Input type="number" value={block.paddingX} onChange={e => onChange({ ...block, paddingX: Number(e.target.value) })} className="h-8 text-xs text-center px-1" />
           </FieldRow>
-          <FieldRow label="Pad. V">
-            <Input type="number" value={block.paddingY} onChange={e => onChange({ ...block, paddingY: Number(e.target.value) })} className="h-7 text-xs text-center px-1" />
+          <FieldRow label="Pad. vert.">
+            <Input type="number" value={block.paddingY} onChange={e => onChange({ ...block, paddingY: Number(e.target.value) })} className="h-8 text-xs text-center px-1" />
           </FieldRow>
         </div>
       </SettingsSection>
@@ -323,9 +324,9 @@ function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (
     <div className="min-w-0 w-full">
       <SettingsSection title="Aparência">
         <InlineRow>
-          <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
-          <FieldRow label="Espessura">
-            <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-7 text-xs" />
+          <ColorPickerField label="Cor da linha" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
+          <FieldRow label="Espessura (px)">
+            <Input type="number" value={block.thickness} onChange={e => onChange({ ...block, thickness: Number(e.target.value) })} className="h-8 text-xs" />
           </FieldRow>
         </InlineRow>
       </SettingsSection>
@@ -341,7 +342,7 @@ function SpacerSettings({ block, onChange }: { block: SpacerBlock; onChange: (b:
     <div className="min-w-0 w-full">
       <SettingsSection title="Configuração">
         <FieldRow label="Altura (px)">
-          <Input type="number" value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="h-7 text-xs w-20" />
+          <Input type="number" value={block.height} onChange={e => onChange({ ...block, height: Number(e.target.value) })} className="h-8 text-xs w-24" />
         </FieldRow>
       </SettingsSection>
     </div>
@@ -363,14 +364,14 @@ function StructureSettings({ block, onChange }: { block: ColumnsBlock; onChange:
 
   return (
     <div className="min-w-0 w-full">
-      <SettingsSection title="Colunas">
-        <div className="flex gap-0.5 bg-muted/50 rounded-md p-0.5">
+      <SettingsSection title="Número de colunas">
+        <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5">
           {[1, 2, 3, 4].map(n => (
             <button
               key={n}
               onClick={() => setColCount(n)}
               className={cn(
-                'flex-1 py-1.5 rounded text-xs font-medium transition-all',
+                'flex-1 py-2 rounded-md text-xs font-medium transition-all',
                 block.columns.length === n
                   ? 'bg-background shadow-sm text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -457,21 +458,10 @@ function ElementPreview({ block }: { block: EmailBlock }) {
 
 // ─── Column drop zone ───────────────────────────────────────────────
 function ColumnZone({
-  elements,
-  colIdx,
-  structureId,
-  selectedId,
-  onSelectElement,
-  onDropElement,
-  onRemoveElement,
-  onMoveElement,
-  onMoveToColumn,
-  totalCols,
+  elements, colIdx, structureId, selectedId,
+  onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn, totalCols,
 }: {
-  elements: EmailBlock[];
-  colIdx: number;
-  structureId: string;
-  selectedId: string | null;
+  elements: EmailBlock[]; colIdx: number; structureId: string; selectedId: string | null;
   onSelectElement: (id: string) => void;
   onDropElement: (structureId: string, colIdx: number, type: ElementType, insertIdx?: number) => void;
   onRemoveElement: (structureId: string, colIdx: number, elementId: string) => void;
@@ -490,9 +480,6 @@ function ColumnZone({
     e.stopPropagation();
     e.dataTransfer.dropEffect = move ? 'move' : 'copy';
     setDragOver(true);
-
-    // Calculate drop index
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const children = Array.from((e.currentTarget as HTMLElement).querySelectorAll('[data-el-idx]'));
     let idx = elements.length;
     for (const child of children) {
@@ -510,20 +497,16 @@ function ColumnZone({
     e.stopPropagation();
     setDragOver(false);
     setDropIdx(null);
-
-    // New element from palette
     const newType = e.dataTransfer.getData('application/email-element-type') as ElementType;
     if (newType) {
       onDropElement(structureId, colIdx, newType, dropIdx ?? undefined);
       return;
     }
-
-    // Move element between columns
     const moveData = e.dataTransfer.getData('application/email-element-move');
     if (moveData) {
       try {
         const { structureId: srcStructId, colIdx: srcCol, elementId } = JSON.parse(moveData);
-        if (srcStructId === structureId && srcCol === colIdx) return; // same column
+        if (srcStructId === structureId && srcCol === colIdx) return;
         onMoveToColumn(srcStructId, srcCol, colIdx, elementId);
       } catch { /* ignore */ }
     }
@@ -541,12 +524,11 @@ function ColumnZone({
       onDrop={handleDrop}
     >
       {elements.length === 0 && !dragOver && (
-        <span className="text-[9px] text-muted-foreground/50 py-3">Arraste um elemento aqui</span>
+        <span className="text-[10px] text-muted-foreground/50 py-3">Arraste um elemento aqui</span>
       )}
 
       {elements.map((el, elIdx) => (
         <div key={el.id} data-el-idx={elIdx}>
-          {/* Drop indicator */}
           {dragOver && dropIdx === elIdx && (
             <div className="h-0.5 bg-primary rounded-full mx-1" />
           )}
@@ -563,8 +545,6 @@ function ColumnZone({
             )}
           >
             <ElementPreview block={el} />
-
-            {/* Controls overlay */}
             <div className="absolute top-0 right-0 flex items-center gap-px opacity-0 group-hover/el:opacity-100 transition-opacity bg-background/90 rounded-bl border-l border-b border-border shadow-sm p-0.5 z-10">
               {colIdx > 0 && (
                 <button onClick={e => { e.stopPropagation(); onMoveToColumn(structureId, colIdx, colIdx - 1, el.id); }} className="p-0.5 rounded hover:bg-muted text-muted-foreground" title="Mover para coluna anterior">
@@ -594,7 +574,6 @@ function ColumnZone({
         </div>
       ))}
 
-      {/* Drop indicator at end */}
       {dragOver && dropIdx === elements.length && (
         <div className="h-0.5 bg-primary rounded-full mx-1" />
       )}
@@ -604,28 +583,13 @@ function ColumnZone({
 
 // ─── Structure row (top-level) ──────────────────────────────────────
 function StructureRow({
-  structure,
-  isSelected,
-  selectedElementId,
-  onSelect,
-  onRemove,
-  onMoveRow,
-  rowIndex,
-  totalRows,
-  onSelectElement,
-  onDropElement,
-  onRemoveElement,
-  onMoveElement,
-  onMoveToColumn,
+  structure, isSelected, selectedElementId,
+  onSelect, onRemove, onMoveRow, rowIndex, totalRows,
+  onSelectElement, onDropElement, onRemoveElement, onMoveElement, onMoveToColumn,
 }: {
-  structure: ColumnsBlock;
-  isSelected: boolean;
-  selectedElementId: string | null;
-  onSelect: () => void;
-  onRemove: () => void;
-  onMoveRow: (dir: -1 | 1) => void;
-  rowIndex: number;
-  totalRows: number;
+  structure: ColumnsBlock; isSelected: boolean; selectedElementId: string | null;
+  onSelect: () => void; onRemove: () => void; onMoveRow: (dir: -1 | 1) => void;
+  rowIndex: number; totalRows: number;
   onSelectElement: (id: string) => void;
   onDropElement: (structureId: string, colIdx: number, type: ElementType, insertIdx?: number) => void;
   onRemoveElement: (structureId: string, colIdx: number, elementId: string) => void;
@@ -643,7 +607,6 @@ function StructureRow({
         isSelected ? 'ring-2 ring-primary/30 ring-inset' : 'hover:ring-1 hover:ring-border hover:ring-inset',
       )}
     >
-      {/* Row controls */}
       <div className="absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity z-10">
         {rowIndex > 0 && (
           <button onClick={e => { e.stopPropagation(); onMoveRow(-1); }} className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-muted text-muted-foreground">
@@ -665,18 +628,63 @@ function StructureRow({
           {structure.columns.map((col, ci) => (
             <div key={ci} className="flex-1 min-w-0" style={{ borderRight: ci < structure.columns.length - 1 ? '1px dashed var(--border)' : 'none' }}>
               <ColumnZone
-                elements={col}
-                colIdx={ci}
-                structureId={structure.id}
-                selectedId={selectedElementId}
-                onSelectElement={onSelectElement}
-                onDropElement={onDropElement}
-                onRemoveElement={onRemoveElement}
-                onMoveElement={onMoveElement}
-                onMoveToColumn={onMoveToColumn}
+                elements={col} colIdx={ci} structureId={structure.id}
+                selectedId={selectedElementId} onSelectElement={onSelectElement}
+                onDropElement={onDropElement} onRemoveElement={onRemoveElement}
+                onMoveElement={onMoveElement} onMoveToColumn={onMoveToColumn}
                 totalCols={structure.columns.length}
               />
             </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Template picker (Step 1) ───────────────────────────────────────
+function TemplatePicker({ onSelect, onBlank }: { onSelect: (t: EmailTemplate) => void; onBlank: () => void }) {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-6 py-10">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary/10 mb-4">
+            <Sparkles className="h-6 w-6 text-primary" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-1">Como quer começar?</h2>
+          <p className="text-sm text-muted-foreground">Escolha um modelo pronto ou comece do zero</p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {/* Blank option */}
+          <button
+            onClick={onBlank}
+            className="group flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-center"
+          >
+            <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <FileText className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+            <div>
+              <span className="text-sm font-semibold block text-foreground">Em branco</span>
+              <span className="text-[11px] text-muted-foreground">Começar do zero</span>
+            </div>
+          </button>
+
+          {/* Template cards */}
+          {EMAIL_TEMPLATES.map(tpl => (
+            <button
+              key={tpl.id}
+              onClick={() => onSelect(tpl)}
+              className="group flex flex-col items-center gap-3 p-6 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 hover:shadow-md transition-all text-center"
+            >
+              <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                <tpl.icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div>
+                <span className="text-sm font-semibold block text-foreground">{tpl.label}</span>
+                <span className="text-[11px] text-muted-foreground leading-tight">{tpl.description}</span>
+              </div>
+            </button>
           ))}
         </div>
       </div>
@@ -696,19 +704,25 @@ interface Props {
 }
 
 export default function EmailBuilderDialog({ open, onClose, value, onChange, variables, trackedParams, allInputElements }: Props) {
-  // Migrate old format: wrap non-column blocks in 1-col structures
+  // Check if we have existing content — skip template step
+  const hasExistingContent = useMemo(() => {
+    const restored = extractBlocksFromHtml(value);
+    return !!restored;
+  }, [value]);
+
+  const [step, setStep] = useState<'template' | 'editor'>(() => hasExistingContent ? 'editor' : 'template');
+
+  // Migrate old format
   const [blocks, setBlocks] = useState<ColumnsBlock[]>(() => {
     const restored = extractBlocksFromHtml(value);
     if (restored) {
       return restored.blocks.map(b => {
         if (b.type === 'columns') return b as ColumnsBlock;
-        // Wrap legacy element in 1-col structure
         const s = createStructure(1);
         s.columns[0] = [b];
         return s;
       });
     }
-    // Default: one 1-col structure with a text block
     const s = createStructure(1);
     s.columns[0] = [createElement('text')];
     return [s];
@@ -717,12 +731,9 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<'editor' | 'preview' | 'code'>('editor');
-  const [showLeftPanel, setShowLeftPanel] = useState(true);
-  const [showRightPanel, setShowRightPanel] = useState(true);
   const [emailBg, setEmailBg] = useState(() => extractBlocksFromHtml(value)?.emailBg || '#F9FAFB');
   const [contentBg, setContentBg] = useState(() => extractBlocksFromHtml(value)?.contentBg || '#FFFFFF');
 
-  // Find selected element across all structures
   const selectedElement = useMemo(() => {
     if (!selectedElementId) return null;
     for (const s of blocks) {
@@ -735,14 +746,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   }, [blocks, selectedElementId]);
 
   const selectedStructure = useMemo(() => blocks.find(s => s.id === selectedStructureId) || null, [blocks, selectedStructureId]);
-
-  // The active settings target: element takes priority over structure
   const settingsTarget = selectedElement || selectedStructure;
-
-  // Auto-show right panel when selecting an element
-  useEffect(() => {
-    if (settingsTarget) setShowRightPanel(true);
-  }, [settingsTarget]);
 
   const html = useMemo(() => blocksToHtml(blocks as EmailBlock[], emailBg, contentBg), [blocks, emailBg, contentBg]);
 
@@ -848,9 +852,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   }, []);
 
   const applyTemplate = useCallback((template: EmailTemplate) => {
-    // Deep-clone blocks to get fresh IDs
     const cloned = JSON.parse(JSON.stringify(template.blocks)) as ColumnsBlock[];
-    // Assign fresh IDs to avoid collisions
     const reassign = (b: EmailBlock): EmailBlock => {
       const nb = { ...b, id: uid() };
       if (nb.type === 'columns') {
@@ -864,7 +866,17 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
     setContentBg(template.contentBg);
     setSelectedStructureId(null);
     setSelectedElementId(null);
+    setStep('editor');
     toast.success(`Template "${template.label}" aplicado`);
+  }, []);
+
+  const handleBlankStart = useCallback(() => {
+    const s = createStructure(1);
+    s.columns[0] = [createElement('text')];
+    setBlocks([s]);
+    setEmailBg('#F9FAFB');
+    setContentBg('#FFFFFF');
+    setStep('editor');
   }, []);
 
   const handleSave = useCallback(() => {
@@ -876,170 +888,162 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border flex-shrink-0 min-w-0">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <h2 className="text-sm font-semibold whitespace-nowrap hidden sm:block">Editor de E-mail</h2>
-            <div className="flex border border-border rounded-md">
-              {([['editor', 'Editor'], ['preview', 'Preview'], ['code', 'HTML']] as const).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setPreviewMode(mode)}
-                  className={cn('px-2 sm:px-3 py-1 text-xs transition-colors', previewMode === mode ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground')}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {previewMode === 'editor' && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant={showLeftPanel ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setShowLeftPanel(p => !p)}
-                  title="Painel de elementos"
-                >
-                  <PanelLeft className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={showRightPanel ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setShowRightPanel(p => !p)}
-                  title="Painel de configurações"
-                >
-                  <Settings2 className="h-3.5 w-3.5" />
-                </Button>
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0 bg-background">
+          <div className="flex items-center gap-3 min-w-0">
+            {step === 'editor' && !hasExistingContent && (
+              <button
+                onClick={() => setStep('template')}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeftIcon className="h-3.5 w-3.5" />
+                Templates
+              </button>
+            )}
+            <h2 className="text-sm font-semibold whitespace-nowrap">
+              {step === 'template' ? 'Escolher modelo' : 'Editor de E-mail'}
+            </h2>
+
+            {step === 'editor' && (
+              <div className="flex border border-border rounded-lg overflow-hidden">
+                {([['editor', 'Editor'], ['preview', 'Preview'], ['code', 'HTML']] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setPreviewMode(mode)}
+                    className={cn('px-3 py-1.5 text-xs transition-colors', previewMode === mode ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground')}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button variant="outline" size="sm" onClick={onClose} className="text-xs">Cancelar</Button>
-            <Button size="sm" onClick={handleSave} className="text-xs">Salvar</Button>
+            <Button variant="outline" size="sm" onClick={onClose} className="text-xs h-8">Cancelar</Button>
+            {step === 'editor' && (
+              <Button size="sm" onClick={handleSave} className="text-xs h-8">Salvar</Button>
+            )}
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden relative">
-          {previewMode === 'editor' && (
-            <>
-              {/* Left palette */}
-              {showLeftPanel && (
-                <div className="w-44 sm:w-52 border-r border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-4 min-w-0">
-                  {/* Structures */}
-                  <div>
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estruturas</span>
-                    <div className="grid grid-cols-2 gap-1.5 mt-2">
-                      {STRUCTURE_PRESETS.map(sp => (
-                        <button
-                          key={sp.cols}
-                          onClick={() => addStructure(sp.cols)}
-                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                        >
-                          <sp.icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-[9px] font-medium">{sp.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+        {/* Step 1: Template picker */}
+        {step === 'template' && (
+          <TemplatePicker onSelect={applyTemplate} onBlank={handleBlankStart} />
+        )}
 
-                  {/* Elements (draggable) */}
-                  <div>
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Elementos</span>
-                    <p className="text-[9px] text-muted-foreground mt-0.5 mb-2">Arraste para dentro de uma estrutura</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {ELEMENT_TYPES.map(et => (
-                        <div
-                          key={et.type}
-                          draggable
-                          onDragStart={e => {
-                            e.dataTransfer.setData('application/email-element-type', et.type);
-                            e.dataTransfer.effectAllowed = 'copy';
-                          }}
-                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-grab active:cursor-grabbing"
-                        >
-                          <et.icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-[9px] font-medium">{et.label}</span>
-                        </div>
-                      ))}
+        {/* Step 2: Editor */}
+        {step === 'editor' && (
+          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
+            {previewMode === 'editor' && (
+              <>
+                {/* Left palette — elements only, no templates */}
+                <div className="w-48 sm:w-56 border-r border-border flex-shrink-0 overflow-y-auto overflow-x-hidden min-w-0 bg-background">
+                  <div className="p-3 space-y-5">
+                    {/* Quick add structures */}
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Estruturas</span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {STRUCTURE_PRESETS.map(sp => (
+                          <button
+                            key={sp.cols}
+                            onClick={() => addStructure(sp.cols)}
+                            className="flex flex-col items-center gap-1.5 p-2.5 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-all"
+                          >
+                            <sp.icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-[10px] font-medium text-foreground">{sp.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Templates */}
-                  <div>
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Templates</span>
-                    <div className="flex flex-col gap-1.5 mt-2">
-                      {EMAIL_TEMPLATES.map(tpl => (
-                        <button
-                          key={tpl.id}
-                          onClick={() => applyTemplate(tpl)}
-                          className="flex items-center gap-2 p-2 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left"
-                        >
-                          <tpl.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-medium block leading-tight">{tpl.label}</span>
-                            <span className="text-[9px] text-muted-foreground block leading-tight truncate">{tpl.description}</span>
+                    {/* Draggable elements */}
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Elementos</span>
+                      <p className="text-[10px] text-muted-foreground mb-2">Arraste para dentro de uma estrutura</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {ELEMENT_TYPES.map(et => (
+                          <div
+                            key={et.type}
+                            draggable
+                            onDragStart={e => {
+                              e.dataTransfer.setData('application/email-element-type', et.type);
+                              e.dataTransfer.effectAllowed = 'copy';
+                            }}
+                            className="flex flex-col items-center gap-1.5 p-2.5 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-all cursor-grab active:cursor-grabbing"
+                          >
+                            <et.icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-[10px] font-medium text-foreground">{et.label}</span>
                           </div>
-                        </button>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Global style */}
-                  <div className="space-y-3">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estilo Global</span>
-                    <ColorPickerField label="Fundo do e-mail" value={emailBg} onChange={c => setEmailBg(c || '#F9FAFB')} allowTransparent={false} />
-                    <ColorPickerField label="Fundo do conteúdo" value={contentBg} onChange={c => setContentBg(c || '#FFFFFF')} allowTransparent={false} />
+                    {/* Global style */}
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Cores do e-mail</span>
+                      <div className="space-y-2">
+                        <ColorPickerField label="Fundo externo" value={emailBg} onChange={c => setEmailBg(c || '#F9FAFB')} allowTransparent={false} />
+                        <ColorPickerField label="Fundo do conteúdo" value={contentBg} onChange={c => setContentBg(c || '#FFFFFF')} allowTransparent={false} />
+                      </div>
+                    </div>
+
+                    {/* Change template */}
+                    {!hasExistingContent && (
+                      <button
+                        onClick={() => setStep('template')}
+                        className="flex items-center gap-2 w-full p-2.5 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
+                      >
+                        <LayoutTemplate className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-[11px] font-medium text-foreground">Trocar template</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Canvas */}
-              <div className="flex-1 overflow-y-auto min-w-0" style={{ backgroundColor: emailBg }}>
-                <div
-                  className="max-w-[600px] mx-auto my-6 rounded-lg shadow-sm relative"
-                  style={{ backgroundColor: contentBg, paddingLeft: 32 }}
-                  onClick={() => { setSelectedStructureId(null); setSelectedElementId(null); }}
-                >
-                  {blocks.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                      <Plus className="h-8 w-8 mb-2 opacity-30" />
-                      <p className="text-sm">Adicione uma estrutura para começar</p>
-                    </div>
-                  )}
+                {/* Canvas */}
+                <div className="flex-1 overflow-y-auto min-w-0" style={{ backgroundColor: emailBg }}>
+                  <div
+                    className="max-w-[600px] mx-auto my-6 rounded-lg shadow-sm relative"
+                    style={{ backgroundColor: contentBg, paddingLeft: 32 }}
+                    onClick={() => { setSelectedStructureId(null); setSelectedElementId(null); }}
+                  >
+                    {blocks.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                        <Plus className="h-8 w-8 mb-2 opacity-30" />
+                        <p className="text-sm">Adicione uma estrutura para começar</p>
+                      </div>
+                    )}
 
-                  {blocks.map((structure, rowIdx) => (
-                    <StructureRow
-                      key={structure.id}
-                      structure={structure}
-                      isSelected={selectedStructureId === structure.id && !selectedElementId}
-                      selectedElementId={selectedElementId}
-                      onSelect={() => { setSelectedStructureId(structure.id); setSelectedElementId(null); }}
-                      onRemove={() => removeStructure(structure.id)}
-                      onMoveRow={dir => moveRow(structure.id, dir)}
-                      rowIndex={rowIdx}
-                      totalRows={blocks.length}
-                      onSelectElement={id => { setSelectedElementId(id); setSelectedStructureId(null); }}
-                      onDropElement={dropElement}
-                      onRemoveElement={removeElement}
-                      onMoveElement={moveElement}
-                      onMoveToColumn={moveToColumn}
-                    />
-                  ))}
+                    {blocks.map((structure, rowIdx) => (
+                      <StructureRow
+                        key={structure.id}
+                        structure={structure}
+                        isSelected={selectedStructureId === structure.id && !selectedElementId}
+                        selectedElementId={selectedElementId}
+                        onSelect={() => { setSelectedStructureId(structure.id); setSelectedElementId(null); }}
+                        onRemove={() => removeStructure(structure.id)}
+                        onMoveRow={dir => moveRow(structure.id, dir)}
+                        rowIndex={rowIdx}
+                        totalRows={blocks.length}
+                        onSelectElement={id => { setSelectedElementId(id); setSelectedStructureId(null); }}
+                        onDropElement={dropElement}
+                        onRemoveElement={removeElement}
+                        onMoveElement={moveElement}
+                        onMoveToColumn={moveToColumn}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Settings panel */}
-              {showRightPanel && (
-                <div className="w-64 sm:w-72 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden min-w-0">
-                  {settingsTarget ? (
+                {/* Right settings panel */}
+                {settingsTarget && (
+                  <div className="w-64 sm:w-72 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden min-w-0 bg-background">
                     <div className="w-full min-w-0 max-w-full">
                       {/* Panel header */}
                       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30 sticky top-0 z-10">
                         {(() => {
                           const Icon = BLOCK_ICONS[settingsTarget.type] || Type;
-                          return <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />;
+                          return <Icon className="h-3.5 w-3.5 text-primary flex-shrink-0" />;
                         })()}
                         <span className="text-xs font-semibold truncate flex-1">{BLOCK_LABELS[settingsTarget.type]}</span>
                         <button
@@ -1050,7 +1054,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                         </button>
                       </div>
                       {/* Panel body */}
-                      <div className="px-3 pt-1 pb-3">
+                      <div className="px-3 pt-1 pb-4">
                         <BlockSettingsDispatch
                           block={settingsTarget}
                           onChange={b => {
@@ -1063,43 +1067,36 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                         />
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full py-16 px-4 text-center">
-                      <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
-                        <Settings2 className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">Selecione um elemento<br/>para editar</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+                  </div>
+                )}
+              </>
+            )}
 
-          {previewMode === 'preview' && (
-            <div className="flex-1 overflow-y-auto bg-muted/30 p-4 sm:p-6 min-w-0">
-              <div className="max-w-[650px] mx-auto rounded-lg shadow-lg overflow-hidden border border-border">
-                <iframe
-                  srcDoc={html}
-                  className="w-full border-0"
-                  style={{ height: '600px' }}
-                  title="Email Preview"
-                  sandbox="allow-same-origin"
+            {previewMode === 'preview' && (
+              <div className="flex-1 overflow-y-auto bg-muted/30 p-4 sm:p-6 min-w-0">
+                <div className="max-w-[650px] mx-auto rounded-lg shadow-lg overflow-hidden border border-border">
+                  <iframe
+                    srcDoc={html}
+                    className="w-full border-0"
+                    style={{ height: '600px' }}
+                    title="Email Preview"
+                    sandbox="allow-same-origin"
+                  />
+                </div>
+              </div>
+            )}
+
+            {previewMode === 'code' && (
+              <div className="flex-1 overflow-y-auto p-4 min-w-0">
+                <textarea
+                  value={html}
+                  readOnly
+                  className="w-full h-full rounded-md border border-input bg-muted/30 px-3 py-2 text-xs font-mono resize-none focus-visible:outline-none"
                 />
               </div>
-            </div>
-          )}
-
-          {previewMode === 'code' && (
-            <div className="flex-1 overflow-y-auto p-4 min-w-0">
-              <textarea
-                value={html}
-                readOnly
-                className="w-full h-full rounded-md border border-input bg-muted/30 px-3 py-2 text-xs font-mono resize-none focus-visible:outline-none"
-              />
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
