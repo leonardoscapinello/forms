@@ -400,20 +400,23 @@ img.emoji {
 /* Variable highlight overlay in inputs */
 .var-highlight {
   border-radius: 3px;
-  padding: 1px 0;
-  color: hsl(var(--foreground));
+  padding: 1px 2px;
+  color: transparent; /* text is invisible, only background shows through */
 }
 .var-highlight-variable {
   background: hsl(var(--primary) / 0.15);
-  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
 }
 .var-highlight-webhook {
-  background: hsl(var(--chart-4) / 0.15);
-  box-shadow: 0 0 0 1px hsl(var(--chart-4) / 0.2);
+  background: hsl(var(--node-webhook-accent) / 0.18);
 }
 .var-highlight-field {
-  background: hsl(var(--chart-2) / 0.15);
-  box-shadow: 0 0 0 1px hsl(var(--chart-2) / 0.2);
+  background: hsl(var(--node-whatsapp-accent) / 0.18);
+}
+.var-highlight-param {
+  background: hsl(30 90% 50% / 0.15);
+}
+.var-highlight-context {
+  background: hsl(210 80% 55% / 0.15);
 }
 
 /* Container for the highlight backdrop */
@@ -424,5 +427,5 @@ img.emoji {
   overflow: hidden;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: hsl(var(--foreground));
+  color: transparent;
 }

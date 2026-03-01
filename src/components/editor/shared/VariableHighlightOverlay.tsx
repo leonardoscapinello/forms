@@ -68,8 +68,8 @@ export function VariableHighlightOverlay({
     variable: 'var-highlight var-highlight-variable',
     webhook: 'var-highlight var-highlight-webhook',
     field: 'var-highlight var-highlight-field',
-    param: 'var-highlight var-highlight-variable',
-    context: 'var-highlight var-highlight-variable',
+    param: 'var-highlight var-highlight-param',
+    context: 'var-highlight var-highlight-context',
   };
 
   return (

@@ -161,7 +161,7 @@ export default function VariableInput(props: Props) {
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
               rows={props.rows ?? 2}
-              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent text-transparent caret-foreground', className)}
+              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
@@ -182,7 +182,7 @@ export default function VariableInput(props: Props) {
               value={local}
               onChange={e => handleChange(e.target.value)}
               placeholder={placeholder}
-              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent text-transparent caret-foreground', className)}
+              className={cn('nodrag nopan nowheel relative', hasHighlight && 'bg-transparent', className)}
               {...inputHandlers}
             />
           </>
