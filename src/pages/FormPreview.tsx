@@ -157,7 +157,8 @@ export default function FormPreview() {
   }, [id, storeForm]);
 
   const form = storeForm || publicForm;
-  const isEditorPreview = !!storeForm; // true when opened from within the editor
+  const hasEditorPreviewFlag = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('editorPreview') === '1';
+  const isEditorPreview = !!storeForm || hasEditorPreviewFlag; // preview must never trigger side-effects
 
   useEffect(() => {
     if (!publicLoading) setShowPublicSkeleton(false);
@@ -325,7 +326,7 @@ export default function FormPreview() {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [answers, currentPageIndex, form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [answers, currentPageIndex, form?.id, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save partial on beforeunload — use edge function via fetch keepalive
   useEffect(() => {
@@ -370,7 +371,7 @@ export default function FormPreview() {
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [form?.id, finished]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form?.id, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Insert session record on form load
   useEffect(() => {
@@ -402,7 +403,7 @@ export default function FormPreview() {
       response_id: responseId,
       event_type: 'form_start',
     }).then(() => {});
-  }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Fire pixel load events once the form is ready
@@ -439,7 +440,7 @@ export default function FormPreview() {
         onFired: (rec) => pixelEventsRef.current.push(rec),
       });
     }
-  }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track page views & session progress when page changes or form completes
   useEffect(() => {
@@ -551,7 +552,7 @@ export default function FormPreview() {
         time_on_page_ms: currentPageIndex > 0 ? timeOnPage : null,
       }).then(() => {});
     }
-  }, [currentPageIndex, finished, form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPageIndex, finished, form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
@@ -1242,7 +1243,7 @@ export default function FormPreview() {
     } finally {
       navigatingRef.current = false;
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, isPageEmpty]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, isPageEmpty, isEditorPreview]);
 
 
   const goBack = useCallback(() => {
@@ -1322,7 +1323,7 @@ export default function FormPreview() {
         setCurrentPageIndex(targetIndex);
       }
     }
-  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, applyPageVariableAssignments]);
+  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, applyPageVariableAssignments, isEditorPreview]);
 
   // Keyboard navigation: Enter = next (always), ArrowDown = next (except last page), ArrowUp = back
   const isLastPage = currentPageIndex !== null && currentPageIndex === pages.length - 1;
