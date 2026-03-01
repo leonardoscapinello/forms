@@ -987,7 +987,7 @@ export default function FormPreview() {
             };
 
             enqueueTask(
-              () => supabase.functions.invoke('resend-send', { body }).then(() => {}),
+              () => supabase.functions.invoke('resend-send', { body }).then(() => {}).catch(() => {}),
               `email:${resolvedTo}`,
             );
           }

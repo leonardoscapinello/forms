@@ -8,7 +8,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       position="top-center"
-      offset={{ top: 24 }}
+      offset={24}
       duration={5000}
       closeButton={false}
       className="toaster group"
