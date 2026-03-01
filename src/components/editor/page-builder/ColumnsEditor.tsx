@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import ElementPreview from './ElementPreview';
@@ -66,6 +66,8 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ colIdx: number; elIdx: number } | null>(null);
+  // Track which element is being dragged via grip handle
+  const gripDragRef = useRef<string | null>(null);
 
   const updateColumn = useCallback((colIdx: number, elements: PageElement[]) => {
     const updated = columns.map((col, i) => i === colIdx ? { ...col, elements } : col);
@@ -141,12 +143,12 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
     }
   }, [addElement, columns, updateColumn, onRemoveFromMain]);
 
-  // Internal reorder via native drag
+  // Internal reorder via native drag (only initiated by grip handle)
   const handleInternalDragStart = useCallback((e: React.DragEvent, colIdx: number, elIdx: number) => {
     setDragState({ colIdx, elIdx });
+    gripDragRef.current = columns[colIdx]?.elements[elIdx]?.id || null;
     const el = columns[colIdx]?.elements[elIdx];
     if (el) {
-      // Set data for cross-container moves (column → main canvas)
       e.dataTransfer.setData('element-move-json', JSON.stringify(el));
       e.dataTransfer.setData('element-move-source', `column:${element.id}:${colIdx}:${elIdx}`);
       e.dataTransfer.effectAllowed = 'move';
@@ -165,6 +167,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
     if (!dragState || !dropTarget) {
       setDragState(null);
       setDropTarget(null);
+      gripDragRef.current = null;
       return;
     }
 
@@ -173,6 +176,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
     if (!el) {
       setDragState(null);
       setDropTarget(null);
+      gripDragRef.current = null;
       return;
     }
 
@@ -185,12 +189,14 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
     onChange({ columnData: newColumns });
     setDragState(null);
     setDropTarget(null);
+    gripDragRef.current = null;
   }, [dragState, dropTarget, columns, onChange]);
 
-  // Clean up drag state when drag ends (e.g., dropped outside columns)
+  // Clean up drag state when drag ends
   const handleInternalDragEnd = useCallback(() => {
     setDragState(null);
     setDropTarget(null);
+    gripDragRef.current = null;
   }, []);
 
   // Types allowed inside columns (no nested columns)
@@ -222,8 +228,6 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
           {col.elements.map((el, elIdx) => (
             <div
               key={el.id}
-              draggable
-              onDragStart={(e) => handleInternalDragStart(e, colIdx, elIdx)}
               onDragOver={(e) => handleInternalDragOver(e, colIdx, elIdx)}
               onDrop={(e) => handleInternalDrop(e)}
               onDragEnd={handleInternalDragEnd}
@@ -236,6 +240,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                     : 'hover:ring-1 hover:ring-border'
               }`}
             >
+              {/* Floating controls — left side (reorder + grip) */}
               <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex flex-col gap-0.5">
                 {elIdx > 0 && (
                   <button
@@ -246,7 +251,15 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                     <ChevronUp className="h-3 w-3" />
                   </button>
                 )}
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
+                {/* Grip handle — ONLY this is draggable */}
+                <div
+                  draggable
+                  onDragStart={(e) => { e.stopPropagation(); handleInternalDragStart(e, colIdx, elIdx); }}
+                  className="cursor-grab active:cursor-grabbing p-0.5 rounded bg-background border border-border shadow-sm hover:bg-muted text-muted-foreground transition-colors"
+                  title="Arrastar para reordenar"
+                >
+                  <GripVertical className="h-3.5 w-3.5" />
+                </div>
                 {elIdx < (columns[colIdx]?.elements.length || 0) - 1 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, 1); }}
@@ -257,6 +270,8 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                   </button>
                 )}
               </div>
+
+              {/* Floating controls — right side (move between columns + delete) */}
               <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-0.5">
                 {colIdx > 0 && (
                   <button
@@ -292,9 +307,9 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
-              <div className="pointer-events-none">
-                <ElementPreview element={el} />
-              </div>
+
+              {/* Element content — fully interactive, NO pointer-events-none */}
+              <ElementPreview element={el} />
             </div>
           ))}
 
