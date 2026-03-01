@@ -816,6 +816,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const [previewMode, setPreviewMode] = useState<'editor' | 'preview' | 'code'>('editor');
   const [emailBg, setEmailBg] = useState(() => extractBlocksFromHtml(value)?.emailBg || '#F9FAFB');
   const [contentBg, setContentBg] = useState(() => extractBlocksFromHtml(value)?.contentBg || '#FFFFFF');
+  const [contentPadding, setContentPadding] = useState<BlockPadding>(() => extractBlocksFromHtml(value)?.contentPadding || { top: 24, right: 0, bottom: 24, left: 0 });
   const [showStylePanel, setShowStylePanel] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
@@ -837,13 +838,13 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   useEffect(() => { if (open) initialValueRef.current = value; }, [open]);
 
   const handleAttemptClose = useCallback(() => {
-    const currentFull = embedBlocksInHtml(blocksToHtml(blocks as EmailBlock[], emailBg, contentBg), blocks as EmailBlock[], emailBg, contentBg);
+    const currentFull = embedBlocksInHtml(blocksToHtml(blocks as EmailBlock[], emailBg, contentBg, 600, contentPadding), blocks as EmailBlock[], emailBg, contentBg, contentPadding);
     if (currentFull !== initialValueRef.current) {
       setShowUnsavedDialog(true);
     } else {
       onClose();
     }
-  }, [blocks, emailBg, contentBg, onClose]);
+  }, [blocks, emailBg, contentBg, contentPadding, onClose]);
 
   const handleDiscard = useCallback(() => {
     setShowUnsavedDialog(false);
@@ -859,7 +860,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const selectedStructure = useMemo(() => blocks.find(s => s.id === selectedStructureId) || null, [blocks, selectedStructureId]);
   const settingsTarget = selectedElement || selectedStructure;
 
-  const html = useMemo(() => blocksToHtml(blocks as EmailBlock[], emailBg, contentBg), [blocks, emailBg, contentBg]);
+  const html = useMemo(() => blocksToHtml(blocks as EmailBlock[], emailBg, contentBg, 600, contentPadding), [blocks, emailBg, contentBg, contentPadding]);
 
   // ── Operations ──
   const addStructure = useCallback((colCount: number, indexOrElementType?: number | ElementType) => {
@@ -947,21 +948,21 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
       return nb;
     };
     setBlocks(cloned.map(s => reassign(s) as ColumnsBlock));
-    setEmailBg(tpl.emailBg); setContentBg(tpl.contentBg);
+    setEmailBg(tpl.emailBg); setContentBg(tpl.contentBg); setContentPadding({ top: 24, right: 0, bottom: 24, left: 0 });
     setSelectedStructureId(null); setSelectedElementId(null); setStep('editor');
     toast.success(`Template "${tpl.label}" aplicado`);
   }, []);
 
   const handleBlankStart = useCallback(() => {
     const s = createStructure(1); s.columns[0] = [createElement('text')];
-    setBlocks([s]); setEmailBg('#F9FAFB'); setContentBg('#FFFFFF'); setStep('editor');
+    setBlocks([s]); setEmailBg('#F9FAFB'); setContentBg('#FFFFFF'); setContentPadding({ top: 24, right: 0, bottom: 24, left: 0 }); setStep('editor');
   }, []);
 
   const handleSave = useCallback(() => {
-    onChange(embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg));
-    initialValueRef.current = embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg);
+    onChange(embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg, contentPadding));
+    initialValueRef.current = embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg, contentPadding);
     onClose();
-  }, [html, blocks, emailBg, contentBg, onChange, onClose]);
+  }, [html, blocks, emailBg, contentBg, contentPadding, onChange, onClose]);
 
   // Close settings when clicking canvas
   const clearSelection = useCallback(() => {
@@ -1030,7 +1031,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                 <div className="flex-1 overflow-y-auto min-w-0 relative" style={{ backgroundColor: emailBg }}
                   onClick={clearSelection}>
                   <div className="w-full max-w-[600px] mx-auto my-8 rounded-xl shadow-sm relative box-border"
-                    style={{ backgroundColor: contentBg, paddingLeft: 'clamp(8px, 3vw, 40px)', paddingRight: 'clamp(0px, 1vw, 8px)' }}>
+                    style={{ backgroundColor: contentBg, padding: `${contentPadding.top}px ${contentPadding.right}px ${contentPadding.bottom}px ${contentPadding.left}px` }}>
                     
                     {blocks.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
@@ -1076,13 +1077,17 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
                 {showStylePanel && (
                   <div className="w-56 border-l border-border/50 flex-shrink-0 overflow-y-auto bg-background p-4 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-foreground">Cores do e-mail</span>
+                      <span className="text-xs font-semibold text-foreground">Estilo do e-mail</span>
                       <button onClick={() => setShowStylePanel(false)} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     <ColorPickerField label="Fundo externo" value={emailBg} onChange={c => setEmailBg(c || '#F9FAFB')} allowTransparent={false} />
                     <ColorPickerField label="Fundo do conteúdo" value={contentBg} onChange={c => setContentBg(c || '#FFFFFF')} allowTransparent={false} />
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Espaçamento do bloco</span>
+                      <PaddingEditor padding={contentPadding} onChange={setContentPadding} />
+                    </div>
                   </div>
                 )}
 
