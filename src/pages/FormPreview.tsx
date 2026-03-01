@@ -1156,7 +1156,26 @@ export default function FormPreview() {
         const paddingY = pageStyle.paddingY ?? 32;
         const gap = pageStyle.gap ?? 32;
         const bgColor = pageStyle.backgroundColor || undefined;
-        const fontFamily = pageStyle.fontFamily || undefined;
+        const fontFamily = pageStyle.fontFamily || form.style?.fontFamily || 'Borna';
+
+        // Build container background from form.style design settings
+        const formStyle = form.style;
+        const containerStyle: React.CSSProperties = { fontFamily };
+
+        if (formStyle.backgroundType === 'gradient' && formStyle.backgroundGradient) {
+          containerStyle.background = formStyle.backgroundGradient;
+        } else if (formStyle.backgroundType === 'image' && formStyle.backgroundImage) {
+          containerStyle.backgroundImage = `url(${formStyle.backgroundImage})`;
+          containerStyle.backgroundSize = formStyle.backgroundSize || 'cover';
+          containerStyle.backgroundPosition = 'center';
+          containerStyle.backgroundRepeat = 'no-repeat';
+        } else if (bgColor) {
+          containerStyle.backgroundColor = bgColor;
+        }
+
+        if (formStyle.textColor) {
+          containerStyle.color = formStyle.textColor;
+        }
 
         // Default screens (no custom elements): centered layout with own padding
         const showDefaultWelcome = isWelcome && (!form.showWelcomeScreen || !form.welcomePage?.elements?.length);
@@ -1167,7 +1186,7 @@ export default function FormPreview() {
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col"
-            style={{ backgroundColor: bgColor, fontFamily }}
+            style={containerStyle}
           >
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div

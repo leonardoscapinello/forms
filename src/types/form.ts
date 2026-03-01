@@ -161,10 +161,26 @@ export interface Question {
   pageElements?: import('./pageElements').PageElement[];
 }
 
+export type BackgroundType = 'solid' | 'gradient' | 'image';
+
 export interface FormStyle {
   primaryColor: string;
   backgroundColor: string;
   fontFamily: string;
+  /** Background type: solid color, gradient, or image */
+  backgroundType?: BackgroundType;
+  /** CSS gradient string (e.g. "linear-gradient(135deg, #fff, #000)") */
+  backgroundGradient?: string;
+  /** Background image URL */
+  backgroundImage?: string;
+  /** Background image size: cover, contain, auto */
+  backgroundSize?: string;
+  /** Text color (hex) applied globally to form content */
+  textColor?: string;
+  /** Heading font family */
+  headingFontFamily?: string;
+  /** Body/paragraph font family */
+  bodyFontFamily?: string;
 }
 
 export interface NodePosition {
@@ -424,7 +440,7 @@ export function createDefaultFunnelPage(title?: string): FunnelPage {
     elements: [],
     pageStyle: {
       backgroundColor: '',
-      fontFamily: 'Inter',
+      fontFamily: 'Borna',
       gap: 32,
       paddingX: 24,
       paddingY: 32,
@@ -584,7 +600,11 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 export const DEFAULT_FORM_STYLE: FormStyle = {
   primaryColor: '220 18% 20%',
   backgroundColor: '30 20% 98%',
-  fontFamily: 'Inter',
+  fontFamily: 'Borna',
+  backgroundType: 'solid',
+  textColor: '',
+  headingFontFamily: 'Borna',
+  bodyFontFamily: 'Borna',
 };
 
 export function createDefaultConditionGroup(firstQuestionId: string): ConditionGroup {
