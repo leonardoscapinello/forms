@@ -1,13 +1,20 @@
 import { Handle, Position } from '@xyflow/react';
 import { Clock, Trash2 } from 'lucide-react';
-import { WaitNodeData, WaitUnit } from '@/types/form';
+import { WaitNodeData, WaitUnit, WaitFeedbackMode } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 const UNIT_LABELS: Record<WaitUnit, string> = {
   seconds: 'segundos',
   minutes: 'minutos',
   hours: 'horas',
+};
+
+const FEEDBACK_LABELS: Record<WaitFeedbackMode, string> = {
+  button_countdown: '⏱ Contagem no botão',
+  button_text: '✏️ Trocar texto do botão',
+  loading_screen: '🔄 Tela de carregamento',
 };
 
 interface Props {
@@ -20,6 +27,12 @@ interface Props {
 
 export default function WaitNode({ data }: Props) {
   const { nodeData, onChange, onDelete } = data;
+  const feedback = nodeData.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
+  const mode = feedback.mode || 'button_countdown';
+
+  const updateFeedback = (patch: Partial<typeof feedback>) => {
+    onChange({ feedback: { ...feedback, ...patch } });
+  };
 
   return (
     <div className="bg-card rounded-xl border border-node-wait-accent/30 shadow-sm w-64 overflow-hidden">
@@ -38,25 +51,85 @@ export default function WaitNode({ data }: Props) {
         </button>
       </div>
 
-      {/* Config */}
-      <div className="p-3 flex items-center gap-2">
-        <Input
-          type="number"
-          min={1}
-          value={nodeData.duration || 5}
-          onChange={e => onChange({ duration: Number(e.target.value) })}
-          className="w-16 h-8 text-sm text-center"
-        />
-        <Select value={nodeData.unit || 'seconds'} onValueChange={(v: WaitUnit) => onChange({ unit: v })}>
-          <SelectTrigger className="h-8 text-sm flex-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(UNIT_LABELS).map(([k, label]) => (
-              <SelectItem key={k} value={k}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Duration */}
+      <div className="p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={1}
+            value={nodeData.duration || 5}
+            onChange={e => onChange({ duration: Number(e.target.value) })}
+            className="w-16 h-8 text-sm text-center nodrag nopan"
+          />
+          <Select value={nodeData.unit || 'seconds'} onValueChange={(v: WaitUnit) => onChange({ unit: v })}>
+            <SelectTrigger className="h-8 text-sm flex-1 nodrag nopan">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(UNIT_LABELS).map(([k, label]) => (
+                <SelectItem key={k} value={k}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Feedback mode */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Feedback visual</Label>
+          <Select value={mode} onValueChange={(v: WaitFeedbackMode) => updateFeedback({ mode: v })}>
+            <SelectTrigger className="h-8 text-sm nodrag nopan">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(FEEDBACK_LABELS).map(([k, label]) => (
+                <SelectItem key={k} value={k}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Mode-specific config */}
+        {(mode === 'button_countdown' || mode === 'button_text') && (
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-muted-foreground">Texto do botão</Label>
+            <Input
+              value={feedback.buttonText || (mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
+              onChange={e => updateFeedback({ buttonText: e.target.value })}
+              placeholder={mode === 'button_countdown' ? 'Aguarde' : 'Processando...'}
+              className="h-8 text-sm nodrag nopan"
+            />
+          </div>
+        )}
+
+        {mode === 'loading_screen' && (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">Estilo</Label>
+              <Select
+                value={feedback.loadingStyle || 'bar'}
+                onValueChange={(v: 'bar' | 'circular' | 'infinite') => updateFeedback({ loadingStyle: v })}
+              >
+                <SelectTrigger className="h-8 text-sm nodrag nopan">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bar">Barra</SelectItem>
+                  <SelectItem value="circular">Circular</SelectItem>
+                  <SelectItem value="infinite">Infinito</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">Texto</Label>
+              <Input
+                value={feedback.loadingLabel || 'Carregando...'}
+                onChange={e => updateFeedback({ loadingLabel: e.target.value })}
+                placeholder="Carregando..."
+                className="h-8 text-sm nodrag nopan"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-node-wait-accent !border-2 !border-card" />
