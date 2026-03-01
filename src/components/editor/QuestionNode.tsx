@@ -77,7 +77,7 @@ function QuestionNode({ data, selected }: NodeProps & { data: QuestionNodeData }
           />
         ) : (
           <p
-            className="text-sm font-medium text-foreground truncate hover:text-primary/80 cursor-text"
+            className="text-sm font-medium text-foreground truncate hover:text-[#8A7D4A] cursor-text"
             onClick={startEditing}
           >
             {question.title || 'Sem título'}
