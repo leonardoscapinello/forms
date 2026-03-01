@@ -32,13 +32,13 @@ export function AppSidebar() {
     <SidebarMenuItem key={item.title}>
       <SidebarMenuButton
         onClick={() => navigate(item.url)}
-        className={`mx-3 px-3 py-2.5 rounded-full text-[13px] transition-all ${
+        className={`mx-3 px-3 py-2.5 rounded-lg text-[13px] transition-all ${
           isActive(item.url)
             ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
             : 'bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
         }`}
       >
-        <item.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${isActive(item.url) ? '' : 'text-[#B7B790]'}`} />
+        <item.icon className={`h-4 w-4 mr-3 flex-shrink-0 ${isActive(item.url) ? 'text-sidebar-primary-foreground' : 'text-[#B7B790]'}`} />
         <span>{item.title}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
