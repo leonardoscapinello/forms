@@ -424,6 +424,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onDragLeave={handleCanvasDragLeave}
         onDrop={handleCanvasDrop}
         style={{
+          ['--primary' as any]: '48 24% 62%', // #B3AB86 for selected/focused borders in canvas
           backgroundColor: isExternalDragOver ? undefined : (() => { const raw = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAF6'; return raw.startsWith('#') ? raw : `hsl(${raw})`; })(),
           fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),
         }}
