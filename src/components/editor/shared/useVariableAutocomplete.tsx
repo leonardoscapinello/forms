@@ -240,6 +240,32 @@ export function useVariableAutocomplete({
   }, [showDropdown, inputRef, localValue, allItems.length]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Delete entire variable token on Backspace/Delete
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      const el = inputRef.current;
+      if (!el) return;
+      const cursor = el.selectionStart ?? 0;
+      const selEnd = el.selectionEnd ?? cursor;
+      // Only intervene when there's no active selection (single caret)
+      if (cursor === selEnd) {
+        const pos = e.key === 'Backspace' ? cursor : cursor; // cursor is at the edge
+        const token = findTokenAtCursor(localValue, e.key === 'Backspace' ? pos - 1 : pos);
+        if (token) {
+          e.preventDefault();
+          const next = localValue.slice(0, token.start) + localValue.slice(token.end);
+          setLocalValue(next);
+          onCommit(next);
+          setShowReplace(false);
+          setReplaceRange(null);
+          requestAnimationFrame(() => {
+            el.focus();
+            el.setSelectionRange(token.start, token.start);
+          });
+          return;
+        }
+      }
+    }
+
     if (showReplace && allItems.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -271,7 +297,7 @@ export function useVariableAutocomplete({
     } else if (e.key === 'Escape') {
       setShowDropdown(false);
     }
-  }, [showDropdown, showReplace, filtered, allItems, selectedIdx, insertItem, replaceItem]);
+  }, [showDropdown, showReplace, filtered, allItems, selectedIdx, insertItem, replaceItem, inputRef, localValue, setLocalValue, onCommit]);
 
   const dismiss = useCallback(() => {
     setShowDropdown(false);
