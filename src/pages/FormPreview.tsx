@@ -1652,7 +1652,16 @@ export default function FormPreview() {
                         {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
                         {waitFeedback.mode === 'button_countdown' && (
                           <span className="ml-1 tabular-nums">
-                            {Math.ceil(waitFeedback.remainingMs / 1000)}s
+                            {(() => {
+                              const totalSec = Math.ceil(waitFeedback.remainingMs / 1000);
+                              const h = Math.floor(totalSec / 3600);
+                              const m = Math.floor((totalSec % 3600) / 60);
+                              const s = totalSec % 60;
+                              const pad = (n: number) => String(n).padStart(2, '0');
+                              if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+                              if (m > 0) return `${pad(m)}m ${pad(s)}s`;
+                              return `${pad(s)}s`;
+                            })()}
                           </span>
                         )}
                       </span>
