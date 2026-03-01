@@ -59,16 +59,16 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
       data-sortable-id={element.id}
       draggable={element.type !== 'columns' && !lockedBy}
       onDragStart={handleNativeDragStart}
-      className={`group relative rounded-xl transition-all duration-200 ${
+      className={`group relative rounded-xl transition-all duration-200 border ${
         lockedBy
-          ? 'ring-2 ring-offset-2 ring-offset-background opacity-70 cursor-not-allowed'
+          ? 'ring-2 ring-offset-2 ring-offset-background opacity-70 cursor-not-allowed border-border/40'
           : isDragging
             ? 'opacity-30 scale-[0.98] bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl'
             : isOver && isDragActive
-              ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-md'
+              ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-md border-primary/30'
               : isSelected
-                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                : 'hover:ring-1 hover:ring-border'
+                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background border-primary/30'
+                : 'border-border/30 hover:border-border/60 hover:ring-1 hover:ring-border'
       }`}
       onClick={(e) => { e.stopPropagation(); if (!lockedBy) onSelect(); }}
     >
