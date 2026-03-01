@@ -770,6 +770,25 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   const [emailBg, setEmailBg] = useState(() => extractBlocksFromHtml(value)?.emailBg || '#F9FAFB');
   const [contentBg, setContentBg] = useState(() => extractBlocksFromHtml(value)?.contentBg || '#FFFFFF');
   const [showStylePanel, setShowStylePanel] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  // Track initial value to detect unsaved changes
+  const initialValueRef = useRef(value);
+  useEffect(() => { if (open) initialValueRef.current = value; }, [open]);
+
+  const handleAttemptClose = useCallback(() => {
+    const currentFull = embedBlocksInHtml(blocksToHtml(blocks as EmailBlock[], emailBg, contentBg), blocks as EmailBlock[], emailBg, contentBg);
+    if (currentFull !== initialValueRef.current) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose();
+    }
+  }, [blocks, emailBg, contentBg, onClose]);
+
+  const handleDiscard = useCallback(() => {
+    setShowUnsavedDialog(false);
+    onClose();
+  }, [onClose]);
 
   const selectedElement = useMemo(() => {
     if (!selectedElementId) return null;
@@ -875,6 +894,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   const handleSave = useCallback(() => {
     onChange(embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg));
+    initialValueRef.current = embedBlocksInHtml(html, blocks as EmailBlock[], emailBg, contentBg);
     onClose();
   }, [html, blocks, emailBg, contentBg, onChange, onClose]);
 
@@ -884,7 +904,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
   }, []);
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+    <Dialog open={open} onOpenChange={v => { if (!v) handleAttemptClose(); }}>
       <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden [&>button]:z-50">
         {/* ─── Top bar ─── */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border/50 flex-shrink-0 bg-background">
@@ -926,7 +946,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} className="text-xs h-8 text-muted-foreground">Cancelar</Button>
+            <Button variant="ghost" size="sm" onClick={handleAttemptClose} className="text-xs h-8 text-muted-foreground">Cancelar</Button>
             {step === 'editor' && (
               <Button size="sm" onClick={handleSave} className="text-xs h-8 px-5">Salvar</Button>
             )}
@@ -1046,6 +1066,22 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
           </div>
         )}
       </DialogContent>
+
+      {/* Unsaved changes confirmation */}
+      <Dialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <DialogContent className="max-w-sm">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Alterações não salvas</h3>
+              <p className="text-xs text-muted-foreground mt-1">Você tem alterações que não foram salvas. O que deseja fazer?</p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" className="text-xs" onClick={handleDiscard}>Descartar</Button>
+              <Button size="sm" className="text-xs" onClick={() => { setShowUnsavedDialog(false); handleSave(); }}>Salvar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
