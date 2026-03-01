@@ -1033,12 +1033,10 @@ export default function FormPreview() {
 
 
   const goNext = useCallback(async () => {
-    console.log('[goNext] called', { navigating: navigatingRef.current, isPageBlocked, currentPageIndex, finished });
-    if (navigatingRef.current) { console.log('[goNext] BLOCKED: navigatingRef is true'); return; }
-    if (isPageBlocked) { console.log('[goNext] BLOCKED: isPageBlocked'); return; }
-    if (!areRequiredFieldsFilled()) { console.log('[goNext] BLOCKED: required fields not filled'); return; }
+    if (navigatingRef.current) return;
+    if (isPageBlocked) return;
+    if (!areRequiredFieldsFilled()) return;
     navigatingRef.current = true;
-    console.log('[goNext] proceeding...');
 
     try {
       // Run async validators for current page
@@ -1094,7 +1092,8 @@ export default function FormPreview() {
               }
               return -1;
             })();
-            if (nextNonEmpty !== -1) {
+            // Prevent dead-end loops (e.g. jumping back to the same current page)
+            if (nextNonEmpty !== -1 && (currentPageIndex === null || nextNonEmpty > currentPageIndex)) {
               setAnswers(applyPageVariableAssignments(pages[nextNonEmpty], updatedAnswers));
               setCurrentPageIndex(nextNonEmpty);
               return;
