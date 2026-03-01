@@ -1,18 +1,21 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { useGallery, GalleryFile, GalleryFolder } from '@/hooks/useGallery';
 import {
-  FolderPlus, Upload, Trash2, ArrowLeft, Image, FileText, Film, Music,
-  File as FileIcon, MoreHorizontal, Pencil, Check, X, Loader2, Search, Grid3X3, List, Copy,
+  FolderPlus, Upload, Trash2, Image, FileText, Film, Music,
+  File as FileIcon, MoreHorizontal, Pencil, Check, X, Loader2, Search, Grid3X3, List, Copy, FolderInput,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -30,9 +33,111 @@ function getFileIcon(type: string) {
   return FileIcon;
 }
 
+// ── Move-to-folder picker dialog ──
+function MoveToFolderDialog({
+  open,
+  onClose,
+  folders,
+  currentFolderId,
+  onMove,
+  fileName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  folders: GalleryFolder[];
+  currentFolderId: string | null;
+  onMove: (folderId: string | null) => void;
+  fileName: string;
+}) {
+  const [browseFolderId, setBrowseFolderId] = useState<string | null>(null);
+
+  const browseFolders = useMemo(
+    () => folders.filter(f => f.parent_folder_id === browseFolderId),
+    [folders, browseFolderId]
+  );
+
+  const breadcrumb = useMemo(() => {
+    const trail: GalleryFolder[] = [];
+    let id = browseFolderId;
+    while (id) {
+      const f = folders.find(fo => fo.id === id);
+      if (f) { trail.unshift(f); id = f.parent_folder_id; } else break;
+    }
+    return trail;
+  }, [folders, browseFolderId]);
+
+  const isCurrentLocation = browseFolderId === currentFolderId;
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base">Mover "{fileName}"</DialogTitle>
+        </DialogHeader>
+
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1 text-sm">
+          <button
+            onClick={() => setBrowseFolderId(null)}
+            className={cn('hover:text-primary transition-colors', !browseFolderId ? 'font-medium text-foreground' : 'text-muted-foreground')}
+          >
+            Galeria
+          </button>
+          {breadcrumb.map(f => (
+            <span key={f.id} className="flex items-center gap-1">
+              <span className="text-muted-foreground">/</span>
+              <button
+                onClick={() => setBrowseFolderId(f.id)}
+                className={cn('hover:text-primary transition-colors', browseFolderId === f.id ? 'font-medium text-foreground' : 'text-muted-foreground')}
+              >
+                {f.name}
+              </button>
+            </span>
+          ))}
+        </div>
+
+        {/* Folder list */}
+        <div className="border border-border rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+          {browseFolders.length > 0 ? (
+            browseFolders.map(folder => (
+              <button
+                key={folder.id}
+                onClick={() => setBrowseFolderId(folder.id)}
+                className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border last:border-b-0"
+              >
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <FolderPlus className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm font-medium truncate">{folder.name}</span>
+              </button>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-xs">
+              Nenhuma subpasta aqui
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1">
+          <p className="text-xs text-muted-foreground">
+            {isCurrentLocation ? 'Já está nesta pasta' : `Mover para: ${breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].name : 'Galeria (raiz)'}`}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
+            <Button size="sm" onClick={() => { onMove(browseFolderId); onClose(); }} disabled={isCurrentLocation}>
+              Mover aqui
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Gallery() {
   const gallery = useGallery();
-  const { folders, files, loading, createFolder, renameFolder, deleteFolder, uploadFile, deleteFile } = gallery;
+  const { folders, files, loading, createFolder, renameFolder, deleteFolder, uploadFile, deleteFile, moveFile } = gallery;
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -42,6 +147,8 @@ export default function Gallery() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'file' | 'folder'; id: string; name: string } | null>(null);
+  const [moveTarget, setMoveTarget] = useState<{ id: string; name: string; folderId: string | null } | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentFolders = useMemo(() =>
@@ -92,10 +199,42 @@ export default function Gallery() {
     setDeleteTarget(null);
   };
 
+  const handleMoveFile = useCallback(async (fileId: string, targetFolderId: string | null) => {
+    await moveFile(fileId, targetFolderId);
+    toast.success('Arquivo movido');
+  }, [moveFile]);
+
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('URL copiada!');
   };
+
+  // ── Drag handlers for files ──
+  const onFileDragStart = useCallback((e: React.DragEvent, fileId: string) => {
+    e.dataTransfer.setData('application/gallery-file-id', fileId);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const onFolderDragOver = useCallback((e: React.DragEvent, folderId: string) => {
+    if (e.dataTransfer.types.includes('application/gallery-file-id')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setDragOverFolderId(folderId);
+    }
+  }, []);
+
+  const onFolderDragLeave = useCallback(() => {
+    setDragOverFolderId(undefined);
+  }, []);
+
+  const onFolderDrop = useCallback((e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDragOverFolderId(undefined);
+    const fileId = e.dataTransfer.getData('application/gallery-file-id');
+    if (fileId) {
+      handleMoveFile(fileId, folderId);
+    }
+  }, [handleMoveFile]);
 
   if (loading) {
     return (
@@ -188,7 +327,14 @@ export default function Gallery() {
         onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
         onDrop={e => {
           e.preventDefault();
+          // Handle file upload via drag from desktop
           if (e.dataTransfer.files.length > 0) handleUpload(e.dataTransfer.files);
+          // Handle moving file to root (current folder) via internal drag
+          const fileId = e.dataTransfer.getData('application/gallery-file-id');
+          if (fileId && currentFolderId !== null) {
+            // Only allow drop-to-root if we're inside a subfolder
+            // (dropping on the content area means "move to current folder's parent" is ambiguous — skip)
+          }
         }}
       >
         {/* Creating folder inline */}
@@ -216,12 +362,16 @@ export default function Gallery() {
                 <div
                   key={folder.id}
                   className={cn(
-                    'group cursor-pointer rounded-xl border border-border transition-all hover:border-primary/30 hover:shadow-sm',
-                    viewMode === 'grid' ? 'p-4 text-center' : 'p-3 flex items-center gap-3'
+                    'group cursor-pointer rounded-xl border transition-all hover:border-primary/30 hover:shadow-sm',
+                    viewMode === 'grid' ? 'p-4 text-center' : 'p-3 flex items-center gap-3',
+                    dragOverFolderId === folder.id ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
                   )}
                   onClick={() => {
                     if (editingFolderId !== folder.id) setCurrentFolderId(folder.id);
                   }}
+                  onDragOver={e => onFolderDragOver(e, folder.id)}
+                  onDragLeave={onFolderDragLeave}
+                  onDrop={e => { e.stopPropagation(); onFolderDrop(e, folder.id); }}
                 >
                   <div className={cn(viewMode === 'grid' ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3 flex-1 min-w-0')}>
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -255,6 +405,7 @@ export default function Gallery() {
                       <DropdownMenuItem onClick={e => { e.stopPropagation(); setEditFolderName(folder.name); setEditingFolderId(folder.id); }}>
                         <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name }); }}>
                         <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                       </DropdownMenuItem>
@@ -277,8 +428,10 @@ export default function Gallery() {
                 return (
                   <div
                     key={file.id}
+                    draggable
+                    onDragStart={e => onFileDragStart(e, file.id)}
                     className={cn(
-                      'group rounded-xl border border-border transition-all hover:border-primary/30 hover:shadow-sm overflow-hidden',
+                      'group rounded-xl border border-border transition-all hover:border-primary/30 hover:shadow-sm overflow-hidden cursor-grab active:cursor-grabbing',
                       viewMode === 'list' && 'flex items-center gap-3 p-3'
                     )}
                   >
@@ -306,6 +459,10 @@ export default function Gallery() {
                               <DropdownMenuItem onClick={() => copyUrl(file.url)}>
                                 <Copy className="h-3.5 w-3.5 mr-2" /> Copiar URL
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setMoveTarget({ id: file.id, name: file.name, folderId: file.folder_id })}>
+                                <FolderInput className="h-3.5 w-3.5 mr-2" /> Mover para...
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget({ type: 'file', id: file.id, name: file.name })}>
                                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                               </DropdownMenuItem>
@@ -327,10 +484,13 @@ export default function Gallery() {
                           <p className="text-xs text-muted-foreground">{formatSize(file.file_size)} · {file.file_type.split('/')[1]?.toUpperCase()}</p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          <button onClick={() => copyUrl(file.url)} className="p-1.5 rounded hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => copyUrl(file.url)} className="p-1.5 rounded hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Copiar URL">
                             <Copy className="h-3.5 w-3.5" />
                           </button>
-                          <button onClick={() => setDeleteTarget({ type: 'file', id: file.id, name: file.name })} className="p-1.5 rounded hover:bg-muted text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setMoveTarget({ id: file.id, name: file.name, folderId: file.folder_id })} className="p-1.5 rounded hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" title="Mover para...">
+                            <FolderInput className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={() => setDeleteTarget({ type: 'file', id: file.id, name: file.name })} className="p-1.5 rounded hover:bg-muted text-destructive opacity-0 group-hover:opacity-100 transition-opacity" title="Excluir">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
@@ -379,6 +539,18 @@ export default function Gallery() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Move-to-folder dialog */}
+      {moveTarget && (
+        <MoveToFolderDialog
+          open
+          onClose={() => setMoveTarget(null)}
+          folders={folders}
+          currentFolderId={moveTarget.folderId}
+          fileName={moveTarget.name}
+          onMove={(targetFolderId) => handleMoveFile(moveTarget.id, targetFolderId)}
+        />
+      )}
     </div>
   );
 }
