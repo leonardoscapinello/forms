@@ -15,7 +15,6 @@ interface Props {
 
 const FONT_OPTIONS = [
   { value: 'Borna', label: 'Borna' },
-  { value: 'Inter', label: 'Inter' },
   { value: 'Georgia', label: 'Georgia' },
   { value: 'Arial', label: 'Arial' },
   { value: 'Verdana', label: 'Verdana' },

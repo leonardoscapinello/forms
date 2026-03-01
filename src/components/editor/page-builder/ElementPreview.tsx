@@ -25,6 +25,19 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
+  const normalizeFontFamily = (fontFamily?: string) => {
+    const raw = (fontFamily ?? '').trim();
+    if (!raw) return "'Borna', ui-sans-serif, system-ui, sans-serif";
+
+    const normalized = raw.replace(/["']/g, '').toLowerCase();
+    const firstFamily = normalized.split(',')[0]?.trim() || '';
+    if (!firstFamily || firstFamily === 'inter' || firstFamily === 'borna') {
+      return "'Borna', ui-sans-serif, system-ui, sans-serif";
+    }
+
+    return raw;
+  };
+
   // Outer wrapper styles (margin)
   const containerStyle: React.CSSProperties = {};
   if (style?.margin !== undefined) containerStyle.margin = style.margin;
@@ -53,7 +66,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
   // Typography styles — passed down to text-rendering elements
   const elementStyle: React.CSSProperties = {};
   if (style?.color) elementStyle.color = style.color;
-  if (style?.fontFamily) elementStyle.fontFamily = style.fontFamily;
+  if (style?.fontFamily) elementStyle.fontFamily = normalizeFontFamily(style.fontFamily);
   if (style?.fontWeight) elementStyle.fontWeight = style.fontWeight;
 
   const isFormField = type.startsWith('input_');
@@ -87,7 +100,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return (
         <div className={alignClass}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
             {element.content || 'Título'}
           </div>
         </div>
@@ -97,7 +110,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
     case 'text':
       return (
         <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: style?.fontFamily, fontWeight: style?.fontWeight }}>
+          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
             {element.content || ''}
           </p>
         </div>
@@ -142,7 +155,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
               width: style?.width || 'auto',
               padding: style?.padding !== undefined ? `${style.padding}px ${style.padding * 1.5}px` : undefined,
               color: style?.color,
-              fontFamily: style?.fontFamily,
+              fontFamily: normalizeFontFamily(style?.fontFamily),
               fontWeight: style?.fontWeight,
               fontSize: style?.fontSize ? (style.fontSize === 'base' ? '1rem' : style.fontSize === 'lg' ? '1.125rem' : style.fontSize === 'xl' ? '1.25rem' : style.fontSize === '2xl' ? '1.5rem' : undefined) : undefined,
             }}
