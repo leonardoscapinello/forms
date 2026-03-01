@@ -27,11 +27,11 @@ import { EMAIL_TEMPLATES, type EmailTemplate } from './emailTemplates';
 
 function PaddingEditor({ padding, onChange }: { padding: BlockPadding; onChange: (p: BlockPadding) => void }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 min-w-0">
       <label className="text-[10px] font-medium text-muted-foreground uppercase">Espaçamento interno</label>
       <div className="grid grid-cols-2 gap-1.5">
         {(['top', 'right', 'bottom', 'left'] as const).map(side => (
-          <div key={side} className="flex items-center gap-1">
+          <div key={side} className="flex items-center gap-1 min-w-0">
             <span className="text-[9px] text-muted-foreground w-3 shrink-0">{side === 'top' ? '↑' : side === 'right' ? '→' : side === 'bottom' ? '↓' : '←'}</span>
             <Input
               type="number"
@@ -81,7 +81,7 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
   allInputElements?: Props['allInputElements'];
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 w-full overflow-hidden">
       {/* Conteúdo */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Conteúdo</label>
@@ -101,12 +101,12 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
       <SectionDivider />
 
       {/* Tipografia */}
-      <div className="grid grid-cols-3 gap-2">
-        <div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Tamanho</label>
-          <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-8 text-xs mt-1" />
+          <Input type="number" value={block.fontSize} onChange={e => onChange({ ...block, fontSize: Number(e.target.value) })} className="h-8 text-xs mt-1 w-full" />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Peso</label>
           <Select value={block.fontWeight} onValueChange={v => onChange({ ...block, fontWeight: v as any })}>
             <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
@@ -116,9 +116,9 @@ function TextSettings({ block, onChange, variables, trackedParams, allInputEleme
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
-        </div>
+      </div>
+      <div className="min-w-0">
+        <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#000000' })} allowTransparent={false} />
       </div>
 
       <SectionDivider />
@@ -140,7 +140,7 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
   allInputElements?: Props['allInputElements'];
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 w-full overflow-hidden">
       {/* Upload / Galeria / URL */}
       <ImageSourcePicker value={block.src} onChange={url => onChange({ ...block, src: url })} accept="image/*" alt={block.alt} showPreview={!!block.src && !block.src.includes('{{')} hideSaveToGallery />
 
@@ -169,7 +169,7 @@ function ImageSettings({ block, onChange, variables, trackedParams, allInputElem
       <SectionDivider />
 
       {/* Largura + Link */}
-      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))] gap-2">
+      <div className="space-y-2">
         <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Largura</label>
           <Input value={block.width} onChange={e => onChange({ ...block, width: e.target.value })} placeholder="100%" className="h-8 text-xs mt-1" />
@@ -215,7 +215,7 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 w-full overflow-hidden">
       {/* Texto */}
       <div>
         <label className="text-[10px] font-medium text-muted-foreground uppercase">Texto do botão</label>
@@ -284,11 +284,11 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
       <SectionDivider />
 
       {/* Aparência */}
-      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))] gap-2">
+      <div className="space-y-2">
         <ColorPickerField label="Cor do fundo" value={block.bgColor} onChange={c => onChange({ ...block, bgColor: c || '#4F46E5' })} allowTransparent={false} />
         <ColorPickerField label="Cor do texto" value={block.textColor} onChange={c => onChange({ ...block, textColor: c || '#FFFFFF' })} allowTransparent={false} />
       </div>
-      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(78px,1fr))] gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
         <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Raio</label>
           <Input type="number" value={block.borderRadius} onChange={e => onChange({ ...block, borderRadius: Number(e.target.value) })} className="h-8 text-xs mt-1" />
@@ -316,8 +316,8 @@ function ButtonSettings({ block, onChange, variables, trackedParams, allInputEle
 
 function DividerSettings({ block, onChange }: { block: DividerBlock; onChange: (b: DividerBlock) => void }) {
   return (
-    <div className="space-y-3">
-      <div className="grid [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))] gap-2">
+    <div className="space-y-3 min-w-0 w-full overflow-hidden">
+      <div className="space-y-2">
         <ColorPickerField label="Cor" value={block.color} onChange={c => onChange({ ...block, color: c || '#E5E7EB' })} allowTransparent={false} />
         <div className="min-w-0">
           <label className="text-[10px] font-medium text-muted-foreground uppercase">Espessura</label>
@@ -1026,9 +1026,9 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
               {/* Settings panel */}
               {showRightPanel && (
-                <div className="w-52 sm:w-60 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 min-w-0">
+                <div className="w-52 sm:w-60 border-l border-border flex-shrink-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3" style={{ minWidth: 0, maxWidth: '15rem' }}>
                   {settingsTarget ? (
-                    <div className="min-w-0 max-w-full">
+                    <div className="w-full" style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold truncate">{BLOCK_LABELS[settingsTarget.type]}</span>
                         <button onClick={() => { setSelectedElementId(null); setSelectedStructureId(null); }} className="text-muted-foreground hover:text-foreground flex-shrink-0">

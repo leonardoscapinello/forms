@@ -149,7 +149,7 @@ export default function ImageSourcePicker({
 
   // ── Full mode (original layout) ──
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-0 w-full overflow-hidden">
       {/* Preview */}
       {showPreview && value && (
         <div className="rounded-md border border-border overflow-hidden bg-muted/30">
@@ -158,7 +158,7 @@ export default function ImageSourcePicker({
       )}
 
       {/* Action buttons */}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           <Upload className="h-3 w-3" /> Upload
         </Button>
