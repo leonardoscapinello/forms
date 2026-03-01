@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { ColorPickerField, ImageSourcePicker } from '@/components/editor/shared';
 import VariableInput from '@/components/editor/shared/VariableInput';
@@ -447,7 +448,25 @@ function ColumnZone({
       onDrop={handleDrop}
     >
       {elements.length === 0 && !dragOver && (
-        <span className="text-[10px] text-muted-foreground/40 py-4">Arraste aqui</span>
+        <div className="flex flex-col items-center justify-center py-4 gap-2">
+          <span className="text-[10px] text-muted-foreground/40">Coluna vazia</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-border/50 text-muted-foreground/60 hover:border-primary/40 hover:text-primary/70 transition-colors text-[10px]">
+                <Plus className="h-3 w-3" />
+                Adicionar
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-36">
+              {ELEMENT_TYPES.map(et => (
+                <DropdownMenuItem key={et.type} className="text-xs gap-2" onClick={() => onDropElement(structureId, colIdx, et.type)}>
+                  <et.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                  {et.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
 
       {elements.map((el, elIdx) => (
@@ -502,6 +521,25 @@ function ColumnZone({
       ))}
 
       {dragOver && dropIdx === elements.length && <div className="h-0.5 bg-primary rounded-full mx-2 my-0.5" />}
+
+      {/* Add element button at bottom of column */}
+      {elements.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-full mt-1 py-1.5 rounded-md border border-dashed border-transparent hover:border-border/40 text-muted-foreground/30 hover:text-primary/60 transition-all flex items-center justify-center gap-1 text-[10px]">
+              <Plus className="h-3 w-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-36">
+            {ELEMENT_TYPES.map(et => (
+              <DropdownMenuItem key={et.type} className="text-xs gap-2" onClick={() => onDropElement(structureId, colIdx, et.type)}>
+                <et.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                {et.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }
