@@ -398,6 +398,7 @@ img.emoji {
 }
 
 /* Variable highlight overlay in inputs */
+/* ======= Legacy overlay highlights (WhatsApp editor etc.) ======= */
 .var-highlight {
   border-radius: 4px;
   padding: 0 4px;
@@ -465,4 +466,46 @@ img.emoji {
 }
 .var-highlight-backdrop.var-highlight-readable {
   color: hsl(var(--foreground));
+}
+
+/* ======= ContentEditable variable tokens (atomic inline badges) ======= */
+.variable-content-editable {
+  position: relative;
+  min-height: 2.25rem;
+}
+.variable-content-editable.is-empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}
+.variable-content-editable [data-raw] {
+  display: inline;
+  cursor: default;
+  user-select: all;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 600;
+  font-size: 0.92em;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+.var-token-variable {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.12);
+}
+.var-token-webhook {
+  color: hsl(var(--node-webhook-accent));
+  background: hsl(var(--node-webhook-accent) / 0.14);
+}
+.var-token-field {
+  color: hsl(var(--node-whatsapp-accent) / 0.85);
+  background: hsl(var(--node-whatsapp-accent) / 0.14);
+}
+.var-token-param {
+  color: hsl(30 80% 35%);
+  background: hsl(30 90% 50% / 0.12);
+}
+.var-token-context {
+  color: hsl(210 70% 40%);
+  background: hsl(210 80% 55% / 0.12);
 }
