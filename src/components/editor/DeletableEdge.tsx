@@ -28,7 +28,22 @@ export default function DeletableEdge({
 
   return (
     <>
-      <BaseEdge path={edgePath} style={style} markerEnd={markerEnd} />
+      <BaseEdge
+        path={edgePath}
+        style={style}
+        markerEnd={markerEnd}
+        interactionWidth={20}
+      />
+      {/* Invisible wider path for easier double-click targeting */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        className="react-flow__edge-interaction"
+        onDoubleClick={onDelete}
+        style={{ cursor: 'pointer' }}
+      />
       <EdgeLabelRenderer>
         <div
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
@@ -46,7 +61,7 @@ export default function DeletableEdge({
               [.react-flow__edge:hover_&]:opacity-100
               [.react-flow__edge.selected_&]:opacity-100
             "
-            title="Remover conexão"
+            title="Remover conexão (ou duplo clique)"
           >
             <Trash2 className="h-3 w-3" />
           </button>
