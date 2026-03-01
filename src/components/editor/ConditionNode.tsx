@@ -90,7 +90,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
         </div>
 
         {/* Label */}
-        <div className="px-3 pt-2.5 pb-1">
+        <div className="px-3 pt-2.5 pb-1 nodrag nopan nowheel">
           <LocalInput
             value={label}
             onCommit={v => onChange({ label: v })}
@@ -100,7 +100,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
         </div>
 
         {/* Branches */}
-        <div className="px-3 pb-3 space-y-1.5">
+        <div className="px-3 pb-3 space-y-1.5 nodrag nopan nowheel" onPointerDown={e => e.stopPropagation()}>
           {branches.map((branch, idx) => {
             const group: ConditionGroup = branch.conditionGroup || {
               id: crypto.randomUUID(),

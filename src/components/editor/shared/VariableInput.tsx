@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { FormVariable, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -41,12 +41,28 @@ export default function VariableInput(props: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Local state to prevent parent re-renders from stealing focus
+  const [local, setLocal] = useState(value);
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    // Only sync from parent when not focused
+    if (!isFocusedRef.current) {
+      setLocal(value);
+    }
+  }, [value]);
+
+  const commitValue = useCallback(() => {
+    if (local !== value) onChange(local);
+  }, [local, value, onChange]);
+
   const insertSyntax = (syntax: string) => {
     const el = inputRef.current;
     if (el) {
-      const start = el.selectionStart ?? value.length;
-      const end = el.selectionEnd ?? value.length;
-      const next = value.slice(0, start) + syntax + value.slice(end);
+      const start = el.selectionStart ?? local.length;
+      const end = el.selectionEnd ?? local.length;
+      const next = local.slice(0, start) + syntax + local.slice(end);
+      setLocal(next);
       onChange(next);
       requestAnimationFrame(() => {
         el.focus();
@@ -54,7 +70,9 @@ export default function VariableInput(props: Props) {
         el.setSelectionRange(pos, pos);
       });
     } else {
-      onChange(value + syntax);
+      const next = local + syntax;
+      setLocal(next);
+      onChange(next);
     }
     setOpen(false);
   };
@@ -73,27 +91,37 @@ export default function VariableInput(props: Props) {
   const webhookNodesWithFields = (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0);
   const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0;
 
-  const sharedInputClass = cn('pr-8', className);
+  const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
+
+  const inputHandlers = {
+    onFocus: () => { isFocusedRef.current = true; },
+    onBlur: () => { isFocusedRef.current = false; commitValue(); },
+    onKeyDown: (e: React.KeyboardEvent) => { e.stopPropagation(); },
+    onMouseDown: stopProp,
+    onPointerDown: stopProp,
+  };
 
   return (
-    <div className="relative flex items-start gap-1">
+    <div className="relative flex items-start gap-1 nodrag nopan nowheel">
       {/* Input or Textarea */}
       {props.as === 'textarea' ? (
         <Textarea
           ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-          value={value}
-          onChange={e => onChange(e.target.value)}
+          value={local}
+          onChange={e => setLocal(e.target.value)}
           placeholder={placeholder}
           rows={props.rows ?? 2}
-          className={cn('flex-1', className)}
+          className={cn('flex-1 nodrag nopan nowheel', className)}
+          {...inputHandlers}
         />
       ) : (
         <Input
           ref={inputRef as React.RefObject<HTMLInputElement>}
-          value={value}
-          onChange={e => onChange(e.target.value)}
+          value={local}
+          onChange={e => setLocal(e.target.value)}
           placeholder={placeholder}
-          className={cn('flex-1', className)}
+          className={cn('flex-1 nodrag nopan nowheel', className)}
+          {...inputHandlers}
         />
       )}
 

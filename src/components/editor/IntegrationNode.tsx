@@ -129,7 +129,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
         </div>
 
         {/* Body */}
-        <div className="px-3 py-3 space-y-2.5">
+        <div className="px-3 py-3 space-y-2.5 nodrag nopan nowheel" onPointerDown={e => e.stopPropagation()}>
           {/* URL */}
           <div className="space-y-1">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">

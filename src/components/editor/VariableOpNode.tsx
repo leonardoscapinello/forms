@@ -103,7 +103,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
 
 
       {/* Node label */}
-      <div className="px-3 pt-2.5 pb-1">
+      <div className="px-3 pt-2.5 pb-1 nodrag nopan nowheel">
         <LocalInput
           value={label}
           onCommit={v => onChange({ label: v })}
@@ -113,7 +113,7 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
       </div>
 
       {/* Operations list */}
-      <div className="px-3 pb-3 space-y-2">
+      <div className="px-3 pb-3 space-y-2 nodrag nopan nowheel" onPointerDown={e => e.stopPropagation()}>
         {variables.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-3 border border-dashed border-border rounded-lg">
             Crie variáveis primeiro no painel de páginas
