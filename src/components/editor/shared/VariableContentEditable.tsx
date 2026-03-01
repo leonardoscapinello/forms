@@ -398,7 +398,7 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
       onClick={() => checkAutocomplete()}
       data-placeholder={placeholder}
       className={cn(
-        'variable-content-editable nodrag nopan nowheel',
+        'variable-content-editable nodrag nopan nowheel w-full min-w-0 max-w-full',
         'rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm ring-offset-background',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         multiline ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap overflow-x-auto',

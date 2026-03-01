@@ -221,8 +221,8 @@ export default function VariableInput(props: Props) {
   };
 
   return (
-    <div className="relative flex items-start gap-1 nodrag nopan nowheel">
-      <div className="relative flex-1">
+    <div className="relative flex w-full min-w-0 items-start gap-1 nodrag nopan nowheel">
+      <div className="relative flex-1 min-w-0">
         <VariableContentEditable
           ref={ceRef}
           value={value}
