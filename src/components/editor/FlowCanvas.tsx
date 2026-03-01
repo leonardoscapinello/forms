@@ -969,7 +969,6 @@ function FlowCanvasInner({
 
       {dropMenu && (
         <ConnectDropMenu
-          position={dropMenu.screenPos}
           onAddPage={handleDropAddPage}
           onAddCondition={handleDropAddCondition}
           onAddVariableOp={handleDropAddVariableOp}
@@ -983,7 +982,6 @@ function FlowCanvasInner({
 
       {contextMenu && (
         <ConnectDropMenu
-          position={contextMenu.screenPos}
           onAddPage={handleCtxAddPage}
           onAddCondition={handleCtxAddCondition}
           onAddVariableOp={handleCtxAddVariableOp}
