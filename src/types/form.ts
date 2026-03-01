@@ -705,7 +705,7 @@ export const DEFAULT_FORM_STYLE: FormStyle = {
   backgroundColor: '#FAFAF6',
   fontFamily: 'Borna',
   backgroundType: 'solid',
-  textColor: '',
+  textColor: '#203300',
   headingFontFamily: 'Borna',
   bodyFontFamily: 'Borna',
 };
