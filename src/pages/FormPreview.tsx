@@ -1016,7 +1016,7 @@ export default function FormPreview() {
         const wtNode = f?.waitNodes?.find(n => n.id === wtId);
         if (wtNode) {
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
-          const durationMs = Math.min((wtNode.duration || 1) * multiplier, 30000); // cap at 30s
+          const durationMs = (wtNode.duration || 1) * multiplier;
           // Walk the rest of the workflow from the wait node to find the destination
           const restResult = await walkWorkflow(target, currentAns);
           return {
