@@ -127,6 +127,15 @@ img.emoji {
     /* Email = blue-indigo */
     --node-email: 230 70% 94%;
     --node-email-accent: 230 60% 50%;
+    /* A/B Test = orange-amber */
+    --node-abtest: 25 80% 93%;
+    --node-abtest-accent: 25 70% 50%;
+    /* Wait / delay = teal */
+    --node-wait: 180 50% 93%;
+    --node-wait-accent: 180 50% 40%;
+    /* Jump = rose-pink */
+    --node-jump: 350 60% 94%;
+    --node-jump-accent: 350 55% 50%;
   }
 
   .dark {
@@ -189,6 +198,12 @@ img.emoji {
     --node-whatsapp-accent: 142 55% 50%;
     --node-email: 230 35% 22%;
     --node-email-accent: 230 50% 65%;
+    --node-abtest: 25 40% 20%;
+    --node-abtest-accent: 25 60% 60%;
+    --node-wait: 180 30% 18%;
+    --node-wait-accent: 180 45% 55%;
+    --node-jump: 350 30% 22%;
+    --node-jump-accent: 350 45% 60%;
   }
 }
 

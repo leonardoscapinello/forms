@@ -389,22 +389,49 @@ export interface WhatsAppNodeData {
 
 export interface EmailNodeData {
   id: string;
-  /** ID of the integration_settings row for the Resend instance */
   instanceId?: string;
-  /** Sender email address — may contain {{var}} interpolation */
   fromEmail?: string;
-  /** Sender display name — may contain {{var}} interpolation */
   fromName?: string;
-  /** Recipient email — may contain {{var}} interpolation */
   toEmail?: string;
-  /** Email subject — may contain {{var}} interpolation */
   subject?: string;
-  /** Plain text body — may contain {{var}} interpolation */
   bodyText?: string;
-  /** Whether to use HTML body instead of plain text */
   useHtml?: boolean;
-  /** HTML body — may contain {{var}} interpolation */
   bodyHtml?: string;
+}
+
+// ── A/B Test Node ───────────────────────────────────────────────────────────
+
+export interface ABTestVariant {
+  id: string;
+  label: string;
+  /** Weight percentage (0–100). All variants should sum to 100. */
+  weight: number;
+}
+
+export interface ABTestNodeData {
+  id: string;
+  label?: string;
+  variants: ABTestVariant[];
+}
+
+// ── Wait Node ───────────────────────────────────────────────────────────────
+
+export type WaitUnit = 'seconds' | 'minutes' | 'hours';
+
+export interface WaitNodeData {
+  id: string;
+  label?: string;
+  duration: number;
+  unit: WaitUnit;
+}
+
+// ── Jump Node ───────────────────────────────────────────────────────────────
+
+export interface JumpNodeData {
+  id: string;
+  label?: string;
+  /** The page ID to jump to */
+  targetPageId?: string;
 }
 
 /** A pixel event fired automatically when the form loads */
@@ -516,6 +543,12 @@ export interface FormData {
   whatsappNodes?: WhatsAppNodeData[];
   /** Email (Resend) nodes */
   emailNodes?: EmailNodeData[];
+  /** A/B Test nodes */
+  abTestNodes?: ABTestNodeData[];
+  /** Wait / delay nodes */
+  waitNodes?: WaitNodeData[];
+  /** Jump to page nodes */
+  jumpNodes?: JumpNodeData[];
   /** Pixel events fired automatically when the form is loaded */
   pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];

@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData } from '@/types/form';
+import { FunnelPage, FunnelPageStyle, FormData, FormVariable, ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage, VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData, ABTestNodeData, WaitNodeData, JumpNodeData } from '@/types/form';
 import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
@@ -414,6 +414,91 @@ export default function FormEditor() {
     updateForm(form.id, { emailNodes: (form.emailNodes || []).filter(n => n.id !== nodeId), flowEdges, nodePositions });
   }, [form, updateForm]);
 
+  // ---- ABTestNode CRUD ----
+
+  const handleABTestAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const ab: ABTestNodeData = {
+      id: crypto.randomUUID(),
+      label: 'Teste A/B',
+      variants: [
+        { id: crypto.randomUUID(), label: 'A', weight: 50 },
+        { id: crypto.randomUUID(), label: 'B', weight: 50 },
+      ],
+    };
+    const nodeId = `ab-${ab.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, { abTestNodes: [...(form.abTestNodes || []), ab], flowEdges, nodePositions });
+  }, [form, updateForm]);
+
+  const handleABTestChange = useCallback((nodeId: string, patch: Partial<ABTestNodeData>) => {
+    if (!form) return;
+    const abTestNodes = (form.abTestNodes || []).map(n => n.id === nodeId ? { ...n, ...patch } : n);
+    updateForm(form.id, { abTestNodes });
+  }, [form, updateForm]);
+
+  const handleABTestDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `ab-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(e => e.source !== rfNodeId && e.target !== rfNodeId);
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, { abTestNodes: (form.abTestNodes || []).filter(n => n.id !== nodeId), flowEdges, nodePositions });
+  }, [form, updateForm]);
+
+  // ---- WaitNode CRUD ----
+
+  const handleWaitAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const w: WaitNodeData = { id: crypto.randomUUID(), label: 'Espera', duration: 5, unit: 'seconds' };
+    const nodeId = `wt-${w.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, { waitNodes: [...(form.waitNodes || []), w], flowEdges, nodePositions });
+  }, [form, updateForm]);
+
+  const handleWaitChange = useCallback((nodeId: string, patch: Partial<WaitNodeData>) => {
+    if (!form) return;
+    const waitNodes = (form.waitNodes || []).map(n => n.id === nodeId ? { ...n, ...patch } : n);
+    updateForm(form.id, { waitNodes });
+  }, [form, updateForm]);
+
+  const handleWaitDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `wt-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(e => e.source !== rfNodeId && e.target !== rfNodeId);
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, { waitNodes: (form.waitNodes || []).filter(n => n.id !== nodeId), flowEdges, nodePositions });
+  }, [form, updateForm]);
+
+  // ---- JumpNode CRUD ----
+
+  const handleJumpAddAtPosition = useCallback((position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => {
+    if (!form) return;
+    const j: JumpNodeData = { id: crypto.randomUUID(), label: 'Pular para' };
+    const nodeId = `jp-${j.id}`;
+    const newEdge = { id: `e-${sourceNodeId}-${nodeId}`, source: sourceNodeId, sourceHandle, target: nodeId };
+    const flowEdges = [...(form.flowEdges || []), newEdge];
+    const nodePositions = [...(form.nodePositions || []), { id: nodeId, x: position.x, y: position.y }];
+    updateForm(form.id, { jumpNodes: [...(form.jumpNodes || []), j], flowEdges, nodePositions });
+  }, [form, updateForm]);
+
+  const handleJumpChange = useCallback((nodeId: string, patch: Partial<JumpNodeData>) => {
+    if (!form) return;
+    const jumpNodes = (form.jumpNodes || []).map(n => n.id === nodeId ? { ...n, ...patch } : n);
+    updateForm(form.id, { jumpNodes });
+  }, [form, updateForm]);
+
+  const handleJumpDelete = useCallback((nodeId: string) => {
+    if (!form) return;
+    const rfNodeId = `jp-${nodeId}`;
+    const flowEdges = (form.flowEdges || []).filter(e => e.source !== rfNodeId && e.target !== rfNodeId);
+    const nodePositions = (form.nodePositions || []).filter(p => p.id !== rfNodeId);
+    updateForm(form.id, { jumpNodes: (form.jumpNodes || []).filter(n => n.id !== nodeId), flowEdges, nodePositions });
+  }, [form, updateForm]);
+
   // ---- Variables CRUD ----
 
   const handleAddVariable = useCallback(() => {
@@ -683,6 +768,15 @@ export default function FormEditor() {
               onEmailAddAtPosition={handleEmailAddAtPosition}
               onEmailChange={handleEmailChange}
               onEmailDelete={handleEmailDelete}
+              onABTestAddAtPosition={handleABTestAddAtPosition}
+              onABTestChange={handleABTestChange}
+              onABTestDelete={handleABTestDelete}
+              onWaitAddAtPosition={handleWaitAddAtPosition}
+              onWaitChange={handleWaitChange}
+              onWaitDelete={handleWaitDelete}
+              onJumpAddAtPosition={handleJumpAddAtPosition}
+              onJumpChange={handleJumpChange}
+              onJumpDelete={handleJumpDelete}
               onFormUpdate={handleFormUpdate}
               onPageSelect={handlePageSelectFromWorkflow}
               onCreateVariable={(newVar) => {
