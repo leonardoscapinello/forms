@@ -420,7 +420,7 @@ img.emoji {
 }
 
 .var-highlight-readable {
-  color: transparent;
+  color: hsl(var(--foreground));
 }
 .var-highlight-readable .var-highlight {
   padding: 3px 6px;
