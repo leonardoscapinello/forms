@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           vendor: ["react", "react-dom", "react-router-dom"],
           ui: ["@radix-ui/react-dialog", "@radix-ui/react-popover", "@radix-ui/react-dropdown-menu", "@radix-ui/react-tooltip", "@radix-ui/react-tabs"],
-          query: ["@tanstack/react-query"],
+          
           charts: ["recharts"],
           flow: ["@xyflow/react"],
           dnd: ["@dnd-kit/core", "@dnd-kit/sortable"],
