@@ -461,34 +461,30 @@ function ColumnZone({
 
   return (
     <div
-      className={cn('min-h-[48px] transition-colors relative',
+      className={cn('min-h-[40px] transition-colors relative',
         dragOver ? 'bg-primary/5 rounded-md' : '',
-        elements.length === 0 && 'border border-dashed border-border/30 rounded-lg flex items-center justify-center'
       )}
       onDragOver={handleDragOver}
       onDragLeave={() => { setDragOver(false); setDropIdx(null); }}
       onDrop={handleDrop}
     >
       {elements.length === 0 && !dragOver && (
-        <div className="flex flex-col items-center justify-center py-4 gap-2">
-          <span className="text-[10px] text-muted-foreground/40">Coluna vazia</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full py-2 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-[10px] font-medium">
-                <Plus className="h-3 w-3" />
-                Adicionar
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-36">
-              {ELEMENT_TYPES.map(et => (
-                <DropdownMenuItem key={et.type} className="text-xs gap-2" onClick={() => onDropElement(structureId, colIdx, et.type)}>
-                  <et.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  {et.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-full py-6 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors flex items-center justify-center gap-1.5 text-[10px]">
+              <Plus className="h-3.5 w-3.5" />
+              <span>Adicionar elemento</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-36">
+            {ELEMENT_TYPES.map(et => (
+              <DropdownMenuItem key={et.type} className="text-xs gap-2" onClick={() => onDropElement(structureId, colIdx, et.type)}>
+                <et.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                {et.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       {elements.map((el, elIdx) => (
@@ -544,13 +540,12 @@ function ColumnZone({
 
       {dragOver && dropIdx === elements.length && <div className="h-0.5 bg-primary rounded-full mx-2 my-0.5" />}
 
-      {/* Add element button at bottom of column */}
+      {/* Subtle add button at bottom */}
       {elements.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-full mt-1 py-2 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-[10px] font-medium">
+            <button className="w-full py-1.5 text-muted-foreground/25 hover:text-muted-foreground/50 transition-colors flex items-center justify-center gap-1 text-[9px]">
               <Plus className="h-3 w-3" />
-              Adicionar
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-36">
