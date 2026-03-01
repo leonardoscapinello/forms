@@ -35,6 +35,9 @@ interface FirePixelOptions {
   webhookUrl?: string;
   webhookMethod?: string;
   webhookPayload?: Record<string, any>;
+  webhookHeaders?: { id: string; key: string; value: string }[];
+  webhookQueryParams?: { id: string; key: string; value: string }[];
+  webhookBodyParams?: { id: string; key: string; value: string }[];
   queryParams?: Record<string, string>;
   // Meta CAPI enrichment
   fbc?: string;

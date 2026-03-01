@@ -39,6 +39,42 @@ function getNestedValue(obj: any, path: string): any {
   return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
 }
 
+interface ParamSectionProps {
+  label: string;
+  items: WebhookParam[];
+  onAdd: () => void;
+  onUpdate: (idx: number, field: 'key' | 'value', val: string) => void;
+  onRemove: (idx: number) => void;
+  keyPlaceholder?: string;
+  valuePlaceholder?: string;
+  hint?: string;
+}
+
+function ParamSection({ label, items, onAdd, onUpdate, onRemove, keyPlaceholder = 'chave', valuePlaceholder = 'valor', hint }: ParamSectionProps) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+        <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground" onClick={onAdd}>
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+      {hint && items.length === 0 && (
+        <p className="text-[9px] text-muted-foreground/60 italic">{hint}</p>
+      )}
+      {items.map((param, idx) => (
+        <div key={param.id} className="flex items-center gap-1">
+          <LocalInput value={param.key} onCommit={v => onUpdate(idx, 'key', v)} placeholder={keyPlaceholder} className="h-7 text-xs w-0 flex-1 font-mono" />
+          <LocalInput value={param.value} onCommit={v => onUpdate(idx, 'value', v)} placeholder={valuePlaceholder} className="h-7 text-xs w-0 flex-1" />
+          <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onRemove(idx)}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface IntegrationNodeProps {
   nodeData: IntegrationNodeData;
   onChange: (patch: Partial<IntegrationNodeData>) => void;
@@ -60,8 +96,23 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
     setResponsePaths([]);
 
     try {
-      const extraParams = Object.fromEntries(
-        (nodeData.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
+      // Build headers
+      const customHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      for (const h of (nodeData.webhookHeaders || []).filter(p => p.key)) {
+        customHeaders[h.key] = h.value;
+      }
+
+      // Build query params
+      const qp = (nodeData.webhookQueryParams || []).filter(p => p.key);
+      let testUrl = nodeData.webhookUrl;
+      if (qp.length > 0) {
+        const sep = testUrl.includes('?') ? '&' : '?';
+        testUrl += sep + qp.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+      }
+
+      // Build body extra params (legacy + new)
+      const extraBody = Object.fromEntries(
+        [...(nodeData.webhookParams || []), ...(nodeData.webhookBodyParams || [])].filter(p => p.key).map(p => [p.key, p.value])
       );
 
       const testPayload = {
@@ -71,19 +122,19 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
         answers_raw: {},
         variables: {},
         query_params: {},
-        meta: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+        meta: Object.keys(extraBody).length > 0 ? extraBody : undefined,
       };
 
       const method = nodeData.webhookMethod || 'POST';
       const fetchOpts: RequestInit = {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: customHeaders,
       };
       if (method !== 'GET') {
         fetchOpts.body = JSON.stringify(testPayload);
       }
 
-      const res = await fetch(nodeData.webhookUrl, fetchOpts);
+      const res = await fetch(testUrl, fetchOpts);
       let body: any = null;
       const text = await res.text();
       try { body = JSON.parse(text); } catch { body = text; }
@@ -93,7 +144,6 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
       if (typeof body === 'object' && body !== null) {
         const paths = flattenPaths(body);
         setResponsePaths(paths);
-        // Persist response schema in node data for future reference
         onChange({ responseFields: paths, lastTestResponse: body });
       }
     } catch (err: any) {
@@ -101,7 +151,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
     } finally {
       setTesting(false);
     }
-  }, [nodeData.webhookUrl, nodeData.webhookMethod, nodeData.webhookParams]);
+  }, [nodeData.webhookUrl, nodeData.webhookMethod, nodeData.webhookParams, nodeData.webhookHeaders, nodeData.webhookQueryParams, nodeData.webhookBodyParams]);
 
   return (
     <TooltipProvider>
@@ -156,39 +206,60 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
             </Select>
           </div>
 
-          {/* Extra params */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Parâmetros extras</span>
-              <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground"
-                onClick={() => {
-                  const newParam: WebhookParam = { id: crypto.randomUUID(), key: '', value: '' };
-                  onChange({ webhookParams: [...(nodeData.webhookParams || []), newParam] });
-                }}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-            {(nodeData.webhookParams || []).map((param, idx) => (
-              <div key={param.id} className="flex items-center gap-1">
-                <LocalInput value={param.key} onCommit={v => {
-                  const updated = [...(nodeData.webhookParams || [])];
-                  updated[idx] = { ...updated[idx], key: v };
-                  onChange({ webhookParams: updated });
-                }} placeholder="chave" className="h-7 text-xs w-0 flex-1 font-mono" />
-                <LocalInput value={param.value} onCommit={v => {
-                  const updated = [...(nodeData.webhookParams || [])];
-                  updated[idx] = { ...updated[idx], value: v };
-                  onChange({ webhookParams: updated });
-                }} placeholder="valor" className="h-7 text-xs w-0 flex-1" />
-                <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => onChange({ webhookParams: (nodeData.webhookParams || []).filter((_, i) => i !== idx) })}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-          </div>
+          {/* ── Headers ── */}
+          <ParamSection
+            label="Headers"
+            items={nodeData.webhookHeaders || []}
+            onAdd={() => {
+              const newParam: WebhookParam = { id: crypto.randomUUID(), key: '', value: '' };
+              onChange({ webhookHeaders: [...(nodeData.webhookHeaders || []), newParam] });
+            }}
+            onUpdate={(idx, field, val) => {
+              const updated = [...(nodeData.webhookHeaders || [])];
+              updated[idx] = { ...updated[idx], [field]: val };
+              onChange({ webhookHeaders: updated });
+            }}
+            onRemove={(idx) => onChange({ webhookHeaders: (nodeData.webhookHeaders || []).filter((_, i) => i !== idx) })}
+            keyPlaceholder="Content-Type"
+            valuePlaceholder="application/json"
+          />
+
+          {/* ── Query Params ── */}
+          <ParamSection
+            label="Query Params"
+            items={nodeData.webhookQueryParams || []}
+            onAdd={() => {
+              const newParam: WebhookParam = { id: crypto.randomUUID(), key: '', value: '' };
+              onChange({ webhookQueryParams: [...(nodeData.webhookQueryParams || []), newParam] });
+            }}
+            onUpdate={(idx, field, val) => {
+              const updated = [...(nodeData.webhookQueryParams || [])];
+              updated[idx] = { ...updated[idx], [field]: val };
+              onChange({ webhookQueryParams: updated });
+            }}
+            onRemove={(idx) => onChange({ webhookQueryParams: (nodeData.webhookQueryParams || []).filter((_, i) => i !== idx) })}
+            keyPlaceholder="param"
+            valuePlaceholder="valor"
+          />
+
+          {/* ── Body JSON ── */}
+          <ParamSection
+            label="Body JSON"
+            items={nodeData.webhookBodyParams || []}
+            onAdd={() => {
+              const newParam: WebhookParam = { id: crypto.randomUUID(), key: '', value: '' };
+              onChange({ webhookBodyParams: [...(nodeData.webhookBodyParams || []), newParam] });
+            }}
+            onUpdate={(idx, field, val) => {
+              const updated = [...(nodeData.webhookBodyParams || [])];
+              updated[idx] = { ...updated[idx], [field]: val };
+              onChange({ webhookBodyParams: updated });
+            }}
+            onRemove={(idx) => onChange({ webhookBodyParams: (nodeData.webhookBodyParams || []).filter((_, i) => i !== idx) })}
+            keyPlaceholder="chave"
+            valuePlaceholder="valor"
+            hint="Campos extras adicionados ao body do webhook"
+          />
 
           {/* ── Test Webhook ── */}
           <div className="border-t border-border pt-2.5">
