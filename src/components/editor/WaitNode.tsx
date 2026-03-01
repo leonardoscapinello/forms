@@ -140,6 +140,39 @@ export default function WaitNode({ data }: Props) {
           </>
         )}
 
+        {/* Toast notification on enter */}
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-[10px] text-muted-foreground">Mostrar notificação</Label>
+          <Switch
+            checked={feedback.showToast || false}
+            onCheckedChange={(v) => updateFeedback({ showToast: v })}
+            className="nodrag nopan"
+          />
+        </div>
+
+        {feedback.showToast && (
+          <div className="space-y-2 pl-1 border-l-2 border-node-wait-accent/20 ml-1">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">Título</Label>
+              <Input
+                value={feedback.toastTitle || ''}
+                onChange={e => updateFeedback({ toastTitle: e.target.value })}
+                placeholder="Processando..."
+                className="h-8 text-sm nodrag nopan"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground">Descrição</Label>
+              <Input
+                value={feedback.toastDescription || ''}
+                onChange={e => updateFeedback({ toastDescription: e.target.value })}
+                placeholder="Estamos preparando tudo para você"
+                className="h-8 text-sm nodrag nopan"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Allow skip */}
         <div className="flex items-center justify-between gap-2">
           <Label className="text-[10px] text-muted-foreground">Permitir pular</Label>
