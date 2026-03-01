@@ -694,6 +694,7 @@ export default function FormPreview() {
   const walkWorkflow = useCallback(async (
     fromNodeId: string,
     currentAnswers: Record<string, any>,
+    skipSideEffects = false,
   ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any>; pendingWait?: { durationMs: number; feedback?: WaitFeedbackConfig; remainingNodeId: string } }> => {
     const f = formRef.current;
     const edges = f?.flowEdges || [];
@@ -790,70 +791,70 @@ export default function FormPreview() {
 
       // Intermediate: webhook integration node
       if (target.startsWith('int-')) {
-        const intgId = target.replace('int-', '');
-        const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
-        if (intgNode && f) {
-          const eventId = `${f.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-          const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
-          const extraParams = Object.fromEntries(
-            (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
-          );
-          const { payload: wPayload, userData } = buildWebhookPayload({
-            form: f,
-            answers: currentAns,
-            respondent: { user_agent: sessionMetaRef.current.userAgent },
-            responseId: sessionMetaRef.current.responseId,
-            responseHash: sessionMetaRef.current.responseHash,
-            landedAt: sessionMetaRef.current.landedAt,
-            submittedAt: new Date().toISOString(),
-            extraParams,
-            queryParams: sessionMetaRef.current.queryParams,
-            pixelEvents: pixelEventsRef.current,
-          });
+        if (!skipSideEffects) {
+          const intgId = target.replace('int-', '');
+          const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
+          if (intgNode && f) {
+            const eventId = `${f.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
+            const extraParams = Object.fromEntries(
+              (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
+            );
+            const { payload: wPayload, userData } = buildWebhookPayload({
+              form: f,
+              answers: currentAns,
+              respondent: { user_agent: sessionMetaRef.current.userAgent },
+              responseId: sessionMetaRef.current.responseId,
+              responseHash: sessionMetaRef.current.responseHash,
+              landedAt: sessionMetaRef.current.landedAt,
+              submittedAt: new Date().toISOString(),
+              extraParams,
+              queryParams: sessionMetaRef.current.queryParams,
+              pixelEvents: pixelEventsRef.current,
+            });
 
-          const webhookOpts = {
-            platform: 'webhook' as const,
-            eventName: 'webhook_fired',
-            eventId,
-            formId: f.id,
-            responseId: sessionMetaRef.current.responseId,
-            triggerType: 'flow_node' as const,
-            sourceUrl,
-            webhookUrl: intgNode.webhookUrl,
-            webhookMethod: intgNode.webhookMethod,
-            webhookPayload: wPayload,
-            userData,
-            queryParams: sessionMetaRef.current.queryParams,
-            userAgent: sessionMetaRef.current.userAgent,
-          };
+            const webhookOpts = {
+              platform: 'webhook' as const,
+              eventName: 'webhook_fired',
+              eventId,
+              formId: f.id,
+              responseId: sessionMetaRef.current.responseId,
+              triggerType: 'flow_node' as const,
+              sourceUrl,
+              webhookUrl: intgNode.webhookUrl,
+              webhookMethod: intgNode.webhookMethod,
+              webhookPayload: wPayload,
+              userData,
+              queryParams: sessionMetaRef.current.queryParams,
+              userAgent: sessionMetaRef.current.userAgent,
+            };
 
-          const hasResponseMappings = intgNode.responseMappings?.some(m => m.responsePath && m.variableId);
+            const hasResponseMappings = intgNode.responseMappings?.some(m => m.responsePath && m.variableId);
 
-          if (hasResponseMappings) {
-            // Must await — downstream nodes depend on mapped variables
-            try {
-              const responseBody = await fireWebhookWithResponse(webhookOpts);
-              if (responseBody && intgNode.responseMappings?.length) {
-                const getNestedValue = (obj: any, path: string): any => {
-                  const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
-                  return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
-                };
-                for (const mapping of intgNode.responseMappings) {
-                  if (!mapping.responsePath || !mapping.variableId) continue;
-                  const value = getNestedValue(responseBody, mapping.responsePath);
-                  if (value !== undefined) {
-                    const mappedVar = f?.variables?.find(v => v.id === mapping.variableId);
-                    const varKey = mappedVar ? `__var_${mappedVar.name}` : `__var_${mapping.variableId}`;
-                    currentAns = { ...currentAns, [varKey]: String(value) };
+            if (hasResponseMappings) {
+              try {
+                const responseBody = await fireWebhookWithResponse(webhookOpts);
+                if (responseBody && intgNode.responseMappings?.length) {
+                  const getNestedValue = (obj: any, path: string): any => {
+                    const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+                    return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
+                  };
+                  for (const mapping of intgNode.responseMappings) {
+                    if (!mapping.responsePath || !mapping.variableId) continue;
+                    const value = getNestedValue(responseBody, mapping.responsePath);
+                    if (value !== undefined) {
+                      const mappedVar = f?.variables?.find(v => v.id === mapping.variableId);
+                      const varKey = mappedVar ? `__var_${mappedVar.name}` : `__var_${mapping.variableId}`;
+                      currentAns = { ...currentAns, [varKey]: String(value) };
+                    }
                   }
                 }
+              } catch (err) {
+                console.error('Webhook (with mappings) error:', err);
               }
-            } catch (err) {
-              console.error('Webhook (with mappings) error:', err);
+            } else {
+              enqueueTask(() => fireWebhookWithResponse(webhookOpts).then(() => {}), `webhook:${intgNode.webhookUrl}`);
             }
-          } else {
-            // Fire-and-forget — never blocks the flow
-            enqueueTask(() => fireWebhookWithResponse(webhookOpts).then(() => {}), `webhook:${intgNode.webhookUrl}`);
           }
         }
         currentNodeId = target;
@@ -862,50 +863,52 @@ export default function FormPreview() {
 
       // Intermediate: analytics node — fire server-side with retry (AdBlock-proof)
       if (target.startsWith('an-')) {
-        const anId = target.replace('an-', '');
-        const anNode = f?.analyticsNodes?.find(n => n.id === anId);
-        if (anNode && f) {
-          const variables: Record<string, any> = {};
-          for (const [k, v] of Object.entries(currentAns)) {
-            if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
-          }
-          const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
+        if (!skipSideEffects) {
+          const anId = target.replace('an-', '');
+          const anNode = f?.analyticsNodes?.find(n => n.id === anId);
+          if (anNode && f) {
+            const variables: Record<string, any> = {};
+            for (const [k, v] of Object.entries(currentAns)) {
+              if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
+            }
+            const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
 
-          const platformEntries = anNode.platforms
-            ? anNode.platforms.filter(p => p.enabled)
-            : anNode.platform
-              ? [{ id: anId, platform: anNode.platform, eventType: anNode.eventType || 'Lead', enabled: true, customParams: [] as any[] }]
-              : [];
+            const platformEntries = anNode.platforms
+              ? anNode.platforms.filter(p => p.enabled)
+              : anNode.platform
+                ? [{ id: anId, platform: anNode.platform, eventType: anNode.eventType || 'Lead', enabled: true, customParams: [] as any[] }]
+                : [];
 
-          for (const entry of platformEntries) {
-            const eventId = `${f.id}_${anId}_${entry.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-            const eventName = entry.eventType === 'custom'
-              ? (('customEventName' in entry ? entry.customEventName : undefined) || 'CustomEvent')
-              : (entry.eventType || 'Lead');
-            const extraParams = Object.fromEntries(
-              (entry.customParams || []).filter(p => p.key).map(p => [p.key, p.value])
-            );
-            const userData = resolveUserData(
-              'userDataMapping' in entry ? (entry as any).userDataMapping : undefined,
-              currentAns,
-              f,
-            );
+            for (const entry of platformEntries) {
+              const eventId = `${f.id}_${anId}_${entry.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+              const eventName = entry.eventType === 'custom'
+                ? (('customEventName' in entry ? entry.customEventName : undefined) || 'CustomEvent')
+                : (entry.eventType || 'Lead');
+              const extraParams = Object.fromEntries(
+                (entry.customParams || []).filter(p => p.key).map(p => [p.key, p.value])
+              );
+              const userData = resolveUserData(
+                'userDataMapping' in entry ? (entry as any).userDataMapping : undefined,
+                currentAns,
+                f,
+              );
 
-            firePixelDual({
-              platform: entry.platform,
-              eventName,
-              eventId,
-              formId: f.id,
-              responseId: sessionMetaRef.current.responseId,
-              triggerType: 'flow_node',
-              answers: currentAns,
-              variables,
-              customParams: extraParams,
-              userData,
-              sourceUrl,
-              userAgent: sessionMetaRef.current.userAgent,
-              onFired: (rec) => pixelEventsRef.current.push(rec),
-            });
+              firePixelDual({
+                platform: entry.platform,
+                eventName,
+                eventId,
+                formId: f.id,
+                responseId: sessionMetaRef.current.responseId,
+                triggerType: 'flow_node',
+                answers: currentAns,
+                variables,
+                customParams: extraParams,
+                userData,
+                sourceUrl,
+                userAgent: sessionMetaRef.current.userAgent,
+                onFired: (rec) => pixelEventsRef.current.push(rec),
+              });
+            }
           }
         }
         currentNodeId = target;
@@ -913,28 +916,30 @@ export default function FormPreview() {
       }
       // Intermediate: WhatsApp node — fire-and-forget via background queue
       if (target.startsWith('wa-')) {
-        const waId = target.replace('wa-', '');
-        const waNode = f?.whatsappNodes?.find(n => n.id === waId);
-        if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
-          const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
-          const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
-          const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
+        if (!skipSideEffects) {
+          const waId = target.replace('wa-', '');
+          const waNode = f?.whatsappNodes?.find(n => n.id === waId);
+          if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
+            const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
+            const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
+            const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
 
-          const body: Record<string, any> = {
-            instanceId: waNode.instanceId,
-            recipientNumber: resolvedNumber,
-            messageText: resolvedMessage,
-          };
-          if (waNode.sendMedia && resolvedMediaUrl) {
-            body.mediaUrl = resolvedMediaUrl;
-            body.mediaType = waNode.mediaType || 'image';
-            if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
+            const body: Record<string, any> = {
+              instanceId: waNode.instanceId,
+              recipientNumber: resolvedNumber,
+              messageText: resolvedMessage,
+            };
+            if (waNode.sendMedia && resolvedMediaUrl) {
+              body.mediaUrl = resolvedMediaUrl;
+              body.mediaType = waNode.mediaType || 'image';
+              if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
+            }
+
+            enqueueTask(
+              () => supabase.functions.invoke('whatsapp-send', { body }).then(() => {}),
+              `whatsapp:${resolvedNumber}`,
+            );
           }
-
-          enqueueTask(
-            () => supabase.functions.invoke('whatsapp-send', { body }).then(() => {}),
-            `whatsapp:${resolvedNumber}`,
-          );
         }
         currentNodeId = target;
         continue;
@@ -942,31 +947,33 @@ export default function FormPreview() {
 
       // Intermediate: Email node — fire-and-forget via background queue
       if (target.startsWith('em-')) {
-        const emId = target.replace('em-', '');
-        const emNode = f?.emailNodes?.find(n => n.id === emId);
-        if (emNode && f && emNode.instanceId && emNode.toEmail) {
-          const resolvedTo = interpolateText(emNode.toEmail || '', f.variables || [], currentAns);
-          const resolvedFrom = emNode.fromEmail ? interpolateText(emNode.fromEmail, f.variables || [], currentAns) : undefined;
-          const resolvedFromName = emNode.fromName ? interpolateText(emNode.fromName, f.variables || [], currentAns) : undefined;
-          const resolvedSubject = interpolateText(emNode.subject || '', f.variables || [], currentAns);
-          const resolvedBody = interpolateText(emNode.bodyText || '', f.variables || [], currentAns);
-          const resolvedHtml = emNode.bodyHtml ? interpolateText(emNode.bodyHtml, f.variables || [], currentAns) : undefined;
+        if (!skipSideEffects) {
+          const emId = target.replace('em-', '');
+          const emNode = f?.emailNodes?.find(n => n.id === emId);
+          if (emNode && f && emNode.instanceId && emNode.toEmail) {
+            const resolvedTo = interpolateText(emNode.toEmail || '', f.variables || [], currentAns);
+            const resolvedFrom = emNode.fromEmail ? interpolateText(emNode.fromEmail, f.variables || [], currentAns) : undefined;
+            const resolvedFromName = emNode.fromName ? interpolateText(emNode.fromName, f.variables || [], currentAns) : undefined;
+            const resolvedSubject = interpolateText(emNode.subject || '', f.variables || [], currentAns);
+            const resolvedBody = interpolateText(emNode.bodyText || '', f.variables || [], currentAns);
+            const resolvedHtml = emNode.bodyHtml ? interpolateText(emNode.bodyHtml, f.variables || [], currentAns) : undefined;
 
-          const body: Record<string, any> = {
-            instanceId: emNode.instanceId,
-            toEmail: resolvedTo,
-            fromEmail: resolvedFrom,
-            fromName: resolvedFromName,
-            subject: resolvedSubject,
-            bodyText: resolvedBody,
-            bodyHtml: resolvedHtml,
-            useHtml: emNode.useHtml,
-          };
+            const body: Record<string, any> = {
+              instanceId: emNode.instanceId,
+              toEmail: resolvedTo,
+              fromEmail: resolvedFrom,
+              fromName: resolvedFromName,
+              subject: resolvedSubject,
+              bodyText: resolvedBody,
+              bodyHtml: resolvedHtml,
+              useHtml: emNode.useHtml,
+            };
 
-          enqueueTask(
-            () => supabase.functions.invoke('resend-send', { body }).then(() => {}),
-            `email:${resolvedTo}`,
-          );
+            enqueueTask(
+              () => supabase.functions.invoke('resend-send', { body }).then(() => {}),
+              `email:${resolvedTo}`,
+            );
+          }
         }
         currentNodeId = target;
         continue;
@@ -1072,7 +1079,7 @@ export default function FormPreview() {
 
       // Use answersRef.current to always get the latest state — avoids stale closure
       const latestAnswers = answersRef.current;
-      const { nextNodeId, updatedAnswers, pendingWait } = await walkWorkflow(fromNodeId, latestAnswers);
+      const { nextNodeId, updatedAnswers, pendingWait } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
 
       // If there's a wait node in the path, show feedback and delay navigation
       if (pendingWait) {
@@ -1280,7 +1287,7 @@ export default function FormPreview() {
       setDirection(1);
       const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
       const latestAnswers = answersRef.current;
-      const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
+      const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
       setAnswers(updatedAnswers);
       answersRef.current = updatedAnswers;
       setFinished(true);
@@ -1291,7 +1298,7 @@ export default function FormPreview() {
         // Run workflow from current page to execute intermediate nodes
         const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
         const latestAnswers = answersRef.current;
-        const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers);
+        const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
         setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
         answersRef.current = updatedAnswers;
         setCurrentPageIndex(targetIndex);
