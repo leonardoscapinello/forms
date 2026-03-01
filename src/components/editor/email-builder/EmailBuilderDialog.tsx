@@ -684,59 +684,71 @@ function FloatingToolbar({ onAddStructure }: {
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-      <div className={cn(
-        "rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden",
-        expanded ? "px-3 py-3 w-[380px]" : "px-1 py-1"
-      )}
-        style={{ background: '#0C0E17', color: '#ffffff', border: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        {!expanded ? (
-          <button onClick={() => setExpanded(true)}
-            style={{ color: 'rgba(255,255,255,0.9)' }}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.06)] transition-colors">
-            <Plus className="h-4 w-4" />
-            <span className="text-xs font-semibold tracking-wide">Adicionar</span>
-          </button>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1 pt-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Adicionar seção</span>
-              <button onClick={() => setExpanded(false)} className="p-1 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors">
-                <X className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
-              </button>
-            </div>
+      {!expanded ? (
+        <button onClick={() => setExpanded(true)}
+          className="rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95"
+          style={{ background: '#0C0E17', color: 'rgba(255,255,255,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <Plus className="h-4 w-4" />
+          <span className="text-xs font-semibold tracking-wide">Adicionar</span>
+        </button>
+      ) : (
+        <div className="rounded-2xl shadow-2xl overflow-hidden"
+          style={{ background: '#0C0E17', border: '1px solid rgba(255,255,255,0.08)', width: 420 }}>
+          
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-4 pb-2">
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Adicionar seção
+            </span>
+            <button onClick={() => setExpanded(false)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-            <div>
-              <span className="text-[9px] font-semibold uppercase tracking-wider px-1 mb-1.5 block" style={{ color: 'rgba(255,255,255,0.3)' }}>Colunas</span>
-              <div className="flex gap-1.5">
-                {STRUCTURE_PRESETS.map(sp => (
-                  <button key={sp.cols} onClick={() => { onAddStructure(sp.cols); setExpanded(false); }}
-                    className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl transition-all hover:bg-[rgba(255,255,255,0.1)]"
-                    style={{ color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <sp.icon className="h-4 w-4" />
-                    <span className="text-[9px] font-medium">{sp.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <span className="text-[9px] font-semibold uppercase tracking-wider px-1 mb-1.5 block" style={{ color: 'rgba(255,255,255,0.3)' }}>Elementos</span>
-              <div className="grid grid-cols-5 gap-1">
-                {ELEMENT_TYPES.map(et => (
-                  <button key={et.type}
-                    onClick={() => { onAddStructure(1, et.type); setExpanded(false); }}
-                    className="flex flex-col items-center gap-1 py-2 rounded-xl transition-all hover:bg-[rgba(255,255,255,0.1)]"
-                    style={{ color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <et.icon className="h-3.5 w-3.5" />
-                    <span className="text-[8px] font-medium leading-tight text-center">{et.label}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Sections grid */}
+          <div className="px-5 pb-3">
+            <div className="grid grid-cols-4 gap-2">
+              {STRUCTURE_PRESETS.map(sp => (
+                <button key={sp.cols} onClick={() => { onAddStructure(sp.cols); setExpanded(false); }}
+                  className="flex flex-col items-center gap-2 py-3 rounded-xl transition-all"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.75)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; }}>
+                  <sp.icon className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">{sp.label}</span>
+                </button>
+              ))}
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Divider */}
+          <div className="mx-5" style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+
+          {/* Elements grid */}
+          <div className="px-5 pt-3 pb-4">
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em] mb-2.5 block" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Seção com elemento
+            </span>
+            <div className="grid grid-cols-5 gap-2">
+              {ELEMENT_TYPES.map(et => (
+                <button key={et.type}
+                  onClick={() => { onAddStructure(1, et.type); setExpanded(false); }}
+                  className="flex flex-col items-center gap-1.5 py-2.5 rounded-xl transition-all"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.75)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; }}>
+                  <et.icon className="h-4 w-4" />
+                  <span className="text-[9px] font-medium leading-tight text-center">{et.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
