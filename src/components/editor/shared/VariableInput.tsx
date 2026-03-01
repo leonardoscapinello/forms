@@ -2,17 +2,19 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { FormVariable, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Braces, Copy, Check, Webhook } from 'lucide-react';
+import { Braces, Copy, Check, Webhook, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useVariableAutocomplete } from './useVariableAutocomplete';
 import { VariableHighlightOverlay } from './VariableHighlightOverlay';
+import type { InputElementGroup } from '../VariableAssignPanel';
 
 interface BaseProps {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
+  allInputElements?: InputElementGroup[];
   className?: string;
 }
 
@@ -34,7 +36,7 @@ interface TextareaProps extends BaseProps {
 type Props = InputProps | TextareaProps;
 
 export default function VariableInput(props: Props) {
-  const { variables = [], integrationNodes = [], className, value, onChange, placeholder } = props;
+  const { variables = [], integrationNodes = [], allInputElements = [], className, value, onChange, placeholder } = props;
   const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export default function VariableInput(props: Props) {
     onCommit: (v) => onChange(v),
     variables,
     integrationNodes,
+    allInputElements,
   });
 
   const insertSyntax = (syntax: string) => {
@@ -82,6 +85,7 @@ export default function VariableInput(props: Props) {
   };
 
   const insertVariable = (varName: string) => insertSyntax(`{{${varName}}}`);
+  const insertFieldRef = (elementId: string) => insertSyntax(`{{field:${elementId}}}`);
   const insertWebhookRef = (nodeId: string, path: string) => insertSyntax(`{{webhook:${nodeId}:${path}}}`);
 
   const copyVar = (syntax: string, e: React.MouseEvent) => {
@@ -93,7 +97,7 @@ export default function VariableInput(props: Props) {
   };
 
   const webhookNodesWithFields = (integrationNodes || []).filter(n => (n.responseFields?.length ?? 0) > 0);
-  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0;
+  const hasVars = variables.length > 0 || webhookNodesWithFields.length > 0 || allInputElements.some(g => g.elements.length > 0);
 
   const stopProp = (e: React.SyntheticEvent) => e.stopPropagation();
 
@@ -197,6 +201,30 @@ export default function VariableInput(props: Props) {
                       </div>
                     );
                   })}
+                </>
+              )}
+              {allInputElements.some(g => g.elements.length > 0) && (
+                <>
+                  <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">Campos do formulário</p>
+                  {allInputElements.filter(g => g.elements.length > 0).map(group => (
+                    <div key={group.pageId}>
+                      <p className="text-[8px] text-muted-foreground/60 px-2 pt-1">📄 {group.pageTitle}</p>
+                      {group.elements.map(el => {
+                        const syntax = `{{field:${el.elementId}}}`;
+                        return (
+                          <div key={el.elementId} className="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors" onClick={() => insertFieldRef(el.elementId)}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="text-[10px] text-foreground truncate">{el.elementLabel}</span>
+                            </div>
+                            <button onClick={(e) => copyVar(syntax, e)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted-foreground/10 transition-all" title="Copiar sintaxe">
+                              {copied === syntax ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </>
               )}
               {webhookNodesWithFields.length > 0 && (

@@ -1,14 +1,16 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FormVariable, IntegrationNodeData } from '@/types/form';
 import { cn } from '@/lib/utils';
-import { Webhook, Variable, Replace } from 'lucide-react';
+import { Webhook, Variable, Replace, FileText } from 'lucide-react';
+import type { InputElementGroup } from '../VariableAssignPanel';
 
 export interface AutocompleteItem {
   id: string;
   label: string;
   syntax: string;
-  category: 'variable' | 'webhook';
+  category: 'variable' | 'webhook' | 'field';
   detail?: string;
+  group?: string;
 }
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
   onCommit: (v: string) => void;
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
+  allInputElements?: InputElementGroup[];
 }
 
 /** Find the {{...}} token that contains the given cursor position */
@@ -39,6 +42,7 @@ export function useVariableAutocomplete({
   onCommit,
   variables = [],
   integrationNodes = [],
+  allInputElements = [],
 }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [filter, setFilter] = useState('');
@@ -67,6 +71,18 @@ export function useVariableAutocomplete({
         detail: v.type,
       });
     }
+    for (const group of allInputElements) {
+      for (const el of group.elements) {
+        items.push({
+          id: `field-${el.elementId}`,
+          label: el.elementLabel,
+          syntax: `{{field:${el.elementId}}}`,
+          category: 'field',
+          detail: group.pageTitle,
+          group: group.pageTitle,
+        });
+      }
+    }
     for (const wn of webhookNodesWithFields) {
       const host = wn.webhookUrl
         ? (() => { try { return new URL(wn.webhookUrl).hostname; } catch { return wn.id.slice(0, 8); } })()
@@ -82,7 +98,7 @@ export function useVariableAutocomplete({
       }
     }
     return items;
-  }, [variables, webhookNodesWithFields]);
+  }, [variables, allInputElements, webhookNodesWithFields]);
 
   const filtered = useMemo(() => {
     if (!filter) return allItems;
@@ -261,6 +277,8 @@ export function useVariableAutocomplete({
           >
             {item.category === 'variable' ? (
               <Variable className="h-3 w-3 text-primary flex-shrink-0" />
+            ) : item.category === 'field' ? (
+              <FileText className="h-3 w-3 text-node-whatsapp-accent flex-shrink-0" />
             ) : (
               <Webhook className="h-3 w-3 text-node-webhook-accent flex-shrink-0" />
             )}
