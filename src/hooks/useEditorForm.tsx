@@ -458,7 +458,11 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
   ]);
 
-  if (!value) return null;
+  if (!value) return (
+    <div className="h-screen flex items-center justify-center bg-background">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
 
   return <EditorFormContext.Provider value={value}>{children}</EditorFormContext.Provider>;
 }
