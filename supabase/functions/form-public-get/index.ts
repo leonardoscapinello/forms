@@ -3,7 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+  'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60',
+  'Vary': 'Accept-Encoding',
 };
 
 /**
@@ -60,19 +61,19 @@ Deno.serve(async (req) => {
     const d = data.data as Record<string, unknown>;
     
     // These keys are only used by the editor/admin and are NOT needed for rendering
-    const ADMIN_ONLY_KEYS = [
+    const ADMIN_ONLY_KEYS = new Set([
       'flowNodePositions',
       'responseCount',
       'completionRate',
       'createdAt',
       'updatedAt',
       'folderId',
-    ];
+    ]);
 
     const cleaned: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(d)) {
-      if (ADMIN_ONLY_KEYS.includes(key)) continue;
-      cleaned[key] = val;
+    for (const key in d) {
+      if (ADMIN_ONLY_KEYS.has(key)) continue;
+      cleaned[key] = d[key];
     }
 
     const result = {

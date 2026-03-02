@@ -9,22 +9,29 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-const cache = new Map<string, { promise: Promise<any>; data?: any; error?: any }>();
+const cache = new Map<string, { promise: Promise<any>; data?: any; error?: any; startedAt: number }>();
 
 /** Call this as early as possible (in main.tsx) */
 export function prefetchFormData(formId: string) {
   if (cache.has(formId)) return;
 
+  const startedAt = performance.now();
+
   const promise = (async () => {
     try {
       // Use the lightweight edge function — faster cold start, smaller payload
+      // Accept-Encoding lets CDN/proxy serve compressed responses
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/form-public-get?id=${formId}`,
         {
           headers: {
             'apikey': ANON_KEY,
             'Authorization': `Bearer ${ANON_KEY}`,
+            'Accept': 'application/json',
+            'Accept-Encoding': 'br, gzip',
           },
+          // 'cors' + 'no-store' avoids double caching with SW
+          cache: 'no-store',
         }
       );
 
@@ -52,7 +59,13 @@ export function prefetchFormData(formId: string) {
     }
   })();
 
-  cache.set(formId, { promise });
+  cache.set(formId, { promise, startedAt });
+}
+
+/** Check if prefetch already resolved (non-blocking peek) */
+export function hasPrefetchedForm(formId: string): boolean {
+  const entry = cache.get(formId);
+  return !!(entry && (entry.data !== undefined || entry.error !== undefined));
 }
 
 /** Consume the prefetched data (called from FormPreview) */
