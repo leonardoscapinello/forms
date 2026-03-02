@@ -40,7 +40,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!openaiKey && !LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'no_ai_configured', message: 'Nenhuma API de IA configurada. Configure a OpenAI nas integrações.' }), {
+      return new Response(JSON.stringify({ error: 'no_ai_configured', message: 'Nenhuma API de IA configurada. Configure a OpenAI nas integrações ou use o Lovable AI.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -55,23 +55,12 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : '';
-        if (msg === 'rate_limited') {
-          return new Response(JSON.stringify({ error: 'rate_limited', message: 'Limite de requisições atingido. Aguarde alguns minutos e tente novamente.' }), {
-            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        if (msg === 'payment_required') {
-          return new Response(JSON.stringify({ error: 'payment_required', message: 'Créditos insuficientes.' }), {
-            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        throw e;
+        return handleAIError(e);
       }
     }
 
     // Batch analysis for form responses
-    const { form_id, response_ids } = body;
+    const { form_id, response_ids, form_context } = body;
     if (!form_id) throw new Error('form_id is required');
 
     let query = supabase
@@ -94,13 +83,42 @@ serve(async (req) => {
       });
     }
 
+    // Build field label map and variable list from form context
+    const fieldMap: Record<string, string> = {};
+    const variableNames: string[] = [];
+    if (form_context) {
+      for (const f of form_context.fields || []) {
+        fieldMap[f.id] = f.label;
+      }
+      for (const v of form_context.variables || []) {
+        variableNames.push(v.name);
+      }
+    }
+
     const results = [];
     for (const resp of responses) {
       const answers = resp.answers || {};
+
+      // Build structured text with field labels for richer context
       const textParts: string[] = [];
       for (const [key, val] of Object.entries(answers)) {
+        if (key.startsWith('__var_')) {
+          const varName = key.replace('__var_', '');
+          textParts.push(`[Variável: ${varName}] = ${String(val)}`);
+          continue;
+        }
+        if (key.startsWith('__param_')) {
+          const paramName = key.replace('__param_', '');
+          textParts.push(`[Parâmetro GET: ${paramName}] = ${String(val)}`);
+          continue;
+        }
         if (key.startsWith('__')) continue;
-        if (typeof val === 'string' && val.trim().length > 5) textParts.push(val.trim());
+
+        const label = fieldMap[key] || key;
+        const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
+        if (valStr.trim().length > 0) {
+          textParts.push(`[${label}]: ${valStr}`);
+        }
       }
 
       if (textParts.length === 0) {
@@ -108,11 +126,17 @@ serve(async (req) => {
         continue;
       }
 
-      const combinedText = textParts.join(' | ');
+      const combinedText = textParts.join('\n');
       try {
         const analysis = await analyzeWithAI(combinedText, systemPrompt, useLovable, openaiKey, model, LOVABLE_API_KEY);
         results.push({ response_id: resp.response_id, id: resp.id, ...analysis });
       } catch (e) {
+        const msg = e instanceof Error ? e.message : '';
+        if (msg === 'rate_limited' || msg === 'payment_required') {
+          // Stop batch on rate limit
+          results.push({ response_id: resp.response_id, id: resp.id, sentiment: { overall_sentiment: 'error' }, confidence_score: 0, analyst_notes: msg === 'rate_limited' ? 'Rate limited' : 'Payment required' });
+          break;
+        }
         results.push({ response_id: resp.response_id, id: resp.id, sentiment: { overall_sentiment: 'error' }, confidence_score: 0, analyst_notes: 'Erro na análise' });
       }
     }
@@ -157,6 +181,23 @@ serve(async (req) => {
   }
 });
 
+function handleAIError(e: unknown) {
+  const msg = e instanceof Error ? e.message : '';
+  if (msg === 'rate_limited') {
+    return new Response(JSON.stringify({ error: 'rate_limited', message: 'Limite de requisições atingido. Aguarde alguns minutos.' }), {
+      status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  if (msg === 'payment_required') {
+    return new Response(JSON.stringify({ error: 'payment_required', message: 'Créditos insuficientes.' }), {
+      status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  return new Response(JSON.stringify({ error: 'ai_error', message: msg || 'Erro na IA' }), {
+    status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 async function analyzeWithAI(
   text: string,
   systemPrompt: string,
@@ -165,7 +206,7 @@ async function analyzeWithAI(
   model: string,
   lovableKey: string | undefined,
 ) {
-  const userPrompt = `Analyze the following form response text and provide your complete structured analysis:\n\n"${text.slice(0, 3000)}"`;
+  const userPrompt = `Analyze the following form response data (fields labeled with their names, variables, and GET parameters) and provide your complete structured analysis:\n\n${text.slice(0, 4000)}`;
 
   const url = useLovable
     ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
@@ -190,6 +231,8 @@ async function analyzeWithAI(
   if (!res.ok) {
     if (res.status === 429) throw new Error('rate_limited');
     if (res.status === 402) throw new Error('payment_required');
+    const txt = await res.text();
+    console.error('AI error:', res.status, txt);
     throw new Error(`AI error: ${res.status}`);
   }
 

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain } from 'lucide-react';
 
 
 interface Props {
@@ -455,6 +455,24 @@ export default function FormSettings({ form, onUpdate }: Props) {
               <Switch
                 checked={form.showProgressBar !== false}
                 onCheckedChange={v => onUpdate({ showProgressBar: v })}
+              />
+            </div>
+
+            <div className="border-t border-border" />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Análise de emoções (IA)</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Avalia sentimento, arquétipo psicológico, intenção de compra e gatilhos emocionais de cada resposta usando IA.
+                </p>
+              </div>
+              <Switch
+                checked={form.enableSentimentAnalysis ?? false}
+                onCheckedChange={v => onUpdate({ enableSentimentAnalysis: v })}
               />
             </div>
           </div>
