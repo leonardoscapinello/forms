@@ -16,7 +16,7 @@ import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
 import { enqueueTask } from '@/lib/backgroundQueue';
-import { consumePrefetchedForm } from '@/lib/formPrefetch';
+import { consumePrefetchedForm, hasPrefetchedForm } from '@/lib/formPrefetch';
 import { validateEmailFormat } from '@/lib/emailValidation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 
@@ -258,25 +258,47 @@ export default function FormPreview() {
       setPublicLoading(false);
     };
 
+    // Source 1: prefetch (started in main.tsx before React mounted)
     const fromPrefetch = consumePrefetchedForm(id).then((result) => {
       if (result?.data && !result.error) return result.data;
       throw new Error('prefetch_miss');
     });
 
-    const fromEdge = supabase.functions.invoke('form-public-get', { body: { id } }).then(({ data, error }) => {
-      if (error || !data || (data as any).error) throw new Error('edge_fetch_failed');
+    // Source 2: lightweight edge function via raw fetch (avoids Supabase SDK overhead)
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+    const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+    const fromEdge = fetch(`${SUPABASE_URL}/functions/v1/form-public-get?id=${id}`, {
+      headers: {
+        'apikey': ANON_KEY,
+        'Authorization': `Bearer ${ANON_KEY}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    }).then(async (res) => {
+      if (!res.ok) throw new Error('edge_fetch_failed');
+      const data = await res.json();
+      if (data.error) throw new Error('edge_data_error');
       return data;
     });
 
-    const fromDirectQuery = supabase
-      .from('forms')
-      .select('id, title, status, data')
-      .eq('id', id)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data) throw new Error('direct_query_failed');
-        return data;
-      });
+    // Source 3: direct Supabase query (slowest, but most reliable)
+    // Only start this after a short delay to avoid unnecessary load if edge resolves fast
+    const fromDirectQuery = new Promise<any>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        supabase
+          .from('forms')
+          .select('id, title, status, data')
+          .eq('id', id)
+          .single()
+          .then(({ data, error }) => {
+            if (error || !data) reject(new Error('direct_query_failed'));
+            else resolve(data);
+          });
+      }, 300); // 300ms head start for prefetch/edge
+      // Clean up timer if we resolve early
+      fromPrefetch.then(() => clearTimeout(timer)).catch(() => {});
+      fromEdge.then(() => clearTimeout(timer)).catch(() => {});
+    });
 
     let resolved = false;
     let failures = 0;
@@ -441,7 +463,7 @@ export default function FormPreview() {
     setCurrentPageIndex(initialPageIndex);
     setIsInitialStateReady(true);
 
-    // Phase 2: capture session context after first paint
+    // Phase 2: capture session context after first paint — deferred
     const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
     sched(() => {
       const ctx = captureSessionContext();
@@ -449,25 +471,36 @@ export default function FormPreview() {
       setAnswers(prev => ({ ...ctxAns, ...prev }));
     });
 
-    // Request geolocation asynchronously (GPS → reverse geocode, or IP fallback)
+    // Request geolocation asynchronously ONLY after user interacts (saves 3-5s GPS timeout)
+    // Uses a one-shot interaction listener to defer the heavy geo call
     if (form.enableGeolocation !== false) {
-      requestGeolocation().then((geo) => {
-        if (geo.source !== 'none') {
-          setAnswers(prev => ({
-            ...prev,
-            __ctx_latitude: geo.latitude,
-            __ctx_longitude: geo.longitude,
-            __ctx_geoCity: geo.geoCity,
-            __ctx_geoState: geo.geoState,
-            __ctx_geoCountry: geo.geoCountry,
-            __ctx_geoCountryCode: geo.geoCountryCode,
-            __ctx_geoNeighborhood: geo.geoNeighborhood,
-            __ctx_geoStreet: geo.geoStreet,
-            __ctx_geoCep: geo.geoCep,
-            __ctx_geoSource: geo.source,
-          }));
-        }
-      });
+      const geoHandler = () => {
+        requestGeolocation().then((geo) => {
+          if (geo.source !== 'none') {
+            setAnswers(prev => ({
+              ...prev,
+              __ctx_latitude: geo.latitude,
+              __ctx_longitude: geo.longitude,
+              __ctx_geoCity: geo.geoCity,
+              __ctx_geoState: geo.geoState,
+              __ctx_geoCountry: geo.geoCountry,
+              __ctx_geoCountryCode: geo.geoCountryCode,
+              __ctx_geoNeighborhood: geo.geoNeighborhood,
+              __ctx_geoStreet: geo.geoStreet,
+              __ctx_geoCep: geo.geoCep,
+              __ctx_geoSource: geo.source,
+            }));
+          }
+        });
+      };
+      // Start geo after first click/touch OR after 3s idle — whichever comes first
+      const triggerGeo = () => {
+        geoHandler();
+        window.removeEventListener('pointerdown', triggerGeo);
+        clearTimeout(geoTimer);
+      };
+      window.addEventListener('pointerdown', triggerGeo, { once: true, passive: true });
+      const geoTimer = setTimeout(triggerGeo, 3000);
     }
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
