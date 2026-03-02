@@ -1661,12 +1661,31 @@ export default function FormPreview() {
         </div>
       )}
 
-      {/* Progress */}
-      {!isWelcome && !isThankYou && form?.showProgressBar !== false && (
-        <div className="px-4 md:px-8 pt-6">
-          <Progress value={progress} className="h-1" />
-        </div>
-      )}
+      {/* Progress + Logo — unified top bar */}
+      {(() => {
+        const hasProgress = !isWelcome && !isThankYou && form?.showProgressBar !== false;
+        const hasLogo = !!form.style?.logoUrl;
+        if (!hasProgress && !hasLogo) return null;
+        return (
+          <div className="px-4 md:px-8 pt-4 flex items-center gap-4">
+            {hasLogo && (
+              <img
+                src={form.style!.logoUrl}
+                alt="Logo"
+                className="object-contain flex-shrink-0"
+                style={{ height: form.style!.logoHeight || 40, maxWidth: 128 }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                loading="eager"
+              />
+            )}
+            {hasProgress && (
+              <div className="flex-1">
+                <Progress value={progress} className="h-1" />
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Content */}
       {(() => {
@@ -1676,7 +1695,6 @@ export default function FormPreview() {
         const paddingY = pageStyle.paddingY ?? 32;
         const gap = pageStyle.gap ?? 32;
 
-        // Default screens (no custom elements): centered layout with own padding
         const showDefaultWelcome = isWelcome && (!form.showWelcomeScreen || !form.welcomePage?.elements?.length);
         const showDefaultThankYou = isThankYou && !form.thankYouPage?.elements?.length;
         const isDefaultScreen = showDefaultWelcome || showDefaultThankYou;
@@ -1686,20 +1704,6 @@ export default function FormPreview() {
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col relative"
           >
-            {/* Company Logo */}
-            {form.style?.logoUrl && (
-              <div className="absolute top-4 left-4 z-10 md:top-6 md:left-6">
-                <img
-                  src={form.style.logoUrl}
-                  alt="Logo"
-                  className="object-contain"
-                  style={{ height: form.style.logoHeight || 40, maxWidth: 128 }}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  loading="eager"
-                />
-              </div>
-            )}
-
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
