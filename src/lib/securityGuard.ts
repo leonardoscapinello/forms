@@ -22,22 +22,6 @@ export function initSecurityGuard(): void {
     }
   });
 
-  // Detect DevTools via size heuristic
-  let devtoolsOpen = false;
-  const check = () => {
-    const threshold = 160;
-    const widthDiff = window.outerWidth - window.innerWidth;
-    const heightDiff = window.outerHeight - window.innerHeight;
-    const isOpen = widthDiff > threshold || heightDiff > threshold;
-
-    if (isOpen && !devtoolsOpen) {
-      devtoolsOpen = true;
-      // Instead of destroying the DOM, redirect away
-      document.title = 'Access Denied';
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#111;color:#fff"><h1>⚠️ Acesso negado</h1></div>';
-    } else if (!isOpen) {
-      devtoolsOpen = false;
-    }
-  };
-  setInterval(check, 1000);
+  // IMPORTANT: never replace the DOM or block access using viewport-size heuristics.
+  // Those checks create false positives in previews, embedded contexts and some browsers.
 }
