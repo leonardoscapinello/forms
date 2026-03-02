@@ -2118,6 +2118,24 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── WhatsApp Invite settings ─── */}
+          {element.type === 'whatsapp_invite' && (
+            <div className="space-y-3">
+              <Label>Nome do grupo</Label>
+              <Input value={element.waGroupName || ''} onChange={e => onChange({ waGroupName: e.target.value })} className="h-8 text-xs" placeholder="Comunidade VIP" />
+              <Label>Foto do grupo (URL)</Label>
+              <ImageSourcePicker compact value={element.waGroupPhoto || ''} onChange={url => onChange({ waGroupPhoto: url })} pathPrefix="whatsapp-invite" showPreview alt="Foto do grupo" />
+              <Label>Mensagem</Label>
+              <Input value={element.waGroupMessage || ''} onChange={e => onChange({ waGroupMessage: e.target.value })} className="h-8 text-xs" placeholder="Toque para entrar..." />
+              <Label>Link do grupo</Label>
+              <Input value={element.waGroupLink || ''} onChange={e => onChange({ waGroupLink: e.target.value })} className="h-8 text-xs" placeholder="https://chat.whatsapp.com/..." />
+              <Label>Texto do botão</Label>
+              <Input value={element.waButtonLabel || ''} onChange={e => onChange({ waButtonLabel: e.target.value })} className="h-8 text-xs" placeholder="Entrar no grupo" />
+              <Label>Participantes</Label>
+              <Input type="number" value={element.waParticipantCount ?? 128} onChange={e => onChange({ waParticipantCount: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
+            </div>
+          )}
+
           </div>)}
 
           {/* ══ APARÊNCIA ══ */}

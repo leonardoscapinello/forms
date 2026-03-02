@@ -4,6 +4,7 @@ import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, X
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
+import WhatsAppInvitePreview from '@/components/preview/WhatsAppInvitePreview';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
@@ -482,6 +483,8 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
       return <BeforeAfterPreview element={element} />;
     case 'carousel':
       return <CarouselPreview element={element} />;
+    case 'whatsapp_invite':
+      return <WhatsAppInvitePreview element={element} />;
 
     case 'chart':
       return (
