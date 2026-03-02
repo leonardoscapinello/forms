@@ -5,7 +5,8 @@
  */
 
 export function initSecurityGuard(): void {
-  if (!import.meta.env.PROD) return;
+  // Only active in production AND not inside an iframe (preview)
+  if (!import.meta.env.PROD || window.self !== window.top) return;
 
   // Disable right-click context menu
   document.addEventListener('contextmenu', (e) => e.preventDefault());
