@@ -14,7 +14,7 @@ export default function EditorPages() {
     form, editingPageId, setEditingPageId,
     editingWelcome, setEditingWelcome, editingThankYou, setEditingThankYou,
     handleAddPage, handleDeletePage, handleRenamePage, handlePageChange,
-    disconnectedPageIds, welcomePage, thankYouPage, editingPage,
+    disconnectedPageIds, flowOrderedPages, welcomePage, thankYouPage, editingPage,
     editorIntegrationNodes, editorInputElements, updateFormData,
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
     lockElement, unlockElement, isLockedByOther,
@@ -30,7 +30,7 @@ export default function EditorPages() {
   return (
     <>
       <PageListPanel
-        pages={form.pages || []}
+        pages={flowOrderedPages}
         selectedPageId={editingWelcome || editingThankYou ? null : editingPageId}
         onSelectPage={(id) => { setEditingWelcome(false); setEditingThankYou(false); setEditingPageId(id); }}
         onAddPage={handleAddPage}
