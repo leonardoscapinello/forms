@@ -117,7 +117,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       setLoaded(true);
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user?.id]);
 
   // Realtime sync: only current user's forms (avoids cross-tenant noise)
   useEffect(() => {
@@ -159,7 +159,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => { channel.unsubscribe(); };
-  }, [user]);
+  }, [user?.id]);
 
   // Flush pending update to DB
   const flushUpdate = useCallback(async (id: string) => {

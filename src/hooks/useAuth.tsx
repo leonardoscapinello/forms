@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
 
-        if (nextSession?.user) {
-          // Defer profile fetch to avoid Supabase auth deadlock
+        // Only re-fetch profile on actual sign-in, not token refreshes
+        if (event === 'SIGNED_IN' && nextSession?.user) {
           setTimeout(() => {
             if (mounted) fetchUserData(nextSession.user.id);
           }, 0);
