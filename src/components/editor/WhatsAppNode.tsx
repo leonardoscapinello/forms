@@ -34,8 +34,8 @@ export interface WhatsAppNodeProps {
   trackedParams?: TrackedParam[];
 }
 
-function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps }) {
-  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [], trackedParams } = data;
+function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps & { isNodeDisabled?: boolean; onToggleDisabled?: () => void } }) {
+  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [], trackedParams, isNodeDisabled = false } = data;
   const [expanded, setExpanded] = useState(true);
   const [instances, setInstances] = useState<EvolutionInstance[]>([]);
   const [testing, setTesting] = useState(false);
@@ -109,7 +109,8 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
     <TooltipProvider delayDuration={200}>
       <div className="relative">
         <div className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-          selected
+          isNodeDisabled ? 'opacity-50 grayscale'
+          : selected
             ? 'border-node-whatsapp-accent shadow-md ring-2 ring-node-whatsapp-accent/20'
             : 'border-border'
         }`}>

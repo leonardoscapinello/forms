@@ -295,8 +295,8 @@ interface AnalyticsNodeProps {
   form?: AppFormData;
 }
 
-function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProps }) {
-  const { nodeData, onChange, onDelete, form } = data;
+function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProps & { isNodeDisabled?: boolean } }) {
+  const { nodeData, onChange, onDelete, form, isNodeDisabled = false } = data as any;
   const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
   const formElements = useMemo(() => extractInputElements(form), [form]);
 
@@ -321,7 +321,8 @@ function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProp
     <TooltipProvider>
       <div
         className={`w-72 rounded-xl border bg-card shadow-sm transition-all ${
-          selected
+          isNodeDisabled ? 'opacity-50 grayscale'
+          : selected
             ? 'border-node-analytics-accent shadow-md ring-2 ring-node-analytics-accent/20'
             : 'border-border'
         }`}

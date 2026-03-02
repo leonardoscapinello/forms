@@ -1,5 +1,6 @@
 import { memo, useState, useCallback } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { NodeToggleSwitch, DisabledBadge } from './NodeDisabledOverlay';
 import { Webhook, Trash2, Plus, X, ArrowDownToLine, Play, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { IntegrationNodeData, WebhookParam, WebhookResponseMapping } from '@/types/form';
 import { Button } from '@/components/ui/button';
@@ -81,10 +82,12 @@ interface IntegrationNodeProps {
   onChange: (patch: Partial<IntegrationNodeData>) => void;
   onDelete: () => void;
   variables?: import('@/types/form').FormVariable[];
+  isNodeDisabled?: boolean;
+  onToggleDisabled?: () => void;
 }
 
 function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNodeProps }) {
-  const { nodeData, onChange, onDelete, variables = [] } = data;
+  const { nodeData, onChange, onDelete, variables = [], isNodeDisabled = false, onToggleDisabled } = data;
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; status?: number; body?: any; error?: string } | null>(null);
@@ -158,7 +161,8 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
     <TooltipProvider>
       <div
         className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-          selected
+          isNodeDisabled ? 'opacity-50 grayscale'
+          : selected
             ? 'border-node-webhook-accent shadow-md ring-2 ring-node-webhook-accent/20'
             : 'border-border'
         }`}
@@ -172,7 +176,8 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
           <span className="text-[11px] font-medium uppercase tracking-wide text-node-webhook-accent">
             Integração
           </span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            {onToggleDisabled && <NodeToggleSwitch isDisabled={isNodeDisabled} onToggle={onToggleDisabled} />}
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onDelete}>
               <Trash2 className="h-3 w-3" />
             </Button>

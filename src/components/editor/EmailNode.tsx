@@ -35,8 +35,8 @@ export interface EmailNodeProps {
   trackedParams?: TrackedParam[];
 }
 
-function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
-  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [], trackedParams } = data;
+function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps & { isNodeDisabled?: boolean; onToggleDisabled?: () => void } }) {
+  const { nodeData, onChange, onDelete, variables = [], integrationNodes = [], allInputElements = [], trackedParams, isNodeDisabled = false } = data;
   const [expanded, setExpanded] = useState(true);
   const [instances, setInstances] = useState<ResendInstance[]>([]);
   const [testing, setTesting] = useState(false);
@@ -92,7 +92,8 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
     <TooltipProvider delayDuration={200}>
       <div className="relative">
         <div className={`w-80 max-w-80 rounded-xl border bg-card shadow-sm transition-all overflow-hidden ${
-          selected
+          isNodeDisabled ? 'opacity-50 grayscale'
+          : selected
             ? 'border-node-email-accent shadow-md ring-2 ring-node-email-accent/20'
             : 'border-border'
         }`}>

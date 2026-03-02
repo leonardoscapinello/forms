@@ -41,7 +41,7 @@ import ABTestNode from './ABTestNode';
 import WaitNode from './WaitNode';
 import JumpNode from './JumpNode';
 import ConnectDropMenu from './ConnectDropMenu';
-import { FileText, Trash2, LayoutGrid } from 'lucide-react';
+import { FileText, Trash2, LayoutGrid, Power } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import { validateConditionNode, validateVariableOpNode } from './nodeValidation';
 import DeletableEdge from './DeletableEdge';
@@ -279,6 +279,7 @@ function FlowCanvasInner({
       const nodeId = `p-${page.id}`;
       // For a page node: previous pages are all upstream pages (excluding itself)
       const prevElements = getPreviousPageElements(nodeId);
+      const isNodeDisabled = (form.disabledNodes || []).includes(nodeId);
       n.push({
         id: nodeId,
         type: 'pageNode',
@@ -294,6 +295,12 @@ function FlowCanvasInner({
           allInputElements: prevElements,
           trackedParams: form.trackedParams,
           isDisconnected: !reachableNodeIds.has(nodeId),
+          isNodeDisabled,
+          onToggleDisabled: () => {
+            const current = form.disabledNodes || [];
+            const next = current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId];
+            onFormUpdate({ disabledNodes: next });
+          },
           onCreateVariable,
         },
       });
@@ -304,6 +311,7 @@ function FlowCanvasInner({
       const nodeId = `c-${cond.id}`;
       const prevElements = getPreviousPageElements(nodeId);
       const validation = validateConditionNode(cond.branches, variables);
+      const isNodeDisabled = (form.disabledNodes || []).includes(nodeId);
       n.push({
         id: nodeId,
         type: 'conditionNode',
@@ -316,11 +324,27 @@ function FlowCanvasInner({
           variables,
           integrationNodes,
           hasError: !validation.isValid,
+          isNodeDisabled,
+          onToggleDisabled: () => {
+            const current = form.disabledNodes || [];
+            const next = current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId];
+            onFormUpdate({ disabledNodes: next });
+          },
           onChange: (patch: Partial<ConditionNodeData>) => onConditionChange(cond.id, patch),
           onDelete: () => onConditionDelete(cond.id),
           onCreateVariable,
         },
       });
+    });
+
+    // Helper to build disabled props for a node
+    const disabledProps = (nodeId: string) => ({
+      isNodeDisabled: (form.disabledNodes || []).includes(nodeId),
+      onToggleDisabled: () => {
+        const current = form.disabledNodes || [];
+        const next = current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId];
+        onFormUpdate({ disabledNodes: next });
+      },
     });
 
     variableOpNodes.forEach((vop, i) => {
@@ -339,6 +363,7 @@ function FlowCanvasInner({
           integrationNodes,
           allInputElements: prevElements,
           hasError: !validation.isValid,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<VariableOpNodeData>) => onVariableOpChange(vop.id, patch),
           onDelete: () => onVariableOpDelete(vop.id),
           onCreateVariable,
@@ -354,6 +379,7 @@ function FlowCanvasInner({
         position: getStoredPosition(form, nodeId, (pages.length + 3) * NODE_SPACING, (i + 1) * 220),
         data: {
           nodeData: intg,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<IntegrationNodeData>) => onIntegrationChange(intg.id, patch),
           onDelete: () => onIntegrationDelete(intg.id),
           variables,
@@ -369,6 +395,7 @@ function FlowCanvasInner({
         position: getStoredPosition(form, nodeId, (pages.length + 4) * NODE_SPACING, (i + 1) * 220),
         data: {
           nodeData: an,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<AnalyticsNodeData>) => onAnalyticsChange(an.id, patch),
           onDelete: () => onAnalyticsDelete(an.id),
           form,
@@ -385,6 +412,7 @@ function FlowCanvasInner({
         position: getStoredPosition(form, nodeId, (pages.length + 5) * NODE_SPACING, (i + 1) * 220),
         data: {
           nodeData: wa,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<WhatsAppNodeData>) => onWhatsAppChange(wa.id, patch),
           onDelete: () => onWhatsAppDelete(wa.id),
           variables,
@@ -404,6 +432,7 @@ function FlowCanvasInner({
         position: getStoredPosition(form, nodeId, (pages.length + 6) * NODE_SPACING, (i + 1) * 220),
         data: {
           nodeData: em,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<EmailNodeData>) => onEmailChange(em.id, patch),
           onDelete: () => onEmailDelete(em.id),
           variables,
@@ -422,6 +451,7 @@ function FlowCanvasInner({
         position: getStoredPosition(form, nodeId, (pages.length + 7) * NODE_SPACING, (i + 1) * 220),
         data: {
           nodeData: ab,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<ABTestNodeData>) => onABTestChange(ab.id, patch),
           onDelete: () => onABTestDelete(ab.id),
         },
@@ -436,6 +466,7 @@ function FlowCanvasInner({
         position: getStoredPosition(form, nodeId, (pages.length + 8) * NODE_SPACING, (i + 1) * 220),
         data: {
           nodeData: w,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<WaitNodeData>) => onWaitChange(w.id, patch),
           onDelete: () => onWaitDelete(w.id),
           pages,
@@ -452,6 +483,7 @@ function FlowCanvasInner({
         data: {
           nodeData: j,
           pages,
+          ...disabledProps(nodeId),
           onChange: (patch: Partial<JumpNodeData>) => onJumpChange(j.id, patch),
           onDelete: () => onJumpDelete(j.id),
         },
@@ -934,6 +966,15 @@ function FlowCanvasInner({
     setNodeContextMenu(null);
   }, [nodeContextMenu, onPageSelect]);
 
+  const handleNodeCtxToggleDisabled = useCallback(() => {
+    if (!nodeContextMenu) return;
+    const nodeId = nodeContextMenu.nodeId;
+    const current = form.disabledNodes || [];
+    const next = current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId];
+    onFormUpdate({ disabledNodes: next });
+    setNodeContextMenu(null);
+  }, [nodeContextMenu, form.disabledNodes, onFormUpdate]);
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -1135,6 +1176,13 @@ function FlowCanvasInner({
                 Editar página
               </button>
             )}
+            <button
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent text-left transition-colors text-foreground"
+              onClick={handleNodeCtxToggleDisabled}
+            >
+              <Power className="h-4 w-4 text-muted-foreground" />
+              {(form.disabledNodes || []).includes(nodeContextMenu.nodeId) ? 'Ativar nó' : 'Desativar nó'}
+            </button>
             <button
               className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-destructive/10 text-left transition-colors text-destructive"
               onClick={handleNodeCtxDelete}

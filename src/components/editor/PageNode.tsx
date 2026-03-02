@@ -4,6 +4,8 @@ import { FileText, Variable, AlertTriangle } from 'lucide-react';
 import { FunnelPage, FormVariable, VariableAssignment, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import VariableAssignPanel, { InputElementGroup } from './VariableAssignPanel';
+import { NodeToggleSwitch, DisabledBadge } from './NodeDisabledOverlay';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface PageNodeData {
   page: FunnelPage;
@@ -15,11 +17,13 @@ interface PageNodeData {
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
   isDisconnected?: boolean;
+  isNodeDisabled?: boolean;
+  onToggleDisabled?: () => void;
   onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, onCreateVariable } = data;
+  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, isNodeDisabled = false, onToggleDisabled, onCreateVariable } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
   const [varPopoverOpen, setVarPopoverOpen] = useState(false);
@@ -47,9 +51,11 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
   const assignmentCount = page.variableAssignments?.length || 0;
 
   return (
+    <TooltipProvider>
     <div
       className={`w-72 rounded-xl border bg-card shadow-sm transition-all cursor-pointer hover:shadow-md ${
-        selected ? 'border-[#B3AB86] shadow-md ring-2 ring-[#B3AB86]/10'
+        isNodeDisabled ? 'opacity-50 grayscale'
+        : selected ? 'border-[#B3AB86] shadow-md ring-2 ring-[#B3AB86]/10'
         : isDisconnected ? 'border-destructive/50 opacity-60'
         : isEmpty ? 'border-warning/50 bg-warning/5'
         : 'border-border'
@@ -67,7 +73,10 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
           {isEmpty ? <AlertTriangle className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
           <span className="text-[11px] font-medium uppercase tracking-wide">Página</span>
         </div>
-        <span className="text-[11px] text-muted-foreground/60 ml-auto">#{index + 1}</span>
+        <span className="text-[11px] text-muted-foreground/60 ml-auto flex items-center gap-1.5">
+          #{index + 1}
+          {onToggleDisabled && <NodeToggleSwitch isDisabled={isNodeDisabled} onToggle={onToggleDisabled} />}
+        </span>
       </div>
 
       {/* Body */}
@@ -92,7 +101,8 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
         )}
 
         {/* Elements count */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isNodeDisabled && <DisabledBadge />}
           {isEmpty ? (
             <span className="text-[10px] text-warning font-medium flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
@@ -173,6 +183,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
 
