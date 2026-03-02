@@ -325,6 +325,7 @@ export default function AnalyticsDashboard() {
   const tooltipStyle = {
     contentStyle: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 12 },
     labelStyle: { color: 'hsl(var(--foreground))', fontWeight: 600 },
+    itemStyle: { color: 'hsl(var(--foreground))' },
   };
 
   return (
