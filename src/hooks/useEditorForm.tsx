@@ -459,11 +459,16 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
   ]);
 
-  if (!form || !loaded) return (
-    <div className="h-screen flex items-center justify-center bg-background">
-      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-    </div>
-  );
+  if (!form) {
+    if (!loaded) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-background">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      );
+    }
+    return null;
+  }
 
-  return <EditorFormContext.Provider value={value}>{children}</EditorFormContext.Provider>;
+  return <EditorFormContext.Provider value={value as EditorFormContextType}>{children}</EditorFormContext.Provider>;
 }
