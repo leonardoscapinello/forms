@@ -6,14 +6,22 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Eye, EyeOff, TestTube, CheckCircle2, XCircle, Brain, RefreshCw, Bot } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Save, Eye, EyeOff, TestTube, CheckCircle2, XCircle, Brain, RefreshCw, MessageSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OpenAIConfig {
   apiKey: string;
   model: string;
   provider: 'openai' | 'lovable';
-  assistantId?: string;
+  /** System prompt (replaces old Assistant instructions) */
+  systemPrompt?: string;
+  /** Conversation ID for context continuity */
+  conversationId?: string;
+  /** Enable web search tool */
+  webSearch?: boolean;
+  /** Enable file search tool */
+  fileSearch?: boolean;
 }
 
 interface OpenAIModel {
@@ -21,22 +29,21 @@ interface OpenAIModel {
   owned_by: string;
 }
 
-interface OpenAIAssistant {
-  id: string;
-  name: string | null;
-  model: string;
-  description: string | null;
-  created_at: number;
-}
-
 const FALLBACK_MODELS = [
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'gpt-4.1', label: 'GPT-4.1' },
+  { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
+  { value: 'gpt-4.1-nano', label: 'GPT-4.1 Nano' },
   { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'o3', label: 'o3' },
+  { value: 'o3-mini', label: 'o3-mini' },
+  { value: 'o4-mini', label: 'o4-mini' },
 ];
 
-const EMPTY: OpenAIConfig = { apiKey: '', model: 'gpt-4o-mini', provider: 'openai', assistantId: '' };
+const EMPTY: OpenAIConfig = {
+  apiKey: '', model: 'gpt-4.1-mini', provider: 'openai',
+  systemPrompt: '', conversationId: '', webSearch: false, fileSearch: false,
+};
 
 export default function OpenAIIntegrationCard() {
   const { toast } = useToast();
@@ -49,11 +56,8 @@ export default function OpenAIIntegrationCard() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
 
-  // Dynamic models & assistants
   const [models, setModels] = useState<OpenAIModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [assistants, setAssistants] = useState<OpenAIAssistant[]>([]);
-  const [loadingAssistants, setLoadingAssistants] = useState(false);
 
   useEffect(() => {
     (supabase as any)
@@ -68,20 +72,21 @@ export default function OpenAIIntegrationCard() {
           const c = (data.config || {}) as any;
           setConfig({
             apiKey: c.apiKey || '',
-            model: c.model || 'gpt-4o-mini',
+            model: c.model || 'gpt-4.1-mini',
             provider: c.provider || 'openai',
-            assistantId: c.assistantId || '',
+            systemPrompt: c.systemPrompt || '',
+            conversationId: c.conversationId || '',
+            webSearch: c.webSearch ?? false,
+            fileSearch: c.fileSearch ?? false,
           });
         }
         setLoading(false);
       });
   }, []);
 
-  // Fetch models and assistants when API key changes
   useEffect(() => {
     if (config.apiKey && config.apiKey.startsWith('sk-')) {
       fetchModels(config.apiKey);
-      fetchAssistants(config.apiKey);
     }
   }, [config.apiKey]);
 
@@ -96,9 +101,9 @@ export default function OpenAIIntegrationCard() {
       const chatModels = (data.data as OpenAIModel[])
         .filter(m =>
           m.id.includes('gpt') ||
-          m.id.includes('o1') ||
-          m.id.includes('o3') ||
-          m.id.includes('o4') ||
+          m.id.startsWith('o1') ||
+          m.id.startsWith('o3') ||
+          m.id.startsWith('o4') ||
           m.id.includes('chatgpt')
         )
         .sort((a, b) => a.id.localeCompare(b.id));
@@ -107,24 +112,6 @@ export default function OpenAIIntegrationCard() {
       setModels([]);
     }
     setLoadingModels(false);
-  }, []);
-
-  const fetchAssistants = useCallback(async (apiKey: string) => {
-    setLoadingAssistants(true);
-    try {
-      const res = await fetch('https://api.openai.com/v1/assistants', {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'OpenAI-Beta': 'assistants=v2',
-        },
-      });
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      setAssistants((data.data as OpenAIAssistant[]) || []);
-    } catch {
-      setAssistants([]);
-    }
-    setLoadingAssistants(false);
   }, []);
 
   const updateConfig = useCallback((patch: Partial<OpenAIConfig>) => {
@@ -167,9 +154,8 @@ export default function OpenAIIntegrationCard() {
   const handleRefresh = useCallback(() => {
     if (config.apiKey && config.apiKey.startsWith('sk-')) {
       fetchModels(config.apiKey);
-      fetchAssistants(config.apiKey);
     }
-  }, [config.apiKey, fetchModels, fetchAssistants]);
+  }, [config.apiKey, fetchModels]);
 
   if (loading) return <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
@@ -186,7 +172,7 @@ export default function OpenAIIntegrationCard() {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">OpenAI</h3>
-            <p className="text-xs text-muted-foreground">Análise de sentimentos, agentes e IA</p>
+            <p className="text-xs text-muted-foreground">Responses API · Análise de sentimentos e IA</p>
           </div>
         </div>
         <Switch checked={isActive} onCheckedChange={setIsActive} />
@@ -248,61 +234,60 @@ export default function OpenAIIntegrationCard() {
             </SelectContent>
           </Select>
           {models.length > 0 && (
-            <p className="text-[10px] text-muted-foreground">{models.length} modelos disponíveis na sua conta</p>
+            <p className="text-[10px] text-muted-foreground">{models.length} modelos disponíveis</p>
           )}
         </div>
 
-        {/* Assistant / Agent selector */}
+        {/* System Prompt (replaces Assistant instructions) */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs flex items-center gap-1.5">
-              <Bot className="h-3.5 w-3.5" />
-              Agente (Assistant)
-            </Label>
-            {loadingAssistants && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-          </div>
-
-          {assistants.length > 0 ? (
-            <Select
-              value={config.assistantId || '__none__'}
-              onValueChange={v => updateConfig({ assistantId: v === '__none__' ? '' : v })}
-            >
-              <SelectTrigger className="text-xs">
-                <SelectValue placeholder="Nenhum agente selecionado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__" className="text-xs text-muted-foreground">Nenhum (usar modelo direto)</SelectItem>
-                {assistants.map(a => (
-                  <SelectItem key={a.id} value={a.id} className="text-xs">
-                    <div className="flex flex-col">
-                      <span>{a.name || a.id}</span>
-                      <span className="text-[10px] text-muted-foreground">{a.model} · {a.id}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="space-y-1.5">
-              <Input
-                placeholder="asst_..."
-                value={config.assistantId || ''}
-                onChange={e => updateConfig({ assistantId: e.target.value })}
-                className="font-mono text-xs"
-              />
-            </div>
-          )}
+          <Label className="text-xs flex items-center gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" />
+            Prompt do Sistema
+          </Label>
+          <Textarea
+            placeholder="Você é um especialista em análise de sentimentos..."
+            value={config.systemPrompt || ''}
+            onChange={e => updateConfig({ systemPrompt: e.target.value })}
+            className="text-xs min-h-[80px] resize-y"
+          />
           <p className="text-[10px] text-muted-foreground">
-            {assistants.length > 0
-              ? `${assistants.length} agente(s) encontrado(s) na sua conta`
-              : 'Insira o ID do assistente ou configure a API Key para listar automaticamente'}
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            Compatível com a{' '}
+            Define o comportamento da IA. Substitui o antigo "Assistant" — agora via{' '}
             <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank" rel="noopener noreferrer" className="underline">
               Responses API
-            </a>{' '}
-            da OpenAI
+            </a>
+          </p>
+        </div>
+
+        {/* Tools */}
+        <div className="space-y-3">
+          <Label className="text-xs">Ferramentas nativas</Label>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <div>
+              <p className="text-xs font-medium text-foreground">Web Search</p>
+              <p className="text-[10px] text-muted-foreground">Busca na web em tempo real</p>
+            </div>
+            <Switch checked={config.webSearch ?? false} onCheckedChange={v => updateConfig({ webSearch: v })} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <div>
+              <p className="text-xs font-medium text-foreground">File Search</p>
+              <p className="text-[10px] text-muted-foreground">Busca em arquivos enviados</p>
+            </div>
+            <Switch checked={config.fileSearch ?? false} onCheckedChange={v => updateConfig({ fileSearch: v })} />
+          </div>
+        </div>
+
+        {/* Conversation ID */}
+        <div className="space-y-2">
+          <Label className="text-xs">Conversation ID (opcional)</Label>
+          <Input
+            placeholder="conv_..."
+            value={config.conversationId || ''}
+            onChange={e => updateConfig({ conversationId: e.target.value })}
+            className="font-mono text-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Manter contexto entre chamadas. Substitui o antigo Thread ID.
           </p>
         </div>
       </div>
@@ -318,6 +303,13 @@ export default function OpenAIIntegrationCard() {
         </Button>
         {testResult === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
         {testResult === 'error' && <XCircle className="h-4 w-4 text-destructive" />}
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Arquitetura Responses API:</strong> Assistants API foi descontinuada.
+          Agora usamos Responses API + Conversations + Prompts modulares — mais performance, menos complexidade.
+        </p>
       </div>
     </div>
   );
