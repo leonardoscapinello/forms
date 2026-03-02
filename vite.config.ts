@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('@supabase/supabase-js') || id.includes('@supabase/')) return 'vendor-supabase';
           if (id.includes('framer-motion')) return 'vendor-motion';
           if (id.includes('lucide-react')) return 'vendor-icons';
-          if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+          // recharts + d3 kept in main chunk to avoid circular-ref TDZ errors
           return undefined;
         },
       },
