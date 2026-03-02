@@ -94,34 +94,49 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
         const formRows = (formsRes.data || []) as unknown as DbForm[];
         const formIds = formRows.map(r => r.id);
 
-        // 2. Fetch response counts using lightweight count queries (no row data fetched)
-        const countMap: Record<string, number> = {};
-        if (formIds.length > 0) {
-          const chunks = [];
-          for (let i = 0; i < formIds.length; i += 20) {
-            chunks.push(formIds.slice(i, i + 20));
-          }
-          const results = await Promise.all(
-            chunks.map(chunk =>
-              supabase.from('form_responses').select('form_id', { count: 'exact', head: false }).in('form_id', chunk)
-            )
-          );
-          results.forEach(res => {
-            (res.data || []).forEach((r: { form_id: string }) => {
-              countMap[r.form_id] = (countMap[r.form_id] || 0) + 1;
-            });
-          });
-        }
-
-        if (cancelled) return;
-
-        const parsed = formRows.map(row => {
-          const form = dbToForm(row);
-          form.responseCount = countMap[row.id] || 0;
-          return form;
-        });
+        // Render forms immediately (do not block UI on response count queries)
+        const parsed = formRows.map(row => ({
+          ...dbToForm(row),
+          responseCount: 0,
+        }));
         setForms(parsed);
         setLoaded(true);
+
+        // Fetch response counts in background and patch store when done
+        if (formIds.length > 0) {
+          (async () => {
+            const countMap: Record<string, number> = {};
+            const chunks = [];
+            for (let i = 0; i < formIds.length; i += 20) {
+              chunks.push(formIds.slice(i, i + 20));
+            }
+
+            const results = await Promise.all(
+              chunks.map(chunk =>
+                supabase.from('form_responses').select('form_id', { count: 'exact', head: false }).in('form_id', chunk)
+              )
+            );
+
+            if (cancelled) return;
+
+            results.forEach(res => {
+              (res.data || []).forEach((r: { form_id: string }) => {
+                countMap[r.form_id] = (countMap[r.form_id] || 0) + 1;
+              });
+            });
+
+            if (cancelled) return;
+
+            setForms(prev =>
+              prev.map(f => ({
+                ...f,
+                responseCount: countMap[f.id] ?? f.responseCount ?? 0,
+              }))
+            );
+          })().catch(() => {
+            // Keep UI usable even if background counts fail
+          });
+        }
       } catch (error) {
         if (cancelled) return;
         console.error('Unexpected error loading forms:', error);
