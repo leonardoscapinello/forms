@@ -4,12 +4,92 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
-const COLOR_PRESETS = [
-  '#000000', '#333333', '#666666', '#999999', '#cccccc', '#ffffff',
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#fca5a5', '#fed7aa',
-  '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7',
-  '#ec4899', '#f43f5e', '#14b8a6', '#0ea5e9', '#7c3aed', '#c084fc',
+/** Brand color palette — TwoBrain */
+const BRAND_PALETTE: { hex: string; name: string; group: string }[] = [
+  // GREEN
+  { hex: '#FBFFE4', name: 'Green 01', group: 'Green' },
+  { hex: '#F4FFC5', name: 'Green 02', group: 'Green' },
+  { hex: '#E8FF92', name: 'Green 03', group: 'Green' },
+  { hex: '#D5FF54', name: 'Green 04', group: 'Green' },
+  { hex: '#C0FA21', name: 'Green 05', group: 'Green' },
+  { hex: '#A1E101', name: 'Green 06', group: 'Green' },
+  { hex: '#7CB400', name: 'Green 07', group: 'Green' },
+  { hex: '#5E8902', name: 'Green 08', group: 'Green' },
+  { hex: '#4B6B09', name: 'Green 09', group: 'Green' },
+  { hex: '#3F5A0D', name: 'Green 10', group: 'Green' },
+  { hex: '#203300', name: 'Green 11', group: 'Green' },
+  // INDIGO
+  { hex: '#ECF1FF', name: 'Indigo 01', group: 'Indigo' },
+  { hex: '#DDE6FF', name: 'Indigo 02', group: 'Indigo' },
+  { hex: '#C2D1FF', name: 'Indigo 03', group: 'Indigo' },
+  { hex: '#9DB1FF', name: 'Indigo 04', group: 'Indigo' },
+  { hex: '#7686FF', name: 'Indigo 05', group: 'Indigo' },
+  { hex: '#676EFE', name: 'Indigo 06', group: 'Indigo' },
+  { hex: '#3D38F3', name: 'Indigo 07', group: 'Indigo' },
+  { hex: '#342BD7', name: 'Indigo 08', group: 'Indigo' },
+  { hex: '#2B26AD', name: 'Indigo 09', group: 'Indigo' },
+  { hex: '#282689', name: 'Indigo 10', group: 'Indigo' },
+  { hex: '#19174F', name: 'Indigo 11', group: 'Indigo' },
+  // VIOLET
+  { hex: '#FCF4FF', name: 'Violet 01', group: 'Violet' },
+  { hex: '#F9E7FF', name: 'Violet 02', group: 'Violet' },
+  { hex: '#F2CEFF', name: 'Violet 03', group: 'Violet' },
+  { hex: '#EBA8FF', name: 'Violet 04', group: 'Violet' },
+  { hex: '#DD67FE', name: 'Violet 05', group: 'Violet' },
+  { hex: '#CE3FF6', name: 'Violet 06', group: 'Violet' },
+  { hex: '#B51FDA', name: 'Violet 07', group: 'Violet' },
+  { hex: '#9916B5', name: 'Violet 08', group: 'Violet' },
+  { hex: '#7F1494', name: 'Violet 09', group: 'Violet' },
+  { hex: '#6B1679', name: 'Violet 10', group: 'Violet' },
+  { hex: '#460151', name: 'Violet 11', group: 'Violet' },
+  // GRAYSCALE
+  { hex: '#F8FAFC', name: 'Gr.Scale 01', group: 'Gr.Scale' },
+  { hex: '#F1F5F9', name: 'Gr.Scale 02', group: 'Gr.Scale' },
+  { hex: '#E2E8F0', name: 'Gr.Scale 03', group: 'Gr.Scale' },
+  { hex: '#CBD5E1', name: 'Gr.Scale 04', group: 'Gr.Scale' },
+  { hex: '#94A3B8', name: 'Gr.Scale 05', group: 'Gr.Scale' },
+  { hex: '#64748B', name: 'Gr.Scale 06', group: 'Gr.Scale' },
+  { hex: '#475569', name: 'Gr.Scale 07', group: 'Gr.Scale' },
+  { hex: '#334155', name: 'Gr.Scale 08', group: 'Gr.Scale' },
+  { hex: '#1E293B', name: 'Gr.Scale 09', group: 'Gr.Scale' },
+  { hex: '#0F172A', name: 'Gr.Scale 10', group: 'Gr.Scale' },
+  { hex: '#020617', name: 'Gr.Scale 11', group: 'Gr.Scale' },
+  // BLOOD
+  { hex: '#FFF3F6', name: 'Blood 01', group: 'Blood' },
+  { hex: '#FFDFE5', name: 'Blood 02', group: 'Blood' },
+  { hex: '#FFCBD5', name: 'Blood 03', group: 'Blood' },
+  { hex: '#FFB0C3', name: 'Blood 04', group: 'Blood' },
+  { hex: '#FF7C9B', name: 'Blood 05', group: 'Blood' },
+  { hex: '#F3456E', name: 'Blood 06', group: 'Blood' },
+  { hex: '#E32552', name: 'Blood 07', group: 'Blood' },
+  { hex: '#B31037', name: 'Blood 08', group: 'Blood' },
+  { hex: '#8D0C2B', name: 'Blood 09', group: 'Blood' },
+  { hex: '#6B0921', name: 'Blood 10', group: 'Blood' },
+  { hex: '#4E0819', name: 'Blood 11', group: 'Blood' },
+  // PAPER
+  { hex: '#FBFAF6', name: 'Paper 01', group: 'Paper' },
+  { hex: '#F4F3EC', name: 'Paper 02', group: 'Paper' },
+  { hex: '#EEECE2', name: 'Paper 03', group: 'Paper' },
+  { hex: '#E6E3D6', name: 'Paper 04', group: 'Paper' },
+  { hex: '#DEDAC8', name: 'Paper 05', group: 'Paper' },
+  { hex: '#D4CFB8', name: 'Paper 06', group: 'Paper' },
+  { hex: '#C8C2A6', name: 'Paper 07', group: 'Paper' },
+  { hex: '#B3AB86', name: 'Paper 08', group: 'Paper' },
+  { hex: '#9A9266', name: 'Paper 09', group: 'Paper' },
+  { hex: '#6A653F', name: 'Paper 10', group: 'Paper' },
+  { hex: '#2C2A18', name: 'Paper 11', group: 'Paper' },
+  // Extras (black/white)
+  { hex: '#FFFFFF', name: 'Branco', group: 'Base' },
+  { hex: '#000000', name: 'Preto', group: 'Base' },
+  { hex: '#0C0E17', name: 'Dark BG', group: 'Base' },
 ];
+
+// Build lookup for getColorName
+const COLOR_NAME_MAP = new Map<string, string>();
+BRAND_PALETTE.forEach(c => COLOR_NAME_MAP.set(c.hex.toLowerCase(), c.name));
+
+// Group colors for display
+const GROUPS = ['Green', 'Indigo', 'Violet', 'Gr.Scale', 'Blood', 'Paper', 'Base'] as const;
 
 interface Props {
   label?: string;
@@ -34,7 +114,6 @@ export default function ColorPickerField({
 
   const isTransparent = !value || value === 'transparent';
 
-  // Sync hex input when value changes externally
   useEffect(() => {
     if (!open) return;
     setHexInput(isTransparent ? '' : value.replace('#', ''));
@@ -50,6 +129,8 @@ export default function ColorPickerField({
     }
   };
 
+  const displayName = value ? getColorName(value) : placeholder;
+
   return (
     <div className="space-y-2">
       {label && <Label className="text-xs">{label}</Label>}
@@ -58,7 +139,7 @@ export default function ColorPickerField({
           <button
             type="button"
             className="flex items-center gap-2 w-full h-8 px-2 rounded-md border border-input bg-background hover:bg-accent/50 transition-colors cursor-pointer"
-            title={isTransparent ? placeholder : value}
+            title={isTransparent ? placeholder : `${value} — ${displayName}`}
           >
             <div
               className="h-4 w-4 rounded border border-border flex-shrink-0 relative overflow-hidden"
@@ -76,31 +157,55 @@ export default function ColorPickerField({
               )}
             </div>
             <span className="text-[11px] text-muted-foreground truncate flex-1 text-left">
-              {isTransparent ? placeholder : ''}
+              {isTransparent ? placeholder : displayName}
             </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[220px] p-3 space-y-3" align="start" side="left">
-          {/* Presets grid */}
-          <div className="grid grid-cols-6 gap-1.5">
-            {COLOR_PRESETS.map(color => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => onChange(color)}
-                className={`h-6 w-full rounded-md border transition-all hover:scale-110 ${
-                  value === color
-                    ? 'border-primary ring-1 ring-primary shadow-sm'
-                    : 'border-border/50 hover:border-border'
-                }`}
-                style={{ backgroundColor: color }}
-                title={getColorName(color)}
-              />
-            ))}
-          </div>
+        <PopoverContent className="w-[320px] p-3 space-y-3 max-h-[420px] overflow-y-auto" align="start" side="left">
+          {/* Brand palette by group */}
+          {GROUPS.map(group => {
+            const colors = BRAND_PALETTE.filter(c => c.group === group);
+            if (!colors.length) return null;
+            return (
+              <div key={group}>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{group}</p>
+                <div className="flex flex-wrap gap-1">
+                  {colors.map(c => {
+                    const isSelected = value?.toLowerCase() === c.hex.toLowerCase();
+                    const isLight = isLightColor(c.hex);
+                    return (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => onChange(c.hex.toLowerCase())}
+                        className={`flex flex-col items-center w-[25px] group relative ${
+                          isSelected ? 'ring-1 ring-primary rounded-md' : ''
+                        }`}
+                        title={`${c.hex} — ${c.name}`}
+                      >
+                        <div
+                          className={`h-5 w-full rounded-[4px] border transition-all hover:scale-110 ${
+                            isSelected
+                              ? 'border-primary shadow-sm'
+                              : 'border-border/40 hover:border-border'
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        <span className={`text-[6px] mt-0.5 leading-tight text-center truncate w-full ${
+                          isSelected ? 'text-foreground font-semibold' : 'text-muted-foreground'
+                        }`}>
+                          {c.hex}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
 
           {/* Hex input */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 pt-1 border-t border-border">
             <div
               className="h-7 w-7 rounded-md border border-border flex-shrink-0"
               style={{ backgroundColor: isTransparent ? 'transparent' : value }}
@@ -122,6 +227,9 @@ export default function ColorPickerField({
                 maxLength={6}
               />
             </div>
+            <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+              {!isTransparent ? displayName : ''}
+            </span>
           </div>
 
           {/* Transparent / Remove */}
@@ -142,37 +250,16 @@ export default function ColorPickerField({
   );
 }
 
-/** Map hex colors to friendly Portuguese names */
-function getColorName(hex: string): string {
+function isLightColor(hex: string): boolean {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 180;
+}
+
+/** Map hex colors to friendly brand names */
+export function getColorName(hex: string): string {
   if (!hex) return 'Sem cor';
-  const map: Record<string, string> = {
-    '#000000': 'Preto',
-    '#333333': 'Cinza escuro',
-    '#666666': 'Cinza',
-    '#999999': 'Cinza médio',
-    '#cccccc': 'Cinza claro',
-    '#ffffff': 'Branco',
-    '#ef4444': 'Vermelho',
-    '#f97316': 'Laranja',
-    '#f59e0b': 'Âmbar',
-    '#eab308': 'Amarelo',
-    '#fca5a5': 'Rosa claro',
-    '#fed7aa': 'Pêssego',
-    '#22c55e': 'Verde',
-    '#06b6d4': 'Ciano',
-    '#3b82f6': 'Azul',
-    '#6366f1': 'Índigo',
-    '#8b5cf6': 'Violeta',
-    '#a855f7': 'Roxo',
-    '#ec4899': 'Pink',
-    '#f43f5e': 'Rosa',
-    '#14b8a6': 'Turquesa',
-    '#0ea5e9': 'Azul celeste',
-    '#7c3aed': 'Violeta escuro',
-    '#c084fc': 'Lilás',
-    '#fafaf6': 'Creme',
-    '#FAFAF6': 'Creme',
-    '#203300': 'Verde escuro',
-  };
-  return map[hex.toLowerCase()] || map[hex] || hex;
+  return COLOR_NAME_MAP.get(hex.toLowerCase()) || hex;
 }
