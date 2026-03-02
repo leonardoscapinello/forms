@@ -1366,6 +1366,52 @@ export default function FormPreview() {
     }
   }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview]);
 
+  // ── Apply SEO meta tags ─────────────────────────────────
+  useEffect(() => {
+    if (isEditorPreview || !form) return;
+    const seo = form.seo;
+    if (!seo) return;
+
+    if (seo.title) document.title = seo.title;
+    else if (form.title) document.title = form.title;
+
+    const setMeta = (name: string, content: string, attr = 'name') => {
+      if (!content) return;
+      let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+      el.content = content;
+    };
+
+    if (seo.description) { setMeta('description', seo.description); setMeta('og:description', seo.description, 'property'); }
+    if (seo.keywords) setMeta('keywords', seo.keywords);
+    if (seo.ogImage) { setMeta('og:image', seo.ogImage, 'property'); setMeta('twitter:image', seo.ogImage); }
+    if (seo.ogType) setMeta('og:type', seo.ogType, 'property');
+    setMeta('og:title', seo.title || form.title || '', 'property');
+    if (seo.twitterCard) setMeta('twitter:card', seo.twitterCard);
+    if (seo.robots) setMeta('robots', seo.robots);
+    if (seo.themeColor) setMeta('theme-color', seo.themeColor);
+
+    if (seo.canonicalUrl) {
+      let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
+      link.href = seo.canonicalUrl;
+    }
+
+    if (seo.favicon) {
+      let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+      if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+      link.href = seo.favicon;
+    }
+
+    if (seo.structuredData) {
+      try {
+        JSON.parse(seo.structuredData);
+        let script = document.getElementById('seo-jsonld') as HTMLScriptElement | null;
+        if (!script) { script = document.createElement('script'); script.id = 'seo-jsonld'; script.type = 'application/ld+json'; document.head.appendChild(script); }
+        script.textContent = seo.structuredData;
+      } catch { /* invalid JSON, skip */ }
+    }
+  }, [form?.seo, form?.title, isEditorPreview]);
 
   const goBack = useCallback(() => {
     setDirection(-1);

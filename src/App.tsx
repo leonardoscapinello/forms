@@ -26,6 +26,7 @@ const EditorResponses = lazy(() => import("./pages/editor/EditorResponses"));
 const EditorShare = lazy(() => import("./pages/editor/EditorShare"));
 const EditorAnalytics = lazy(() => import("./pages/editor/EditorAnalytics"));
 const EditorSettingsPage = lazy(() => import("./pages/editor/EditorSettingsPage"));
+const EditorSEO = lazy(() => import("./pages/editor/EditorSEO"));
 
 
 function PageLoader() {
@@ -104,6 +105,7 @@ const App = () => {
                   <Route path="share" element={<EditorShare />} />
                   <Route path="analytics" element={<EditorAnalytics />} />
                   <Route path="settings" element={<EditorSettingsPage />} />
+                  <Route path="seo" element={<EditorSEO />} />
                 </Route>
 
                 <Route path="/f/:id" element={<FormPreview />} />
