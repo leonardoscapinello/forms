@@ -1869,7 +1869,14 @@ export default function FormPreview() {
                 size="sm"
                 onClick={waitFeedback ? undefined : goNext}
                 disabled={isPageBlocked || !!waitFeedback}
-                className="h-9 px-4 rounded-full gap-1.5 text-xs"
+                className="h-9 gap-1.5 text-xs"
+                style={{
+                  backgroundColor: form.style?.buttonBgColor || form.style?.primaryColor || undefined,
+                  color: form.style?.buttonTextColor || undefined,
+                  borderRadius: form.style?.buttonBorderRadius ?? undefined,
+                  padding: form.style?.buttonSize === 'sm' ? '6px 16px' : form.style?.buttonSize === 'lg' ? '14px 32px' : '10px 24px',
+                  fontSize: form.style?.buttonSize === 'sm' ? 13 : form.style?.buttonSize === 'lg' ? 16 : undefined,
+                }}
                 aria-label={isLastPage ? 'Enviar' : 'Avançar'}
               >
                 {waitFeedback && waitFeedback.mode !== 'loading_screen' ? (
