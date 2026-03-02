@@ -1613,9 +1613,9 @@ export default function FormPreview() {
   }
 
   const variants = {
-    enter: (d: number) => ({ opacity: 0, y: d > 0 ? 20 : -20 }),
-    center: { opacity: 1, y: 0 },
-    exit: (d: number) => ({ opacity: 0, y: d > 0 ? -10 : 10 }),
+    enter: (d: number) => ({ opacity: 0 }),
+    center: { opacity: 1 },
+    exit: (d: number) => ({ opacity: 0 }),
   };
 
   const hasVariables = (form.variables?.length ?? 0) > 0;
@@ -1675,7 +1675,8 @@ export default function FormPreview() {
         const paddingY = pageStyle.paddingY ?? 32;
         const gap = pageStyle.gap ?? 32;
 
-        const showDefaultWelcome = isWelcome && (!form.showWelcomeScreen || !form.welcomePage?.elements?.length);
+        // Only show default welcome if welcome screen is enabled AND has no custom elements
+        const showDefaultWelcome = isWelcome && form.showWelcomeScreen && (!form.welcomePage?.elements?.length);
         const showDefaultThankYou = isThankYou && !form.thankYouPage?.elements?.length;
         const isDefaultScreen = showDefaultWelcome || showDefaultThankYou;
 
@@ -1684,15 +1685,15 @@ export default function FormPreview() {
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col relative"
           >
-            <AnimatePresence mode="popLayout" custom={direction}>
+            <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
                 variants={variants}
-                initial="enter"
+                initial={false}
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
                 className="w-full mx-auto my-auto"
                 style={isDefaultScreen ? { maxWidth: 672, padding: '32px 16px' } : {
                   maxWidth: 672 + paddingX * 2,
