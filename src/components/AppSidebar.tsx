@@ -76,9 +76,12 @@ export function AppSidebar() {
       <SidebarContent className="gap-0">
         <div className="px-5 pt-5 pb-4 border-b border-sidebar-border">
           <img
-            src="/images/twobrain-logo-dark.svg"
+            src={collapsed ? '/images/twobrain-icon.svg' : '/images/twobrain-logo-dark.svg'}
             alt="twobrain"
-            className="h-6 w-auto max-w-[127px] group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-5"
+            className={cn(
+              'w-auto group-data-[collapsible=icon]:mx-auto',
+              collapsed ? 'h-7' : 'h-6 max-w-[127px]',
+            )}
           />
         </div>
 

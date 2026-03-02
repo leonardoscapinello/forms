@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Bell } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 interface Props {
   children: React.ReactNode;
@@ -9,6 +10,10 @@ interface Props {
 
 export default function AppLayout({ children }: Props) {
   const { profile } = useAuth();
+  const location = useLocation();
+
+  // Auto-collapse sidebar on forms list page
+  const defaultOpen = location.pathname !== '/';
 
   const initials = (profile?.display_name || profile?.email || 'U')
     .split(' ')
@@ -18,7 +23,7 @@ export default function AppLayout({ children }: Props) {
     .toUpperCase();
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultOpen}>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
