@@ -8,8 +8,10 @@ import "./index.css";
 // Fail fast if env is misconfigured
 validateEnv();
 
-// Production security hardening (DevTools blocking, right-click, shortcuts)
-initSecurityGuard();
+// Production security hardening — skip on public form routes (saves CPU from setInterval)
+if (!/^\/f\//.test(window.location.pathname)) {
+  initSecurityGuard();
+}
 
 // Start fetching form data BEFORE React mounts (runs in parallel with chunk loading)
 autoDetectAndPrefetch();
