@@ -5,7 +5,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, Share2, BarChart2, Settings, Monitor, Palette, MessageSquare, Search } from 'lucide-react';
+import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, Share2, BarChart2, Settings, Monitor, Palette, MessageSquare, Search, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { AnimatePresence } from 'framer-motion';
@@ -93,15 +96,35 @@ function EditorLayoutInner() {
             <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden" onClick={() => setShowResponsivePreview(true)}>
               <Eye className="h-4 w-4" />
             </Button>
-            {form.status === 'closed' ? (
-              <Button size="sm" variant="outline" onClick={() => updateFormData({ status: 'published' })}>
-                Reabrir
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => updateFormData({ status: form.status === 'published' ? 'draft' : 'published' })}>
-                {form.status === 'published' ? 'Despublicar' : 'Publicar'}
-              </Button>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-sm font-medium">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    form.status === 'published' ? 'bg-emerald-500' :
+                    form.status === 'closed' ? 'bg-destructive' :
+                    'bg-muted-foreground/50'
+                  }`} />
+                  <span className="text-foreground text-xs">
+                    {form.status === 'published' ? 'Ativo' : form.status === 'closed' ? 'Fechado' : 'Rascunho'}
+                  </span>
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[150px]">
+                <DropdownMenuItem onClick={() => updateFormData({ status: 'draft' })} className="text-xs gap-2">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                  Rascunho
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateFormData({ status: 'published' })} className="text-xs gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Ativo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateFormData({ status: 'closed' })} className="text-xs gap-2">
+                  <span className="w-2 h-2 rounded-full bg-destructive" />
+                  Fechado
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
