@@ -1856,7 +1856,15 @@ export default function FormPreview() {
                   variant="ghost"
                   size="sm"
                   onClick={goBack}
-                  className="h-9 px-3 rounded-full text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+                  className="h-9 px-3 gap-1.5 text-xs"
+                  style={{
+                    backgroundColor: form.style?.backButtonBgColor || 'transparent',
+                    color: form.style?.backButtonTextColor || undefined,
+                    borderRadius: form.style?.backButtonBorderRadius ?? 9999,
+                    border: (form.style?.backButtonBorderWidth ?? 0) > 0
+                      ? `${form.style?.backButtonBorderWidth}px solid ${form.style?.backButtonBorderColor || 'transparent'}`
+                      : undefined,
+                  }}
                   aria-label="Voltar"
                 >
                   <ArrowUp className="h-3.5 w-3.5" />
