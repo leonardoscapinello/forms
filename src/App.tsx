@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
 import { Loader2 } from "lucide-react";
+import EditorWorkflowView from "./pages/editor/EditorWorkflow";
 
 // FormPreview is lazy-loaded even for public routes to keep main bundle tiny
 const FormPreview = lazy(() => import("./pages/FormPreview"));
@@ -22,7 +23,7 @@ const AppLayout = lazy(() => import("./components/AppLayout"));
 // Editor (layout + sub-routes)
 const EditorLayout = lazy(() => import("./pages/editor/EditorLayout"));
 const EditorPages = lazy(() => import("./pages/editor/EditorPages"));
-const EditorWorkflow = lazy(() => import("./pages/editor/EditorWorkflow"));
+
 const EditorDesign = lazy(() => import("./pages/editor/EditorDesign"));
 const EditorResponses = lazy(() => import("./pages/editor/EditorResponses"));
 const EditorShare = lazy(() => import("./pages/editor/EditorShare"));
@@ -106,7 +107,7 @@ const App = () => {
                 <Route path="/editor/:id" element={<ProtectedRoute><EditorLayout /></ProtectedRoute>}>
                   <Route index element={<Navigate to="pages" replace />} />
                   <Route path="pages" element={<EditorPages />} />
-                  <Route path="workflow" element={<EditorWorkflow />} />
+                  <Route path="workflow" element={<EditorWorkflowView />} />
                   <Route path="design" element={<EditorDesign />} />
                   <Route path="responses" element={<EditorResponses />} />
                   <Route path="share" element={<EditorShare />} />
