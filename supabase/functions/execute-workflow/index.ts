@@ -331,6 +331,13 @@ async function walkWorkflow(
         continue;
       }
 
+      // Wait node — server-side just passes through (wait is client-side only)
+      if (target.startsWith('wt-')) {
+        const wtOut = edges.find((e: any) => e.source === target);
+        if (wtOut) nextNodeId = wtOut.target;
+        continue;
+      }
+
       // Jump node
       if (target.startsWith('jp-')) {
         const jpId = target.replace('jp-', '');
