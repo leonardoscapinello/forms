@@ -133,18 +133,22 @@ function EditorLayoutInner() {
         </div>
       </header>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPath}
-          initial={{ opacity: 0, x: 8 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -8 }}
-          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-          className="flex-1 flex overflow-hidden"
-        >
-          <Outlet />
-        </motion.div>
-      </AnimatePresence>
+      <div className="flex-1 flex overflow-hidden">
+        <Suspense fallback={null}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={currentPath}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className="flex-1 flex overflow-hidden"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </Suspense>
+      </div>
 
       <AnimatePresence>
         {showResponsivePreview && (
