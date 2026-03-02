@@ -1,3 +1,4 @@
+import '@/editor.css';
 import { Suspense, lazy } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useEditorForm, EditorFormProvider } from '@/hooks/useEditorForm';
