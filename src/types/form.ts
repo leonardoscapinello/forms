@@ -185,6 +185,38 @@ export interface FormStyle {
   logoUrl?: string;
   /** Logo max height in px */
   logoHeight?: number;
+
+  // ── Question number styling ──
+  questionNumberColor?: string;
+  questionNumberSize?: number;      // px
+  questionNumberWeight?: string;    // normal, bold, etc
+  questionNumberStyle?: 'decimal' | 'circle' | 'none';
+
+  // ── Question title styling ──
+  questionTitleColor?: string;
+  questionTitleSize?: number;       // px
+  questionTitleWeight?: string;
+
+  // ── Question description styling ──
+  questionDescColor?: string;
+  questionDescSize?: number;        // px
+  questionDescWeight?: string;
+
+  // ── Field / input styling ──
+  fieldBgColor?: string;
+  fieldBorderColor?: string;
+  fieldBorderWidth?: number;        // px
+  fieldBorderRadius?: number;       // px
+  fieldTextColor?: string;
+  fieldPlaceholderColor?: string;
+  fieldFocusBorderColor?: string;
+  fieldHeight?: number;             // px
+
+  // ── Button styling ──
+  buttonBgColor?: string;
+  buttonTextColor?: string;
+  buttonBorderRadius?: number;      // px
+  buttonSize?: 'sm' | 'md' | 'lg';
 }
 
 export interface NodePosition {

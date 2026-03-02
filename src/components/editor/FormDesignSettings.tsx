@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 import GradientEditor from '@/components/editor/shared/GradientEditor';
+import QuestionFieldStyleEditor from '@/components/editor/QuestionFieldStyleEditor';
 
 interface Props {
   form: FormData;
@@ -371,6 +372,9 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
           )}
         </div>
       </div>
+
+      {/* ─── Perguntas & Campos ─── */}
+      <QuestionFieldStyleEditor style={style} onChange={updateStyle} />
     </div>
   );
 }
