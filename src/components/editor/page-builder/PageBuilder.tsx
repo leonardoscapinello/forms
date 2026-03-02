@@ -396,8 +396,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             lockElement?.(el.id);
           }}
           onDelete={readOnly || designMode ? () => {} : () => handleDelete(el.id)}
-          onElementChange={readOnly || designMode ? () => {} : (patch) => handleElementChange(el.id, patch)}
-          onRemoveFromMain={readOnly || designMode ? () => {} : (elementId) => {
+          onElementChange={!readOnly && !designMode ? (patch) => handleElementChange(el.id, patch) : undefined}
+          onRemoveFromMain={readOnly || designMode ? undefined : (elementId) => {
             onChange(elements.filter(e => e.id !== elementId));
             if (selectedId === elementId) setSelectedId(null);
           }}
@@ -406,6 +406,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
           onSelectElement={designMode ? (id) => onDesignSelect?.(id) : readOnly ? () => {} : (id) => setSelectedId(id)}
           stepNumber={isField ? formFieldIndex : undefined}
           lockedBy={lockedBy}
+          designMode={designMode}
         />
       );
       if (isExternalDragOver && dropIndex === idx + 1) {

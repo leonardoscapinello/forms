@@ -59,9 +59,10 @@ interface Props {
   onMoveToMain?: (element: PageElement, sourceColumnsId: string, colIdx: number) => void;
   selectedId?: string | null;
   onSelectElement?: (id: string) => void;
+  designMode?: boolean;
 }
 
-export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement }: Props) {
+export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode }: Props) {
   const columnCount = element.columnCount || 2;
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
@@ -229,38 +230,41 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
           {col.elements.length === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center py-4 gap-2">
               <span className="text-[11px] text-muted-foreground/50">Coluna {colIdx + 1} vazia</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="w-full py-2.5 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-xs font-medium">
-                    <Plus className="h-3.5 w-3.5" />
-                    Adicionar elemento
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" className="w-48">
-                  {allowedCategories.map(cat => (
-                    <DropdownMenuSub key={cat.key}>
-                      <DropdownMenuSubTrigger className="text-xs">{cat.label}</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-40">
-                        {cat.types.map(t => (
-                          <DropdownMenuItem key={t} className="text-xs" onClick={() => addElement(colIdx, t)}>
-                            {PAGE_ELEMENT_LABELS[t]}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {!designMode && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="w-full py-2.5 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-xs font-medium">
+                      <Plus className="h-3.5 w-3.5" />
+                      Adicionar elemento
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="w-48">
+                    {allowedCategories.map(cat => (
+                      <DropdownMenuSub key={cat.key}>
+                        <DropdownMenuSubTrigger className="text-xs">{cat.label}</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-40">
+                          {cat.types.map(t => (
+                            <DropdownMenuItem key={t} className="text-xs" onClick={() => addElement(colIdx, t)}>
+                              {PAGE_ELEMENT_LABELS[t]}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           )}
 
           {col.elements.map((el, elIdx) => (
             <div
               key={el.id}
-              onDragOver={(e) => handleInternalDragOver(e, colIdx, elIdx)}
-              onDrop={(e) => handleInternalDrop(e)}
-              onDragEnd={handleInternalDragEnd}
-              onClick={(e) => { e.stopPropagation(); onSelectElement?.(el.id); }}
+              onDragOver={designMode ? undefined : (e) => handleInternalDragOver(e, colIdx, elIdx)}
+              onDrop={designMode ? undefined : (e) => handleInternalDrop(e)}
+              onDragEnd={designMode ? undefined : handleInternalDragEnd}
+              onPointerDownCapture={designMode ? (e) => { e.stopPropagation(); onSelectElement?.(el.id); } : undefined}
+              onClick={!designMode ? (e) => { e.stopPropagation(); onSelectElement?.(el.id); } : undefined}
               className={`relative group rounded-lg transition-all cursor-pointer ${
                 dropTarget?.colIdx === colIdx && dropTarget?.elIdx === elIdx
                   ? 'border-t-2 border-primary'
@@ -270,72 +274,76 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
               }`}
             >
               {/* Floating controls — left side (reorder + grip) */}
-              <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex flex-col gap-0.5">
-                {elIdx > 0 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, -1); }}
-                    className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
-                    title="Mover para cima"
+              {!designMode && (
+                <div className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex flex-col gap-0.5">
+                  {elIdx > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, -1); }}
+                      className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                      title="Mover para cima"
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </button>
+                  )}
+                  {/* Grip handle — ONLY this is draggable */}
+                  <div
+                    draggable
+                    onDragStart={(e) => { e.stopPropagation(); handleInternalDragStart(e, colIdx, elIdx); }}
+                    className="cursor-grab active:cursor-grabbing p-0.5 rounded bg-background border border-border shadow-sm hover:bg-muted text-muted-foreground transition-colors"
+                    title="Arrastar para reordenar"
                   >
-                    <ChevronUp className="h-3 w-3" />
-                  </button>
-                )}
-                {/* Grip handle — ONLY this is draggable */}
-                <div
-                  draggable
-                  onDragStart={(e) => { e.stopPropagation(); handleInternalDragStart(e, colIdx, elIdx); }}
-                  className="cursor-grab active:cursor-grabbing p-0.5 rounded bg-background border border-border shadow-sm hover:bg-muted text-muted-foreground transition-colors"
-                  title="Arrastar para reordenar"
-                >
-                  <GripVertical className="h-3.5 w-3.5" />
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </div>
+                  {elIdx < (columns[colIdx]?.elements.length || 0) - 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, 1); }}
+                      className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                      title="Mover para baixo"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
-                {elIdx < (columns[colIdx]?.elements.length || 0) - 1 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); reorderInColumn(colIdx, elIdx, 1); }}
-                    className="p-0.5 rounded bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
-                    title="Mover para baixo"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
+              )}
 
               {/* Floating controls — right side (move between columns + delete) */}
-              <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-0.5">
-                {colIdx > 0 && (
+              {!designMode && (
+                <div className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-0.5">
+                  {colIdx > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); moveElementToColumn(colIdx, el.id, colIdx - 1); }}
+                      className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                      title="Mover para coluna anterior"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                    </button>
+                  )}
+                  {colIdx < columnCount - 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); moveElementToColumn(colIdx, el.id, colIdx + 1); }}
+                      className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                      title="Mover para próxima coluna"
+                    >
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
+                  )}
+                  {onMoveToMain && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onMoveToMain(el, element.id, colIdx); }}
+                      className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                      title="Mover para fora da coluna"
+                    >
+                      <ArrowUpFromLine className="h-3 w-3" />
+                    </button>
+                  )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); moveElementToColumn(colIdx, el.id, colIdx - 1); }}
-                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
-                    title="Mover para coluna anterior"
+                    onClick={(e) => { e.stopPropagation(); deleteElement(colIdx, el.id); }}
+                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
                   >
-                    <ArrowLeft className="h-3 w-3" />
+                    <Trash2 className="h-3 w-3" />
                   </button>
-                )}
-                {colIdx < columnCount - 1 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); moveElementToColumn(colIdx, el.id, colIdx + 1); }}
-                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
-                    title="Mover para próxima coluna"
-                  >
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                )}
-                {onMoveToMain && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onMoveToMain(el, element.id, colIdx); }}
-                    className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
-                    title="Mover para fora da coluna"
-                  >
-                    <ArrowUpFromLine className="h-3 w-3" />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); deleteElement(colIdx, el.id); }}
-                  className="p-1 rounded-md bg-background border border-border shadow-sm hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Element content */}
               <ElementPreview element={el} />
@@ -343,7 +351,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
           ))}
 
           {/* Always-visible add button */}
-          {col.elements.length > 0 && (
+          {col.elements.length > 0 && !designMode && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="w-full py-2.5 rounded-lg border-2 border-dashed border-primary/20 bg-primary/[0.03] text-primary/50 hover:border-primary/40 hover:text-primary/70 hover:bg-primary/[0.06] transition-colors flex items-center justify-center gap-1.5 text-xs font-medium">
