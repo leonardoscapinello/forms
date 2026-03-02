@@ -1,12 +1,10 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect } from 'react';
 import { useEditorForm } from '@/hooks/useEditorForm';
 import { createDefaultPageElement } from '@/types/pageElements';
 import type { PageElement } from '@/types/pageElements';
 import type { FunnelPageStyle, FormData } from '@/types/form';
-import { Loader2 } from 'lucide-react';
-
-const PageListPanel = lazy(() => import('@/components/editor/PageListPanel'));
-const PageBuilder = lazy(() => import('@/components/editor/page-builder/PageBuilder'));
+import PageListPanel from '@/components/editor/PageListPanel';
+import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 
 export default function EditorPages() {
   const ctx = useEditorForm();
