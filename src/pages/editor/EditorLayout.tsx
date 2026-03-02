@@ -42,7 +42,6 @@ function EditorLayoutInner() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void import('@/pages/editor/EditorWorkflow');
-      void import('@/components/editor/FlowCanvas');
     }, 250);
 
     return () => window.clearTimeout(timer);
