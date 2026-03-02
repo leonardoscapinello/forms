@@ -105,7 +105,7 @@ export default function WhatsAppPreviewCard({
               <div className="px-2.5 py-1.5">
                 <div
                   className="text-xs text-foreground leading-relaxed break-words wa-preview"
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  dangerouslySetInnerHTML={{ __html: previewHtml /* safe: parseWhatsAppMarkdown escapes &, <, > before formatting */ }}
                 />
               </div>
             )}
