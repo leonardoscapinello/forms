@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
   pointerWithin,
@@ -636,22 +637,33 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         )}
       </div>
 
-      {/* Right — Settings panel (only visible when element selected, hidden in readOnly/designMode) */}
-      {!readOnly && !designMode && selectedElement && (
-        <div className="w-72 border-l border-border bg-card flex flex-col h-full flex-shrink-0">
-          <ElementSettingsPanel
+      {/* Right — Settings panel with slide animation */}
+      <AnimatePresence mode="wait">
+        {!readOnly && !designMode && selectedElement && (
+          <motion.div
             key={selectedElement.id}
-            element={selectedElement}
-            onChange={patch => handleElementChange(selectedElement.id, patch)}
-            onClose={() => setSelectedId(null)}
-            pages={pages}
-            variables={variables}
-            integrationNodes={integrationNodes}
-            allInputElements={filteredInputElements}
-            trackedParams={trackedParams}
-          />
-        </div>
-      )}
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 288, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="border-l border-border bg-card flex flex-col h-full flex-shrink-0 overflow-hidden"
+          >
+            <div className="w-72 h-full flex flex-col">
+              <ElementSettingsPanel
+                key={selectedElement.id}
+                element={selectedElement}
+                onChange={patch => handleElementChange(selectedElement.id, patch)}
+                onClose={() => setSelectedId(null)}
+                pages={pages}
+                variables={variables}
+                integrationNodes={integrationNodes}
+                allInputElements={filteredInputElements}
+                trackedParams={trackedParams}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEditorForm } from '@/hooks/useEditorForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { PageElement } from '@/types/pageElements';
@@ -100,17 +101,35 @@ export default function EditorDesign() {
         </div>
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
-            {designSelectedElement ? (
-              <ElementDesignStyleEditor
-                element={designSelectedElement}
-                onChange={(patch) => handleDesignElementChange(designSelectedElement.id, patch)}
-                onDeselect={() => setDesignSelectedId(null)}
-              />
-            ) : (
-              <Suspense fallback={null}>
-                <FormDesignSettings form={form} onUpdate={(patch) => updateFormData(patch)} />
-              </Suspense>
-            )}
+            <AnimatePresence mode="wait">
+              {designSelectedElement ? (
+                <motion.div
+                  key={`element-${designSelectedElement.id}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <ElementDesignStyleEditor
+                    element={designSelectedElement}
+                    onChange={(patch) => handleDesignElementChange(designSelectedElement.id, patch)}
+                    onDeselect={() => setDesignSelectedId(null)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="global-design"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Suspense fallback={null}>
+                    <FormDesignSettings form={form} onUpdate={(patch) => updateFormData(patch)} />
+                  </Suspense>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </ScrollArea>
       </div>
