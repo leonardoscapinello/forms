@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, FormStyle, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
@@ -1913,6 +1913,7 @@ export default function FormPreview() { // perf-v2
   const hasVariables = (form.variables?.length ?? 0) > 0;
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <main role="main">
     <motion.div
       initial={{ opacity: 0 }}
@@ -2326,6 +2327,7 @@ export default function FormPreview() { // perf-v2
       </AnimatePresence>
     </motion.div>
     </main>
+    </LazyMotion>
   );
 }
 

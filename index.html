@@ -13,8 +13,10 @@
     <!-- Borna é carregada localmente via src/index.css (@font-face) -->
     <style>
       html, body, #root { min-height: 100%; }
-      body { margin: 0; background: hsl(30 20% 98%); font-family: 'Borna', ui-sans-serif, system-ui, sans-serif; text-rendering: optimizeSpeed; }
+      body { margin: 0; background: hsl(30 20% 98%); font-family: 'Borna', ui-sans-serif, system-ui, sans-serif; text-rendering: optimizeSpeed; -webkit-tap-highlight-color: transparent; }
       #root { contain: layout style; }
+      /* Eliminate 300ms tap delay on mobile */
+      a, button, input, select, textarea, [role="button"] { touch-action: manipulation; }
       @media (prefers-color-scheme: dark) {
         body { background: hsl(220 18% 10%); }
       }
