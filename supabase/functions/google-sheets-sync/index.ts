@@ -1,5 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── AES-256-GCM decryption for encrypted form data ──
+async function _deriveKey(secret: string): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode('twobrain-salt-v1'), iterations: 100_000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+}
+async function tryDecryptField(value: any, secret: string): Promise<any> {
+  if (!value || typeof value !== 'string' || !value.startsWith('enc:') || !secret) return value;
+  try {
+    const key = await _deriveKey(secret);
+    const combined = Uint8Array.from(atob(value.slice(4)), c => c.charCodeAt(0));
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: combined.slice(0, 12) }, key, combined.slice(12));
+    const text = new TextDecoder().decode(decrypted);
+    try { return JSON.parse(text); } catch { return text; }
+  } catch { return value; }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -257,6 +274,15 @@ Deno.serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
+      }
+
+      // Decrypt encrypted fields
+      const encSecret = Deno.env.get('ENCRYPTION_SECRET') ?? '';
+      if (encSecret) {
+        for (const row of responses) {
+          (row as any).answers = await tryDecryptField((row as any).answers, encSecret);
+          (row as any).metadata = await tryDecryptField((row as any).metadata, encSecret);
+        }
       }
 
       // Clear existing data (keep header)
