@@ -312,20 +312,78 @@ export default function AnalyticsDashboard() {
     return Object.values(buckets).sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredSessions, days]);
 
-  /* ── DROPOFF BY PAGE ── */
+  /* ── Flow-ordered page list from canvas BFS ── */
+  const flowOrderedPageList = useMemo(() => {
+    const targetForms = formFilter === 'all' ? forms : forms.filter(f => f.id === formFilter);
+    const result: { formId: string; pageId: string; pageIndex: number; title: string }[] = [];
+
+    for (const form of targetForms) {
+      const edges = form.flowEdges || [];
+      const pages = form.pages || [];
+      if (pages.length === 0) continue;
+
+      // BFS from 'start' following edges — same logic as useEditorForm
+      const pageMap = new Map(pages.map((p, i) => [p.id, { ...p, originalIndex: i }]));
+      const ordered: typeof pages = [];
+      const visited = new Set<string>();
+      const queue = ['start'];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        if (visited.has(current)) continue;
+        visited.add(current);
+        if (current.startsWith('p-')) {
+          const pageId = current.slice(2);
+          const page = pageMap.get(pageId);
+          if (page) { ordered.push(page); pageMap.delete(pageId); }
+        }
+        for (const edge of edges) {
+          if (edge.source === current && !visited.has(edge.target)) queue.push(edge.target);
+        }
+      }
+      // Append disconnected pages at the end
+      for (const page of pages) { if (pageMap.has(page.id)) ordered.push(page); }
+
+      ordered.forEach((page, flowIdx) => {
+        const originalIdx = pages.findIndex(p => p.id === page.id);
+        result.push({ formId: form.id, pageId: page.id, pageIndex: originalIdx, title: page.title || `Página ${flowIdx + 1}` });
+      });
+    }
+    return result;
+  }, [forms, formFilter]);
+
+  /* ── DROPOFF BY PAGE (flow order) ── */
   const pageDropoffData = useMemo(() => {
+    // Build a map from (formId, pageIndex) -> flowOrder position
+    const flowIndexMap = new Map<string, { flowIdx: number; title: string }>();
+    flowOrderedPageList.forEach((p, flowIdx) => {
+      flowIndexMap.set(`${p.formId}:${p.pageIndex}`, { flowIdx, title: p.title });
+    });
+
     const pageMap: Record<number, { index: number; title: string; views: number; timesArr: number[] }> = {};
     filteredEvents.filter(e => e.event_type === 'page_view').forEach(e => {
       const idx = e.page_index ?? 0;
-      if (!pageMap[idx]) pageMap[idx] = { index: idx, title: e.page_title || `Página ${idx + 1}`, views: 0, timesArr: [] };
-      pageMap[idx].views++;
-      if (e.time_on_page_ms) pageMap[idx].timesArr.push(e.time_on_page_ms);
+      // Try to find flow order for this page
+      let flowIdx = idx;
+      let title = e.page_title || `Página ${idx + 1}`;
+      if (formFilter !== 'all') {
+        const key = `${formFilter}:${idx}`;
+        const found = flowIndexMap.get(key);
+        if (found) { flowIdx = found.flowIdx; title = found.title; }
+      }
+      if (!pageMap[flowIdx]) pageMap[flowIdx] = { index: flowIdx, title, views: 0, timesArr: [] };
+      pageMap[flowIdx].views++;
+      if (e.time_on_page_ms) pageMap[flowIdx].timesArr.push(e.time_on_page_ms);
     });
     const abandonsByPage: Record<number, number> = {};
     filteredResponses.forEach(r => {
       const meta = r.metadata as Record<string, any> | null;
       if (meta?.status === 'partial' && meta?.last_page_index != null) {
-        const pageIdx = Number(meta.last_page_index);
+        let pageIdx = Number(meta.last_page_index);
+        if (formFilter !== 'all') {
+          const key = `${formFilter}:${pageIdx}`;
+          const found = flowIndexMap.get(key);
+          if (found) pageIdx = found.flowIdx;
+        }
         abandonsByPage[pageIdx] = (abandonsByPage[pageIdx] || 0) + 1;
       }
     });
@@ -335,18 +393,40 @@ export default function AnalyticsDashboard() {
       dropoffs: abandonsByPage[p.index] || 0,
       avgTimeMs: p.timesArr.length > 0 ? p.timesArr.reduce((s, v) => s + v, 0) / p.timesArr.length : 0,
     }));
-  }, [filteredEvents, filteredResponses]);
+  }, [filteredEvents, filteredResponses, flowOrderedPageList, formFilter]);
 
-  /* ── DROPOFF BY QUESTION ── */
+  /* ── DROPOFF BY QUESTION (flow order) ── */
   const questionDropoffData = useMemo(() => {
     const targetForms = formFilter === 'all' ? forms : forms.filter(f => f.id === formFilter);
     const questionMeta: Record<string, { id: string; title: string; pageTitle: string }> = {};
     const questionOrder: string[] = [];
     targetForms.forEach(form => {
-      (form.pages || []).forEach((page, pageIdx) => {
+      // Use flow-ordered pages (BFS) instead of array order
+      const edges = form.flowEdges || [];
+      const pages = form.pages || [];
+      const pageMap = new Map(pages.map(p => [p.id, p]));
+      const orderedPages: typeof pages = [];
+      const visited = new Set<string>();
+      const queue = ['start'];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        if (visited.has(current)) continue;
+        visited.add(current);
+        if (current.startsWith('p-')) {
+          const pageId = current.slice(2);
+          const page = pageMap.get(pageId);
+          if (page) { orderedPages.push(page); pageMap.delete(pageId); }
+        }
+        for (const edge of edges) {
+          if (edge.source === current && !visited.has(edge.target)) queue.push(edge.target);
+        }
+      }
+      for (const page of pages) { if (pageMap.has(page.id)) orderedPages.push(page); }
+
+      orderedPages.forEach((page, flowIdx) => {
         (page.elements || []).forEach(el => {
           if (el.type.startsWith('input_') && !questionMeta[el.id]) {
-            questionMeta[el.id] = { id: el.id, title: el.content || el.label || el.type, pageTitle: page.title || `Página ${pageIdx + 1}` };
+            questionMeta[el.id] = { id: el.id, title: el.content || el.label || el.type, pageTitle: page.title || `Página ${flowIdx + 1}` };
             questionOrder.push(el.id);
           }
         });
