@@ -79,38 +79,6 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
               </div>
             </>
           )}
-
-          {/* Preview */}
-          <div className="p-3 rounded-lg bg-muted/30 border border-border">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Preview</p>
-            <div className="flex items-baseline gap-1.5">
-              {(style.questionNumberStyle || 'decimal') !== 'none' && (
-                <span style={{
-                  color: style.questionNumberColor || style.textColor || '#203300',
-                  fontSize: style.questionNumberSize || 14,
-                  fontWeight: style.questionNumberWeight || 'bold',
-                }}>
-                  {style.questionNumberStyle === 'circle' ? '①' : '1.'}
-                </span>
-              )}
-              <span style={{
-                color: style.questionTitleColor || style.textColor || '#203300',
-                fontSize: style.questionTitleSize || 18,
-                fontWeight: style.questionTitleWeight || '600',
-              }}>
-                Pergunta de exemplo
-              </span>
-            </div>
-            {(style.questionDescSize || 14) > 0 && (
-              <p className="mt-1 ml-5" style={{
-                color: style.questionDescColor || '#888888',
-                fontSize: style.questionDescSize || 14,
-                fontWeight: style.questionDescWeight || 'normal',
-              }}>
-                Descrição auxiliar da pergunta
-              </p>
-            )}
-          </div>
         </div>
       </div>
 
@@ -244,39 +212,10 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
             min={32} max={64}
           />
 
-          {/* Preview */}
-          <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Preview</p>
-            <div
-              className="w-full px-3 flex items-center transition-all"
-              style={{
-                backgroundColor: style.fieldBgColor || '#ffffff',
-                border: `${style.fieldBorderWidth ?? 1}px solid ${style.fieldBorderColor || '#cccccc'}`,
-                borderRadius: style.fieldBorderRadius ?? 8,
-                height: style.fieldHeight ?? 44,
-                color: style.fieldPlaceholderColor || '#999999',
-                fontSize: 14,
-              }}
-            >
-              <span>Digite sua resposta...</span>
-            </div>
-            <div
-              className="w-full px-3 flex items-center transition-all"
-              style={{
-                backgroundColor: style.fieldBgColor || '#ffffff',
-                border: `${style.fieldBorderWidth ?? 1}px solid ${style.fieldFocusBorderColor || style.primaryColor || '#B3AB86'}`,
-                borderRadius: style.fieldBorderRadius ?? 8,
-                height: style.fieldHeight ?? 44,
-                color: style.fieldTextColor || '#203300',
-                fontSize: 14,
-                boxShadow: `0 0 0 2px ${style.fieldFocusBorderColor || style.primaryColor || '#B3AB86'}22`,
-              }}
-            >
-              <span>Resposta do usuário</span>
-            </div>
-          </div>
         </div>
       </div>
+
+
 
       {/* ─── Botão ─── */}
       <div className="space-y-4">
@@ -316,21 +255,6 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
             </Select>
           </div>
 
-          {/* Preview */}
-          <div className="p-3 rounded-lg bg-muted/30 border border-border flex justify-center">
-            <button
-              className="transition-all font-medium"
-              style={{
-                backgroundColor: style.buttonBgColor || style.primaryColor || '#B3AB86',
-                color: style.buttonTextColor || '#ffffff',
-                borderRadius: style.buttonBorderRadius ?? 8,
-                padding: style.buttonSize === 'sm' ? '6px 16px' : style.buttonSize === 'lg' ? '14px 32px' : '10px 24px',
-                fontSize: style.buttonSize === 'sm' ? 13 : style.buttonSize === 'lg' ? 16 : 14,
-              }}
-            >
-              Continuar →
-            </button>
-          </div>
         </div>
       </div>
     </div>
