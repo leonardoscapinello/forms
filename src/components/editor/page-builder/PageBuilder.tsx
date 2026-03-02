@@ -425,9 +425,29 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onDragLeave={handleCanvasDragLeave}
         onDrop={handleCanvasDrop}
         style={{
-          ['--primary' as any]: '48 24% 62%', // #B3AB86 for selected/focused borders in canvas
-          backgroundColor: isExternalDragOver ? undefined : (() => { const raw = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAF6'; return raw.startsWith('#') ? raw : `hsl(${raw})`; })(),
-          fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),
+          ['--primary' as any]: '48 24% 62%',
+          ...(() => {
+            const bgType = formStyle?.backgroundType || 'solid';
+            const rawBg = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAF6';
+            const bg = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
+            const result: React.CSSProperties = {
+              fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),
+              color: formStyle?.textColor || undefined,
+            };
+            if (isExternalDragOver) return result;
+            if (bgType === 'gradient' && formStyle?.backgroundGradient) {
+              result.background = formStyle.backgroundGradient;
+            } else if (bgType === 'image' && formStyle?.backgroundImage) {
+              result.backgroundColor = bg;
+              result.backgroundImage = `url(${formStyle.backgroundImage})`;
+              result.backgroundSize = formStyle.backgroundSize || 'cover';
+              result.backgroundPosition = 'center';
+              result.backgroundRepeat = 'no-repeat';
+            } else {
+              result.backgroundColor = bg;
+            }
+            return result;
+          })(),
         }}
       >
         {/* Pinned notification elements */}
@@ -463,6 +483,18 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Logo */}
+        {formStyle?.logoUrl && (
+          <div className="px-6 pt-4">
+            <img
+              src={formStyle.logoUrl}
+              alt="Logo"
+              className="object-contain"
+              style={{ height: formStyle.logoHeight || 40 }}
+            />
           </div>
         )}
 
