@@ -993,6 +993,7 @@ export default function FormPreview() {
     let currentNodeId = fromNodeId;
     let currentAns = { ...currentAnswers };
     const visited = new Set<string>();
+    const disabledNodes = new Set(f?.disabledNodes || []);
 
     for (let i = 0; i < 200; i++) {
       if (visited.has(currentNodeId)) break;
@@ -1017,6 +1018,12 @@ export default function FormPreview() {
       }
 
       const target = nextEdge.target;
+
+      // If the target node is disabled, skip it entirely (pass-through)
+      if (disabledNodes.has(target) && target !== 'end') {
+        currentNodeId = target;
+        continue;
+      }
 
       // Terminal: found a page
       if (target.startsWith('p-')) {

@@ -641,6 +641,8 @@ export interface FormData {
   /** Pixel events fired automatically when the form is loaded */
   pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];
+  /** IDs of nodes that are disabled (skipped during execution) */
+  disabledNodes?: string[];
   flowEdges?: FlowEdge[];
   /** Form variables for dynamic content and logic */
   variables?: FormVariable[];

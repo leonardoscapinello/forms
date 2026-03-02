@@ -31,8 +31,8 @@ const OP_OPTIONS: { value: VariableOpType; label: string }[] = [
   { value: 'divide',   label: 'Dividir (÷)' },
 ];
 
-function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps }) {
-  const { label, operations, variables, integrationNodes = [], allInputElements = [], onChange, onDelete, onCreateVariable } = data;
+function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodeProps & { isNodeDisabled?: boolean; onToggleDisabled?: () => void } }) {
+  const { label, operations, variables, integrationNodes = [], allInputElements = [], onChange, onDelete, onCreateVariable, isNodeDisabled = false, onToggleDisabled } = data;
 
   const validation = useMemo(() => validateVariableOpNode(operations, variables), [operations, variables]);
 
@@ -60,7 +60,8 @@ function VariableOpNode({ data, selected }: NodeProps & { data: VariableOpNodePr
     <TooltipProvider>
     <div
       className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-        !validation.isValid
+        isNodeDisabled ? 'opacity-50 grayscale'
+        : !validation.isValid
           ? 'border-destructive shadow-destructive/20 shadow-md ring-1 ring-destructive/40'
           : selected
             ? 'border-node-variable-op-accent shadow-md ring-2 ring-node-variable-op-accent/20'

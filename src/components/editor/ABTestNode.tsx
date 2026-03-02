@@ -12,8 +12,8 @@ interface Props {
   };
 }
 
-export default function ABTestNode({ data }: Props) {
-  const { nodeData, onChange, onDelete } = data;
+export default function ABTestNode({ data }: Props & { data: Props['data'] & { isNodeDisabled?: boolean } }) {
+  const { nodeData, onChange, onDelete, isNodeDisabled = false } = data as any;
   const variants = nodeData.variants || [
     { id: crypto.randomUUID(), label: 'A', weight: 50 },
     { id: crypto.randomUUID(), label: 'B', weight: 50 },
@@ -50,7 +50,7 @@ export default function ABTestNode({ data }: Props) {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-node-abtest-accent/30 shadow-sm w-72 overflow-hidden">
+    <div className={`bg-card rounded-xl border border-node-abtest-accent/30 shadow-sm w-72 overflow-hidden ${isNodeDisabled ? 'opacity-50 grayscale' : ''}`}>
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-abtest-accent !border-2 !border-card" />
 
       {/* Header */}

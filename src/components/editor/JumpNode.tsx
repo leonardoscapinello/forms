@@ -12,11 +12,11 @@ interface Props {
   };
 }
 
-export default function JumpNode({ data }: Props) {
-  const { nodeData, pages, onChange, onDelete } = data;
+export default function JumpNode({ data }: Props & { data: Props['data'] & { isNodeDisabled?: boolean } }) {
+  const { nodeData, pages, onChange, onDelete, isNodeDisabled = false } = data as any;
 
   return (
-    <div className="bg-card rounded-xl border border-node-jump-accent/30 shadow-sm w-64 overflow-hidden">
+    <div className={`bg-card rounded-xl border border-node-jump-accent/30 shadow-sm w-64 overflow-hidden ${isNodeDisabled ? 'opacity-50 grayscale' : ''}`}>
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-jump-accent !border-2 !border-card" />
 
       {/* Header */}

@@ -34,8 +34,8 @@ interface Props {
   };
 }
 
-export default function WaitNode({ data }: Props) {
-  const { nodeData, onChange, onDelete, pages } = data;
+export default function WaitNode({ data }: Props & { data: Props['data'] & { isNodeDisabled?: boolean } }) {
+  const { nodeData, onChange, onDelete, pages, isNodeDisabled = false } = data as any;
   const feedback = nodeData.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
   const mode = feedback.mode || 'button_countdown';
   const skipAction = feedback.skipAction || 'continue';
@@ -45,7 +45,7 @@ export default function WaitNode({ data }: Props) {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-node-wait-accent/30 shadow-sm w-64 overflow-hidden">
+    <div className={`bg-card rounded-xl border border-node-wait-accent/30 shadow-sm w-64 overflow-hidden ${isNodeDisabled ? 'opacity-50 grayscale' : ''}`}>
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-node-wait-accent !border-2 !border-card" />
 
       {/* Header */}

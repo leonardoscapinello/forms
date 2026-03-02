@@ -6,6 +6,7 @@ import { LocalInput } from './shared/LocalInput';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ConditionGroupEditor from './ConditionGroupEditor';
+import { NodeToggleSwitch } from './NodeDisabledOverlay';
 import { validateConditionNode } from './nodeValidation';
 import { InputElementGroup } from './VariableAssignPanel';
 
@@ -16,13 +17,15 @@ interface ConditionNodeDataProps {
   allInputElements: InputElementGroup[];
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
+  isNodeDisabled?: boolean;
+  onToggleDisabled?: () => void;
   onChange: (patch: { label?: string; branches?: ConditionBranch[] }) => void;
   onDelete: () => void;
   onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeDataProps }) {
-  const { label, branches, allInputElements = [], variables = [], integrationNodes = [], onChange, onDelete, onCreateVariable } = data;
+  const { label, branches, allInputElements = [], variables = [], integrationNodes = [], isNodeDisabled = false, onToggleDisabled, onChange, onDelete, onCreateVariable } = data;
   const [expandedBranch, setExpandedBranch] = useState<string | null>(branches[0]?.id ?? null);
 
   const validation = useMemo(() => validateConditionNode(branches, variables), [branches, variables]);
@@ -53,11 +56,13 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
     <TooltipProvider>
       <div
         className={`w-80 rounded-xl border bg-card shadow-sm transition-all ${
-          !validation.isValid
-            ? 'border-destructive shadow-destructive/20 shadow-md ring-1 ring-destructive/40'
-            : selected
-              ? 'border-node-condition-accent shadow-md ring-2 ring-node-condition-accent/20'
-              : 'border-border'
+          isNodeDisabled
+            ? 'opacity-50 grayscale'
+            : !validation.isValid
+              ? 'border-destructive shadow-destructive/20 shadow-md ring-1 ring-destructive/40'
+              : selected
+                ? 'border-node-condition-accent shadow-md ring-2 ring-node-condition-accent/20'
+                : 'border-border'
         }`}
       >
         <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card" />
@@ -83,6 +88,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                 </TooltipContent>
               </Tooltip>
             )}
+            {onToggleDisabled && <NodeToggleSwitch isDisabled={isNodeDisabled} onToggle={onToggleDisabled} />}
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onDelete}>
               <Trash2 className="h-3 w-3" />
             </Button>
