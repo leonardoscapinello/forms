@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 
 const mainItems = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'Formulários', url: '/', icon: LayoutDashboard },
   { title: 'Galeria', url: '/gallery', icon: Image },
 ];
 
