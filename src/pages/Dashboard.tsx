@@ -150,17 +150,7 @@ export default function Dashboard() {
               )}
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              {/* Table header */}
-              <div className="grid grid-cols-[1fr_100px_100px_140px_40px] items-center px-5 py-3 border-b border-border bg-muted/30 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                <span>Nome</span>
-                <span className="text-center">Status</span>
-                <span className="text-center">Respostas</span>
-                <span className="text-right">Editado</span>
-                <span />
-              </div>
-
-              {/* Rows */}
+            <div className="space-y-1">
               {filteredForms.map(form => {
                 const status = STATUS_MAP[form.status] ?? STATUS_MAP.draft;
                 const formTags = tags.filter(t => getFormTagIds(form.id).includes(t.id));
@@ -176,100 +166,90 @@ export default function Dashboard() {
                     }}
                     onDragEnd={() => setDraggingFormId(null)}
                     onClick={() => navigate(`/editor/${form.id}`)}
-                    className={`group grid grid-cols-[1fr_100px_100px_140px_40px] items-center px-5 py-3.5 border-b border-border last:border-b-0 cursor-pointer transition-colors hover:bg-accent/40 ${draggingFormId === form.id ? 'opacity-50' : ''}`}
+                    className={`group flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-accent/50 ${draggingFormId === form.id ? 'opacity-50' : ''}`}
                   >
-                    {/* Name + tags */}
-                    <div className="min-w-0 flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">{form.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {folderName && (
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    {/* Icon */}
+                    <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+
+                    {/* Name + meta */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">{form.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                        <span className={`font-semibold px-1.5 py-px rounded ${status.className}`}>
+                          {status.label}
+                        </span>
+                        <span className="tabular-nums">{form.responseCount ?? 0} respostas</span>
+                        <span>·</span>
+                        <span>
+                          {form.updatedAt
+                            ? formatDistanceToNow(new Date(form.updatedAt), { addSuffix: true, locale: ptBR })
+                            : '—'}
+                        </span>
+                        {folderName && (
+                          <>
+                            <span>·</span>
+                            <span className="flex items-center gap-0.5">
                               <Folder className="h-2.5 w-2.5" />
                               {folderName}
                             </span>
-                          )}
-                          {formTags.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              {formTags.slice(0, 3).map(tag => (
-                                <span
-                                  key={tag.id}
-                                  className="w-2 h-2 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: tag.color }}
-                                  title={tag.name}
-                                />
-                              ))}
-                              {formTags.length > 3 && (
-                                <span className="text-[10px] text-muted-foreground">+{formTags.length - 3}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          </>
+                        )}
+                        {formTags.length > 0 && (
+                          <div className="flex items-center gap-1 ml-1">
+                            {formTags.slice(0, 3).map(tag => (
+                              <span
+                                key={tag.id}
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: tag.color }}
+                                title={tag.name}
+                              />
+                            ))}
+                            {formTags.length > 3 && (
+                              <span className="text-[10px]">+{formTags.length - 3}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Status */}
-                    <div className="flex justify-center">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${status.className}`}>
-                        {status.label}
-                      </span>
-                    </div>
-
-                    {/* Responses */}
-                    <div className="text-center">
-                      <span className="text-sm text-foreground tabular-nums">{form.responseCount}</span>
-                    </div>
-
-                    {/* Last edit */}
-                    <div className="text-right">
-                      <span className="text-xs text-muted-foreground">
-                        {form.updatedAt
-                          ? formatDistanceToNow(new Date(form.updatedAt), { addSuffix: true, locale: ptBR })
-                          : '—'}
-                      </span>
-                    </div>
-
                     {/* Actions */}
-                    <div className="flex justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className="text-xs">
-                              <FolderInput className="h-3.5 w-3.5 mr-2" />
-                              Mover para pasta
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
-                              <MoveToFolderMenu
-                                folders={folders}
-                                currentFolderId={form.folderId}
-                                onMove={(folderId) => moveFormToFolder(form.id, folderId)}
-                              />
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger className="text-xs">
-                              <Tag className="h-3.5 w-3.5 mr-2" />
-                              Tags
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              <FormTagsPicker tags={tags} formTagIds={getFormTagIds(form.id)} onToggle={(tagId, isActive) => toggleTag(form.id, tagId, isActive)} />
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => deleteForm(form.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="text-xs">
+                            <FolderInput className="h-3.5 w-3.5 mr-2" />
+                            Mover para pasta
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+                            <MoveToFolderMenu
+                              folders={folders}
+                              currentFolderId={form.folderId}
+                              onMove={(folderId) => moveFormToFolder(form.id, folderId)}
+                            />
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="text-xs">
+                            <Tag className="h-3.5 w-3.5 mr-2" />
+                            Tags
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <FormTagsPicker tags={tags} formTagIds={getFormTagIds(form.id)} onToggle={(tagId, isActive) => toggleTag(form.id, tagId, isActive)} />
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => deleteForm(form.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" />Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 );
               })}
