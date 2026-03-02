@@ -4,11 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import {
   Search, FileText, Image, Globe, Bot, Twitter,
   Code2, Palette, Link2, Tag, Eye, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 
 interface Props {
   form: FormData;
@@ -211,20 +211,12 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
           </Field>
 
           <Field label="Cor do tema (theme-color)" hint="Cor da barra do navegador em dispositivos móveis.">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={seo.themeColor || '#ffffff'}
-                onChange={e => update({ themeColor: e.target.value })}
-                className="w-8 h-8 rounded border border-border cursor-pointer"
-              />
-              <Input
-                value={seo.themeColor || ''}
-                onChange={e => update({ themeColor: e.target.value })}
-                placeholder="#ffffff"
-                className="text-xs font-mono h-9 flex-1"
-              />
-            </div>
+            <ColorPickerField
+              value={seo.themeColor || ''}
+              onChange={v => update({ themeColor: v })}
+              placeholder="#ffffff"
+              defaultColor="#ffffff"
+            />
           </Field>
         </Section>
 

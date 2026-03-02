@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Palette, Type, Image, Upload, Loader2, X, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 
 interface Props {
   form: FormData;
@@ -125,28 +126,14 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
 
           {/* Solid color */}
           {bgType === 'solid' && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Cor de fundo</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={resolveHex(style.backgroundColor, '#FAFAF6')}
-                  onChange={e => updateStyle({ backgroundColor: e.target.value })}
-                  className="w-10 h-8 rounded border border-border cursor-pointer"
-                />
-                <Input
-                  value={resolveHex(style.backgroundColor, '#FAFAF6')}
-                  onChange={e => {
-                    const hex = e.target.value;
-                    if (/^#[0-9a-fA-F]{6}$/i.test(hex)) {
-                      updateStyle({ backgroundColor: hex });
-                    }
-                  }}
-                  placeholder="#FAFAF6"
-                  className="h-8 text-xs font-mono flex-1"
-                />
-              </div>
-            </div>
+            <ColorPickerField
+              label="Cor de fundo"
+              value={resolveHex(style.backgroundColor, '#FAFAF6')}
+              onChange={v => updateStyle({ backgroundColor: v || '#FAFAF6' })}
+              placeholder="#FAFAF6"
+              allowTransparent={false}
+              defaultColor="#FAFAF6"
+            />
           )}
 
           {/* Gradient */}
@@ -249,25 +236,13 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={style.textColor || '#203300'}
-              onChange={e => updateStyle({ textColor: e.target.value })}
-              className="w-10 h-8 rounded border border-border cursor-pointer"
-            />
-            <Input
-              value={style.textColor || ''}
-              onChange={e => updateStyle({ textColor: e.target.value })}
-              placeholder="#203300 (padrão)"
-              className="h-8 text-xs font-mono flex-1"
-            />
-            {style.textColor && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => updateStyle({ textColor: '' })}>
-                Resetar
-              </Button>
-            )}
-          </div>
+          <ColorPickerField
+            value={style.textColor || '#203300'}
+            onChange={v => updateStyle({ textColor: v })}
+            placeholder="#203300 (padrão)"
+            allowTransparent
+            defaultColor="#203300"
+          />
         </div>
       </div>
 
