@@ -34,13 +34,14 @@ serve(async (req) => {
     const openaiKey = config.apiKey;
     const model = config.model || 'gpt-4.1-mini';
     const systemPrompt = config.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+    const provider = config.provider === 'openai' ? 'openai' : 'lovable';
 
-    // If no OpenAI key, fall back to Lovable AI
-    const useLovable = !openaiKey;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const canUseOpenAI = provider === 'openai' && !!openaiKey;
+    const canUseLovable = !!LOVABLE_API_KEY;
 
-    if (!openaiKey && !LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'no_ai_configured', message: 'Nenhuma API de IA configurada. Configure a OpenAI nas integrações ou use o Lovable AI.' }), {
+    if (!canUseOpenAI && !canUseLovable) {
+      return new Response(JSON.stringify({ error: 'no_ai_configured', message: 'Nenhum provedor de IA disponível. Ative Lovable AI ou configure OpenAI.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -50,7 +51,7 @@ serve(async (req) => {
     if (body.test) {
       const text = body.text || 'Teste de sentimento';
       try {
-        const result = await analyzeWithAI(text, systemPrompt, useLovable, openaiKey, model, LOVABLE_API_KEY);
+        const result = await analyzeWithFallback(text, systemPrompt, openaiKey, model, LOVABLE_API_KEY, canUseOpenAI, canUseLovable);
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -128,7 +129,7 @@ serve(async (req) => {
 
       const combinedText = textParts.join('\n');
       try {
-        const analysis = await analyzeWithAI(combinedText, systemPrompt, useLovable, openaiKey, model, LOVABLE_API_KEY);
+        const analysis = await analyzeWithFallback(combinedText, systemPrompt, openaiKey, model, LOVABLE_API_KEY, canUseOpenAI, canUseLovable);
         results.push({ response_id: resp.response_id, id: resp.id, ...analysis });
       } catch (e) {
         const msg = e instanceof Error ? e.message : '';
@@ -198,6 +199,37 @@ function handleAIError(e: unknown) {
   });
 }
 
+async function analyzeWithFallback(
+  text: string,
+  systemPrompt: string,
+  openaiKey: string | undefined,
+  model: string,
+  lovableKey: string | undefined,
+  canUseOpenAI: boolean,
+  canUseLovable: boolean,
+) {
+  let lastError: unknown = null;
+
+  // 1) Try OpenAI first if explicitly selected and configured
+  if (canUseOpenAI) {
+    try {
+      return await analyzeWithAI(text, systemPrompt, false, openaiKey, model, lovableKey);
+    } catch (e) {
+      lastError = e;
+      // Fallback automatically to Lovable AI to avoid blocking the feature
+      if (!canUseLovable) throw e;
+      console.warn('OpenAI failed, falling back to Lovable AI:', e instanceof Error ? e.message : e);
+    }
+  }
+
+  // 2) Lovable AI fallback/default path
+  if (canUseLovable) {
+    return await analyzeWithAI(text, systemPrompt, true, openaiKey, model, lovableKey);
+  }
+
+  throw (lastError || new Error('no_ai_configured'));
+}
+
 async function analyzeWithAI(
   text: string,
   systemPrompt: string,
@@ -213,7 +245,7 @@ async function analyzeWithAI(
     : 'https://api.openai.com/v1/chat/completions';
 
   const key = useLovable ? lovableKey : openaiKey;
-  const aiModel = useLovable ? 'google/gemini-2.5-flash' : model;
+  const aiModel = useLovable ? 'google/gemini-3-flash-preview' : model;
 
   const res = await fetch(url, {
     method: 'POST',
