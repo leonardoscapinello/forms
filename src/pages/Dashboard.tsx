@@ -47,8 +47,8 @@ function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: n
     return d;
   }
 
-  const barColor = 'hsl(35 30% 72%)';
-  const lineColor = 'hsl(var(--destructive))';
+  const barColor = 'hsl(var(--primary))';
+  const lineColor = 'hsl(var(--destructive) / 0.35)';
 
   return (
     <svg width={w} height={h} className="flex-shrink-0" viewBox={`0 0 ${w} ${h}`}>
@@ -64,7 +64,7 @@ function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: n
             width={barW} height={barH}
             rx={2}
             fill={barColor}
-            opacity={0.7}
+            opacity={0.85}
           />
         );
       })}
