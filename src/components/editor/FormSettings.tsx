@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain, Lock } from 'lucide-react';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain, Lock, AlertCircle } from 'lucide-react';
 
 
 interface Props {
@@ -530,6 +530,31 @@ export default function FormSettings({ form, onUpdate }: Props) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+
+        {/* ─── Redirecionamento quando formulário não disponível ─── */}
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Formulário não encontrado</Label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              URL para redirecionar quando o formulário não estiver disponível (draft, excluído, etc.)
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wider">URL de redirecionamento (opcional)</Label>
+            <Input
+              value={form.notFoundRedirectUrl || ''}
+              onChange={e => onUpdate({ notFoundRedirectUrl: e.target.value })}
+              placeholder="https://seusite.com"
+              className="text-xs font-mono h-9"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Se preenchido, visitantes serão redirecionados ao invés de ver a página de erro padrão.
+            </p>
           </div>
         </div>
 
