@@ -22,10 +22,10 @@ export default function EditorPages() {
 
   // Auto-select first page
   useEffect(() => {
-    if (!editingPageId && !editingWelcome && !editingThankYou && form?.pages?.length) {
-      setEditingPageId(form.pages[0].id);
+    if (!editingPageId && !editingWelcome && !editingThankYou && flowOrderedPages.length) {
+      setEditingPageId(flowOrderedPages[0].id);
     }
-  }, [editingPageId, editingWelcome, editingThankYou, form?.pages]);
+  }, [editingPageId, editingWelcome, editingThankYou, flowOrderedPages]);
 
   return (
     <>
