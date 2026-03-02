@@ -68,7 +68,7 @@ function EditorLayoutInner() {
                 title={label}
                 className={`flex items-center justify-center p-1 sm:p-1.5 rounded-md transition-colors ${
                   currentPath === path
-                    ? 'bg-background text-foreground shadow-sm'
+                    ? 'text-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                 }`}
               >
