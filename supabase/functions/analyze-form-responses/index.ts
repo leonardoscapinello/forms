@@ -1,6 +1,23 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// ── AES-256-GCM decryption for encrypted form data ──
+async function _deriveKey(secret: string): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode('twobrain-salt-v1'), iterations: 100_000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+}
+async function tryDecryptField(value: any, secret: string): Promise<any> {
+  if (!value || typeof value !== 'string' || !value.startsWith('enc:') || !secret) return value;
+  try {
+    const key = await _deriveKey(secret);
+    const combined = Uint8Array.from(atob(value.slice(4)), c => c.charCodeAt(0));
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: combined.slice(0, 12) }, key, combined.slice(12));
+    const text = new TextDecoder().decode(decrypted);
+    try { return JSON.parse(text); } catch { return text; }
+  } catch { return value; }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -52,9 +69,11 @@ serve(async (req) => {
     const completionTimes: number[] = [];
     const responseLengths: number[] = [];
 
+    const encSecret = Deno.env.get('ENCRYPTION_SECRET') ?? '';
+
     for (const resp of responses) {
       if (resp.total_time_ms) completionTimes.push(resp.total_time_ms);
-      const answers = resp.answers || {};
+      const answers = await tryDecryptField(resp.answers, encSecret) || {};
       let totalChars = 0;
       for (const val of Object.values(answers)) {
         if (typeof val === 'string' && val.trim().length > 10) {

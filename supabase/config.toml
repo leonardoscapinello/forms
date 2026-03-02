@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.form-public-get]
 verify_jwt = false
+
+[functions.form-responses-read]
+verify_jwt = false

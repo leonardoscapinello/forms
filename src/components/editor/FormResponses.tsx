@@ -127,17 +127,18 @@ export default function FormResponses({ form }: Props) {
 
   const fetchResponses = useCallback(() => {
     setLoading(true);
-    (supabase as any)
-      .from('form_responses')
-      .select('id, response_id, answers, metadata, total_time_ms, pages_visited, created_at')
-      .eq('form_id', form.id)
-      .order('created_at', { ascending: false })
-      .limit(500)
-      .then(({ data }: any) => {
-        setRows((data || []) as ResponseRow[]);
-        setLoading(false);
-        setRefreshing(false);
-      });
+    supabase.functions.invoke('form-responses-read', {
+      body: { form_id: form.id, limit: 500 },
+    }).then(({ data, error }: any) => {
+      if (error) {
+        console.error('Failed to fetch responses:', error);
+        setRows([]);
+      } else {
+        setRows((data?.data || []) as ResponseRow[]);
+      }
+      setLoading(false);
+      setRefreshing(false);
+    });
   }, [form.id]);
 
   useEffect(() => { fetchResponses(); }, [fetchResponses]);
