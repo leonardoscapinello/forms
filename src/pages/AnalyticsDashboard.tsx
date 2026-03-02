@@ -249,18 +249,21 @@ export default function AnalyticsDashboard() {
 
   const since = useMemo(() => startOfDay(subDays(new Date(), Number(days))).toISOString(), [days]);
 
+  const formIds = useMemo(() => forms.map(f => f.id), [forms]);
+
   const fetchData = useCallback(async () => {
+    if (formIds.length === 0) { setLoading(false); return; }
     setLoading(true);
     const [sessRes, evtRes, respRes] = await Promise.all([
-      supabase.from('form_sessions').select('id, form_id, status, started_at, completed_at, pages_visited, total_pages').gte('started_at', since).order('started_at', { ascending: false }).limit(1000),
-      supabase.from('form_page_events').select('form_id, page_index, page_title, event_type, time_on_page_ms').gte('created_at', since).limit(1000),
-      supabase.from('form_responses').select('form_id, answers, metadata, created_at').gte('created_at', since).limit(1000),
+      supabase.from('form_sessions').select('id, form_id, status, started_at, completed_at, pages_visited, total_pages').gte('started_at', since).in('form_id', formIds).order('started_at', { ascending: false }).limit(1000),
+      supabase.from('form_page_events').select('form_id, page_index, page_title, event_type, time_on_page_ms').gte('created_at', since).in('form_id', formIds).limit(1000),
+      supabase.from('form_responses').select('form_id, answers, metadata, created_at').gte('created_at', since).in('form_id', formIds).limit(1000),
     ]);
     setSessions((sessRes.data as Session[]) || []);
     setPageEvents((evtRes.data as PageEvent[]) || []);
     setResponses((respRes.data as FormResponse[]) || []);
     setLoading(false);
-  }, [since]);
+  }, [since, formIds]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
