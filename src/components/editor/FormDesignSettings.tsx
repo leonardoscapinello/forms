@@ -155,7 +155,7 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               {style.backgroundImage ? (
                 <div className="space-y-2">
                   <div
-                    className="h-24 rounded-lg border border-border bg-cover bg-center"
+                    className="h-24 rounded-[8px] border border-border bg-cover bg-center"
                     style={{ backgroundImage: `url(${style.backgroundImage})` }}
                   />
                   <div className="flex items-center gap-2">
