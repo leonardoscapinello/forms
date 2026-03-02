@@ -152,8 +152,13 @@ export default function FormResponses({ form }: Props) {
   const handleAnalyzeSentiment = useCallback(async () => {
     setAnalyzingSentiment(true);
     try {
+      // Build form context with field labels and variables for richer analysis
+      const formContext = {
+        fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type })),
+        variables: (form.variables || []).map(v => ({ name: v.name, type: v.type })),
+      };
       const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
-        body: { form_id: form.id },
+        body: { form_id: form.id, form_context: formContext },
       });
       if (error) throw error;
       if (data?.results) {
@@ -166,7 +171,7 @@ export default function FormResponses({ form }: Props) {
       toast({ title: 'Erro na análise', description: e.message || 'Tente novamente', variant: 'destructive' });
     }
     setAnalyzingSentiment(false);
-  }, [form.id, toast]);
+  }, [form.id, form.variables, fields, toast]);
 
   // Extract variables as extra columns
   const variableColumns = useMemo(() => {
@@ -305,11 +310,13 @@ export default function FormResponses({ form }: Props) {
             Atualizar
           </Button>
 
-          {/* Sentiment */}
-          <Button variant="outline" size="sm" onClick={handleAnalyzeSentiment} disabled={analyzingSentiment} className="gap-1.5">
-            {analyzingSentiment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-            Sentimentos
-          </Button>
+          {/* Sentiment — only if enabled */}
+          {form.enableSentimentAnalysis && (
+            <Button variant="outline" size="sm" onClick={handleAnalyzeSentiment} disabled={analyzingSentiment} className="gap-1.5">
+              {analyzingSentiment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+              Sentimentos
+            </Button>
+          )}
 
           {/* Export */}
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">

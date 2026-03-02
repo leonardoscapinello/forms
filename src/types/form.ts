@@ -615,6 +615,8 @@ export interface FormData {
   enableGeolocation?: boolean;
   /** Show progress bar at the top of the form */
   showProgressBar?: boolean;
+  /** Enable AI sentiment/emotion analysis for responses */
+  enableSentimentAnalysis?: boolean;
   /** Google Sheet ID linked for response sync */
   googleSheetId?: string;
   /** Google Sheet URL for display */
