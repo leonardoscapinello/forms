@@ -72,9 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        fetchUserData(session.user.id).finally(() => {
-          if (mounted) setLoading(false);
-        });
+        // Don't block the whole app on profile/role fetch
+        setLoading(false);
+        fetchUserData(session.user.id);
       } else {
         setLoading(false);
       }

@@ -75,46 +75,59 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false;
     (async () => {
-      // 1. Fetch forms first
-      const formsRes = await supabase
-        .from('forms')
-        .select('id,user_id,title,data,status,created_at,updated_at,folder_id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+      try {
+        // 1. Fetch forms first
+        const formsRes = await supabase
+          .from('forms')
+          .select('id,user_id,title,data,status,created_at,updated_at,folder_id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
 
-      if (cancelled || !formsRes.data) return;
-
-      const formRows = formsRes.data as unknown as DbForm[];
-      const formIds = formRows.map(r => r.id);
-
-      // 2. Fetch response counts using lightweight count queries (no row data fetched)
-      const countMap: Record<string, number> = {};
-      if (formIds.length > 0) {
-        const chunks = [];
-        for (let i = 0; i < formIds.length; i += 20) {
-          chunks.push(formIds.slice(i, i + 20));
+        if (cancelled) return;
+        if (formsRes.error) {
+          console.error('Error loading forms:', formsRes.error);
+          setForms([]);
+          setLoaded(true);
+          return;
         }
-        const results = await Promise.all(
-          chunks.map(chunk =>
-            supabase.from('form_responses').select('form_id', { count: 'exact', head: false }).in('form_id', chunk)
-          )
-        );
-        results.forEach(res => {
-          (res.data || []).forEach((r: { form_id: string }) => {
-            countMap[r.form_id] = (countMap[r.form_id] || 0) + 1;
+
+        const formRows = (formsRes.data || []) as unknown as DbForm[];
+        const formIds = formRows.map(r => r.id);
+
+        // 2. Fetch response counts using lightweight count queries (no row data fetched)
+        const countMap: Record<string, number> = {};
+        if (formIds.length > 0) {
+          const chunks = [];
+          for (let i = 0; i < formIds.length; i += 20) {
+            chunks.push(formIds.slice(i, i + 20));
+          }
+          const results = await Promise.all(
+            chunks.map(chunk =>
+              supabase.from('form_responses').select('form_id', { count: 'exact', head: false }).in('form_id', chunk)
+            )
+          );
+          results.forEach(res => {
+            (res.data || []).forEach((r: { form_id: string }) => {
+              countMap[r.form_id] = (countMap[r.form_id] || 0) + 1;
+            });
           });
+        }
+
+        if (cancelled) return;
+
+        const parsed = formRows.map(row => {
+          const form = dbToForm(row);
+          form.responseCount = countMap[row.id] || 0;
+          return form;
         });
+        setForms(parsed);
+        setLoaded(true);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Unexpected error loading forms:', error);
+        setForms([]);
+        setLoaded(true);
       }
-
-      if (cancelled) return;
-
-      const parsed = formRows.map(row => {
-        const form = dbToForm(row);
-        form.responseCount = countMap[row.id] || 0;
-        return form;
-      });
-      setForms(parsed);
-      setLoaded(true);
     })();
     return () => { cancelled = true; };
   }, [user?.id]);

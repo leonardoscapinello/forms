@@ -26,11 +26,11 @@ export function useTags() {
   }, []);
 
   useEffect(() => {
-    if (user) fetchTags();
-  }, [user, fetchTags]);
+    if (user?.id) fetchTags();
+  }, [user?.id, fetchTags]);
 
   const createTag = useCallback(async (name: string, color: string) => {
-    if (!user) return null;
+    if (!user?.id) return null;
     const { data, error } = await supabase
       .from('tags')
       .insert({ name: name.trim(), color, created_by: user.id })
@@ -43,7 +43,7 @@ export function useTags() {
     }
     setTags(prev => [...prev, data as Tag].sort((a, b) => a.name.localeCompare(b.name)));
     return data as Tag;
-  }, [user]);
+  }, [user?.id]);
 
   const updateTag = useCallback(async (id: string, patch: Partial<Pick<Tag, 'name' | 'color'>>) => {
     const { data, error } = await supabase
