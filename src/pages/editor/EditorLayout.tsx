@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, Share2, BarChart2, Settings, Monitor, Palette, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, Share2, BarChart2, Settings, Monitor, Palette, MessageSquare, Search } from 'lucide-react';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { AnimatePresence } from 'framer-motion';
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { path: 'responses', icon: MessageSquare, label: 'Respostas' },
   { path: 'share', icon: Share2, label: 'Compartilhar' },
   { path: 'analytics', icon: BarChart2, label: 'Análises' },
+  { path: 'seo', icon: Search, label: 'SEO' },
   { path: 'settings', icon: Settings, label: 'Config.' },
 ] as const;
 

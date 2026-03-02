@@ -625,6 +625,23 @@ export interface FormData {
   googleSheetUrl?: string;
   /** GET parameters tracked as columns in responses table and Google Sheets */
   trackedParams?: TrackedParam[];
+  /** SEO settings */
+  seo?: FormSEO;
+}
+
+/** SEO configuration for the form's public page */
+export interface FormSEO {
+  title?: string;
+  description?: string;
+  keywords?: string;
+  ogImage?: string;
+  ogType?: string;
+  canonicalUrl?: string;
+  robots?: string;
+  twitterCard?: 'summary' | 'summary_large_image';
+  structuredData?: string;
+  favicon?: string;
+  themeColor?: string;
 }
 
 /** A GET parameter mapped to appear in responses table / Google Sheets */
