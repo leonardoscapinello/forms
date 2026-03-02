@@ -64,7 +64,7 @@ export default function ColorPickerField({
               )}
             </div>
             <span className="text-xs text-muted-foreground truncate flex-1 text-left">
-              {colorName}
+              {colorName === 'Cor personalizada' ? '' : colorName}
             </span>
           </button>
         </PopoverTrigger>
