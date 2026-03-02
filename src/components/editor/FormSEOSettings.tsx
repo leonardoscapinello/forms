@@ -64,7 +64,9 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export default function FormSEOSettings({ form, onUpdate }: Props) {
   const seo: FormSEO = form.seo || {};
   const ogInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
   const [uploadingOg, setUploadingOg] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   const update = (patch: Partial<FormSEO>) => {
     onUpdate({ seo: { ...seo, ...patch } });
@@ -89,6 +91,28 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
       toast.error('Erro ao enviar imagem');
     } finally {
       setUploadingOg(false);
+    }
+  }, [seo, onUpdate]);
+
+  const handleFaviconUpload = useCallback(async (file: File) => {
+    setUploadingFavicon(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `favicons/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('path', path);
+      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: fd });
+      if (error || !res?.success) {
+        toast.error(res?.message || 'Falha no upload');
+        return;
+      }
+      update({ favicon: res.url });
+      toast.success('Favicon enviado');
+    } catch {
+      toast.error('Erro ao enviar favicon');
+    } finally {
+      setUploadingFavicon(false);
     }
   }, [seo, onUpdate]);
 
@@ -275,13 +299,72 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
             </Select>
           </Field>
 
-          <Field label="Favicon (URL)" hint="Ícone exibido na aba do navegador. Use .ico, .png ou .svg.">
-            <Input
-              value={seo.favicon || ''}
-              onChange={e => update({ favicon: e.target.value })}
-              placeholder="https://exemplo.com/favicon.ico"
-              className="text-xs font-mono h-9"
+          <Field label="Favicon" hint="Ícone exibido na aba do navegador. Use .ico, .png ou .svg.">
+            <input
+              ref={faviconInputRef}
+              type="file"
+              accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml"
+              className="hidden"
+              onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) handleFaviconUpload(f);
+                e.target.value = '';
+              }}
             />
+
+            {seo.favicon ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-2 rounded-[8px] border border-border bg-muted/30">
+                  <img
+                    src={seo.favicon}
+                    alt="Favicon"
+                    className="h-8 w-8 object-contain"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                  <span className="text-xs text-muted-foreground truncate flex-1 font-mono">{seo.favicon}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => faviconInputRef.current?.click()}>
+                    <Upload className="h-3 w-3 mr-1.5" />Trocar
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => update({ favicon: '' })}>
+                    <Trash2 className="h-3 w-3 mr-1" />Remover
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => update({ favicon: '/favicon.ico' })}>
+                    <Globe className="h-3 w-3 mr-1" />Padrão
+                  </Button>
+                </div>
+                <Input
+                  value={seo.favicon || ''}
+                  onChange={e => update({ favicon: e.target.value })}
+                  placeholder="ou cole uma URL"
+                  className="text-xs font-mono h-8"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-10 text-xs border-dashed gap-2"
+                    disabled={uploadingFavicon}
+                    onClick={() => faviconInputRef.current?.click()}
+                  >
+                    {uploadingFavicon ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {uploadingFavicon ? 'Enviando...' : 'Enviar favicon'}
+                  </Button>
+                  <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={() => update({ favicon: '/favicon.ico' })}>
+                    <Globe className="h-3.5 w-3.5" />Usar padrão do sistema
+                  </Button>
+                </div>
+                <Input
+                  value={seo.favicon || ''}
+                  onChange={e => update({ favicon: e.target.value })}
+                  placeholder="ou cole uma URL: https://..."
+                  className="text-xs font-mono h-8"
+                />
+              </div>
+            )}
           </Field>
 
           <Field label="Cor do tema (theme-color)" hint="Cor da barra do navegador em dispositivos móveis.">
