@@ -52,10 +52,10 @@ const PERIOD_OPTIONS = [
 
 const CHART_COLORS = [
   'hsl(var(--primary))',
-  'hsl(48, 80%, 55%)',
-  'hsl(160, 50%, 45%)',
-  'hsl(340, 60%, 55%)',
-  'hsl(200, 60%, 50%)',
+  'hsl(var(--success))',
+  'hsl(var(--warning))',
+  'hsl(var(--destructive))',
+  'hsl(var(--accent-foreground))',
 ];
 
 /* ── KPI card ── */
@@ -72,8 +72,8 @@ function KpiCard({ icon: Icon, label, value, sub, trend }: {
             {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
           </div>
           <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
-            trend === 'up' ? 'bg-emerald-500/10 text-emerald-600' :
-            trend === 'down' ? 'bg-rose-500/10 text-rose-500' :
+            trend === 'up' ? 'bg-primary/10 text-primary-foreground' :
+            trend === 'down' ? 'bg-destructive/10 text-destructive' :
             'bg-accent text-muted-foreground'
           }`}>
             <Icon className="h-5 w-5" />
@@ -186,8 +186,8 @@ export default function AnalyticsDashboard() {
   /* completion rate per form (pie) */
   const pieData = useMemo(() => {
     return [
-      { name: 'Completas', value: completedSessions.length, color: 'hsl(160, 50%, 45%)' },
-      { name: 'Abandonos', value: totalSessions - completedSessions.length, color: 'hsl(340, 60%, 55%)' },
+      { name: 'Completas', value: completedSessions.length, color: 'hsl(var(--success))' },
+      { name: 'Abandonos', value: totalSessions - completedSessions.length, color: 'hsl(var(--destructive))' },
     ];
   }, [completedSessions.length, totalSessions]);
 
@@ -258,8 +258,8 @@ export default function AnalyticsDashboard() {
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="grad-completed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(160,50%,45%)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="hsl(160,50%,45%)" stopOpacity={0} />
+                      <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -268,7 +268,7 @@ export default function AnalyticsDashboard() {
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                   <Tooltip {...tooltipStyle} labelFormatter={v => format(parseISO(v as string), "dd 'de' MMMM", { locale: ptBR })} />
                   <Area type="monotone" dataKey="sessões" stroke="hsl(var(--primary))" fill="url(#grad-sessions)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="completas" stroke="hsl(160,50%,45%)" fill="url(#grad-completed)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="completas" stroke="hsl(var(--success))" fill="url(#grad-completed)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -330,7 +330,7 @@ export default function AnalyticsDashboard() {
                           <div className="flex items-center gap-3">
                             <span className="tabular-nums text-muted-foreground">{page.views} views</span>
                             {i > 0 && dropPct > 0 && (
-                              <span className="text-rose-500 text-[10px] font-semibold">-{dropPct}%</span>
+                              <span className="text-destructive text-[10px] font-semibold">-{dropPct}%</span>
                             )}
                             <span className="text-[10px] text-muted-foreground">{msToReadable(page.avgTimeMs)}</span>
                           </div>
@@ -371,7 +371,7 @@ export default function AnalyticsDashboard() {
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={100} />
                     <Tooltip {...tooltipStyle} />
                     <Bar dataKey="sessions" name="Sessões" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={14} />
-                    <Bar dataKey="completed" name="Completas" fill="hsl(160,50%,45%)" radius={[0, 4, 4, 0]} barSize={14} />
+                    <Bar dataKey="completed" name="Completas" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} barSize={14} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
