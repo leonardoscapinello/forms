@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const DEFAULT_SYSTEM_PROMPT = `You are an elite behavioral psychologist and consumer intelligence analyst with 20+ years of expertise in human decision-making, sentiment analysis, and lead psychology. Your analytical framework integrates Cognitive & Behavioral Psychology, Emotional Microexpression Analysis for written language, Consumer Neuroscience, NLP, and Psycholinguistics.
+
+Analyze form responses and return structured JSON with deep psychological insights. Go beyond surface-level sentiment.
+
+Return JSON with: sentiment (primary_emotion, secondary_emotion, emotional_conflict, emotional_intensity 1-10, overall_sentiment, sentiment_summary), behavioral_patterns (response_style, engagement_level, detected_signals[], writing_personality_traits[]), hidden_motivations (real_intent, emotional_triggers[], self_awareness_level, decision_stage, unspoken_objections[]), psychological_archetype (primary_type, secondary_type, archetype_confidence, key_behavioral_traits[]), conversion_signals (purchase_intent_score 1-10, problem_urgency_score 1-10, investment_readiness_score 1-10, trust_level_score 1-10, overall_lead_score 1-100, lead_tier), recommended_approach (ideal_tone, primary_objection_to_address, emotional_hook, urgency_trigger, next_best_action), dashboard_tags[], confidence_score, analyst_notes.
+
+CRITICAL: Never be superficial. Scores must be justified. Return ONLY valid JSON.`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -24,7 +32,8 @@ serve(async (req) => {
 
     const config = (settings?.config as any) || {};
     const openaiKey = config.apiKey;
-    const model = config.model || 'gpt-4o-mini';
+    const model = config.model || 'gpt-4.1-mini';
+    const systemPrompt = config.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
     // If no OpenAI key, fall back to Lovable AI
     const useLovable = !openaiKey;
@@ -41,7 +50,7 @@ serve(async (req) => {
     if (body.test) {
       const text = body.text || 'Teste de sentimento';
       try {
-        const result = await analyzeSentiment(text, useLovable, openaiKey, model, LOVABLE_API_KEY);
+        const result = await analyzeWithAI(text, systemPrompt, useLovable, openaiKey, model, LOVABLE_API_KEY);
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -85,7 +94,6 @@ serve(async (req) => {
       });
     }
 
-    // Extract text answers from each response
     const results = [];
     for (const resp of responses) {
       const answers = resp.answers || {};
@@ -96,37 +104,46 @@ serve(async (req) => {
       }
 
       if (textParts.length === 0) {
-        results.push({ response_id: resp.response_id, id: resp.id, sentiment: 'neutral', emotions: [], score: 0, summary: 'Sem texto para análise' });
+        results.push({ response_id: resp.response_id, id: resp.id, sentiment: { overall_sentiment: 'neutral' }, confidence_score: 0, analyst_notes: 'Sem texto para análise' });
         continue;
       }
 
       const combinedText = textParts.join(' | ');
       try {
-        const analysis = await analyzeSentiment(combinedText, useLovable, openaiKey, model, LOVABLE_API_KEY);
+        const analysis = await analyzeWithAI(combinedText, systemPrompt, useLovable, openaiKey, model, LOVABLE_API_KEY);
         results.push({ response_id: resp.response_id, id: resp.id, ...analysis });
       } catch (e) {
-        results.push({ response_id: resp.response_id, id: resp.id, sentiment: 'error', emotions: [], score: 0, summary: 'Erro na análise' });
+        results.push({ response_id: resp.response_id, id: resp.id, sentiment: { overall_sentiment: 'error' }, confidence_score: 0, analyst_notes: 'Erro na análise' });
       }
     }
 
     // Aggregate stats
     const sentimentCounts = { positive: 0, neutral: 0, negative: 0, mixed: 0 };
-    const emotionCounts: Record<string, number> = {};
-    let totalScore = 0;
+    const leadTiers = { hot: 0, warm: 0, cold: 0, unqualified: 0 };
+    const allTags: Record<string, number> = {};
+    let totalLeadScore = 0;
     let scored = 0;
 
     for (const r of results) {
-      if (r.sentiment in sentimentCounts) sentimentCounts[r.sentiment as keyof typeof sentimentCounts]++;
-      if (typeof r.score === 'number') { totalScore += r.score; scored++; }
-      for (const e of (r.emotions || [])) { emotionCounts[e] = (emotionCounts[e] || 0) + 1; }
+      const os = r.sentiment?.overall_sentiment;
+      if (os && os in sentimentCounts) sentimentCounts[os as keyof typeof sentimentCounts]++;
+      const tier = r.conversion_signals?.lead_tier;
+      if (tier && tier in leadTiers) leadTiers[tier as keyof typeof leadTiers]++;
+      if (typeof r.conversion_signals?.overall_lead_score === 'number') {
+        totalLeadScore += r.conversion_signals.overall_lead_score;
+        scored++;
+      }
+      for (const tag of (r.dashboard_tags || [])) {
+        allTags[tag] = (allTags[tag] || 0) + 1;
+      }
     }
 
-    const avgScore = scored > 0 ? Math.round((totalScore / scored) * 100) / 100 : 0;
-    const topEmotions = Object.entries(emotionCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const avgLeadScore = scored > 0 ? Math.round(totalLeadScore / scored) : 0;
+    const topTags = Object.entries(allTags).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
     return new Response(JSON.stringify({
       results,
-      aggregate: { sentimentCounts, avgScore, topEmotions, total: results.length },
+      aggregate: { sentimentCounts, leadTiers, avgLeadScore, topTags, total: results.length },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -140,29 +157,22 @@ serve(async (req) => {
   }
 });
 
-async function analyzeSentiment(
+async function analyzeWithAI(
   text: string,
+  systemPrompt: string,
   useLovable: boolean,
   openaiKey: string | undefined,
   model: string,
   lovableKey: string | undefined,
 ) {
-  const prompt = `Analise o texto abaixo e retorne um JSON com:
-- sentiment: "positive" | "negative" | "neutral" | "mixed"
-- score: número de -1.0 a 1.0
-- emotions: array de emoções detectadas (ex: "alegria", "frustração", "curiosidade", "ansiedade", "confiança", "surpresa", "raiva", "tristeza", "entusiasmo", "indiferença")
-- summary: frase curta descrevendo o tom geral
-
-Texto: "${text.slice(0, 2000)}"
-
-Retorne SOMENTE JSON válido.`;
+  const userPrompt = `Analyze the following form response text and provide your complete structured analysis:\n\n"${text.slice(0, 3000)}"`;
 
   const url = useLovable
     ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
     : 'https://api.openai.com/v1/chat/completions';
 
   const key = useLovable ? lovableKey : openaiKey;
-  const aiModel = useLovable ? 'google/gemini-2.5-flash-lite' : model;
+  const aiModel = useLovable ? 'google/gemini-2.5-flash' : model;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -170,10 +180,10 @@ Retorne SOMENTE JSON válido.`;
     body: JSON.stringify({
       model: aiModel,
       messages: [
-        { role: 'system', content: 'You are a sentiment and emotion analysis expert. Always respond with valid JSON only.' },
-        { role: 'user', content: prompt },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
       ],
-      temperature: 0.1,
+      temperature: 0.2,
     }),
   });
 
@@ -190,6 +200,6 @@ Retorne SOMENTE JSON válido.`;
   try {
     return JSON.parse(jsonStr);
   } catch {
-    return { sentiment: 'neutral', score: 0, emotions: [], summary: raw.slice(0, 200) };
+    return { sentiment: { overall_sentiment: 'neutral', sentiment_summary: raw.slice(0, 200) }, confidence_score: 0, analyst_notes: 'Failed to parse AI response' };
   }
 }
