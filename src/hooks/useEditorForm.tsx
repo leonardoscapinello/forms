@@ -33,6 +33,7 @@ interface EditorFormContextType {
 
   // Computed
   disconnectedPageIds: Set<string>;
+  flowOrderedPages: FunnelPage[];
   editorInputElements: InputElementGroup[];
   editorIntegrationNodes: IntegrationNodeData[];
   welcomePage: FunnelPage;
@@ -184,6 +185,36 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
       if (!visited.has(`p-${page.id}`)) disconnected.add(page.id);
     }
     return disconnected;
+  }, [form?.flowEdges, form?.pages]);
+
+  const flowOrderedPages = useMemo(() => {
+    const edges = form?.flowEdges || [];
+    const pages = form?.pages || [];
+    if (pages.length === 0) return [];
+    const pageMap = new Map(pages.map(p => [p.id, p]));
+    const ordered: FunnelPage[] = [];
+    const visited = new Set<string>();
+    const queue = ['start'];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      if (current.startsWith('p-')) {
+        const pageId = current.slice(2);
+        const page = pageMap.get(pageId);
+        if (page) {
+          ordered.push(page);
+          pageMap.delete(pageId);
+        }
+      }
+      for (const edge of edges) {
+        if (edge.source === current && !visited.has(edge.target)) queue.push(edge.target);
+      }
+    }
+    for (const page of pages) {
+      if (pageMap.has(page.id)) ordered.push(page);
+    }
+    return ordered;
   }, [form?.flowEdges, form?.pages]);
 
   const editorInputElements = useMemo<InputElementGroup[]>(() => {
@@ -391,7 +422,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
       form, formId: id!, saveStatus, lastSavedAt,
       editingPageId, setEditingPageId, editingWelcome, setEditingWelcome, editingThankYou, setEditingThankYou,
       showResponsivePreview, setShowResponsivePreview,
-      disconnectedPageIds, editorInputElements, editorIntegrationNodes, welcomePage, thankYouPage, editingPage,
+      disconnectedPageIds, flowOrderedPages, editorInputElements, editorIntegrationNodes, welcomePage, thankYouPage, editingPage,
       collaborators: collab.collaborators, lockElement: collab.lockElement, unlockElement: collab.unlockElement, broadcastCursor: collab.broadcastCursor, isLockedByOther: collab.isLockedByOther,
       updateFormData,
       handleAddPage, handleDeletePage, handlePageChange, handleRenamePage,
@@ -410,7 +441,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   }, [
     form, id, saveStatus, lastSavedAt,
     editingPageId, editingWelcome, editingThankYou, showResponsivePreview,
-    disconnectedPageIds, editorInputElements, editorIntegrationNodes, welcomePage, thankYouPage, editingPage,
+    disconnectedPageIds, flowOrderedPages, editorInputElements, editorIntegrationNodes, welcomePage, thankYouPage, editingPage,
     collab.collaborators, collab.lockElement, collab.unlockElement, collab.broadcastCursor, collab.isLockedByOther,
     updateFormData,
     handleAddPage, handleDeletePage, handlePageChange, handleRenamePage,
