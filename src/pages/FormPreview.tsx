@@ -1919,7 +1919,7 @@ export default function FormPreview() { // perf-v2
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="min-h-screen flex flex-col relative"
+      className="min-h-screen flex flex-col relative will-change-[opacity]"
       style={outerContainerStyle}
     >
 
@@ -1999,7 +1999,7 @@ export default function FormPreview() { // perf-v2
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="w-full mx-auto my-auto"
+                className="w-full mx-auto my-auto will-change-transform"
                 style={contentContainerStyle}
               >
                 {/* Default welcome (no custom elements) */}
