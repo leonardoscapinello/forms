@@ -1,11 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Settings, LogOut, LayoutDashboard, Image } from 'lucide-react';
+import { Settings, LogOut, LayoutDashboard, Image, FileText, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 
 const mainItems = [
-  { title: 'Formulários', url: '/', icon: LayoutDashboard },
+  { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
+  { title: 'Formulários', url: '/', icon: FileText },
   { title: 'Galeria', url: '/gallery', icon: Image },
 ];
 
