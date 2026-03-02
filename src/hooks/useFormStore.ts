@@ -222,9 +222,20 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   const createForm = useCallback(async (folderId: string | null = null): Promise<FormData | null> => {
     if (!user) return null;
     const now = new Date().toISOString();
+
+    // Generate a unique sequential title
+    const prefix = 'Meu formulário';
+    const existingNumbers = forms
+      .map(f => {
+        const match = f.title?.match(/^Meu formulário\s*(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(n => n > 0);
+    const nextNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+
     const form: FormData = {
       id: crypto.randomUUID(),
-      title: 'Formulário sem título',
+      title: `${prefix} ${nextNum}`,
       questions: [],
       pages: [createDefaultFunnelPage('Página 1')],
       globalPageStyle: {
@@ -252,7 +263,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     const formWithFolder = { ...form, folderId };
     setForms(prev => [...prev, formWithFolder]);
     return formWithFolder;
-  }, [user]);
+  }, [user, forms]);
 
   const deleteForm = useCallback(async (id: string) => {
     const timer = debounceTimers.current.get(id);
