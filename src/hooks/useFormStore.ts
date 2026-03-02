@@ -75,14 +75,30 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('forms')
-        .select('id,user_id,title,data,status,created_at,updated_at,folder_id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+      const [formsRes, responsesRes] = await Promise.all([
+        supabase
+          .from('forms')
+          .select('id,user_id,title,data,status,created_at,updated_at,folder_id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('form_responses')
+          .select('form_id'),
+      ]);
 
-      if (!cancelled && data) {
-        setForms((data as unknown as DbForm[]).map(dbToForm));
+      if (!cancelled && formsRes.data) {
+        // Count responses per form
+        const countMap: Record<string, number> = {};
+        (responsesRes.data || []).forEach((r: { form_id: string }) => {
+          countMap[r.form_id] = (countMap[r.form_id] || 0) + 1;
+        });
+
+        const parsed = (formsRes.data as unknown as DbForm[]).map(row => {
+          const form = dbToForm(row);
+          form.responseCount = countMap[row.id] || 0;
+          return form;
+        });
+        setForms(parsed);
         setLoaded(true);
       }
     })();
