@@ -47,9 +47,11 @@ interface Props {
   isLockedByOther?: (elementId: string) => CollaboratorPresence | null;
   formStyle?: import('@/types/form').FormStyle;
   hideToolbar?: boolean;
+  /** Read-only mode: no selection, no drag, no settings panel */
+  readOnly?: boolean;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar, readOnly }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -382,22 +384,22 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         <SortableElement
           key={el.id}
           element={el}
-          isSelected={selectedId === el.id}
-          isDragActive={activeId !== null}
-          onSelect={() => {
-            if (lockedBy) return; // Prevent selecting locked elements
+          isSelected={!readOnly && selectedId === el.id}
+          isDragActive={!readOnly && activeId !== null}
+          onSelect={readOnly ? () => {} : () => {
+            if (lockedBy) return;
             setSelectedId(el.id);
             lockElement?.(el.id);
           }}
-          onDelete={() => handleDelete(el.id)}
-          onElementChange={(patch) => handleElementChange(el.id, patch)}
-          onRemoveFromMain={(elementId) => {
+          onDelete={readOnly ? () => {} : () => handleDelete(el.id)}
+          onElementChange={readOnly ? () => {} : (patch) => handleElementChange(el.id, patch)}
+          onRemoveFromMain={readOnly ? () => {} : (elementId) => {
             onChange(elements.filter(e => e.id !== elementId));
             if (selectedId === elementId) setSelectedId(null);
           }}
-          onMoveToMain={handleMoveToMain}
-          selectedId={selectedId}
-          onSelectElement={(id) => setSelectedId(id)}
+          onMoveToMain={readOnly ? undefined as any : handleMoveToMain}
+          selectedId={readOnly ? null : selectedId}
+          onSelectElement={readOnly ? () => {} : (id) => setSelectedId(id)}
           stepNumber={isField ? formFieldIndex : undefined}
           lockedBy={lockedBy}
         />
@@ -417,13 +419,13 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
       {/* Center — Preview canvas */}
       <div
         className={`flex-1 overflow-auto flex flex-col transition-colors duration-200 ${
-          isExternalDragOver ? 'bg-primary/[0.03]' : 'bg-muted/30'
+          isExternalDragOver && !readOnly ? 'bg-primary/[0.03]' : 'bg-muted/30'
         }`}
-        onClick={() => { setSelectedId(null); unlockElement?.(); }}
-        onDragOver={handleCanvasDragOver}
-        onDragEnter={handleCanvasDragEnter}
-        onDragLeave={handleCanvasDragLeave}
-        onDrop={handleCanvasDrop}
+        onClick={readOnly ? undefined : () => { setSelectedId(null); unlockElement?.(); }}
+        onDragOver={readOnly ? undefined : handleCanvasDragOver}
+        onDragEnter={readOnly ? undefined : handleCanvasDragEnter}
+        onDragLeave={readOnly ? undefined : handleCanvasDragLeave}
+        onDrop={readOnly ? undefined : handleCanvasDrop}
         style={{
           ['--primary' as any]: '48 24% 62%',
           ...(() => {
@@ -462,23 +464,27 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
               {notificationElements.map(el => (
                 <div
                   key={el.id}
-                  className={`relative group rounded-xl cursor-pointer transition-all duration-200 ${
-                    selectedId === el.id
+                  className={`relative group rounded-xl transition-all duration-200 ${
+                    readOnly ? 'cursor-default' : 'cursor-pointer'
+                  } ${
+                    !readOnly && selectedId === el.id
                       ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                      : 'hover:ring-1 hover:ring-border'
+                      : !readOnly ? 'hover:ring-1 hover:ring-border' : ''
                   }`}
-                  onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
+                  onClick={readOnly ? undefined : (e) => { e.stopPropagation(); setSelectedId(el.id); }}
                 >
-                  <div className={`absolute -left-6 top-1/2 -translate-y-1/2 transition-opacity duration-150 ${
-                    selectedId === el.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(el.id); }}
-                      className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  {!readOnly && (
+                    <div className={`absolute -left-6 top-1/2 -translate-y-1/2 transition-opacity duration-150 ${
+                      selectedId === el.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(el.id); }}
+                        className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                   <ElementPreview element={el} />
                 </div>
               ))}
@@ -567,8 +573,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         </div>
       </div>
 
-      {/* Right — Settings panel (only visible when element selected) */}
-      {selectedElement && (
+      {/* Right — Settings panel (only visible when element selected, hidden in readOnly) */}
+      {!readOnly && selectedElement && (
         <div className="w-72 border-l border-border bg-card flex flex-col h-full flex-shrink-0">
           <ElementSettingsPanel
             key={selectedElement.id}

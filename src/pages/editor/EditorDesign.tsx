@@ -75,6 +75,7 @@ export default function EditorDesign() {
             isLockedByOther={isLockedByOther}
             formStyle={form.style}
             hideToolbar
+            readOnly
           />
         </Suspense>
       ) : (
