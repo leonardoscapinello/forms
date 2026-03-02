@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // First try published/closed
     const { data, error } = await supabase
       .from('forms')
       .select('id, title, status, data')
@@ -51,6 +52,24 @@ Deno.serve(async (req) => {
       .single();
 
     if (error || !data) {
+      // Check if form exists but is draft/archived — return notFoundRedirectUrl if configured
+      const { data: draftData } = await supabase
+        .from('forms')
+        .select('data')
+        .eq('id', formId)
+        .single();
+
+      if (draftData?.data) {
+        const d = draftData.data as Record<string, unknown>;
+        const redirectUrl = d.notFoundRedirectUrl as string | undefined;
+        if (redirectUrl) {
+          return new Response(JSON.stringify({ error: 'Form not available', redirectUrl }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       return new Response(JSON.stringify({ error: 'Form not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -299,8 +299,14 @@ export default function FormPreview() { // perf-v2
         },
         cache: 'no-store',
       }).then(async (res) => {
-        if (!res.ok) throw new Error('edge_fetch_failed');
         const data = await res.json();
+        if (!res.ok) {
+          // Handle redirect for draft/unavailable forms
+          if (data.redirectUrl && !cancelled) {
+            window.location.href = data.redirectUrl;
+          }
+          throw new Error('edge_fetch_failed');
+        }
         if (data.error) throw new Error('edge_data_error');
         return data;
       }),
@@ -1858,8 +1864,16 @@ export default function FormPreview() { // perf-v2
   }
 
   if (!form) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <p className="text-muted-foreground text-sm">Formulário não encontrado.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
+      <div className="text-center max-w-md space-y-4">
+        <div className="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+          <AlertCircle className="h-7 w-7 text-muted-foreground" />
+        </div>
+        <h1 className="text-xl font-semibold text-foreground">Formulário não encontrado</h1>
+        <p className="text-sm text-muted-foreground">
+          Este formulário não existe ou não está disponível no momento.
+        </p>
+      </div>
     </div>
   );
 

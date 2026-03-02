@@ -650,6 +650,8 @@ export interface FormData {
   status: 'draft' | 'published' | 'closed' | 'archived';
   closedMessage?: string;
   closedRedirectUrl?: string;
+  /** URL to redirect when form is not found (draft/deleted) */
+  notFoundRedirectUrl?: string;
   createdAt: string;
   updatedAt: string;
   responseCount: number;
