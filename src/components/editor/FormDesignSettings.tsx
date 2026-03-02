@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Palette, Type, Image, Upload, Loader2, X, ImageIcon } from 'lucide-react';
+import { Palette, Type, Image, Upload, Loader2, X, ImageIcon, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
@@ -314,8 +314,8 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
                 <img
                   src={style.logoUrl}
                   alt="Logotipo"
-                  className="max-h-12 max-w-[160px] object-contain"
-                  style={{ height: style.logoHeight || 40 }}
+                  className="max-h-12 object-contain"
+                  style={{ height: style.logoHeight || 40, maxWidth: 128 }}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -323,10 +323,10 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
                   <Upload className="h-3 w-3 mr-1.5" />Trocar
                 </Button>
                 <Button
-                  variant="outline" size="sm" className="text-xs"
+                  variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive"
                   onClick={() => updateStyle({ logoUrl: '', logoHeight: undefined })}
                 >
-                  <X className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3 mr-1" />Remover
                 </Button>
               </div>
               <div className="space-y-1.5">
@@ -344,31 +344,15 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              {/* Use default logo */}
-              <Button
-                variant="outline"
-                className="w-full h-14 text-xs gap-2"
-                onClick={() => {
-                  updateStyle({ logoUrl: '/images/twobrain-logo-dark.svg' });
-                  toast.success('Logotipo padrão aplicado');
-                }}
-              >
-                <img src="/images/twobrain-logo-dark.svg" alt="Logo padrão" className="h-6 object-contain" />
-                Usar logotipo padrão
-              </Button>
-
-              {/* Upload custom */}
-              <Button
-                variant="outline"
-                className="w-full h-12 text-xs border-dashed gap-2"
-                disabled={uploadingLogo}
-                onClick={() => logoInputRef.current?.click()}
-              >
-                {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {uploadingLogo ? 'Enviando...' : 'Enviar logotipo personalizado'}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              className="w-full h-12 text-xs border-dashed gap-2"
+              disabled={uploadingLogo}
+              onClick={() => logoInputRef.current?.click()}
+            >
+              {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploadingLogo ? 'Enviando...' : 'Enviar logotipo'}
+            </Button>
           )}
         </div>
       </div>

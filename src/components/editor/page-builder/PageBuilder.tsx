@@ -508,7 +508,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
               src={formStyle.logoUrl}
               alt="Logo"
               className="object-contain"
-              style={{ height: formStyle.logoHeight || 40 }}
+              style={{ height: formStyle.logoHeight || 40, maxWidth: 128 }}
             />
           </div>
         )}
