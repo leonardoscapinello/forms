@@ -35,12 +35,35 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
   // Box styles (background, border, padding, width) — applied universally via wrapper
   const boxStyle: React.CSSProperties = {};
-  if (style?.backgroundColor) boxStyle.backgroundColor = style.backgroundColor;
+  if (style?.backgroundColor) {
+    const bgOpacity = style.backgroundOpacity ?? 100;
+    if (bgOpacity < 100 && style.backgroundColor.startsWith('#')) {
+      const r = parseInt(style.backgroundColor.slice(1, 3), 16);
+      const g = parseInt(style.backgroundColor.slice(3, 5), 16);
+      const b = parseInt(style.backgroundColor.slice(5, 7), 16);
+      boxStyle.backgroundColor = `rgba(${r}, ${g}, ${b}, ${bgOpacity / 100})`;
+    } else {
+      boxStyle.backgroundColor = style.backgroundColor;
+    }
+  }
   if (style?.borderRadius !== undefined) boxStyle.borderRadius = style.borderRadius;
   if (style?.borderWidth) {
     boxStyle.borderWidth = style.borderWidth;
     boxStyle.borderStyle = style.borderStyle || 'solid';
-    boxStyle.borderColor = style.borderColor || 'currentColor';
+    const bc = style.borderColor || 'currentColor';
+    const bOpacity = style.borderOpacity ?? 100;
+    if (bOpacity < 100 && bc.startsWith('#')) {
+      const r = parseInt(bc.slice(1, 3), 16);
+      const g = parseInt(bc.slice(3, 5), 16);
+      const b = parseInt(bc.slice(5, 7), 16);
+      boxStyle.borderColor = `rgba(${r}, ${g}, ${b}, ${bOpacity / 100})`;
+    } else {
+      boxStyle.borderColor = bc;
+    }
+  }
+  if (style?.backdropBlur) {
+    boxStyle.backdropFilter = `blur(${style.backdropBlur}px)`;
+    (boxStyle as any).WebkitBackdropFilter = `blur(${style.backdropBlur}px)`;
   }
   if (style?.padding !== undefined) boxStyle.padding = style.padding;
   if (style?.paddingTop !== undefined) boxStyle.paddingTop = style.paddingTop;
