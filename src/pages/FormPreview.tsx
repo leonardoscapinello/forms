@@ -2162,7 +2162,7 @@ function InteractiveElement({
         <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>{stepNumber}</span>
         <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>→</span>
         <div>
-          <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
+          <h2 className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={{ color: 'inherit' }}>
             {tNodes(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
