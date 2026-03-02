@@ -148,7 +148,7 @@ function useNodeCrud<T extends { id: string }>(
 export function EditorFormProvider({ children }: { children: React.ReactNode }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getForm, updateForm, getSaveStatus, getLastSavedAt } = useFormStore();
+  const { getForm, updateForm, getSaveStatus, getLastSavedAt, loaded } = useFormStore();
   const form = getForm(id!);
   const saveStatus = getSaveStatus(id!);
   const lastSavedAt = getLastSavedAt(id!);
@@ -160,9 +160,10 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
 
   const collab = useRealtimeCollaboration({ formId: id!, currentPageId: editingPageId });
 
+  // Only redirect when forms are loaded AND this specific form doesn't exist
   useEffect(() => {
-    if (!form) navigate('/', { replace: true });
-  }, [form, navigate]);
+    if (loaded && !form) navigate('/', { replace: true });
+  }, [form, loaded, navigate]);
 
   // ─── Computed ──────────────────────────────────────────────────────
 
@@ -458,7 +459,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
   ]);
 
-  if (!value) return (
+  if (!form || !loaded) return (
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
