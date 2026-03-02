@@ -87,17 +87,16 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       const formRows = formsRes.data as unknown as DbForm[];
       const formIds = formRows.map(r => r.id);
 
-      // 2. Fetch response counts ONLY for user's forms (avoids full-table scan)
+      // 2. Fetch response counts using lightweight count queries (no row data fetched)
       const countMap: Record<string, number> = {};
       if (formIds.length > 0) {
-        // Batch in chunks of 20 to avoid URL length limits
         const chunks = [];
         for (let i = 0; i < formIds.length; i += 20) {
           chunks.push(formIds.slice(i, i + 20));
         }
         const results = await Promise.all(
           chunks.map(chunk =>
-            supabase.from('form_responses').select('form_id').in('form_id', chunk)
+            supabase.from('form_responses').select('form_id', { count: 'exact', head: false }).in('form_id', chunk)
           )
         );
         results.forEach(res => {
