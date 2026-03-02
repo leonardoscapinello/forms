@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Palette, Type, Image, Upload, Loader2, X, ImageIcon, Trash2 } from 'lucide-react';
+import { Palette, Type, Image, Upload, Loader2, X, ImageIcon, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
@@ -310,12 +310,22 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
 
           {style.logoUrl ? (
             <div className="space-y-3">
+              {/* Warn about local/relative paths that won't work on published forms */}
+              {style.logoUrl.startsWith('/') && !style.logoUrl.startsWith('//') && (
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                    Este logo usa um caminho local e <strong>não será exibido</strong> no formulário publicado. Faça upload via o botão abaixo para que funcione corretamente.
+                  </p>
+                </div>
+              )}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
                 <img
                   src={style.logoUrl}
                   alt="Logotipo"
                   className="max-h-12 object-contain"
                   style={{ height: style.logoHeight || 40, maxWidth: 128 }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>
               <div className="flex items-center gap-2">

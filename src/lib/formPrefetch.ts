@@ -14,7 +14,7 @@ export function prefetchFormData(formId: string) {
   const promise = (async () => {
     const { data, error } = await supabase
       .from('forms')
-      .select('id, title, status, data, created_at, updated_at')
+      .select('id, title, status, data')
       .eq('id', formId)
       .single();
 
