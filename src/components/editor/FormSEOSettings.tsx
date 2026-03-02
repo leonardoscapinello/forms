@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { FormData, FormSEO } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Search, FileText, Image, Globe, Bot, Twitter,
-  Code2, Palette, Link2, Tag, Eye, ChevronDown, ChevronUp,
+  Code2, Palette, Link2, Tag, Eye, ChevronDown, ChevronUp, Upload, Loader2, X, Trash2,
 } from 'lucide-react';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Props {
   form: FormData;
@@ -60,10 +63,34 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 export default function FormSEOSettings({ form, onUpdate }: Props) {
   const seo: FormSEO = form.seo || {};
+  const ogInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingOg, setUploadingOg] = useState(false);
 
   const update = (patch: Partial<FormSEO>) => {
     onUpdate({ seo: { ...seo, ...patch } });
   };
+
+  const handleOgUpload = useCallback(async (file: File) => {
+    setUploadingOg(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `og-images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', path);
+      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+      if (error || !res?.success) {
+        toast.error(res?.message || 'Falha no upload');
+        return;
+      }
+      update({ ogImage: res.url });
+      toast.success('Imagem enviada');
+    } catch {
+      toast.error('Erro ao enviar imagem');
+    } finally {
+      setUploadingOg(false);
+    }
+  }, [seo, onUpdate]);
 
   const titleLen = (seo.title || '').length;
   const descLen = (seo.description || '').length;
@@ -132,20 +159,67 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
 
         {/* Open Graph / Social */}
         <Section icon={Image} title="Open Graph (Redes sociais)" description="Como o link aparece quando compartilhado no Facebook, WhatsApp, LinkedIn, etc." defaultOpen={false}>
-          <Field label="Imagem de capa (og:image)" hint="Recomendado: 1200×630px. Use uma URL pública.">
-            <Input
-              value={seo.ogImage || ''}
-              onChange={e => update({ ogImage: e.target.value })}
-              placeholder="https://exemplo.com/imagem-capa.jpg"
-              className="text-xs font-mono h-9"
+          <Field label="Imagem de capa (og:image)" hint="Recomendado: 1200×630px.">
+            <input
+              ref={ogInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) handleOgUpload(f);
+                e.target.value = '';
+              }}
             />
-          </Field>
 
-          {seo.ogImage && (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <img src={seo.ogImage} alt="OG Preview" className="w-full h-32 object-cover bg-muted" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            </div>
-          )}
+            {seo.ogImage ? (
+              <div className="space-y-2">
+                <div className="rounded-[8px] border border-border overflow-hidden">
+                  <img
+                    src={seo.ogImage}
+                    alt="OG Preview"
+                    className="w-full h-32 object-cover bg-muted"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => ogInputRef.current?.click()}>
+                    <Upload className="h-3 w-3 mr-1.5" />Trocar imagem
+                  </Button>
+                  <Button
+                    variant="outline" size="sm" className="text-xs text-destructive hover:text-destructive"
+                    onClick={() => update({ ogImage: '' })}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />Remover
+                  </Button>
+                </div>
+                <Input
+                  value={seo.ogImage || ''}
+                  onChange={e => update({ ogImage: e.target.value })}
+                  placeholder="ou cole uma URL"
+                  className="text-xs font-mono h-8"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full h-20 text-xs border-dashed gap-2"
+                  disabled={uploadingOg}
+                  onClick={() => ogInputRef.current?.click()}
+                >
+                  {uploadingOg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {uploadingOg ? 'Enviando...' : 'Enviar imagem de capa'}
+                </Button>
+                <Input
+                  value={seo.ogImage || ''}
+                  onChange={e => update({ ogImage: e.target.value })}
+                  placeholder="ou cole uma URL: https://..."
+                  className="text-xs font-mono h-8"
+                />
+              </div>
+            )}
+          </Field>
 
           <Field label="Tipo (og:type)">
             <Select value={seo.ogType || 'website'} onValueChange={v => update({ ogType: v })}>
