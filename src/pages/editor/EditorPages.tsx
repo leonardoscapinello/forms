@@ -6,7 +6,7 @@ import type { FunnelPageStyle, FormData } from '@/types/form';
 import PageListPanel from '@/components/editor/PageListPanel';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 
-export default function EditorPages() {
+/* v3 cache-bust */ export default function EditorPages() {
   const ctx = useEditorForm();
   const {
     form, editingPageId, setEditingPageId,
