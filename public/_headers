@@ -1,0 +1,25 @@
+# Security Headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-XSS-Protection: 1; mode=block
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com; font-src 'self' data:; media-src 'self' https: blob:; frame-ancestors 'none';
+
+# Cache immutable hashed assets forever
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts — long cache
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML — always revalidate
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Service worker — never cache
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate

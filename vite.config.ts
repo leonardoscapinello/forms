@@ -18,15 +18,21 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: "es2020",
     cssMinify: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('react-dom') || (id.includes('/react/') && !id.includes('react-router'))) return 'vendor-react';
           if (id.includes('react-router-dom')) return 'vendor-router';
-          // Keep the rest automatic to avoid circular-init runtime issues
+          if (id.includes('@supabase/supabase-js') || id.includes('@supabase/')) return 'vendor-supabase';
           return undefined;
         },
       },
     },
+    chunkSizeWarningLimit: 500,
   },
+  esbuild: mode === "production" ? {
+    drop: ['console', 'debugger'],
+    legalComments: 'none',
+  } : undefined,
 }));
