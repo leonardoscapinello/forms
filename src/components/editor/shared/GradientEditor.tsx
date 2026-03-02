@@ -222,6 +222,7 @@ function GradientBar({
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const dragIndex = useRef<number | null>(null);
+  const didDrag = useRef(false);
 
   const getPosition = useCallback((clientX: number) => {
     const rect = barRef.current?.getBoundingClientRect();
@@ -234,12 +235,14 @@ function GradientBar({
     e.stopPropagation();
     e.preventDefault();
     dragIndex.current = index;
+    didDrag.current = false;
     onSelect(index);
     barRef.current?.setPointerCapture(e.pointerId);
   }, [onSelect]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (dragIndex.current === null) return;
+    didDrag.current = true;
     onStopMove(dragIndex.current, getPosition(e.clientX));
   }, [getPosition, onStopMove]);
 
@@ -248,7 +251,8 @@ function GradientBar({
   }, []);
 
   const handleBarClick = useCallback((e: React.MouseEvent) => {
-    // Only add if clicking on the bar itself, not a handle
+    // Suppress click if we just finished dragging a handle
+    if (didDrag.current) { didDrag.current = false; return; }
     if ((e.target as HTMLElement).dataset.handle) return;
     onAddStop(getPosition(e.clientX));
   }, [getPosition, onAddStop]);
