@@ -2488,62 +2488,74 @@ function InteractiveElement({
     case 'input_select':
       return withFieldHeader(
         <div className="space-y-2 md:space-y-3">
-          {(element.options || []).map((opt, i) => (
-            <motion.button
-              key={opt.id}
-              onClick={() => onChange(opt.id)}
-              whileTap={{ scale: 0.98 }}
-              animate={value === opt.id ? { scale: [1, 1.02, 1] } : {}}
-              transition={{ duration: 0.2 }}
-              className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
-                value === opt.id
-                  ? 'border-primary bg-transparent text-foreground shadow-sm'
-                  : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
-              }`}
-            >
-              <motion.span
-                className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                  value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+          {(element.options || []).map((opt, i) => {
+            const isSelected = value === opt.id;
+            return (
+              <motion.button
+                key={opt.id}
+                onClick={() => onChange(opt.id)}
+                whileTap={{ scale: 0.97 }}
+                animate={isSelected ? {
+                  scale: [1, 1.02, 1],
+                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
+                } : {}}
+                transition={{ duration: 0.35 }}
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
+                  isSelected
+                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
+                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
                 }`}
-                animate={value === opt.id ? { scale: [1, 1.25, 1] } : {}}
-                transition={{ duration: 0.25 }}
               >
-                {String.fromCharCode(65 + letterOffset + i)}
-              </motion.span>
-              <span className="text-base md:text-lg">{t(opt.label)}</span>
-            </motion.button>
-          ))}
+                <motion.span
+                  className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
+                  }`}
+                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
+                  transition={{ duration: 0.3 }}
+                >
+                  {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + letterOffset + i)}
+                </motion.span>
+                <span className="text-base md:text-lg">{t(opt.label)}</span>
+              </motion.button>
+            );
+          })}
         </div>
       );
 
     case 'input_radio':
       return withFieldHeader(
         <div className="space-y-2 md:space-y-3">
-          {(element.options || []).map((opt, i) => (
-            <motion.button
-              key={opt.id}
-              onClick={() => onChange(opt.id)}
-              whileTap={{ scale: 0.98 }}
-              animate={value === opt.id ? { scale: [1, 1.02, 1] } : {}}
-              transition={{ duration: 0.2 }}
-              className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
-                value === opt.id
-                  ? 'border-primary bg-transparent text-foreground shadow-sm'
-                  : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
-              }`}
-            >
-              <motion.span
-                className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                  value === opt.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+          {(element.options || []).map((opt, i) => {
+            const isSelected = value === opt.id;
+            return (
+              <motion.button
+                key={opt.id}
+                onClick={() => onChange(opt.id)}
+                whileTap={{ scale: 0.97 }}
+                animate={isSelected ? {
+                  scale: [1, 1.02, 1],
+                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
+                } : {}}
+                transition={{ duration: 0.35 }}
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
+                  isSelected
+                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
+                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
                 }`}
-                animate={value === opt.id ? { scale: [1, 1.25, 1] } : {}}
-                transition={{ duration: 0.25 }}
               >
-                {String.fromCharCode(65 + letterOffset + i)}
-              </motion.span>
-              <span className="text-base md:text-lg">{t(opt.label)}</span>
-            </motion.button>
-          ))}
+                <motion.span
+                  className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
+                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
+                  }`}
+                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
+                  transition={{ duration: 0.3 }}
+                >
+                  {String.fromCharCode(65 + letterOffset + i)}
+                </motion.span>
+                <span className="text-base md:text-lg">{t(opt.label)}</span>
+              </motion.button>
+            );
+          })}
         </div>
       );
 
@@ -2778,33 +2790,36 @@ function InteractiveElement({
               <motion.button
                 key={opt.id}
                 onClick={() => toggleOption(opt.id)}
-                whileTap={{ scale: 0.98 }}
-                animate={isSelected ? { scale: [1, 1.02, 1] } : {}}
-                transition={{ duration: 0.2 }}
+                whileTap={{ scale: 0.97 }}
+                animate={isSelected ? {
+                  scale: [1, 1.02, 1],
+                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
+                } : {}}
+                transition={{ duration: 0.35 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
                   isSelected
-                    ? 'border-primary bg-transparent text-foreground shadow-sm'
-                    : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
+                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
+                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
                 }`}
               >
                 <motion.span
                   className={`h-6 w-6 md:h-7 md:w-7 rounded-md border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
                   }`}
-                  animate={isSelected ? { scale: [1, 1.25, 1] } : {}}
-                  transition={{ duration: 0.25 }}
+                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
+                  transition={{ duration: 0.3 }}
                 >
                   {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
                 <span className="text-base md:text-lg flex-1">{t(opt.label)}</span>
                 <motion.div
                   className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-primary bg-primary' : 'border-border'
+                    isSelected ? 'border-[#2C2817] bg-[#2C2817]' : 'border-border'
                   }`}
                   animate={isSelected ? { scale: [1, 1.2, 1] } : {}}
                   transition={{ duration: 0.2 }}
                 >
-                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                  {isSelected && <Check className="h-3 w-3 text-white" />}
                 </motion.div>
               </motion.button>
             );
