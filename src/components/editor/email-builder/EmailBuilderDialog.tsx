@@ -971,7 +971,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) handleAttemptClose(); }}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden [&>button]:z-50">
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden [&>button.absolute]:hidden">
         {/* ─── Top bar ─── */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border/50 flex-shrink-0 bg-background">
           <div className="flex items-center gap-3 min-w-0">
