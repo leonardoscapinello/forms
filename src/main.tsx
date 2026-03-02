@@ -1,7 +1,15 @@
 import { createRoot } from "react-dom/client";
 import { autoDetectAndPrefetch } from "./lib/formPrefetch";
+import { validateEnv } from "./lib/env";
+import { initSecurityGuard } from "./lib/securityGuard";
 import App from "./App.tsx";
 import "./index.css";
+
+// Fail fast if env is misconfigured
+validateEnv();
+
+// Production security hardening (DevTools blocking, right-click, shortcuts)
+initSecurityGuard();
 
 // Start fetching form data BEFORE React mounts (runs in parallel with chunk loading)
 autoDetectAndPrefetch();
