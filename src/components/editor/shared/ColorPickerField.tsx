@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -21,9 +20,7 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** Fallback color shown in the swatch when value is empty */
   defaultColor?: string;
-  /** Whether to show the transparent/remove option */
   allowTransparent?: boolean;
 }
 
@@ -31,37 +28,16 @@ export default function ColorPickerField({
   label,
   value,
   onChange,
-  placeholder = 'Transparente',
+  placeholder = 'Sem cor',
   defaultColor = '#ffffff',
   allowTransparent = true,
 }: Props) {
-  const [hexInput, setHexInput] = useState(value || '');
   const [open, setOpen] = useState(false);
 
-  // Sync external value changes
-  useEffect(() => {
-    setHexInput(value || '');
-  }, [value]);
-
-  const handleHexChange = (hex: string) => {
-    setHexInput(hex);
-    // Auto-apply if it looks like a valid hex
-    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
-      onChange(hex);
-    }
-  };
-
-  const handleHexBlur = () => {
-    if (hexInput && !/^#/.test(hexInput)) {
-      const withHash = `#${hexInput}`;
-      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(withHash)) {
-        setHexInput(withHash);
-        onChange(withHash);
-      }
-    }
-  };
-
   const isTransparent = !value || value === 'transparent';
+
+  // Find a friendly name for the color
+  const colorName = isTransparent ? placeholder : getColorName(value);
 
   return (
     <div className="space-y-2">
@@ -72,16 +48,12 @@ export default function ColorPickerField({
             type="button"
             className="flex items-center gap-2 w-full h-9 px-2 rounded-md border border-input bg-background hover:bg-accent/50 transition-colors cursor-pointer"
           >
-            {/* Color swatch */}
             <div
               className="h-5 w-5 rounded-md border border-border flex-shrink-0 relative overflow-hidden"
-              style={{
-                backgroundColor: isTransparent ? 'transparent' : value,
-              }}
+              style={{ backgroundColor: isTransparent ? 'transparent' : value }}
             >
               {isTransparent && (
                 <div className="absolute inset-0">
-                  {/* Checkerboard pattern for transparent */}
                   <svg width="20" height="20" viewBox="0 0 20 20" className="w-full h-full">
                     <rect width="10" height="10" fill="#e5e7eb" />
                     <rect x="10" y="10" width="10" height="10" fill="#e5e7eb" />
@@ -92,7 +64,7 @@ export default function ColorPickerField({
               )}
             </div>
             <span className="text-xs text-muted-foreground truncate flex-1 text-left">
-              {isTransparent ? placeholder : value}
+              {colorName}
             </span>
           </button>
         </PopoverTrigger>
@@ -105,7 +77,6 @@ export default function ColorPickerField({
                 type="button"
                 onClick={() => {
                   onChange(color);
-                  setHexInput(color);
                 }}
                 className={`h-6 w-full rounded-md border transition-all hover:scale-110 ${
                   value === color
@@ -113,25 +84,21 @@ export default function ColorPickerField({
                     : 'border-border/50 hover:border-border'
                 }`}
                 style={{ backgroundColor: color }}
-                title={color}
+                title={getColorName(color)}
               />
             ))}
           </div>
 
-          {/* Hex input */}
-          <div className="flex items-center gap-2">
-            <div
-              className="h-8 w-8 rounded-md border border-border flex-shrink-0"
-              style={{ backgroundColor: isTransparent ? 'transparent' : value }}
-            />
-            <Input
-              value={hexInput}
-              onChange={e => handleHexChange(e.target.value)}
-              onBlur={handleHexBlur}
-              placeholder="#000000"
-              className="h-8 text-xs font-mono"
-            />
-          </div>
+          {/* Selected color preview */}
+          {!isTransparent && (
+            <div className="flex items-center gap-2">
+              <div
+                className="h-8 w-8 rounded-md border border-border flex-shrink-0"
+                style={{ backgroundColor: value }}
+              />
+              <span className="text-xs text-foreground">{colorName}</span>
+            </div>
+          )}
 
           {/* Transparent / Remove */}
           {allowTransparent && (
@@ -141,7 +108,6 @@ export default function ColorPickerField({
               className="w-full text-xs h-7 gap-1.5"
               onClick={() => {
                 onChange('');
-                setHexInput('');
               }}
             >
               <X className="h-3 w-3" />
@@ -152,4 +118,39 @@ export default function ColorPickerField({
       </Popover>
     </div>
   );
+}
+
+/** Map hex colors to friendly Portuguese names */
+function getColorName(hex: string): string {
+  if (!hex) return 'Sem cor';
+  const map: Record<string, string> = {
+    '#000000': 'Preto',
+    '#333333': 'Cinza escuro',
+    '#666666': 'Cinza',
+    '#999999': 'Cinza médio',
+    '#cccccc': 'Cinza claro',
+    '#ffffff': 'Branco',
+    '#ef4444': 'Vermelho',
+    '#f97316': 'Laranja',
+    '#f59e0b': 'Âmbar',
+    '#eab308': 'Amarelo',
+    '#fca5a5': 'Rosa claro',
+    '#fed7aa': 'Pêssego',
+    '#22c55e': 'Verde',
+    '#06b6d4': 'Ciano',
+    '#3b82f6': 'Azul',
+    '#6366f1': 'Índigo',
+    '#8b5cf6': 'Violeta',
+    '#a855f7': 'Roxo',
+    '#ec4899': 'Pink',
+    '#f43f5e': 'Rosa',
+    '#14b8a6': 'Turquesa',
+    '#0ea5e9': 'Azul celeste',
+    '#7c3aed': 'Violeta escuro',
+    '#c084fc': 'Lilás',
+    '#fafaf6': 'Creme',
+    '#FAFAF6': 'Creme',
+    '#203300': 'Verde escuro',
+  };
+  return map[hex.toLowerCase()] || map[hex] || 'Cor personalizada';
 }
