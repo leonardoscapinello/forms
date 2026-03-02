@@ -98,6 +98,7 @@ export default function OpenAIIntegrationCard() {
 
   const [models, setModels] = useState<OpenAIModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
 
   useEffect(() => {
     (supabase as any)
@@ -261,14 +262,30 @@ export default function OpenAIIntegrationCard() {
               Atualizar
             </Button>
           </div>
-          <Select value={config.model} onValueChange={v => updateConfig({ model: v })}>
+          <Select value={config.model} onValueChange={v => { updateConfig({ model: v }); setModelSearch(''); }}>
             <SelectTrigger className="text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="max-h-60 overflow-y-auto">
-                {modelOptions.map(m => (
-                  <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
-                ))}
+            <SelectContent className="max-h-72 overflow-hidden">
+              <div className="px-2 pb-1.5 pt-1 sticky top-0 bg-popover z-10">
+                <Input
+                  placeholder="Buscar modelo..."
+                  value={modelSearch}
+                  onChange={e => setModelSearch(e.target.value)}
+                  className="h-7 text-xs"
+                  onKeyDown={e => e.stopPropagation()}
+                />
+              </div>
+              <div className="max-h-52 overflow-y-auto">
+                {modelOptions
+                  .filter(m => m.label.toLowerCase().includes(modelSearch.toLowerCase()))
+                  .map(m => (
+                    <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
+                  ))}
+                {modelOptions.filter(m => m.label.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-3">Nenhum modelo encontrado</p>
+                )}
+              </div>
             </SelectContent>
           </Select>
           {models.length > 0 && (
