@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
-import { motion, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, FormStyle, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
@@ -1913,13 +1913,12 @@ export default function FormPreview() { // perf-v2
   const hasVariables = (form.variables?.length ?? 0) > 0;
 
   return (
-    <LazyMotion features={domAnimation} strict>
     <main role="main">
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="min-h-screen flex flex-col relative will-change-[opacity]"
+      className="min-h-screen flex flex-col relative"
       style={outerContainerStyle}
     >
 
@@ -1999,7 +1998,7 @@ export default function FormPreview() { // perf-v2
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="w-full mx-auto my-auto will-change-transform"
+                className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
                 {/* Default welcome (no custom elements) */}
@@ -2327,7 +2326,6 @@ export default function FormPreview() { // perf-v2
       </AnimatePresence>
     </motion.div>
     </main>
-    </LazyMotion>
   );
 }
 
