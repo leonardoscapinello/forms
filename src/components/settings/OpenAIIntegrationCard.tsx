@@ -265,12 +265,10 @@ export default function OpenAIIntegrationCard() {
             <SelectTrigger className="text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              <ScrollArea className="max-h-60">
+            <SelectContent className="max-h-60 overflow-y-auto">
                 {modelOptions.map(m => (
                   <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
                 ))}
-              </ScrollArea>
             </SelectContent>
           </Select>
           {models.length > 0 && (
