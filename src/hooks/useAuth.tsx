@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const loadingTimeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 4000);
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -50,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
+        setLoading(false);
 
         // Only re-fetch profile on actual sign-in, not token refreshes
         if (event === 'SIGNED_IN' && nextSession?.user) {
@@ -59,29 +63,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setRole(null);
-          setLoading(false);
         }
       }
     );
 
     // Then get the persisted session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
+        setSession(session);
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
-        // Don't block the whole app on profile/role fetch
+        if (session?.user) {
+          // Don't block the whole app on profile/role fetch
+          setLoading(false);
+          fetchUserData(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRole(null);
         setLoading(false);
-        fetchUserData(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+      })
+      .finally(() => {
+        clearTimeout(loadingTimeout);
+      });
 
     return () => {
       mounted = false;
+      clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, [fetchUserData]);
