@@ -870,8 +870,19 @@ export default function FormPreview() { // perf-v2
   // Sync totalScore into answers so it's available for conditions, variable interpolation, and webhooks
   useEffect(() => {
     setAnswers(prev => {
-      if (prev.__score === totalScore && prev.__var_pontuacao === String(totalScore)) return prev;
-      return { ...prev, __score: totalScore, __var_pontuacao: String(totalScore) };
+      const next = { ...prev, __score: totalScore };
+      // Also sync to any user-created variables whose name relates to score
+      // This allows {{pontuacao}}, {{score}}, {{nota}} etc. to resolve via __var_X
+      const scoreVarNames = ['pontuacao', 'score', 'nota', 'points', 'pontos'];
+      const formVars = formRef.current?.variables || [];
+      for (const v of formVars) {
+        if (scoreVarNames.includes(v.name.toLowerCase()) || v.name.toLowerCase().includes('score') || v.name.toLowerCase().includes('pontuac')) {
+          next[`__var_${v.name}`] = String(totalScore);
+        }
+      }
+      // Check if anything actually changed to prevent unnecessary re-renders
+      const changed = Object.keys(next).some(k => prev[k] !== next[k]);
+      return changed ? next : prev;
     });
   }, [totalScore]);
 
