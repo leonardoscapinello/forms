@@ -319,7 +319,7 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => logoInputRef.current?.click()}>
-                  <Upload className="h-3 w-3 mr-1.5" />Trocar logotipo
+                  <Upload className="h-3 w-3 mr-1.5" />Trocar
                 </Button>
                 <Button
                   variant="outline" size="sm" className="text-xs"
@@ -331,7 +331,7 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs text-muted-foreground">Altura</Label>
-                  <span className="text-xs text-muted-foreground font-mono">{style.logoHeight || 40}px</span>
+                  <span className="text-xs text-muted-foreground">{style.logoHeight || 40}px</span>
                 </div>
                 <Slider
                   value={[style.logoHeight || 40]}
@@ -343,15 +343,31 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
               </div>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              className="w-full h-16 text-xs border-dashed"
-              disabled={uploadingLogo}
-              onClick={() => logoInputRef.current?.click()}
-            >
-              {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-              {uploadingLogo ? 'Enviando...' : 'Enviar logotipo'}
-            </Button>
+            <div className="space-y-2">
+              {/* Use default logo */}
+              <Button
+                variant="outline"
+                className="w-full h-14 text-xs gap-2"
+                onClick={() => {
+                  updateStyle({ logoUrl: '/images/twobrain-logo-dark.svg' });
+                  toast.success('Logotipo padrão aplicado');
+                }}
+              >
+                <img src="/images/twobrain-logo-dark.svg" alt="Logo padrão" className="h-6 object-contain" />
+                Usar logotipo padrão
+              </Button>
+
+              {/* Upload custom */}
+              <Button
+                variant="outline"
+                className="w-full h-12 text-xs border-dashed gap-2"
+                disabled={uploadingLogo}
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploadingLogo ? 'Enviando...' : 'Enviar logotipo personalizado'}
+              </Button>
+            </div>
           )}
         </div>
       </div>
