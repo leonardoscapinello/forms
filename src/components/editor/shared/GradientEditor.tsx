@@ -44,10 +44,89 @@ const DEFAULT_CONFIG: GradientConfig = {
 };
 
 function hexToRgba(hex: string, opacity: number): string {
+  if (!hex || !hex.startsWith('#')) return hex || 'transparent';
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+}
+
+/** Parse rgba(r,g,b,a) or #hex back to { color: '#hex', opacity: 0-100 } */
+function parseColorToHexOpacity(raw: string): { color: string; opacity: number } {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('#')) return { color: trimmed, opacity: 100 };
+  const rgbaMatch = trimmed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/);
+  if (rgbaMatch) {
+    const r = parseInt(rgbaMatch[1]).toString(16).padStart(2, '0');
+    const g = parseInt(rgbaMatch[2]).toString(16).padStart(2, '0');
+    const b = parseInt(rgbaMatch[3]).toString(16).padStart(2, '0');
+    const a = rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1;
+    return { color: `#${r}${g}${b}`, opacity: Math.round(a * 100) };
+  }
+  return { color: '#888888', opacity: 100 };
+}
+
+/** Parse a CSS gradient string back into a GradientConfig */
+function parseCssToConfig(css: string): GradientConfig | null {
+  if (!css) return null;
+  try {
+    // Detect type
+    let type: GradientConfig['type'] = 'linear';
+    let radialShape: 'circle' | 'ellipse' = 'circle';
+    let radialSize = 'farthest-corner';
+    let angle = 135;
+
+    if (css.startsWith('radial-gradient')) {
+      type = 'radial';
+    } else if (css.startsWith('conic-gradient')) {
+      type = 'conic';
+    }
+
+    // Extract the content inside parentheses
+    const innerMatch = css.match(/\((.+)\)$/s);
+    if (!innerMatch) return null;
+    const inner = innerMatch[1];
+
+    // Split by color stops — we need to be careful with commas inside rgba()
+    // Strategy: find the first directive part, then parse stops
+    let stopsStr = inner;
+
+    if (type === 'linear') {
+      const dirMatch = inner.match(/^(\d+)deg\s*,\s*/);
+      if (dirMatch) {
+        angle = parseInt(dirMatch[1]);
+        stopsStr = inner.slice(dirMatch[0].length);
+      }
+    } else if (type === 'conic') {
+      const dirMatch = inner.match(/^from\s+(\d+)deg\s*,\s*/);
+      if (dirMatch) {
+        angle = parseInt(dirMatch[1]);
+        stopsStr = inner.slice(dirMatch[0].length);
+      }
+    } else if (type === 'radial') {
+      const dirMatch = inner.match(/^(circle|ellipse)\s+([\w-]+)\s*,\s*/);
+      if (dirMatch) {
+        radialShape = dirMatch[1] as 'circle' | 'ellipse';
+        radialSize = dirMatch[2];
+        stopsStr = inner.slice(dirMatch[0].length);
+      }
+    }
+
+    // Parse color stops — split carefully respecting rgba() parentheses
+    const stops: GradientStop[] = [];
+    const stopRegex = /(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))\s+(\d+)%/g;
+    let match;
+    while ((match = stopRegex.exec(stopsStr)) !== null) {
+      const { color, opacity } = parseColorToHexOpacity(match[1]);
+      stops.push({ color, position: parseInt(match[2]), opacity });
+    }
+
+    if (stops.length < 2) return null;
+
+    return { type, angle, radialShape, radialSize, stops };
+  } catch {
+    return null;
+  }
 }
 
 function configToCss(config: GradientConfig): string {
@@ -72,8 +151,13 @@ interface Props {
 }
 
 export default function GradientEditor({ value, onChange }: Props) {
-  const [config, setConfig] = useState<GradientConfig>(DEFAULT_CONFIG);
-  const [mode, setMode] = useState<'presets' | 'custom'>(value ? 'custom' : 'presets');
+  const [config, setConfig] = useState<GradientConfig>(() => parseCssToConfig(value) || DEFAULT_CONFIG);
+  const [mode, setMode] = useState<'presets' | 'custom'>(() => {
+    // If value matches a preset, show presets; otherwise custom
+    if (!value) return 'presets';
+    if (GRADIENT_PRESETS.some(p => p.value === value)) return 'presets';
+    return 'custom';
+  });
 
   const updateConfig = useCallback((patch: Partial<GradientConfig>) => {
     setConfig(prev => {
