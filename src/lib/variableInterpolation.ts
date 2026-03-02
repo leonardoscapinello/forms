@@ -1,6 +1,7 @@
 import { FormVariable } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
+import { createElement, Fragment, ReactNode } from 'react';
 
 /** Get a value from an object using dot/bracket path */
 function getNestedValue(obj: any, path: string): any {
@@ -94,4 +95,101 @@ export function resolveVariableValues(
  */
 export function isValidVariableName(name: string): boolean {
   return /^[a-zA-Z_]\w*$/.test(name);
+}
+
+type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
+
+const VAR_TYPE_CLASS: Record<VarType, string> = {
+  variable: 'var-highlight var-highlight-variable',
+  webhook: 'var-highlight var-highlight-webhook',
+  field: 'var-highlight var-highlight-field',
+  param: 'var-highlight var-highlight-param',
+  context: 'var-highlight var-highlight-context',
+};
+
+/**
+ * Like interpolateText but returns React nodes with styled variable value spans.
+ * Variable values are wrapped in colored <mark> elements matching the editor highlight style.
+ * Wrap the result container with className="var-highlight-readable" for proper visible text.
+ */
+export function interpolateTextToNodes(
+  text: string,
+  variables: FormVariable[],
+  answers: Record<string, any>,
+): ReactNode {
+  if (!text) return text;
+
+  // Split on all {{...}} tokens
+  const regex = /(\{\{(?:webhook:[^}]+|ctx\.\w+|param\.[^}]+|field:[^}]+|\w+)\}\})/g;
+  const parts = text.split(regex);
+
+  if (parts.length === 1) return text; // no variables
+
+  const nodes: ReactNode[] = [];
+  let hasVar = false;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part) continue;
+
+    const tokenMatch = part.match(/^\{\{(.+)\}\}$/);
+    if (!tokenMatch) {
+      nodes.push(part);
+      continue;
+    }
+
+    const inner = tokenMatch[1];
+    let value = '';
+    let varType: VarType = 'variable';
+
+    if (inner.startsWith('webhook:')) {
+      varType = 'webhook';
+      const colonParts = inner.split(':');
+      const nodeId = colonParts[1];
+      const path = colonParts.slice(2).join(':');
+      const data = answers[`__webhook_${nodeId}`];
+      value = data ? String(getNestedValue(data, path) ?? '') : '';
+    } else if (inner.startsWith('ctx.')) {
+      varType = 'context';
+      value = String(answers[`__ctx_${inner.slice(4)}`] ?? '');
+    } else if (inner.startsWith('param.')) {
+      varType = 'param';
+      value = String(answers[`__param_${inner.slice(6)}`] ?? '');
+    } else if (inner.startsWith('field:')) {
+      varType = 'field';
+      value = String(answers[inner.slice(6)] ?? '');
+    } else {
+      const variable = variables.find(v => v.name === inner);
+      if (!variable) {
+        nodes.push(part);
+        continue;
+      }
+      const override = answers[`__var_${inner}`];
+      if (override !== undefined && override !== null) {
+        value = String(override);
+      } else if (variable.type === 'response' && variable.sourceElementId) {
+        value = String(answers[variable.sourceElementId] ?? variable.defaultValue ?? '');
+      } else {
+        value = variable.defaultValue || '';
+      }
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    hasVar = true;
+    nodes.push(
+      createElement('mark', {
+        key: `var-${i}`,
+        className: VAR_TYPE_CLASS[varType],
+      }, value)
+    );
+  }
+
+  // If no variables were found, return plain text (avoids unnecessary wrapper)
+  if (!hasVar) return nodes.length === 1 && typeof nodes[0] === 'string' ? nodes[0] : createElement(Fragment, null, ...nodes);
+
+  // Wrap in var-highlight-readable span so descendant styles apply
+  return createElement('span', { className: 'var-highlight-readable' }, ...nodes);
 }
