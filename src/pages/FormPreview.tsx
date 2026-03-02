@@ -1873,7 +1873,7 @@ export default function FormPreview() {
                 style={{
                   backgroundColor: form.style?.buttonBgColor || form.style?.primaryColor || undefined,
                   color: form.style?.buttonTextColor || undefined,
-                  borderRadius: form.style?.buttonBorderRadius ?? undefined,
+                  borderRadius: form.style?.buttonBorderRadius ?? 9999,
                   padding: form.style?.buttonSize === 'sm' ? '6px 16px' : form.style?.buttonSize === 'lg' ? '14px 32px' : '10px 24px',
                   fontSize: form.style?.buttonSize === 'sm' ? 13 : form.style?.buttonSize === 'lg' ? 16 : undefined,
                 }}
@@ -1910,7 +1910,7 @@ export default function FormPreview() {
                 ) : (
                   <>
                     <span>Continuar</span>
-                    <ArrowDown className="h-3.5 w-3.5" />
+                    <ArrowDown className="h-3.5 w-3.5" style={{ color: form.style?.buttonTextColor || undefined }} />
                   </>
                 )}
               </Button>
@@ -2334,13 +2334,16 @@ function InteractiveElement({
           <Button
             onClick={handleButtonClick}
             style={{
-              backgroundColor: style?.backgroundColor,
-              borderRadius: style?.borderRadius,
+              backgroundColor: style?.backgroundColor || formStyle?.buttonBgColor || formStyle?.primaryColor,
+              borderRadius: style?.borderRadius ?? formStyle?.buttonBorderRadius,
               width: style?.width || 'auto',
-              padding: style?.padding !== undefined ? `${style.padding}px ${style.padding * 1.5}px` : undefined,
-              color: style?.color,
-              fontFamily: normalizeFontFamily(style?.fontFamily),
+              padding: style?.padding !== undefined
+                ? `${style.padding}px ${style.padding * 1.5}px`
+                : (formStyle?.buttonSize === 'sm' ? '6px 16px' : formStyle?.buttonSize === 'lg' ? '14px 32px' : '10px 24px'),
+              color: style?.color || formStyle?.buttonTextColor,
+              fontFamily: normalizeFontFamily(style?.fontFamily || formStyle?.bodyFontFamily || formStyle?.fontFamily),
               fontWeight: style?.fontWeight,
+              fontSize: formStyle?.buttonSize === 'sm' ? 13 : formStyle?.buttonSize === 'lg' ? 16 : undefined,
             }}
           >
             {t(element.content) || 'Botão'}
