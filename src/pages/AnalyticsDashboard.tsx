@@ -3,7 +3,7 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  BarChart3, TrendingUp, TrendingDown, Clock, ArrowDownRight, Eye, CheckCircle2, RefreshCw, MessageSquare, Zap, Activity,
+  BarChart3, TrendingUp, TrendingDown, Clock, ArrowDownRight, Eye, CheckCircle2, RefreshCw, MessageSquare, Zap, Activity, Brain, Smile, Frown, Meh, AlertTriangle, Loader2,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -244,6 +244,8 @@ export default function AnalyticsDashboard() {
   const [days, setDays] = useState('30');
   const [formFilter, setFormFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [sentimentAgg, setSentimentAgg] = useState<any>(null);
+  const [analyzingSentiment, setAnalyzingSentiment] = useState(false);
 
   const since = useMemo(() => startOfDay(subDays(new Date(), Number(days))).toISOString(), [days]);
 
@@ -562,6 +564,113 @@ export default function AnalyticsDashboard() {
                 )}
               </TabsContent>
             </Tabs>
+          </div>
+        </GlassPanel>
+
+        {/* ── Sentiment analysis ── */}
+        <GlassPanel delay={0.28}>
+          <div className="px-6 pt-5 pb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Brain className="h-3.5 w-3.5 text-violet-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">Sentimentos & Emoções</p>
+                <p className="text-[11px] text-muted-foreground">Análise por IA das respostas em texto</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              disabled={analyzingSentiment || formFilter === 'all'}
+              onClick={async () => {
+                if (formFilter === 'all') return;
+                setAnalyzingSentiment(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
+                    body: { form_id: formFilter },
+                  });
+                  if (error) throw error;
+                  if (data?.aggregate) setSentimentAgg(data.aggregate);
+                } catch { /* ignore */ }
+                setAnalyzingSentiment(false);
+              }}
+            >
+              {analyzingSentiment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+              Analisar
+            </Button>
+          </div>
+          <div className="px-6 pb-6 pt-2">
+            {formFilter === 'all' ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Selecione um formulário para analisar sentimentos</p>
+            ) : !sentimentAgg ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Clique em "Analisar" para processar as respostas</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Sentiment distribution */}
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Distribuição de sentimento</p>
+                  {(['positive', 'neutral', 'negative', 'mixed'] as const).map(key => {
+                    const count = sentimentAgg.sentimentCounts[key] || 0;
+                    const pct = sentimentAgg.total > 0 ? Math.round((count / sentimentAgg.total) * 100) : 0;
+                    const icons = { positive: <Smile className="h-4 w-4 text-emerald-500" />, neutral: <Meh className="h-4 w-4 text-muted-foreground" />, negative: <Frown className="h-4 w-4 text-destructive" />, mixed: <AlertTriangle className="h-4 w-4 text-amber-500" /> };
+                    const labels = { positive: 'Positivo', neutral: 'Neutro', negative: 'Negativo', mixed: 'Misto' };
+                    const colors = { positive: 'bg-emerald-500', neutral: 'bg-muted-foreground', negative: 'bg-destructive', mixed: 'bg-amber-500' };
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        {icons[key]}
+                        <span className="text-xs text-foreground w-16">{labels[key]}</span>
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <motion.div
+                            className={`h-full rounded-full ${colors[key]}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.6 }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold tabular-nums w-10 text-right">{count}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-2 text-center">
+                    <span className="text-2xl font-bold text-foreground">{sentimentAgg.avgScore > 0 ? '+' : ''}{sentimentAgg.avgScore}</span>
+                    <p className="text-[10px] text-muted-foreground">Score médio (-1 a +1)</p>
+                  </div>
+                </div>
+
+                {/* Top emotions */}
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Emoções detectadas</p>
+                  {sentimentAgg.topEmotions?.length > 0 ? (
+                    <div className="space-y-2">
+                      {sentimentAgg.topEmotions.map(([emotion, count]: [string, number], i: number) => {
+                        const maxCount = sentimentAgg.topEmotions[0]?.[1] || 1;
+                        const pct = Math.round((count / maxCount) * 100);
+                        return (
+                          <motion.div
+                            key={emotion}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.08 }}
+                            className="flex items-center gap-3"
+                          >
+                            <span className="text-xs text-foreground capitalize w-24 truncate">{emotion}</span>
+                            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-violet-500/70" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-bold tabular-nums w-8 text-right">{count}</span>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-4 text-center">Sem emoções detectadas</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground text-center pt-2">{sentimentAgg.total} respostas analisadas</p>
+                </div>
+              </div>
+            )}
           </div>
         </GlassPanel>
 

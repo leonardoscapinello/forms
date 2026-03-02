@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw } from 'lucide-react';
+import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Table,
   TableBody,
@@ -115,11 +116,14 @@ function formatDate(iso: string): string {
 }
 
 export default function FormResponses({ form }: Props) {
+  const { toast } = useToast();
   const [rows, setRows] = useState<ResponseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [refreshing, setRefreshing] = useState(false);
+  const [sentimentData, setSentimentData] = useState<Record<string, any>>({});
+  const [analyzingSentiment, setAnalyzingSentiment] = useState(false);
 
   const fetchResponses = useCallback(() => {
     setLoading(true);
@@ -144,6 +148,25 @@ export default function FormResponses({ form }: Props) {
   }, [fetchResponses]);
 
   const fields = useMemo(() => extractInputFields(form), [form]);
+
+  const handleAnalyzeSentiment = useCallback(async () => {
+    setAnalyzingSentiment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
+        body: { form_id: form.id },
+      });
+      if (error) throw error;
+      if (data?.results) {
+        const map: Record<string, any> = {};
+        for (const r of data.results) { map[r.id] = r; }
+        setSentimentData(map);
+        toast({ title: 'Análise concluída', description: `${data.results.length} respostas analisadas` });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro na análise', description: e.message || 'Tente novamente', variant: 'destructive' });
+    }
+    setAnalyzingSentiment(false);
+  }, [form.id, toast]);
 
   // Extract variables as extra columns
   const variableColumns = useMemo(() => {
@@ -282,6 +305,12 @@ export default function FormResponses({ form }: Props) {
             Atualizar
           </Button>
 
+          {/* Sentiment */}
+          <Button variant="outline" size="sm" onClick={handleAnalyzeSentiment} disabled={analyzingSentiment} className="gap-1.5">
+            {analyzingSentiment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+            Sentimentos
+          </Button>
+
           {/* Export */}
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">
             <Download className="h-3.5 w-3.5" />
@@ -302,6 +331,12 @@ export default function FormResponses({ form }: Props) {
                 <TableHead className="w-36">Entrada</TableHead>
                 <TableHead className="w-36">Envio</TableHead>
                 <TableHead className="w-20">Duração</TableHead>
+                {Object.keys(sentimentData).length > 0 && (
+                  <>
+                    <TableHead className="w-28">Sentimento</TableHead>
+                    <TableHead className="min-w-[160px]">Emoções</TableHead>
+                  </>
+                )}
                 {fields.map((f, fi) => (
                   <TableHead key={`${f.id}-${f.subKey || fi}`} className="min-w-[160px] max-w-[280px]">
                     <span className="truncate block">{f.label}</span>
@@ -347,6 +382,34 @@ export default function FormResponses({ form }: Props) {
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatDuration(row.total_time_ms)}
                     </TableCell>
+                    {Object.keys(sentimentData).length > 0 && (() => {
+                      const s = sentimentData[row.id];
+                      const icon = s?.sentiment === 'positive' ? <Smile className="h-3.5 w-3.5 text-emerald-500" /> :
+                        s?.sentiment === 'negative' ? <Frown className="h-3.5 w-3.5 text-destructive" /> :
+                        s?.sentiment === 'mixed' ? <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> :
+                        <Meh className="h-3.5 w-3.5 text-muted-foreground" />;
+                      return (
+                        <>
+                          <TableCell className="text-xs">
+                            {s ? (
+                              <div className="flex items-center gap-1.5" title={s.summary}>
+                                {icon}
+                                <span className="capitalize">{s.sentiment}</span>
+                              </div>
+                            ) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {s?.emotions?.length ? (
+                              <div className="flex flex-wrap gap-1">
+                                {s.emotions.slice(0, 3).map((e: string) => (
+                                  <Badge key={e} variant="outline" className="text-[9px] py-0 px-1.5">{e}</Badge>
+                                ))}
+                              </div>
+                            ) : '—'}
+                          </TableCell>
+                        </>
+                      );
+                    })()}
                     {fields.map((f, fi) => (
                       <TableCell key={`${f.id}-${f.subKey || fi}`} className="text-sm max-w-[280px]">
                         <span className="truncate block" title={resolveCellValue(row.answers, f)}>
