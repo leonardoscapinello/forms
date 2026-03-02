@@ -41,7 +41,7 @@ function evaluateCondition(group: any, answers: Record<string, any>, variables: 
     } else if (rule.subjectType === 'context') {
       actual = answers[`__ctx_${rule.contextKey}`];
     } else if (rule.subjectType === 'param') {
-      actual = answers[`__ctx_param_${rule.paramKey}`];
+      actual = answers[`__param_${rule.paramKey}`];
     } else {
       actual = answers[rule.questionId];
     }
@@ -324,7 +324,8 @@ async function walkWorkflow(
             random -= variant.weight;
             if (random <= 0) { chosen = variant; break; }
           }
-          const variantEdge = edges.find((e: any) => e.source === target && e.sourceHandle === `variant-${chosen.id}`);
+          // Handle ID matches ABTestNode component: `ab-${variant.id}`
+          const variantEdge = edges.find((e: any) => e.source === target && e.sourceHandle === `ab-${chosen.id}`);
           if (variantEdge) nextNodeId = variantEdge.target;
         }
         continue;

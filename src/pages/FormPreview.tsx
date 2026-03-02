@@ -867,6 +867,14 @@ export default function FormPreview() { // perf-v2
     return score;
   }, [form, answers]);
 
+  // Sync totalScore into answers so it's available for conditions, variable interpolation, and webhooks
+  useEffect(() => {
+    setAnswers(prev => {
+      if (prev.__score === totalScore && prev.__var_pontuacao === String(totalScore)) return prev;
+      return { ...prev, __score: totalScore, __var_pontuacao: String(totalScore) };
+    });
+  }, [totalScore]);
+
   const isWelcome = currentPageIndex === null && !finished;
   const isThankYou = finished;
   const nonEmptyPages = useMemo(() => pages.filter(p => p.elements && p.elements.length > 0), [pages]);
@@ -1290,18 +1298,11 @@ export default function FormPreview() { // perf-v2
             random -= variant.weight;
             if (random <= 0) { chosenVariant = variant; break; }
           }
-          // Find the edge from this A/B test node with the matching source handle
+          // Handle ID matches ABTestNode component: `ab-${variant.id}`
           const variantEdge = edges.find(e => e.source === target && e.sourceHandle === `ab-${chosenVariant.id}`);
           if (variantEdge) {
-            currentNodeId = target;
-            // Override: jump directly to the chosen variant's target
-            const nextTarget = variantEdge.target;
-            if (nextTarget.startsWith('p-')) {
-              const pageId = nextTarget.replace('p-', '');
-              return { nextNodeId: pageId, updatedAnswers: currentAns };
-            }
-            // If it's another intermediate node, keep traversing
-            currentNodeId = nextTarget;
+            // Keep traversing from the variant's target (don't strip p- prefix)
+            currentNodeId = variantEdge.target;
             continue;
           }
         }
@@ -1332,7 +1333,8 @@ export default function FormPreview() { // perf-v2
         const jpId = target.replace('jp-', '');
         const jpNode = f?.jumpNodes?.find(n => n.id === jpId);
         if (jpNode?.targetPageId) {
-          return { nextNodeId: jpNode.targetPageId, updatedAnswers: currentAns };
+          // Return with `p-` prefix so goNext can match it correctly
+          return { nextNodeId: `p-${jpNode.targetPageId}`, updatedAnswers: currentAns };
         }
         currentNodeId = target;
         continue;
