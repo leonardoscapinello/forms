@@ -207,14 +207,25 @@ export default function OpenAIIntegrationCard() {
       is_active: isActive,
       config: config as any,
     };
-    if (settingsId) {
-      await (supabase as any).from('integration_settings').update(payload).eq('id', settingsId);
-    } else {
-      const { data } = await (supabase as any).from('integration_settings').insert(payload).select('id').single();
-      if (data) setSettingsId(data.id);
+    try {
+      if (settingsId) {
+        const { error } = await (supabase as any).from('integration_settings').update(payload).eq('id', settingsId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await (supabase as any).from('integration_settings').insert(payload).select('id').single();
+        if (error) throw error;
+        if (data) setSettingsId(data.id);
+      }
+      toast({ title: 'Configurações salvas' });
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao salvar integração',
+        description: e?.message || 'Não foi possível salvar as configurações da OpenAI.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    toast({ title: 'Configurações salvas' });
   }, [config, isActive, settingsId, toast]);
 
   const handleTest = useCallback(async () => {
@@ -224,13 +235,33 @@ export default function OpenAIIntegrationCard() {
       const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
         body: { test: true, text: 'Estou muito feliz com o produto, é incrível!' },
       });
-      if (error) throw error;
+
+      if (error) {
+        let message = error.message || 'Falha ao testar integração';
+        try {
+          const details = await (error as any)?.context?.json?.();
+          message = details?.message || details?.error || message;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(message);
+      }
+
       setTestResult(data?.sentiment ? 'success' : 'error');
-    } catch {
+      if (!data?.sentiment) {
+        toast({ title: 'Teste sem retorno válido', description: 'A IA não retornou a estrutura esperada.', variant: 'destructive' });
+      }
+    } catch (e: any) {
       setTestResult('error');
+      toast({
+        title: 'Erro ao testar integração',
+        description: e?.message || 'Não foi possível testar a OpenAI agora.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTesting(false);
     }
-    setTesting(false);
-  }, []);
+  }, [toast]);
 
   const handleRefresh = useCallback(() => {
     if (config.apiKey && config.apiKey.startsWith('sk-')) {
