@@ -5,7 +5,7 @@ import {
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus, FileText, Building2,
   AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
   LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows, CircleDot as CircleProgress,
-  ListOrdered, Gauge, Loader,
+  ListOrdered, Gauge, Loader, MessageCircle,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
@@ -34,6 +34,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   pricing: CreditCard,
   before_after: Columns,
   carousel: GalleryHorizontal,
+  whatsapp_invite: MessageCircle,
   input_text: TextCursorInput,
   input_email: Mail,
   input_phone: Phone,

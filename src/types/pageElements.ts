@@ -28,6 +28,7 @@ export type PageElementType =
   | 'pricing'
   | 'before_after'
   | 'carousel'
+  | 'whatsapp_invite'
   // Form input elements
   | 'input_text'
   | 'input_email'
@@ -318,6 +319,13 @@ export interface PageElement {
   afterImage?: string;
   beforeAfterMode?: 'slider' | 'side_by_side';
   carouselImages?: CarouselImage[];
+  // WhatsApp invite element
+  waGroupName?: string;
+  waGroupPhoto?: string;
+  waGroupMessage?: string;
+  waGroupLink?: string;
+  waButtonLabel?: string;
+  waParticipantCount?: number;
   // Horizontal bar element
   horizontalBarLabel?: string;
   horizontalBarValue?: number; // 0-100
@@ -452,6 +460,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   pricing: 'Preços',
   before_after: 'Antes e Depois',
   carousel: 'Carrossel',
+  whatsapp_invite: 'Convite WhatsApp',
   input_text: 'Campo',
   input_email: 'E-mail',
   input_phone: 'Telefone',
@@ -499,7 +508,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   sections: {
     label: 'Seções prontas',
-    types: ['arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel'],
+    types: ['arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel', 'whatsapp_invite'],
   },
 };
 
@@ -844,6 +853,14 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
     case 'input_company':
       base.label = 'Dados da empresa';
       base.required = false;
+      break;
+    case 'whatsapp_invite':
+      base.waGroupName = 'Comunidade VIP';
+      base.waGroupPhoto = '';
+      base.waGroupMessage = 'Toque no botão abaixo para entrar no grupo';
+      base.waGroupLink = 'https://chat.whatsapp.com/';
+      base.waButtonLabel = 'Entrar no grupo';
+      base.waParticipantCount = 128;
       break;
   }
 

@@ -61,6 +61,8 @@ const TestimonialsPreview = lazy(() => loadSectionPreviews().then(m => ({ defaul
 const FAQPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.FAQPreview })));
 const PricingPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.PricingPreview })));
 const CarouselPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.CarouselPreview })));
+const loadWhatsAppInvite = () => import('@/components/preview/WhatsAppInvitePreview');
+const WhatsAppInvitePreview = lazy(() => loadWhatsAppInvite().then(m => ({ default: m.default })));
 
 // Wrapper to keep Suspense local and avoid route-level blank/loading screens
 function LazyWrap({ children }: { children: React.ReactNode }) {
@@ -151,6 +153,9 @@ function prefetchLazyComponentsForElements(
         case 'pricing':
         case 'carousel':
           loaders.add(loadSectionPreviews);
+          break;
+        case 'whatsapp_invite':
+          loaders.add(loadWhatsAppInvite);
           break;
         case 'columns': {
           const columns = (el as any).columnData || [];
@@ -2715,6 +2720,10 @@ function InteractiveElement({
       );
     case 'carousel':
       return wrapWithStyle(<CarouselPreview element={element} />);
+    case 'whatsapp_invite':
+      return wrapWithStyle(
+        <WhatsAppInvitePreview element={element} />
+      );
 
     case 'columns': {
       const colCount = element.columnCount || 2;
