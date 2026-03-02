@@ -10,7 +10,7 @@ import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, Wai
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
-import { interpolateText } from '@/lib/variableInterpolation';
+import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
 import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
@@ -1994,6 +1994,8 @@ function InteractiveElement({
 }) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
+  /** Interpolate returning React nodes with styled variable highlights */
+  const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // Universal style wrappers matching ElementPreview
@@ -2161,11 +2163,11 @@ function InteractiveElement({
         <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>→</span>
         <div>
           <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
-            {t(element.label) || 'Sem título'}
+            {tNodes(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{t(element.description)}</p>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{tNodes(element.description)}</p>
           )}
         </div>
       </div>
@@ -2196,7 +2198,7 @@ function InteractiveElement({
       return wrapWithStyle(
         <div className={alignClass}>
           <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
-            {t(element.content) || 'Título'}
+            {tNodes(element.content) || 'Título'}
           </div>
         </div>
       );
@@ -2206,7 +2208,7 @@ function InteractiveElement({
       return wrapWithStyle(
         <div className={alignClass}>
           <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
-            {t(element.content) || ''}
+            {tNodes(element.content) || ''}
           </p>
         </div>
       );
