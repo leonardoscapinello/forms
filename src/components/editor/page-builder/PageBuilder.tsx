@@ -639,11 +639,10 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         )}
       </div>
 
-      {/* Right — Settings panel with slide animation */}
-      <AnimatePresence mode="wait">
+      {/* Right — Settings panel */}
+      <AnimatePresence>
         {!readOnly && !designMode && selectedElement && (
           <motion.div
-            key={selectedElement.id}
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 288, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -651,17 +650,27 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             className="border-l border-border bg-card flex flex-col h-full flex-shrink-0 overflow-hidden"
           >
             <div className="w-72 h-full flex flex-col">
-              <ElementSettingsPanel
-                key={selectedElement.id}
-                element={selectedElement}
-                onChange={patch => handleElementChange(selectedElement.id, patch)}
-                onClose={() => setSelectedId(null)}
-                pages={pages}
-                variables={variables}
-                integrationNodes={integrationNodes}
-                allInputElements={filteredInputElements}
-                trackedParams={trackedParams}
-              />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedElement.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="h-full flex flex-col"
+                >
+                  <ElementSettingsPanel
+                    element={selectedElement}
+                    onChange={patch => handleElementChange(selectedElement.id, patch)}
+                    onClose={() => setSelectedId(null)}
+                    pages={pages}
+                    variables={variables}
+                    integrationNodes={integrationNodes}
+                    allInputElements={filteredInputElements}
+                    trackedParams={trackedParams}
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
