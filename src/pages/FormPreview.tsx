@@ -86,7 +86,10 @@ function buildDefaults(form: AppFormData | null) {
   return defaults;
 }
 
-function prefetchLazyComponentsForElements(elements?: PageElement[]) {
+function prefetchLazyComponentsForElements(
+  elements?: PageElement[],
+  priority: 'immediate' | 'idle' = 'idle'
+) {
   if (!elements || elements.length === 0) return;
 
   const loaders = new Set<() => Promise<unknown>>();
@@ -167,6 +170,11 @@ function prefetchLazyComponentsForElements(elements?: PageElement[]) {
     Promise.allSettled([...loaders].map((loader) => loader())).catch(() => {});
   };
 
+  if (priority === 'immediate') {
+    run();
+    return;
+  }
+
   if (typeof requestIdleCallback === 'function') {
     requestIdleCallback(run);
   } else {
@@ -227,12 +235,16 @@ export default function FormPreview() {
   const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
   const [publicLoading, setPublicLoading] = useState(!storeForm);
   const [showPublicSkeleton, setShowPublicSkeleton] = useState(true);
+  const [isInitialStateReady, setIsInitialStateReady] = useState(false);
 
   useEffect(() => {
     if (storeForm || !id) return;
     setPublicLoading(true);
 
+    let cancelled = false;
+
     const parseFormData = (data: any) => {
+      if (cancelled) return;
       const d = data.data as Record<string, unknown>;
       const form: AppFormData = {
         ...(d as unknown as AppFormData),
@@ -246,23 +258,50 @@ export default function FormPreview() {
       setPublicLoading(false);
     };
 
-    // Single fast path: prefetch (started in main.tsx) → fallback to direct query
-    consumePrefetchedForm(id).then((result) => {
-      if (result?.data && !result.error) {
-        parseFormData(result.data);
-        return;
-      }
-      // Fallback: direct lightweight query
-      supabase
-        .from('forms')
-        .select('id, title, status, data')
-        .eq('id', id)
-        .single()
-        .then(({ data, error }) => {
-          if (error || !data) { setPublicLoading(false); return; }
-          parseFormData(data);
-        });
+    const fromPrefetch = consumePrefetchedForm(id).then((result) => {
+      if (result?.data && !result.error) return result.data;
+      throw new Error('prefetch_miss');
     });
+
+    const fromEdge = supabase.functions.invoke('form-public-get', { body: { id } }).then(({ data, error }) => {
+      if (error || !data || (data as any).error) throw new Error('edge_fetch_failed');
+      return data;
+    });
+
+    const fromDirectQuery = supabase
+      .from('forms')
+      .select('id, title, status, data')
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) throw new Error('direct_query_failed');
+        return data;
+      });
+
+    let resolved = false;
+    let failures = 0;
+    const totalSources = 3;
+
+    const resolveOnce = (data: any) => {
+      if (cancelled || resolved) return;
+      resolved = true;
+      parseFormData(data);
+    };
+
+    const handleFailure = () => {
+      failures += 1;
+      if (!cancelled && !resolved && failures >= totalSources) {
+        setPublicLoading(false);
+      }
+    };
+
+    Promise.resolve(fromPrefetch).then(resolveOnce).catch(handleFailure);
+    Promise.resolve(fromEdge).then(resolveOnce).catch(handleFailure);
+    Promise.resolve(fromDirectQuery).then(resolveOnce).catch(handleFailure);
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, storeForm]);
 
   const form = storeForm || publicForm;
@@ -360,6 +399,8 @@ export default function FormPreview() {
   // Phase 2 (deferred): session context, geo — via requestIdleCallback
   useEffect(() => {
     if (!form) return;
+    setIsInitialStateReady(false);
+
     const defaults = buildDefaults(form);
 
     // Try to resume from saved session
@@ -373,6 +414,10 @@ export default function FormPreview() {
             setAnswers({ ...defaults, ...parsed.answers });
             setCurrentPageIndex(parsed.pageIndex);
             maxPageVisitedRef.current = parsed.maxPage ?? parsed.pageIndex;
+
+            prefetchLazyComponentsForElements(form.pages?.[parsed.pageIndex]?.elements || [], 'immediate');
+            setIsInitialStateReady(true);
+
             // Capture context after paint
             const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
             sched(() => {
@@ -386,8 +431,15 @@ export default function FormPreview() {
       } catch { /* ignore corrupt data */ }
     }
 
+    const initialPageIndex = form.showWelcomeScreen ? null : 0;
+    const initialElements = initialPageIndex === null
+      ? (form.welcomePage?.elements || [])
+      : (form.pages?.[initialPageIndex]?.elements || []);
+
+    prefetchLazyComponentsForElements(initialElements, 'immediate');
     setAnswers(defaults);
-    setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
+    setCurrentPageIndex(initialPageIndex);
+    setIsInitialStateReady(true);
 
     // Phase 2: capture session context after first paint
     const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
@@ -801,10 +853,10 @@ export default function FormPreview() {
         ? (form.thankYouPage?.elements || [])
         : (currentPage?.elements || []);
 
-    prefetchLazyComponentsForElements(currentElements);
+    prefetchLazyComponentsForElements(currentElements, 'immediate');
 
     if (!isWelcome && !isThankYou && currentPageIndex !== null) {
-      prefetchLazyComponentsForElements(pages[currentPageIndex + 1]?.elements || []);
+      prefetchLazyComponentsForElements(pages[currentPageIndex + 1]?.elements || [], 'idle');
     }
   }, [form, pages, currentPage, currentPageIndex, isWelcome, isThankYou]);
 
@@ -1707,10 +1759,12 @@ export default function FormPreview() {
     return s;
   }, [form?.globalPageStyle, form?.style]);
 
-  if (publicLoading) {
+  const isBootstrapping = !!form && !isInitialStateReady;
+
+  if (publicLoading || isBootstrapping) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        {showPublicSkeleton && (
+        {(publicLoading ? showPublicSkeleton : true) && (
           <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
         )}
       </div>
