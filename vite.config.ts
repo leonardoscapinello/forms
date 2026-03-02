@@ -23,13 +23,8 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           if (id.includes('react-dom') || (id.includes('/react/') && !id.includes('react-router'))) return 'vendor-react';
           if (id.includes('react-router-dom')) return 'vendor-router';
-          if (id.includes('framer-motion')) return 'motion';
-          // recharts + d3 must stay together to avoid circular ref
-          if (id.includes('recharts') || id.includes('d3-')) return 'charts';
-          if (id.includes('@xyflow')) return 'flow';
-          if (id.includes('@dnd-kit')) return 'dnd';
-          if (id.includes('@radix-ui')) return 'ui';
-          if (id.includes('@supabase')) return 'supabase';
+          // Keep the rest automatic to avoid circular-init runtime issues
+          return undefined;
         },
       },
     },
