@@ -90,9 +90,12 @@ function EditorLayoutInner() {
                 <><Cloud className="h-3 w-3" /><span>Salvo</span></>
               )}
             </div>
-            <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5" onClick={() => setShowResponsivePreview(true)}>
-              <Monitor className="h-4 w-4" /> Preview
-            </Button>
+            <button
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-xs font-medium text-foreground"
+              onClick={() => setShowResponsivePreview(true)}
+            >
+              <Monitor className="h-3.5 w-3.5" /> Preview
+            </button>
             <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden" onClick={() => setShowResponsivePreview(true)}>
               <Eye className="h-4 w-4" />
             </Button>
