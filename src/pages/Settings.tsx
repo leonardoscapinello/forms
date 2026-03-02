@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   HardDrive, Save, TestTube, Loader2, CheckCircle2, XCircle, Eye, EyeOff,
   Settings2, Users, Plug, Shield, Plus, Trash2, UserCog, Mail, Radio, Tag,
-  Pencil, Check, X, MessageSquare, BarChart3, ChevronRight,
+  Pencil, Check, X, MessageSquare, BarChart3, ChevronRight, Brain,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ReoonIntegrationCard from '@/components/settings/ReoonIntegrationCard';
@@ -17,6 +17,7 @@ import PixelIntegrationsCard from '@/components/settings/PixelIntegrationsCard';
 import GoogleOAuthCard from '@/components/settings/GoogleOAuthCard';
 import EvolutionApiCard from '@/components/settings/EvolutionApiCard';
 import ResendApiCard from '@/components/settings/ResendApiCard';
+import OpenAIIntegrationCard from '@/components/settings/OpenAIIntegrationCard';
 import EmailValidationsTab from '@/components/settings/EmailValidationsTab';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -341,6 +342,13 @@ const INTEGRATION_CARDS: IntegrationCardDef[] = [
     icon: <Mail className="h-5 w-5 text-node-email-accent" />,
     bgColor: 'bg-node-email',
   },
+  {
+    id: 'openai',
+    label: 'OpenAI',
+    description: 'Análise de sentimentos e emoções com IA',
+    icon: <Brain className="h-5 w-5 text-violet-500" />,
+    bgColor: 'bg-violet-500/10',
+  },
 ];
 
 function IntegrationsTab() {
@@ -420,6 +428,21 @@ function IntegrationsTab() {
       <Dialog open={openDialog === 'resend'} onOpenChange={open => !open && setOpenDialog(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <ResendApiCard />
+        </DialogContent>
+      </Dialog>
+
+      {/* OpenAI Dialog */}
+      <Dialog open={openDialog === 'openai'} onOpenChange={open => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Brain className="h-4 w-4 text-violet-500" />
+              </div>
+              OpenAI
+            </DialogTitle>
+          </DialogHeader>
+          <OpenAIIntegrationCard />
         </DialogContent>
       </Dialog>
     </div>
