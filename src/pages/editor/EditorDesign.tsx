@@ -101,7 +101,7 @@ export default function EditorDesign() {
         </div>
         <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout" initial={false}>
               {designSelectedElement ? (
                 <motion.div
                   key={`element-${designSelectedElement.id}`}
