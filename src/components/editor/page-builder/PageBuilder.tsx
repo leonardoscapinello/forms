@@ -29,7 +29,8 @@ import ElementToolbar from './ElementToolbar';
 import ElementSettingsPanel from './ElementSettingsPanel';
 import PageGeneralSettings from './PageGeneralSettings';
 import ElementPreview from './ElementPreview';
-import { LayoutTemplate, Plus, Trash2 } from 'lucide-react';
+import { LayoutTemplate, Plus, Trash2, ArrowUp, ArrowDown, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   elements: PageElement[];
@@ -579,6 +580,60 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
             </DragOverlay>
           </DndContext>
         </div>
+
+        {/* Design mode — mock navigation bar */}
+        {designMode && (
+          <div className="sticky bottom-4 z-30 flex justify-center pointer-events-none pb-4">
+            <div className="pointer-events-auto flex items-center gap-2 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-lg px-2 py-1.5">
+              {pageId !== 'welcome' && (pages || []).length > 1 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-3 rounded-full text-muted-foreground gap-1.5 text-xs cursor-default"
+                    tabIndex={-1}
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Voltar</span>
+                  </Button>
+                  <div className="w-px h-5 bg-border" />
+                </>
+              )}
+              <Button
+                variant="default"
+                size="sm"
+                className="h-9 px-4 rounded-full gap-1.5 text-xs cursor-default"
+                tabIndex={-1}
+              >
+                {pageId === 'thank-you' ? (
+                  <span>✓ Enviado</span>
+                ) : pageId === 'welcome' ? (
+                  <>
+                    <span>Começar</span>
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </>
+                ) : (() => {
+                  const idx = (pages || []).findIndex(p => p.id === pageId);
+                  const isLast = idx === (pages || []).length - 1;
+                  return isLast ? (
+                    <>
+                      <span>Enviar</span>
+                      <Send className="h-3.5 w-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Continuar</span>
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </>
+                  );
+                })()}
+              </Button>
+              {pageId !== 'welcome' && pageId !== 'thank-you' && (
+                <span className="text-[10px] text-muted-foreground/60 px-1 hidden sm:block">Enter ⏎</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right — Settings panel (only visible when element selected, hidden in readOnly/designMode) */}
