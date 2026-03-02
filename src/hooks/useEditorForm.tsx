@@ -467,7 +467,21 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
         </div>
       );
     }
-    return null;
+
+    return (
+      <div className="h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Formulário não encontrado. Redirecionando...</p>
+          <button
+            type="button"
+            onClick={() => navigate('/', { replace: true })}
+            className="text-sm text-primary underline underline-offset-4"
+          >
+            Ir para formulários
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <EditorFormContext.Provider value={value as EditorFormContextType}>{children}</EditorFormContext.Provider>;
