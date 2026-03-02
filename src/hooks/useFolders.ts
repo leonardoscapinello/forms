@@ -37,19 +37,25 @@ export function buildFolderTree(flat: Folder[]): FolderNode[] {
 
 export function useFolders() {
   const { user } = useAuth();
+  const userId = user?.id;
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const fetchFolders = useCallback(async () => {
-    if (!user) return;
+    if (!userId) {
+      setFolders([]);
+      setLoaded(true);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('folders')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('name');
     if (!error && data) setFolders(data as Folder[]);
     setLoaded(true);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     fetchFolders();
