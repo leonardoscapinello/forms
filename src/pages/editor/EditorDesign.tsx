@@ -42,12 +42,12 @@ export default function EditorDesign() {
   return (
     <>
       {/* Sidebar com configurações de design */}
-      <div className="w-[320px] shrink-0 border-r border-border bg-card flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+      <div className="w-[320px] shrink-0 border-r border-border bg-card flex flex-col min-h-0 h-full">
+        <div className="px-4 py-3 border-b border-border shrink-0">
           <h2 className="text-sm font-semibold text-foreground">Design</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Configurações visuais do formulário</p>
         </div>
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
             <Suspense fallback={null}>
               <FormDesignSettings form={form} onUpdate={(patch) => updateFormData(patch)} />
