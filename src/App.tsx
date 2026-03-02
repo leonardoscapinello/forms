@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
 import { Loader2 } from "lucide-react";
-import FormPreview from "./pages/FormPreview";
+
+// FormPreview is lazy-loaded even for public routes to keep main bundle tiny
+const FormPreview = lazy(() => import("./pages/FormPreview"));
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -70,10 +72,16 @@ const App = () => {
   if (isPublicFormPath) {
     return (
       <BrowserRouter>
-        <Routes>
-          <Route path="/f/:id" element={<FormPreview />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        }>
+          <Routes>
+            <Route path="/f/:id" element={<FormPreview />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     );
   }

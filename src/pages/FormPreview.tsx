@@ -142,47 +142,22 @@ export default function FormPreview() {
       setPublicLoading(false);
     };
 
-    // Try to consume prefetched data first (started in main.tsx before React mounted)
+    // Single fast path: prefetch (started in main.tsx) → fallback to direct query
     consumePrefetchedForm(id).then((result) => {
       if (result?.data && !result.error) {
         parseFormData(result.data);
-      } else {
-        // Fallback: fetch via lightweight edge function
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/form-public-get?id=${id}`;
-        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        fetch(url, {
-          headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(data => {
-            if (data && !data.error) {
-              parseFormData(data);
-            } else {
-              // Ultimate fallback: direct Supabase query
-              supabase
-                .from('forms')
-                .select('id, title, status, data')
-                .eq('id', id)
-                .single()
-                .then(({ data, error }) => {
-                  if (error || !data) { setPublicLoading(false); return; }
-                  parseFormData(data);
-                });
-            }
-          })
-          .catch(() => {
-            // Network error — try direct Supabase
-            supabase
-              .from('forms')
-              .select('id, title, status, data')
-              .eq('id', id)
-              .single()
-              .then(({ data, error }) => {
-                if (error || !data) { setPublicLoading(false); return; }
-                parseFormData(data);
-              });
-          });
+        return;
       }
+      // Fallback: direct lightweight query
+      supabase
+        .from('forms')
+        .select('id, title, status, data')
+        .eq('id', id)
+        .single()
+        .then(({ data, error }) => {
+          if (error || !data) { setPublicLoading(false); return; }
+          parseFormData(data);
+        });
     });
   }, [id, storeForm]);
 
