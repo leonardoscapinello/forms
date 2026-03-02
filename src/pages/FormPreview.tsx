@@ -1480,8 +1480,8 @@ export default function FormPreview() {
       className="min-h-screen bg-background flex flex-col relative"
     >
 
-      {/* Close — only visible when opened from the editor */}
-      {isEditorPreview && (
+      {/* Close — only visible when opened from the editor (not inside iframe) */}
+      {isEditorPreview && window.self === window.top && (
         <div className="absolute top-4 right-4 z-20">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/editor/${id}`)}>
             <X className="h-5 w-5" />
