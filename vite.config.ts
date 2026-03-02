@@ -17,16 +17,23 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: "es2020",
+    cssMinify: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom", "react-router-dom"],
-          ui: ["@radix-ui/react-dialog", "@radix-ui/react-popover", "@radix-ui/react-dropdown-menu", "@radix-ui/react-tooltip", "@radix-ui/react-tabs"],
-          
-          charts: ["recharts"],
-          flow: ["@xyflow/react"],
-          dnd: ["@dnd-kit/core", "@dnd-kit/sortable"],
-          motion: ["framer-motion"],
+        manualChunks(id) {
+          // Core React — shared by all routes
+          if (id.includes('react-dom') || (id.includes('/react/') && !id.includes('react-router'))) return 'vendor-react';
+          if (id.includes('react-router-dom')) return 'vendor-router';
+          // framer-motion — used by form preview
+          if (id.includes('framer-motion')) return 'motion';
+          // Heavy admin-only deps
+          if (id.includes('recharts')) return 'charts';
+          if (id.includes('@xyflow')) return 'flow';
+          if (id.includes('@dnd-kit')) return 'dnd';
+          // Radix UI — mostly admin
+          if (id.includes('@radix-ui')) return 'ui';
+          // Supabase client — shared
+          if (id.includes('@supabase')) return 'supabase';
         },
       },
     },

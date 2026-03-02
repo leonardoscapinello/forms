@@ -38,8 +38,12 @@ const AddressFieldPreview = lazy(() => import('@/components/preview/AddressField
 const ProgressBarColumn = lazy(() => import('@/components/preview/ProgressBarColumn'));
 const BeforeAfterSlider = lazy(() => import('@/components/preview/BeforeAfterSlider'));
 const DebugPanel = lazy(() => import('@/components/preview/DebugPanel'));
-// Section previews are lightweight — import directly
-import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, CarouselPreview } from '@/components/editor/page-builder/SectionPreviews';
+// Section previews — lazy loaded to reduce initial bundle
+const ArgumentsPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.ArgumentsPreview })));
+const TestimonialsPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.TestimonialsPreview })));
+const FAQPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.FAQPreview })));
+const PricingPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.PricingPreview })));
+const CarouselPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.CarouselPreview })));
 
 // Wrapper to avoid Suspense boundary per element — shows nothing while loading (instant swap)
 function LazyWrap({ children }: { children: React.ReactNode }) {
@@ -146,7 +150,7 @@ export default function FormPreview() {
         // Fallback: fetch normally if prefetch missed
         supabase
           .from('forms')
-          .select('id, title, status, data, created_at, updated_at')
+          .select('id, title, status, data')
           .eq('id', id)
           .single()
           .then(({ data, error }) => {
@@ -1636,6 +1640,8 @@ export default function FormPreview() {
                   alt="Logo"
                   className="object-contain"
                   style={{ height: form.style.logoHeight || 40, maxWidth: 128 }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  loading="eager"
                 />
               </div>
             )}
