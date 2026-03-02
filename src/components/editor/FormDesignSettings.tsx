@@ -9,6 +9,7 @@ import { Palette, Type, Image, Upload, Loader2, X, ImageIcon } from 'lucide-reac
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
+import GradientEditor from '@/components/editor/shared/GradientEditor';
 
 interface Props {
   form: FormData;
@@ -25,14 +26,6 @@ const FONT_OPTIONS = [
   { value: 'Trebuchet MS', label: 'Trebuchet MS' },
 ];
 
-const GRADIENT_PRESETS = [
-  { label: 'Azul suave', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-  { label: 'Rosa quente', value: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-  { label: 'Verde menta', value: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-  { label: 'Laranja pôr-do-sol', value: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-  { label: 'Escuro elegante', value: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%)' },
-  { label: 'Neutro claro', value: 'linear-gradient(180deg, #fdfcfb 0%, #e2d1c3 100%)' },
-];
 
 export default function FormDesignSettings({ form, onUpdate }: Props) {
   const style = form.style;
@@ -138,35 +131,10 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
 
           {/* Gradient */}
           {bgType === 'gradient' && (
-            <div className="space-y-3">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Predefinidos</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {GRADIENT_PRESETS.map(preset => (
-                  <button
-                    key={preset.label}
-                    className={`h-12 rounded-lg border-2 transition-all ${
-                      style.backgroundGradient === preset.value ? 'border-primary scale-105' : 'border-border hover:border-muted-foreground'
-                    }`}
-                    style={{ background: preset.value }}
-                    onClick={() => updateStyle({ backgroundGradient: preset.value })}
-                    title={preset.label}
-                  />
-                ))}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider">CSS customizado</Label>
-                <Input
-                  value={style.backgroundGradient || ''}
-                  onChange={e => updateStyle({ backgroundGradient: e.target.value })}
-                  placeholder="linear-gradient(135deg, #667eea, #764ba2)"
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-              {/* Preview */}
-              {style.backgroundGradient && (
-                <div className="h-16 rounded-lg border border-border" style={{ background: style.backgroundGradient }} />
-              )}
-            </div>
+            <GradientEditor
+              value={style.backgroundGradient || ''}
+              onChange={v => updateStyle({ backgroundGradient: v })}
+            />
           )}
 
           {/* Image */}
