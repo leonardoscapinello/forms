@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +6,31 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FormStoreProvider } from "@/hooks/useFormStore";
 import { Loader2 } from "lucide-react";
+
+/** Catches render errors so the user sees a message instead of a blank screen */
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', padding: 24 }}>
+          <div style={{ textAlign: 'center', maxWidth: 420 }}>
+            <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Algo deu errado</p>
+            <p style={{ fontSize: 14, color: '#888', marginBottom: 16 }}>{this.state.error.message}</p>
+            <button onClick={() => window.location.reload()} style={{ padding: '8px 20px', borderRadius: 6, border: '1px solid #ccc', cursor: 'pointer' }}>
+              Recarregar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // FormPreview is lazy-loaded even for public routes to keep main bundle tiny
 const FormPreview = lazy(() => import("./pages/FormPreview"));
@@ -71,18 +96,20 @@ const App = () => {
 
   if (isPublicFormPath) {
     return (
-      <BrowserRouter>
-        <Suspense fallback={
-          <div className="min-h-screen flex items-center justify-center bg-background">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        }>
-          <Routes>
-            <Route path="/f/:id" element={<FormPreview />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          }>
+            <Routes>
+              <Route path="/f/:id" element={<FormPreview />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </ErrorBoundary>
     );
   }
 
