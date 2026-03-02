@@ -8,9 +8,9 @@ import {
 import { FormTagsPicker, MoveToFolderMenu } from './FormMenus';
 
 const STATUS_MAP = {
-  draft: { label: 'Rascunho', variant: 'secondary' as const },
-  published: { label: 'Publicado', variant: 'default' as const },
-  archived: { label: 'Arquivado', variant: 'outline' as const },
+  draft: { label: 'Rascunho', variant: 'outline' as const, badgeClass: 'border-amber-500/30 text-amber-500 bg-amber-500/10' },
+  published: { label: 'Ativo', variant: 'default' as const, badgeClass: 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' },
+  archived: { label: 'Arquivado', variant: 'outline' as const, badgeClass: 'border-muted-foreground/30 text-muted-foreground bg-muted/50' },
 };
 
 interface FormCardProps {
@@ -42,10 +42,13 @@ export function FormCard({ form, tags, tagIds, folders, selectedFolderId, isDrag
       }}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`group cursor-pointer rounded-xl border border-border bg-card p-5 transition-all hover:shadow-sm hover:border-primary/20 ${isDragging ? 'opacity-50' : ''}`}
+      className={`group cursor-pointer rounded-xl border border-border bg-card p-5 transition-all hover:shadow-sm hover:border-primary/20 ${isDragging ? 'opacity-50' : ''} ${form.status === 'draft' ? 'opacity-70' : ''}`}
     >
       <div className="flex items-start justify-between mb-3">
-        <Badge variant={status.variant} className="text-[10px]">{status.label}</Badge>
+        <Badge variant={status.variant} className={`text-[10px] ${status.badgeClass}`}>
+          <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${form.status === 'published' ? 'bg-emerald-500' : form.status === 'draft' ? 'bg-amber-500' : 'bg-muted-foreground'}`} />
+          {status.label}
+        </Badge>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
