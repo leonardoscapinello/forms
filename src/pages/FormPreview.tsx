@@ -1619,6 +1619,7 @@ export default function FormPreview() {
   const hasVariables = (form.variables?.length ?? 0) > 0;
 
   return (
+    <main role="main">
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1646,9 +1647,11 @@ export default function FormPreview() {
             {hasLogo && (
               <img
                 src={form.style!.logoUrl}
-                alt="Logo"
+                alt="Logo do formulário"
                 className="object-contain flex-shrink-0"
                 style={{ height: form.style!.logoHeight || 40, maxWidth: 128 }}
+                width={128}
+                height={form.style!.logoHeight || 40}
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 loading="eager"
               />
@@ -2020,6 +2023,7 @@ export default function FormPreview() {
         )}
       </AnimatePresence>
     </motion.div>
+    </main>
   );
 }
 
