@@ -971,10 +971,9 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) handleAttemptClose(); }}>
-      <DialogContent className="email-builder-dialog max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <style dangerouslySetInnerHTML={{ __html: `.email-builder-dialog > button { display: none !important; }` }} />
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* ─── Top bar ─── */}
-        <div className="flex items-center justify-between px-4 h-12 border-b border-border/50 flex-shrink-0 bg-background">
+        <div className="flex items-center justify-between pl-4 pr-16 h-12 border-b border-border/50 flex-shrink-0 bg-background">
           <div className="flex items-center gap-3 min-w-0">
             {step === 'editor' && !hasExistingContent && (
               <button onClick={() => setStep('template')}
@@ -1012,7 +1011,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
               </>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pr-10">
             <Button variant="ghost" size="sm" onClick={handleAttemptClose} className="text-xs h-8 text-muted-foreground">Cancelar</Button>
             {step === 'editor' && (
               <Button size="sm" onClick={handleSave} className="text-xs h-8 px-5">Salvar</Button>
