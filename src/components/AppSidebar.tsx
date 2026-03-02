@@ -80,7 +80,7 @@ export function AppSidebar() {
             alt="twobrain"
             className={cn(
               'w-auto group-data-[collapsible=icon]:mx-auto',
-              collapsed ? 'h-7' : 'h-6 max-w-[127px]',
+              collapsed ? 'h-8' : 'h-9 max-w-[160px]',
             )}
           />
         </div>
