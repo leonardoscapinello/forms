@@ -183,6 +183,7 @@ export default function FormPreview() {
   const [finished, setFinished] = useState(false);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const pageHistoryRef = useRef<number[]>([]);
   const [waitFeedback, setWaitFeedback] = useState<{
     active: boolean;
     mode: WaitFeedbackMode;
@@ -1096,6 +1097,14 @@ export default function FormPreview() {
     return { nextNodeId: null, updatedAnswers: currentAns };
   }, []);
 
+  // Helper: navigate forward to a page index, pushing current to history
+  const navigateToPage = useCallback((targetIndex: number, newAnswers: Record<string, any>) => {
+    if (currentPageIndex !== null) {
+      pageHistoryRef.current.push(currentPageIndex);
+    }
+    setAnswers(applyPageVariableAssignments(pages[targetIndex], newAnswers));
+    setCurrentPageIndex(targetIndex);
+  }, [currentPageIndex, pages, applyPageVariableAssignments]);
 
 
   const goNext = useCallback(async () => {
@@ -1157,10 +1166,10 @@ export default function FormPreview() {
                 if (nextNodeId && nextNodeId.startsWith('p-')) {
                   const pageId = nextNodeId.replace('p-', '');
                   const targetIndex = pages.findIndex(p => p.id === pageId);
-                  if (targetIndex !== -1) { setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers)); setCurrentPageIndex(targetIndex); return; }
+                  if (targetIndex !== -1) { navigateToPage(targetIndex, updatedAnswers); return; }
                 }
-                const seqNext = currentPageIndex !== null ? currentPageIndex + 1 : 0;
-                if (seqNext < pages.length) { setAnswers(applyPageVariableAssignments(pages[seqNext], updatedAnswers)); setCurrentPageIndex(seqNext); } else { setFinished(true); }
+                // No flow target — finish
+                setFinished(true);
                 return;
               }
             }
@@ -1252,8 +1261,7 @@ export default function FormPreview() {
         if (wasSkipped && skipAction === 'go_to_page' && fb.skipTargetPageId) {
           const targetIndex = pages.findIndex(p => p.id === fb.skipTargetPageId);
           if (targetIndex !== -1) {
-            setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
-            setCurrentPageIndex(targetIndex);
+            navigateToPage(targetIndex, updatedAnswers);
             return;
           }
         }
@@ -1270,19 +1278,12 @@ export default function FormPreview() {
           const pageId = nextNodeId.replace('p-', '');
           const targetIndex = pages.findIndex(p => p.id === pageId);
           if (targetIndex !== -1) {
-            setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
-            setCurrentPageIndex(targetIndex);
+            navigateToPage(targetIndex, updatedAnswers);
             return;
           }
         }
-        // Fallback: navigate sequentially
-        const seqNext = currentPageIndex !== null ? currentPageIndex + 1 : 0;
-        if (seqNext < pages.length) {
-          setAnswers(applyPageVariableAssignments(pages[seqNext], updatedAnswers));
-          setCurrentPageIndex(seqNext);
-        } else {
-          setFinished(true);
-        }
+        // Fallback: finish
+        setFinished(true);
         return;
       }
 
@@ -1306,8 +1307,7 @@ export default function FormPreview() {
             if (n2 && n2.startsWith('p-')) {
               const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
               if (idx2 !== -1) {
-                setAnswers(applyPageVariableAssignments(pages[idx2], a2));
-                setCurrentPageIndex(idx2);
+                navigateToPage(idx2, a2);
                 return;
               }
             }
@@ -1320,16 +1320,13 @@ export default function FormPreview() {
             })();
             // Prevent dead-end loops (e.g. jumping back to the same current page)
             if (nextNonEmpty !== -1 && (currentPageIndex === null || nextNonEmpty > currentPageIndex)) {
-              setAnswers(applyPageVariableAssignments(pages[nextNonEmpty], updatedAnswers));
-              setCurrentPageIndex(nextNonEmpty);
+              navigateToPage(nextNonEmpty, updatedAnswers);
               return;
             }
             setFinished(true);
             return;
           }
-          const nextPage = pages[targetIndex];
-          setAnswers(applyPageVariableAssignments(nextPage, updatedAnswers));
-          setCurrentPageIndex(targetIndex);
+          navigateToPage(targetIndex, updatedAnswers);
           return;
         }
       }
@@ -1350,16 +1347,14 @@ export default function FormPreview() {
       if (currentPageIndex === null) {
         const idx = findNextNonEmpty(0);
         if (idx !== -1) {
-          setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
-          setCurrentPageIndex(idx);
+          navigateToPage(idx, updatedAnswers);
         } else {
           setFinished(true);
         }
       } else if (currentPageIndex < pages.length - 1) {
         const idx = findNextNonEmpty(currentPageIndex + 1);
         if (idx !== -1) {
-          setAnswers(applyPageVariableAssignments(pages[idx], updatedAnswers));
-          setCurrentPageIndex(idx);
+          navigateToPage(idx, updatedAnswers);
         } else {
           setFinished(true);
         }
@@ -1369,7 +1364,7 @@ export default function FormPreview() {
     } finally {
       navigatingRef.current = false;
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, applyPageVariableAssignments, walkWorkflow, isPageEmpty, isEditorPreview]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview]);
 
 
   const goBack = useCallback(() => {
@@ -1379,22 +1374,18 @@ export default function FormPreview() {
       setFinished(false);
       return;
     }
-    if (currentPageIndex !== null && currentPageIndex > 0) {
-      // Skip empty pages going backwards
-      for (let i = currentPageIndex - 1; i >= 0; i--) {
-        if (!isPageEmpty(pages[i])) {
-          setCurrentPageIndex(i);
-          return;
-        }
-      }
-      // All previous pages are empty — go to welcome if available
-      if (form?.showWelcomeScreen) {
-        setCurrentPageIndex(null);
-      }
-    } else if (currentPageIndex === 0 && form?.showWelcomeScreen) {
+    // Use navigation history to go back to the actual previous page in the flow
+    const history = pageHistoryRef.current;
+    if (history.length > 0) {
+      const prevIndex = history.pop()!;
+      setCurrentPageIndex(prevIndex);
+      return;
+    }
+    // No history — go to welcome if available
+    if (currentPageIndex !== null && form?.showWelcomeScreen) {
       setCurrentPageIndex(null);
     }
-  }, [currentPageIndex, finished, pages, isPageEmpty, form?.showWelcomeScreen]);
+  }, [currentPageIndex, finished, form?.showWelcomeScreen]);
 
   const setAnswer = useCallback((elementId: string, value: any) => {
     // Clear field error when user provides a value
@@ -1444,12 +1435,11 @@ export default function FormPreview() {
         const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
         const latestAnswers = answersRef.current;
         const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
-        setAnswers(applyPageVariableAssignments(pages[targetIndex], updatedAnswers));
+        navigateToPage(targetIndex, updatedAnswers);
         answersRef.current = updatedAnswers;
-        setCurrentPageIndex(targetIndex);
       }
     }
-  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, applyPageVariableAssignments, isEditorPreview]);
+  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, navigateToPage, isEditorPreview]);
 
   // Keyboard navigation: Enter = next (always), ArrowDown = next (except last page), ArrowUp = back
   const isLastPage = isFlowLastPage;
@@ -1741,7 +1731,7 @@ export default function FormPreview() {
       {!isWelcome && !isThankYou && (() => {
         const hasActionButtons = currentPage?.elements?.some(el => el.type === 'button');
         if (hasActionButtons) return null;
-        const canGoBack = currentPageIndex !== null && (currentPageIndex > 0 || !!form?.showWelcomeScreen);
+        const canGoBack = pageHistoryRef.current.length > 0 || (currentPageIndex !== null && !!form?.showWelcomeScreen);
         const isLastPage = isFlowLastPage;
         return (
           <div className="fixed bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-50">
