@@ -680,8 +680,10 @@ export default function FormPreview() {
   const isThankYou = finished;
   const nonEmptyPages = useMemo(() => pages.filter(p => p.elements && p.elements.length > 0), [pages]);
   const totalSteps = nonEmptyPages.length;
-  const currentStepIndex = currentPageIndex !== null ? nonEmptyPages.findIndex(p => p.id === pages[currentPageIndex]?.id) : -1;
-  const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 0;
+  // Progress based on journey step count (history length), not page array position
+  // This ensures progress always increases linearly regardless of workflow page order
+  const journeyStep = pageHistoryRef.current.length + (currentPageIndex !== null ? 1 : 0);
+  const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? Math.min((journeyStep / totalSteps) * 100, 100) : 0;
 
   /** Check if a page has any meaningful elements for the respondent */
   const isPageEmpty = useCallback((page: import('@/types/form').FunnelPage | undefined): boolean => {
@@ -1611,9 +1613,9 @@ export default function FormPreview() {
   }
 
   const variants = {
-    enter: (d: number) => ({ y: d > 0 ? 40 : -40, opacity: 0 }),
-    center: { y: 0, opacity: 1 },
-    exit: (d: number) => ({ y: d > 0 ? -40 : 40, opacity: 0 }),
+    enter: (d: number) => ({ opacity: 0, y: d > 0 ? 20 : -20 }),
+    center: { opacity: 1, y: 0 },
+    exit: (d: number) => ({ opacity: 0, y: d > 0 ? -10 : 10 }),
   };
 
   const hasVariables = (form.variables?.length ?? 0) > 0;
@@ -1682,7 +1684,7 @@ export default function FormPreview() {
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col relative"
           >
-            <AnimatePresence mode="wait" custom={direction}>
+            <AnimatePresence mode="popLayout" custom={direction}>
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
@@ -1690,7 +1692,7 @@ export default function FormPreview() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
                 className="w-full mx-auto my-auto"
                 style={isDefaultScreen ? { maxWidth: 672, padding: '32px 16px' } : {
                   maxWidth: 672 + paddingX * 2,
