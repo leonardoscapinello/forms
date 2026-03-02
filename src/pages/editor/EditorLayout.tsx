@@ -135,7 +135,7 @@ function EditorLayoutInner() {
 
       <div className="flex-1 flex overflow-hidden">
         <Suspense fallback={null}>
-          <AnimatePresence mode="popLayout" initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={currentPath}
               initial={{ opacity: 0 }}
