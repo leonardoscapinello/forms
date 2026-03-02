@@ -136,6 +136,7 @@ export interface PageElementStyle {
   fontFamily?: string;
   color?: string;
   backgroundColor?: string;
+  backgroundOpacity?: number; // 0-100
   padding?: number;
   paddingTop?: number;
   paddingRight?: number;
@@ -149,10 +150,12 @@ export interface PageElementStyle {
   borderRadius?: number;
   borderWidth?: number;
   borderColor?: string;
+  borderOpacity?: number; // 0-100
   borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
   boxShadow?: string;
   maxWidth?: string;
   width?: string;
+  backdropBlur?: number; // px
 }
 
 export interface SelectOption {
