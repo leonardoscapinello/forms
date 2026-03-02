@@ -353,7 +353,7 @@ function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProp
         </div>
 
         {/* Platform rows */}
-        <div className="px-2 py-2 space-y-1">
+        <div className="px-3 py-2.5 space-y-1.5">
           {platforms.map(entry => {
             const cfg = ANALYTICS_PLATFORMS.find(p => p.value === entry.platform)!;
             const Icon = cfg.icon;
@@ -398,24 +398,22 @@ function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProp
           })}
         </div>
 
-        {/* Fire once toggle */}
-        <div className="flex items-center gap-2 px-3 pb-2">
-          <Switch
-            checked={nodeData.fireOnce !== false}
-            onCheckedChange={v => onChange({ ...nodeData, fireOnce: v })}
-            className="scale-75"
-          />
-          <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
-        </div>
-
-        {/* Footer hint */}
-        {enabledCount === 0 && (
-          <div className="px-3 pb-3 pt-1">
-            <p className="text-[10px] text-muted-foreground text-center">
+        {/* Footer */}
+        <div className="border-t border-border px-3 py-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
+            <Switch
+              checked={nodeData.fireOnce !== false}
+              onCheckedChange={(v: boolean) => onChange({ fireOnce: v })}
+              className="scale-75 origin-right"
+            />
+          </div>
+          {enabledCount === 0 && (
+            <p className="text-[10px] text-muted-foreground text-center py-1">
               Ative ao menos uma plataforma
             </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Detail modal */}
