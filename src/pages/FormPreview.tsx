@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
+import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, FormStyle, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
@@ -1696,6 +1696,7 @@ export default function FormPreview() {
                           variables={form.variables || []}
                           answers={answers}
                           fieldError={fieldErrors[el.id]}
+                          formStyle={form.style}
                         />
                       );
                     })}
@@ -1745,6 +1746,7 @@ export default function FormPreview() {
                           variables={form.variables || []}
                           answers={answers}
                           fieldError={fieldErrors[el.id]}
+                          formStyle={form.style}
                         />
                       );
                     })}
@@ -1785,6 +1787,7 @@ export default function FormPreview() {
                                   variables={form.variables || []}
                                   answers={answers}
                                   fieldError={fieldErrors[el.id]}
+                                  formStyle={form.style}
                                 />
                               );
                             })}
@@ -1979,6 +1982,7 @@ function InteractiveElement({
   variables = [],
   answers = {},
   fieldError,
+  formStyle,
 }: {
   element: PageElement;
   value: any;
@@ -1991,6 +1995,7 @@ function InteractiveElement({
   variables?: FormVariable[];
   answers?: Record<string, any>;
   fieldError?: string;
+  formStyle?: FormStyle;
 }) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
@@ -2155,23 +2160,56 @@ function InteractiveElement({
     }
   }, [value]);
 
+  const numStyle = formStyle?.questionNumberStyle || 'decimal';
+  const numHidden = numStyle === 'none';
+  const formatNum = (n: number) => {
+    if (numStyle === 'circle') {
+      // Circled numbers ①–⑳
+      const circled = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+      return n >= 1 && n <= 20 ? circled[n - 1] : `${n}`;
+    }
+    return `${n}`;
+  };
+
+  const numInline: React.CSSProperties = !fieldError ? {
+    color: formStyle?.questionNumberColor || 'inherit',
+    fontSize: formStyle?.questionNumberSize || undefined,
+    fontWeight: (formStyle?.questionNumberWeight as any) || undefined,
+  } : {};
+
+  const titleInline: React.CSSProperties = {
+    color: formStyle?.questionTitleColor || 'inherit',
+    fontSize: formStyle?.questionTitleSize || undefined,
+    fontWeight: (formStyle?.questionTitleWeight as any) || undefined,
+  };
+
+  const descInline: React.CSSProperties = {
+    color: formStyle?.questionDescColor || undefined,
+    fontSize: formStyle?.questionDescSize || undefined,
+    fontWeight: (formStyle?.questionDescWeight as any) || undefined,
+  };
+
   /** Wraps form fields with the "N → enunciado" Typeform header + description */
   const withFieldHeader = (content: React.ReactNode) => (
     <div className={`space-y-3 md:space-y-6 ${fieldError ? 'animate-shake' : ''}`}>
       <div className="flex items-start gap-1.5 md:gap-3">
-        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>{stepNumber}</span>
-        <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={!fieldError ? { color: 'inherit' } : undefined}>→</span>
+        {!numHidden && (
+          <>
+            <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={numInline}>{formatNum(stepNumber)}</span>
+            <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={numInline}>→</span>
+          </>
+        )}
         <div>
-          <h2 className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={{ color: 'inherit' }}>
+          <h2 className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={titleInline}>
             {tNodes(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{tNodes(element.description)}</p>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2" style={descInline}>{tNodes(element.description)}</p>
           )}
         </div>
       </div>
-      <div className="pl-7 md:pl-12 lg:pl-14">
+      <div className={numHidden ? '' : 'pl-7 md:pl-12 lg:pl-14'}>
         {content}
         {fieldError && (
           <motion.p
