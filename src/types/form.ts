@@ -217,6 +217,13 @@ export interface FormStyle {
   buttonTextColor?: string;
   buttonBorderRadius?: number;      // px
   buttonSize?: 'sm' | 'md' | 'lg';
+
+  // ── Back button styling ──
+  backButtonBgColor?: string;
+  backButtonTextColor?: string;
+  backButtonBorderRadius?: number;  // px
+  backButtonBorderColor?: string;
+  backButtonBorderWidth?: number;
 }
 
 export interface NodePosition {

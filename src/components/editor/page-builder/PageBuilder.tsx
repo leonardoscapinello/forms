@@ -593,7 +593,15 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-3 rounded-full text-muted-foreground gap-1.5 text-xs cursor-default"
+                    className="h-9 px-3 gap-1.5 text-xs cursor-default"
+                    style={{
+                      backgroundColor: formStyle?.backButtonBgColor || 'transparent',
+                      color: formStyle?.backButtonTextColor || undefined,
+                      borderRadius: formStyle?.backButtonBorderRadius ?? 9999,
+                      border: (formStyle?.backButtonBorderWidth ?? 0) > 0
+                        ? `${formStyle?.backButtonBorderWidth}px solid ${formStyle?.backButtonBorderColor || 'transparent'}`
+                        : undefined,
+                    }}
                     tabIndex={-1}
                   >
                     <ArrowUp className="h-3.5 w-3.5" />

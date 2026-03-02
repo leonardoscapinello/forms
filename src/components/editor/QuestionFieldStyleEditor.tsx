@@ -217,7 +217,7 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
 
 
 
-      {/* ─── Botão ─── */}
+      {/* ─── Botão de Avançar ─── */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <MousePointerClick className="h-4 w-4 text-primary" />
@@ -254,7 +254,49 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+      </div>
 
+      {/* ─── Botão de Retornar ─── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <MousePointerClick className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Botão de retornar</h3>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <ColorPickerField
+            label="Cor de fundo"
+            value={style.backButtonBgColor || 'transparent'}
+            onChange={v => onChange({ backButtonBgColor: v })}
+            defaultColor="transparent"
+            allowTransparent
+          />
+          <ColorPickerField
+            label="Cor do texto"
+            value={style.backButtonTextColor || '#888888'}
+            onChange={v => onChange({ backButtonTextColor: v })}
+            defaultColor="#888888"
+          />
+          <ColorPickerField
+            label="Cor da borda"
+            value={style.backButtonBorderColor || 'transparent'}
+            onChange={v => onChange({ backButtonBorderColor: v })}
+            defaultColor="transparent"
+            allowTransparent
+          />
+          <SliderRow
+            label="Espessura da borda"
+            value={style.backButtonBorderWidth ?? 0}
+            onChange={v => onChange({ backButtonBorderWidth: v })}
+            min={0} max={4}
+          />
+          <SliderRow
+            label="Arredondamento"
+            value={style.backButtonBorderRadius ?? 9999}
+            onChange={v => onChange({ backButtonBorderRadius: v })}
+            min={0} max={32}
+          />
         </div>
       </div>
     </div>
