@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.analyze-form-responses]
 verify_jwt = false
+
+[functions.form-public-get]
+verify_jwt = false

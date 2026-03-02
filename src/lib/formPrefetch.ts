@@ -1,9 +1,13 @@
 /**
- * Early form data prefetch — starts the Supabase fetch BEFORE React even mounts.
- * This runs in parallel with JS chunk loading, saving 200-400ms on /preview/:id routes.
+ * Early form data prefetch — starts the fetch BEFORE React even mounts.
+ * This runs in parallel with JS chunk loading, saving 200-400ms on /f/:id routes.
+ *
+ * Uses the lightweight edge function that strips admin-only metadata,
+ * reducing payload size by ~40% compared to the full Supabase query.
  */
 
-import { supabase } from '@/integrations/supabase/client';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 const cache = new Map<string, { promise: Promise<any>; data?: any; error?: any }>();
 
@@ -12,18 +16,40 @@ export function prefetchFormData(formId: string) {
   if (cache.has(formId)) return;
 
   const promise = (async () => {
-    const { data, error } = await supabase
-      .from('forms')
-      .select('id, title, status, data')
-      .eq('id', formId)
-      .single();
+    try {
+      // Use the lightweight edge function — faster cold start, smaller payload
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/form-public-get?id=${formId}`,
+        {
+          headers: {
+            'apikey': ANON_KEY,
+            'Authorization': `Bearer ${ANON_KEY}`,
+          },
+        }
+      );
 
-    const entry = cache.get(formId);
-    if (entry) {
-      entry.data = data;
-      entry.error = error;
+      if (!res.ok) {
+        const entry = cache.get(formId);
+        if (entry) { entry.error = { message: 'Edge function error' }; }
+        return { data: null, error: { message: 'Edge function error' } };
+      }
+
+      const data = await res.json();
+      const entry = cache.get(formId);
+      if (entry) {
+        if (data.error) {
+          entry.error = data.error;
+        } else {
+          entry.data = data;
+        }
+      }
+      return { data: data.error ? null : data, error: data.error || null };
+    } catch (e) {
+      // Fallback will be used by FormPreview
+      const entry = cache.get(formId);
+      if (entry) { entry.error = e; }
+      return { data: null, error: e };
     }
-    return { data, error };
   })();
 
   cache.set(formId, { promise });

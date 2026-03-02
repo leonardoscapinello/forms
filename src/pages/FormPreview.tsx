@@ -147,15 +147,40 @@ export default function FormPreview() {
       if (result?.data && !result.error) {
         parseFormData(result.data);
       } else {
-        // Fallback: fetch normally if prefetch missed
-        supabase
-          .from('forms')
-          .select('id, title, status, data')
-          .eq('id', id)
-          .single()
-          .then(({ data, error }) => {
-            if (error || !data) { setPublicLoading(false); return; }
-            parseFormData(data);
+        // Fallback: fetch via lightweight edge function
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/form-public-get?id=${id}`;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        fetch(url, {
+          headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data && !data.error) {
+              parseFormData(data);
+            } else {
+              // Ultimate fallback: direct Supabase query
+              supabase
+                .from('forms')
+                .select('id, title, status, data')
+                .eq('id', id)
+                .single()
+                .then(({ data, error }) => {
+                  if (error || !data) { setPublicLoading(false); return; }
+                  parseFormData(data);
+                });
+            }
+          })
+          .catch(() => {
+            // Network error — try direct Supabase
+            supabase
+              .from('forms')
+              .select('id, title, status, data')
+              .eq('id', id)
+              .single()
+              .then(({ data, error }) => {
+                if (error || !data) { setPublicLoading(false); return; }
+                parseFormData(data);
+              });
           });
       }
     });
@@ -172,9 +197,11 @@ export default function FormPreview() {
   }
   const isEditorPreview = isEditorPreviewRef.current;
 
-  // Debug: log preview mode once on mount
+  // Debug: log preview mode once on mount (no-op in prod — tree-shaken)
   useEffect(() => {
-    console.log('[FormPreview] isEditorPreview =', isEditorPreviewRef.current, '| storeForm =', !!storeForm, '| search =', window.location.search);
+    if (import.meta.env.DEV) {
+      console.log('[FormPreview] isEditorPreview =', isEditorPreviewRef.current, '| storeForm =', !!storeForm);
+    }
   }, []);
 
   useEffect(() => {
@@ -248,11 +275,11 @@ export default function FormPreview() {
   }, []);
 
   // Initialise answers, page index, and session context once form is loaded
+  // Phase 1 (sync): defaults + page index for instant first paint
+  // Phase 2 (deferred): session context, geo — via requestIdleCallback
   useEffect(() => {
     if (!form) return;
-    const ctx = captureSessionContext();
-    const ctxAnswers = contextToAnswers(ctx);
-    const defaults = { ...buildDefaults(form), ...ctxAnswers };
+    const defaults = buildDefaults(form);
 
     // Try to resume from saved session
     if (form.allowResume && form.id) {
@@ -265,6 +292,13 @@ export default function FormPreview() {
             setAnswers({ ...defaults, ...parsed.answers });
             setCurrentPageIndex(parsed.pageIndex);
             maxPageVisitedRef.current = parsed.maxPage ?? parsed.pageIndex;
+            // Capture context after paint
+            const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
+            sched(() => {
+              const ctx = captureSessionContext();
+              const ctxAns = contextToAnswers(ctx);
+              setAnswers(prev => ({ ...ctxAns, ...prev }));
+            });
             return;
           }
         }
@@ -273,6 +307,14 @@ export default function FormPreview() {
 
     setAnswers(defaults);
     setCurrentPageIndex(form.showWelcomeScreen ? null : 0);
+
+    // Phase 2: capture session context after first paint
+    const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
+    sched(() => {
+      const ctx = captureSessionContext();
+      const ctxAns = contextToAnswers(ctx);
+      setAnswers(prev => ({ ...ctxAns, ...prev }));
+    });
 
     // Request geolocation asynchronously (GPS → reverse geocode, or IP fallback)
     if (form.enableGeolocation !== false) {
@@ -391,73 +433,79 @@ export default function FormPreview() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [form?.id, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Insert session record on form load
+  // Insert session record on form load — DEFERRED to avoid blocking first paint
   useEffect(() => {
     if (!form?.id || isEditorPreview) return;
-    const { responseId, userAgent, queryParams, referrer } = sessionMetaRef.current;
     const generatedSessionId = crypto.randomUUID();
     sessionDbIdRef.current = generatedSessionId;
 
-    // Use edge function for session insert (bypasses RLS for public users)
-    saveViaBackend({
-      kind: 'session',
-      action: 'insert',
-      payload: {
-        id: generatedSessionId,
+    // Defer session insert to after first paint — not needed for rendering
+    const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 50);
+    schedule(() => {
+      const { responseId, userAgent, queryParams, referrer } = sessionMetaRef.current;
+      saveViaBackend({
+        kind: 'session',
+        action: 'insert',
+        payload: {
+          id: generatedSessionId,
+          form_id: form.id,
+          response_id: responseId,
+          status: 'active',
+          total_pages: form.pages?.length || 0,
+          source_url: typeof window !== 'undefined' ? window.location.href : '',
+          referrer: referrer || null,
+          user_agent: userAgent,
+          query_params: queryParams,
+        },
+      });
+
+      // Insert form_start page event
+      ;(supabase as any).from('form_page_events').insert({
         form_id: form.id,
         response_id: responseId,
-        status: 'active',
-        total_pages: form.pages?.length || 0,
-        source_url: typeof window !== 'undefined' ? window.location.href : '',
-        referrer: referrer || null,
-        user_agent: userAgent,
-        query_params: queryParams,
-      },
+        event_type: 'form_start',
+      }).then(() => {});
     });
-
-    // Insert form_start page event
-    ;(supabase as any).from('form_page_events').insert({
-      form_id: form.id,
-      response_id: responseId,
-      event_type: 'form_start',
-    }).then(() => {});
   }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  // Fire pixel load events once the form is ready
-  // ── Load Events: disparo server-side com retry, nunca falha por AdBlock ──────
+  // Fire pixel load events once the form is ready — DEFERRED to avoid blocking first paint
   useEffect(() => {
     if (!form?.id || isEditorPreview) return;
     const loadEvents = form.pixelLoadEvents || [];
     if (loadEvents.length === 0) return;
 
-    const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
-    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    const { responseId } = sessionMetaRef.current;
+    // Pixels are non-critical — fire after first paint
+    const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 100);
+    schedule(() => {
+      const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+      const { responseId } = sessionMetaRef.current;
 
-    for (const evt of loadEvents) {
-      const eventName = evt.eventType === 'custom'
-        ? (evt.customEventName || 'CustomEvent')
-        : evt.eventType;
-      const eventId = `${form.id}_load_${evt.id}_${Date.now()}`;
+      for (const evt of loadEvents) {
+        const eventName = evt.eventType === 'custom'
+          ? (evt.customEventName || 'CustomEvent')
+          : evt.eventType;
+        const eventId = `${form.id}_load_${evt.id}_${Date.now()}`;
 
-      const userData = resolveUserData(evt.userDataMapping, answersRef.current, form);
+        const userData = resolveUserData(evt.userDataMapping, answersRef.current, form);
 
-      firePixelDual({
-        platform: evt.platform,
-        eventName,
-        eventId,
-        formId: form.id,
-        responseId,
-        triggerType: 'load_event',
-        answers: answersRef.current,
-        variables: {},
-        userData,
-        sourceUrl,
-        userAgent,
-        onFired: (rec) => pixelEventsRef.current.push(rec),
-      });
-    }
+        firePixelDual({
+          platform: evt.platform,
+          eventName,
+          eventId,
+          formId: form.id,
+          responseId,
+          triggerType: 'load_event',
+          answers: answersRef.current,
+          variables: {},
+          userData,
+          sourceUrl,
+          userAgent,
+          onFired: (rec) => pixelEventsRef.current.push(rec),
+        });
+      }
+    });
   }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track page views & session progress when page changes or form completes
@@ -1370,51 +1418,57 @@ export default function FormPreview() {
     }
   }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview]);
 
-  // ── Apply SEO meta tags ─────────────────────────────────
+  // ── Apply SEO meta tags — deferred to avoid blocking first paint ──
   useEffect(() => {
     if (isEditorPreview || !form) return;
     const seo = form.seo;
-    if (!seo) return;
+    if (!seo && !form.title) return;
 
-    if (seo.title) document.title = seo.title;
-    else if (form.title) document.title = form.title;
+    // SEO tags don't affect visual rendering — defer
+    const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 50);
+    schedule(() => {
+      if (seo?.title) document.title = seo.title;
+      else if (form.title) document.title = form.title;
 
-    const setMeta = (name: string, content: string, attr = 'name') => {
-      if (!content) return;
-      let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-      el.content = content;
-    };
+      const setMeta = (name: string, content: string, attr = 'name') => {
+        if (!content) return;
+        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+        el.content = content;
+      };
 
-    if (seo.description) { setMeta('description', seo.description); setMeta('og:description', seo.description, 'property'); }
-    if (seo.keywords) setMeta('keywords', seo.keywords);
-    if (seo.ogImage) { setMeta('og:image', seo.ogImage, 'property'); setMeta('twitter:image', seo.ogImage); }
-    if (seo.ogType) setMeta('og:type', seo.ogType, 'property');
-    setMeta('og:title', seo.title || form.title || '', 'property');
-    if (seo.twitterCard) setMeta('twitter:card', seo.twitterCard);
-    if (seo.robots) setMeta('robots', seo.robots);
-    if (seo.themeColor) setMeta('theme-color', seo.themeColor);
+      if (seo) {
+        if (seo.description) { setMeta('description', seo.description); setMeta('og:description', seo.description, 'property'); }
+        if (seo.keywords) setMeta('keywords', seo.keywords);
+        if (seo.ogImage) { setMeta('og:image', seo.ogImage, 'property'); setMeta('twitter:image', seo.ogImage); }
+        if (seo.ogType) setMeta('og:type', seo.ogType, 'property');
+        setMeta('og:title', seo.title || form.title || '', 'property');
+        if (seo.twitterCard) setMeta('twitter:card', seo.twitterCard);
+        if (seo.robots) setMeta('robots', seo.robots);
+        if (seo.themeColor) setMeta('theme-color', seo.themeColor);
 
-    if (seo.canonicalUrl) {
-      let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-      if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
-      link.href = seo.canonicalUrl;
-    }
+        if (seo.canonicalUrl) {
+          let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+          if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
+          link.href = seo.canonicalUrl;
+        }
 
-    if (seo.favicon) {
-      let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
-      if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
-      link.href = seo.favicon;
-    }
+        if (seo.favicon) {
+          let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+          if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+          link.href = seo.favicon;
+        }
 
-    if (seo.structuredData) {
-      try {
-        JSON.parse(seo.structuredData);
-        let script = document.getElementById('seo-jsonld') as HTMLScriptElement | null;
-        if (!script) { script = document.createElement('script'); script.id = 'seo-jsonld'; script.type = 'application/ld+json'; document.head.appendChild(script); }
-        script.textContent = seo.structuredData;
-      } catch { /* invalid JSON, skip */ }
-    }
+        if (seo.structuredData) {
+          try {
+            JSON.parse(seo.structuredData);
+            let script = document.getElementById('seo-jsonld') as HTMLScriptElement | null;
+            if (!script) { script = document.createElement('script'); script.id = 'seo-jsonld'; script.type = 'application/ld+json'; document.head.appendChild(script); }
+            script.textContent = seo.structuredData;
+          } catch { /* invalid JSON, skip */ }
+        }
+      }
+    });
   }, [form?.seo, form?.title, isEditorPreview]);
 
   const goBack = useCallback(() => {
