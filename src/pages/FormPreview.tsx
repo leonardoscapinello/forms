@@ -1509,6 +1509,37 @@ export default function FormPreview() {
     return () => window.removeEventListener('keydown', handler);
   }, [goNext, goBack, isLastPage]);
 
+  // Build full-page background style from form design settings (must be before early returns)
+  const outerContainerStyle = useMemo((): React.CSSProperties => {
+    if (!form) return {};
+    const pageStyle = form.globalPageStyle || {};
+    const bgColor = pageStyle.backgroundColor || undefined;
+    const fontFamily = normalizeFontFamily(pageStyle.fontFamily || form.style?.fontFamily);
+    const formStyle = form.style;
+    const s: React.CSSProperties = { fontFamily };
+
+    if (formStyle?.backgroundType === 'gradient' && formStyle.backgroundGradient) {
+      s.background = formStyle.backgroundGradient;
+    } else if (formStyle?.backgroundType === 'image' && formStyle.backgroundImage) {
+      s.backgroundImage = `url(${formStyle.backgroundImage})`;
+      s.backgroundSize = formStyle.backgroundSize || 'cover';
+      s.backgroundPosition = 'center';
+      s.backgroundRepeat = 'no-repeat';
+    } else {
+      const rawBg = bgColor || formStyle?.backgroundColor || '#FAFAF6';
+      s.backgroundColor = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
+    }
+
+    if (formStyle?.textColor) {
+      s.color = formStyle.textColor;
+    }
+
+    // Override --primary inside form preview for field focus/selected borders
+    (s as any)['--primary'] = '48 24% 62%'; /* #B3AB86 */
+
+    return s;
+  }, [form?.globalPageStyle, form?.style]);
+
   if (publicLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -1559,7 +1590,8 @@ export default function FormPreview() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="min-h-screen bg-background flex flex-col relative"
+      className="min-h-screen flex flex-col relative"
+      style={outerContainerStyle}
     >
 
       {/* Close — only visible when opened from the editor (not inside iframe) */}
@@ -1585,31 +1617,6 @@ export default function FormPreview() {
         const mobilePaddingX = Math.min(paddingX, 16);
         const paddingY = pageStyle.paddingY ?? 32;
         const gap = pageStyle.gap ?? 32;
-        const bgColor = pageStyle.backgroundColor || undefined;
-        const fontFamily = normalizeFontFamily(pageStyle.fontFamily || form.style?.fontFamily);
-
-        // Build container background from form.style design settings
-        const formStyle = form.style;
-        const containerStyle: React.CSSProperties = { fontFamily };
-
-        if (formStyle.backgroundType === 'gradient' && formStyle.backgroundGradient) {
-          containerStyle.background = formStyle.backgroundGradient;
-        } else if (formStyle.backgroundType === 'image' && formStyle.backgroundImage) {
-          containerStyle.backgroundImage = `url(${formStyle.backgroundImage})`;
-          containerStyle.backgroundSize = formStyle.backgroundSize || 'cover';
-          containerStyle.backgroundPosition = 'center';
-          containerStyle.backgroundRepeat = 'no-repeat';
-        } else {
-          const rawBg = bgColor || formStyle.backgroundColor || '#FAFAF6';
-          containerStyle.backgroundColor = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
-        }
-
-        if (formStyle.textColor) {
-          containerStyle.color = formStyle.textColor;
-        }
-
-        // Override --primary inside form preview for field focus/selected borders
-        (containerStyle as any)['--primary'] = '48 24% 62%'; /* #B3AB86 */
 
         // Default screens (no custom elements): centered layout with own padding
         const showDefaultWelcome = isWelcome && (!form.showWelcomeScreen || !form.welcomePage?.elements?.length);
@@ -1620,16 +1627,15 @@ export default function FormPreview() {
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col relative"
-            style={containerStyle}
           >
             {/* Company Logo */}
-            {formStyle.logoUrl && (
+            {form.style?.logoUrl && (
               <div className="absolute top-4 left-4 z-10 md:top-6 md:left-6">
                 <img
-                  src={formStyle.logoUrl}
+                  src={form.style.logoUrl}
                   alt="Logo"
                   className="object-contain"
-                  style={{ height: formStyle.logoHeight || 40, maxWidth: 160 }}
+                  style={{ height: form.style.logoHeight || 40, maxWidth: 160 }}
                 />
               </div>
             )}
