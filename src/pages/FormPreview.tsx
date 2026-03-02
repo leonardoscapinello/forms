@@ -1479,6 +1479,27 @@ export default function FormPreview() {
     </div>
   );
 
+  // ── Closed form: redirect or show message ─────────────────
+  if (form.status === 'closed' && !isEditorPreview) {
+    if (form.closedRedirectUrl) {
+      window.location.href = form.closedRedirectUrl;
+      return null;
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center max-w-md space-y-4">
+          <div className="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+            <XCircle className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <h1 className="text-xl font-semibold text-foreground">Formulário encerrado</h1>
+          <p className="text-sm text-muted-foreground">
+            {form.closedMessage || 'Este formulário não está mais aceitando respostas.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const variants = {
     enter: (d: number) => ({ y: d > 0 ? 40 : -40, opacity: 0 }),
     center: { y: 0, opacity: 1 },

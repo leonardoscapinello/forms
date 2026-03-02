@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "Published forms are publicly readable" ON public.forms;
+CREATE POLICY "Published or closed forms are publicly readable" ON public.forms FOR SELECT USING (status IN ('published', 'closed'));

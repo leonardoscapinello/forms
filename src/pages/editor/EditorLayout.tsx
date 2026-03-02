@@ -92,9 +92,15 @@ function EditorLayoutInner() {
             <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden" onClick={() => setShowResponsivePreview(true)}>
               <Eye className="h-4 w-4" />
             </Button>
-            <Button size="sm" onClick={() => updateFormData({ status: form.status === 'published' ? 'draft' : 'published' })}>
-              {form.status === 'published' ? 'Despublicar' : 'Publicar'}
-            </Button>
+            {form.status === 'closed' ? (
+              <Button size="sm" variant="outline" onClick={() => updateFormData({ status: 'published' })}>
+                Reabrir
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => updateFormData({ status: form.status === 'published' ? 'draft' : 'published' })}>
+                {form.status === 'published' ? 'Despublicar' : 'Publicar'}
+              </Button>
+            )}
           </div>
         </div>
       </header>
