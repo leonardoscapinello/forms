@@ -1745,9 +1745,15 @@ export default function FormPreview() {
   }
 
   const variants = {
-    enter: (d: number) => ({ opacity: 0 }),
-    center: { opacity: 1 },
-    exit: (d: number) => ({ opacity: 0 }),
+    enter: (d: number) => ({
+      opacity: 0,
+      y: d >= 0 ? 60 : -60,
+    }),
+    center: { opacity: 1, y: 0 },
+    exit: (d: number) => ({
+      opacity: 0,
+      y: d >= 0 ? -60 : 60,
+    }),
   };
 
   const hasVariables = (form.variables?.length ?? 0) > 0;
@@ -1834,10 +1840,10 @@ export default function FormPreview() {
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
                 variants={variants}
-                initial={false}
+                initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
