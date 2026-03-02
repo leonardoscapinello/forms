@@ -16,19 +16,53 @@ if (!/^\/f\//.test(window.location.pathname)) {
 // Start fetching form data BEFORE React mounts (runs in parallel with chunk loading)
 autoDetectAndPrefetch();
 
-// Register Service Worker ONLY for public form routes — admin must never be cached
+// Self-heal for sporadic Vite lazy chunk failures (cache/version skew/network)
+if (typeof window !== 'undefined') {
+  const guardFlag = '__dynamic_import_recovery_attached__';
+  if (!(window as any)[guardFlag]) {
+    (window as any)[guardFlag] = true;
+    window.addEventListener('unhandledrejection', (event) => {
+      const message =
+        typeof event.reason?.message === 'string'
+          ? event.reason.message
+          : String(event.reason ?? '');
+
+      const isDynamicImportError =
+        /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(
+          message
+        );
+
+      if (!isDynamicImportError) return;
+
+      event.preventDefault();
+      const retryKey = '__dynamic_import_retry_once__';
+
+      if (!sessionStorage.getItem(retryKey)) {
+        sessionStorage.setItem(retryKey, '1');
+        window.location.reload();
+        return;
+      }
+
+      sessionStorage.removeItem(retryKey);
+    });
+  }
+}
+
+// Register Service Worker ONLY on production public routes (/f/:id)
 if ('serviceWorker' in navigator) {
   const isPublicForm = /^\/f\//.test(window.location.pathname);
-  if (isPublicForm) {
+  const shouldUseServiceWorker = import.meta.env.PROD && isPublicForm;
+
+  if (shouldUseServiceWorker) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
   } else {
-    // Unregister any existing SW for admin users to prevent stale cache
+    // Ensure preview/admin routes never keep stale SW/cache artifacts
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       registrations.forEach((reg) => reg.unregister());
     });
-    // Clear any existing caches
+
     if ('caches' in window) {
       caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
     }
