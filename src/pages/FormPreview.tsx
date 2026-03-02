@@ -1635,7 +1635,7 @@ export default function FormPreview() {
                   src={form.style.logoUrl}
                   alt="Logo"
                   className="object-contain"
-                  style={{ height: form.style.logoHeight || 40, maxWidth: 160 }}
+                  style={{ height: form.style.logoHeight || 40, maxWidth: 128 }}
                 />
               </div>
             )}
