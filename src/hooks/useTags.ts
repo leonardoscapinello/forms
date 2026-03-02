@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
@@ -103,13 +103,15 @@ export function useFormTags(formId: string | null) {
 // Load all form tags at once (for Dashboard)
 export function useAllFormTags(formIds: string[]) {
   const [map, setMap] = useState<Record<string, string[]>>({});
+  const key = useMemo(() => formIds.slice().sort().join(','), [formIds]);
 
   useEffect(() => {
-    if (!formIds.length) return;
+    if (!key) return;
+    const ids = key.split(',');
     supabase
       .from('form_tags')
       .select('form_id, tag_id')
-      .in('form_id', formIds)
+      .in('form_id', ids)
       .then(({ data }) => {
         if (!data) return;
         const result: Record<string, string[]> = {};
@@ -119,7 +121,7 @@ export function useAllFormTags(formIds: string[]) {
         }
         setMap(result);
       });
-  }, [formIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return map;
 }

@@ -107,7 +107,7 @@ export default function Dashboard() {
   const [draggingFormId, setDraggingFormId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
-  const formIds = forms.map(f => f.id);
+  const formIds = useMemo(() => forms.map(f => f.id), [forms]);
   const formTagsMap = useAllFormTags(formIds);
 
   // Fetch last 7 days of responses & sessions per form for sparkline
@@ -118,13 +118,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (forms.length === 0) return;
-    const formIds = forms.map(f => f.id);
+    const ids = forms.map(f => f.id);
     const since = startOfDay(subDays(new Date(), 6)).toISOString();
 
-    // Filter by user's form IDs to avoid full-table scan
+    // Only fetch the minimal columns needed, with a reasonable limit
     Promise.all([
-      supabase.from('form_responses').select('form_id, created_at').gte('created_at', since).in('form_id', formIds).limit(1000),
-      supabase.from('form_sessions').select('form_id, started_at, status').gte('started_at', since).in('form_id', formIds).limit(1000),
+      supabase.from('form_responses').select('form_id, created_at').gte('created_at', since).in('form_id', ids),
+      supabase.from('form_sessions').select('form_id, started_at, status').gte('started_at', since).in('form_id', ids).neq('status', 'completed'),
     ]).then(([respRes, sessRes]) => {
       const respData = (respRes.data || []) as { form_id: string; created_at: string }[];
       const sessData = (sessRes.data || []) as { form_id: string; started_at: string; status: string }[];
@@ -138,17 +138,19 @@ export default function Dashboard() {
         const rBuckets = new Array(7).fill(0);
         const dBuckets = new Array(7).fill(0);
 
-        respData.filter(r => r.form_id === form.id).forEach(r => {
+        for (const r of respData) {
+          if (r.form_id !== form.id) continue;
           const d = format(new Date(r.created_at), 'yyyy-MM-dd');
           const idx = days.indexOf(d);
           if (idx >= 0) rBuckets[idx]++;
-        });
+        }
 
-        sessData.filter(s => s.form_id === form.id && s.status !== 'completed').forEach(s => {
+        for (const s of sessData) {
+          if (s.form_id !== form.id) continue;
           const d = format(new Date(s.started_at), 'yyyy-MM-dd');
           const idx = days.indexOf(d);
           if (idx >= 0) dBuckets[idx]++;
-        });
+        }
 
         result[form.id] = { responses: rBuckets, dropoffs: dBuckets };
       }
