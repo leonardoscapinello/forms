@@ -370,6 +370,8 @@ export interface IntegrationNodeData {
   responseFields?: string[];
   /** Persisted: sample response body from the last successful test (for previews) */
   lastTestResponse?: any;
+  /** If true (default), skip firing if already fired in this session */
+  fireOnce?: boolean;
 }
 
 /** Mapping of lead data fields to specific form element IDs */
@@ -406,6 +408,8 @@ export interface AnalyticsNodeData {
   customEventName?: string;
   /** New: one entry per platform (all enabled ones fire together) */
   platforms?: AnalyticsPlatformEntry[];
+  /** If true (default), skip firing if already fired in this session */
+  fireOnce?: boolean;
 }
 
 // ── WhatsApp (Evolution API) Node ────────────────────────────────────────────
@@ -428,6 +432,8 @@ export interface WhatsAppNodeData {
   mediaUrl?: string;
   /** Filename for document media type */
   mediaFileName?: string;
+  /** If true (default), skip firing if already fired in this session */
+  fireOnce?: boolean;
 }
 
 // ── Email (Resend) Node ─────────────────────────────────────────────────────
@@ -442,6 +448,8 @@ export interface EmailNodeData {
   bodyText?: string;
   useHtml?: boolean;
   bodyHtml?: string;
+  /** If true (default), skip firing if already fired in this session */
+  fireOnce?: boolean;
 }
 
 // ── A/B Test Node ───────────────────────────────────────────────────────────

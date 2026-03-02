@@ -277,6 +277,15 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps }) {
                   {testing ? 'Enviando…' : testResult === 'success' ? 'Enviado!' : testResult === 'error' ? 'Falhou' : 'Enviar teste'}
                 </Button>
               </div>
+              {/* Fire once toggle */}
+              <div className="flex items-center gap-2 pt-1">
+                <Switch
+                  checked={nodeData.fireOnce !== false}
+                  onCheckedChange={v => onChange({ ...nodeData, fireOnce: v })}
+                  className="scale-75"
+                />
+                <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
+              </div>
             </div>
           )}
         </div>

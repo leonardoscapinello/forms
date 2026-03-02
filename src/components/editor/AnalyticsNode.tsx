@@ -397,6 +397,16 @@ function AnalyticsNode({ data, selected }: NodeProps & { data: AnalyticsNodeProp
           })}
         </div>
 
+        {/* Fire once toggle */}
+        <div className="flex items-center gap-2 px-3 pb-2">
+          <Switch
+            checked={nodeData.fireOnce !== false}
+            onCheckedChange={v => onChange({ ...nodeData, fireOnce: v })}
+            className="scale-75"
+          />
+          <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
+        </div>
+
         {/* Footer hint */}
         {enabledCount === 0 && (
           <div className="px-3 pb-3 pt-1">

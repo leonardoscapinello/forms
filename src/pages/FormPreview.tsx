@@ -312,6 +312,8 @@ export default function FormPreview() {
 
   // Track all pixel events fired during this session
   const pixelEventsRef = useRef<PixelEventRecord[]>([]);
+  // Track nodes that already fired side-effects (fireOnce dedup)
+  const firedNodesRef = useRef(new Set<string>());
 
   // Capture session metadata once on mount
   const sessionMetaRef = useRef((() => {
@@ -987,7 +989,10 @@ export default function FormPreview() {
         if (!effectiveSkip) {
           const intgId = target.replace('int-', '');
           const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
-          if (intgNode && f) {
+          const shouldFire = intgNode ? (intgNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          if (intgNode && f && shouldFire) {
+            firedNodesRef.current.add(target);
+          
             const eventId = `${f.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
             const extraParams = Object.fromEntries(
@@ -1062,7 +1067,9 @@ export default function FormPreview() {
         if (!effectiveSkip) {
           const anId = target.replace('an-', '');
           const anNode = f?.analyticsNodes?.find(n => n.id === anId);
-          if (anNode && f) {
+          const shouldFire = anNode ? (anNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          if (anNode && f && shouldFire) {
+            firedNodesRef.current.add(target);
             const variables: Record<string, any> = {};
             for (const [k, v] of Object.entries(currentAns)) {
               if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
@@ -1115,7 +1122,9 @@ export default function FormPreview() {
         if (!effectiveSkip) {
           const waId = target.replace('wa-', '');
           const waNode = f?.whatsappNodes?.find(n => n.id === waId);
-          if (waNode && f && waNode.instanceId && waNode.recipientNumber) {
+          const shouldFire = waNode ? (waNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          if (waNode && f && waNode.instanceId && waNode.recipientNumber && shouldFire) {
+            firedNodesRef.current.add(target);
             const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
             const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
             const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
@@ -1146,7 +1155,9 @@ export default function FormPreview() {
         if (!effectiveSkip) {
           const emId = target.replace('em-', '');
           const emNode = f?.emailNodes?.find(n => n.id === emId);
-          if (emNode && f && emNode.instanceId && emNode.toEmail) {
+          const shouldFire = emNode ? (emNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          if (emNode && f && emNode.instanceId && emNode.toEmail && shouldFire) {
+            firedNodesRef.current.add(target);
             const resolvedTo = interpolateText(emNode.toEmail || '', f.variables || [], currentAns);
             const resolvedFrom = emNode.fromEmail ? interpolateText(emNode.fromEmail, f.variables || [], currentAns) : undefined;
             const resolvedFromName = emNode.fromName ? interpolateText(emNode.fromName, f.variables || [], currentAns) : undefined;
