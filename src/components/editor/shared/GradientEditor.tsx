@@ -178,14 +178,14 @@ export default function GradientEditor({ value, onChange }: Props) {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                    {config.type === 'linear' ? 'Rotação' : 'Início'}
+                    {config.type === 'linear' ? 'Direção' : 'Início'}
                   </Label>
-                  <span className="text-[10px] text-muted-foreground font-mono">{config.angle}°</span>
+                  <span className="text-[10px] text-muted-foreground">{config.angle}°</span>
                 </div>
                 <Slider
                   value={[config.angle]}
                   onValueChange={([v]) => updateConfig({ angle: v })}
-                  min={0} max={360} step={1}
+                  min={0} max={360} step={15}
                   className="mt-1.5"
                 />
               </div>
@@ -213,10 +213,10 @@ export default function GradientEditor({ value, onChange }: Props) {
               <Select value={config.radialSize} onValueChange={v => updateConfig({ radialSize: v })}>
                 <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="closest-side" className="text-xs">Lado mais próximo</SelectItem>
-                  <SelectItem value="closest-corner" className="text-xs">Canto mais próximo</SelectItem>
-                  <SelectItem value="farthest-side" className="text-xs">Lado mais distante</SelectItem>
-                  <SelectItem value="farthest-corner" className="text-xs">Canto mais distante</SelectItem>
+                  <SelectItem value="closest-side" className="text-xs">Pequena</SelectItem>
+                  <SelectItem value="closest-corner" className="text-xs">Média</SelectItem>
+                  <SelectItem value="farthest-side" className="text-xs">Grande</SelectItem>
+                  <SelectItem value="farthest-corner" className="text-xs">Máxima</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -233,18 +233,17 @@ export default function GradientEditor({ value, onChange }: Props) {
 
             {/* Visual stop bar */}
             <div
-              className="h-5 rounded-md border border-border relative cursor-pointer"
+              className="h-5 rounded-md border border-border relative"
               style={{ background: cssPreview }}
             >
               {config.stops.map((stop, i) => (
                 <div
                   key={i}
-                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-background shadow-sm cursor-grab"
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-background shadow-sm"
                   style={{
                     left: `calc(${stop.position}% - 6px)`,
                     backgroundColor: stop.color,
                   }}
-                  title={`${stop.position}%`}
                 />
               ))}
             </div>
@@ -264,8 +263,8 @@ export default function GradientEditor({ value, onChange }: Props) {
                   {/* Position */}
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-muted-foreground">Pos</span>
-                      <span className="text-[9px] text-muted-foreground font-mono">{stop.position}%</span>
+                      <span className="text-[9px] text-muted-foreground">Posição</span>
+                      <span className="text-[9px] text-muted-foreground">{stop.position}%</span>
                     </div>
                     <Slider
                       value={[stop.position]}
@@ -277,8 +276,8 @@ export default function GradientEditor({ value, onChange }: Props) {
                   {/* Opacity */}
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-muted-foreground">Op</span>
-                      <span className="text-[9px] text-muted-foreground font-mono">{stop.opacity}%</span>
+                      <span className="text-[9px] text-muted-foreground">Opacidade</span>
+                      <span className="text-[9px] text-muted-foreground">{stop.opacity}%</span>
                     </div>
                     <Slider
                       value={[stop.opacity]}
