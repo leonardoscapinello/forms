@@ -1,3 +1,4 @@
+// PageBuilder – drag-and-drop page editor
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
