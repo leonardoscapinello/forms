@@ -605,7 +605,14 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
               <Button
                 variant="default"
                 size="sm"
-                className="h-9 px-4 rounded-full gap-1.5 text-xs cursor-default"
+                className="h-9 gap-1.5 text-xs cursor-default"
+                style={{
+                  backgroundColor: formStyle?.buttonBgColor || formStyle?.primaryColor || undefined,
+                  color: formStyle?.buttonTextColor || undefined,
+                  borderRadius: formStyle?.buttonBorderRadius ?? undefined,
+                  padding: formStyle?.buttonSize === 'sm' ? '6px 16px' : formStyle?.buttonSize === 'lg' ? '14px 32px' : '10px 24px',
+                  fontSize: formStyle?.buttonSize === 'sm' ? 13 : formStyle?.buttonSize === 'lg' ? 16 : undefined,
+                }}
                 tabIndex={-1}
               >
                 {pageId === 'thank-you' ? (
