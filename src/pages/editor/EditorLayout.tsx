@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useEditorForm, EditorFormProvider } from '@/hooks/useEditorForm';
 import { formatDistanceToNow } from 'date-fns';
@@ -37,6 +37,16 @@ function EditorLayoutInner() {
   } = useEditorForm();
 
   const currentPath = location.pathname.split('/').pop() || 'pages';
+
+  // Warm up the heavy workflow/canvas modules in background for instant tab switching
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void import('@/pages/editor/EditorWorkflow');
+      void import('@/components/editor/FlowCanvas');
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <div
