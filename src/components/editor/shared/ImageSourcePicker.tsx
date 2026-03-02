@@ -114,7 +114,7 @@ export default function ImageSourcePicker({
     return (
       <div className="space-y-1.5">
         {showPreview && value && (
-          <img src={value} alt={alt} className="w-full h-20 object-cover rounded" />
+          <img src={value} alt={alt} className="w-full h-20 object-cover rounded-lg" />
         )}
         <div className="flex items-center gap-1.5">
           <Input
@@ -126,7 +126,7 @@ export default function ImageSourcePicker({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 flex-shrink-0"
+            className="h-8 w-8 flex-shrink-0 rounded-lg"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -135,7 +135,7 @@ export default function ImageSourcePicker({
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 flex-shrink-0"
+            className="h-8 w-8 flex-shrink-0 rounded-lg"
             onClick={() => setGalleryOpen(true)}
           >
             <FolderOpen className="h-3.5 w-3.5" />
@@ -152,20 +152,20 @@ export default function ImageSourcePicker({
     <div className="space-y-2 min-w-0 w-full overflow-hidden">
       {/* Preview */}
       {showPreview && value && (
-        <div className="rounded-md border border-border overflow-hidden bg-muted/30">
+        <div className="rounded-lg border border-border overflow-hidden bg-muted/30">
           <img src={value} alt={alt} className={`w-full ${previewMaxH} object-contain`} />
         </div>
       )}
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-1.5">
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px]" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px] rounded-lg" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           <Upload className="h-3 w-3" /> Upload
         </Button>
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px]" onClick={() => setGalleryOpen(true)}>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px] rounded-lg" onClick={() => setGalleryOpen(true)}>
           <FolderOpen className="h-3 w-3" /> Galeria
         </Button>
-        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px]" onClick={() => setShowUrlInput(!showUrlInput)}>
+        <Button variant="outline" size="sm" className="h-8 text-[10px] gap-1 flex-1 min-w-[90px] rounded-lg" onClick={() => setShowUrlInput(!showUrlInput)}>
           <Link className="h-3 w-3" /> URL
         </Button>
       </div>
