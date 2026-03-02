@@ -71,8 +71,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
                 ? 'ring-2 ring-primary ring-offset-2 ring-offset-background border-primary/30'
                 : 'border-border/30 hover:border-border/60 hover:ring-1 hover:ring-border'
       }`}
-      onPointerDownCapture={designMode ? (e) => { e.stopPropagation(); if (!lockedBy) onSelect(); } : undefined}
-      onClick={!designMode ? (e) => { e.stopPropagation(); if (!lockedBy) onSelect(); } : undefined}
+      onClick={(e) => { e.stopPropagation(); if (!lockedBy) onSelect(); }}
     >
       {/* Lock indicator */}
       {lockedBy && <ElementLockIndicator lockedBy={lockedBy} />}
