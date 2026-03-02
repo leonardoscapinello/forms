@@ -4,15 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  BarChart3, Users, TrendingUp, Clock, ArrowDownRight, Activity, Eye, CheckCircle2, RefreshCw,
+  BarChart3, TrendingUp, Clock, ArrowDownRight, Eye, CheckCircle2, RefreshCw, MessageSquare,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
-import { format, subDays, startOfDay, differenceInDays, parseISO } from 'date-fns';
+import { format, subDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /* ── types ── */
 interface Session {
@@ -33,6 +34,13 @@ interface PageEvent {
   time_on_page_ms: number | null;
 }
 
+interface FormResponse {
+  form_id: string;
+  answers: Record<string, any>;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
 /* ── helpers ── */
 function msToReadable(ms: number) {
   if (ms < 1000) return `${ms}ms`;
@@ -48,14 +56,6 @@ const PERIOD_OPTIONS = [
   { value: '14', label: 'Últimos 14 dias' },
   { value: '30', label: 'Últimos 30 dias' },
   { value: '90', label: 'Últimos 90 dias' },
-];
-
-const CHART_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--success))',
-  'hsl(var(--warning))',
-  'hsl(var(--destructive))',
-  'hsl(var(--accent-foreground))',
 ];
 
 /* ── KPI card ── */
@@ -84,11 +84,56 @@ function KpiCard({ icon: Icon, label, value, sub, trend }: {
   );
 }
 
+/* ── Dropoff bar component ── */
+function DropoffBar({ label, total, dropoffs, index, maxTotal }: {
+  label: string; total: number; dropoffs: number; index: number; maxTotal: number;
+}) {
+  const pct = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+  const dropPct = total > 0 ? Math.round((dropoffs / total) * 100) : 0;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-foreground truncate max-w-[220px]">
+          <span className="text-muted-foreground mr-1.5">{index + 1}.</span>
+          {label}
+        </span>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className="tabular-nums text-muted-foreground">{total} sessões</span>
+          {dropoffs > 0 && (
+            <span className="text-destructive text-[10px] font-semibold tabular-nums">
+              {dropoffs} abandonos ({dropPct}%)
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="h-2.5 rounded-full bg-muted overflow-hidden flex">
+        <div
+          className="h-full rounded-l-full transition-all duration-700"
+          style={{
+            width: `${pct > 0 ? Math.max(pct - (dropoffs > 0 ? Math.round((dropoffs / maxTotal) * 100) : 0), 2) : 0}%`,
+            background: `linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))`,
+          }}
+        />
+        {dropoffs > 0 && (
+          <div
+            className="h-full transition-all duration-700"
+            style={{
+              width: `${Math.round((dropoffs / maxTotal) * 100)}%`,
+              background: `hsl(var(--destructive) / 0.6)`,
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── main ── */
 export default function AnalyticsDashboard() {
   const { forms } = useFormStore();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [pageEvents, setPageEvents] = useState<PageEvent[]>([]);
+  const [responses, setResponses] = useState<FormResponse[]>([]);
   const [days, setDays] = useState('30');
   const [formFilter, setFormFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
@@ -98,12 +143,14 @@ export default function AnalyticsDashboard() {
   /* fetch data */
   const fetchData = async () => {
     setLoading(true);
-    const [sessRes, evtRes] = await Promise.all([
+    const [sessRes, evtRes, respRes] = await Promise.all([
       supabase.from('form_sessions').select('id, form_id, status, started_at, completed_at, pages_visited, total_pages').gte('started_at', since).order('started_at', { ascending: false }).limit(1000),
       supabase.from('form_page_events').select('form_id, page_index, page_title, event_type, time_on_page_ms').gte('created_at', since).limit(1000),
+      supabase.from('form_responses').select('form_id, answers, metadata, created_at').gte('created_at', since).limit(1000),
     ]);
     setSessions((sessRes.data as Session[]) || []);
     setPageEvents((evtRes.data as PageEvent[]) || []);
+    setResponses((respRes.data as FormResponse[]) || []);
     setLoading(false);
   };
 
@@ -117,6 +164,10 @@ export default function AnalyticsDashboard() {
   const filteredEvents = useMemo(() =>
     formFilter === 'all' ? pageEvents : pageEvents.filter(e => e.form_id === formFilter),
   [pageEvents, formFilter]);
+
+  const filteredResponses = useMemo(() =>
+    formFilter === 'all' ? responses : responses.filter(r => r.form_id === formFilter),
+  [responses, formFilter]);
 
   /* KPIs */
   const totalSessions = filteredSessions.length;
@@ -153,21 +204,109 @@ export default function AnalyticsDashboard() {
     return Object.values(buckets).sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredSessions, days]);
 
-  /* dropoff funnel — page-level */
-  const funnelData = useMemo(() => {
-    const pageMap: Record<number, { index: number; title: string; views: number; avgTimeMs: number; timesArr: number[] }> = {};
-    filteredEvents.forEach(e => {
+  /* ── DROPOFF BY PAGE ── */
+  const pageDropoffData = useMemo(() => {
+    // Build page funnel from page_view events
+    const pageMap: Record<number, { index: number; title: string; views: number; timesArr: number[] }> = {};
+    filteredEvents.filter(e => e.event_type === 'page_view').forEach(e => {
       const idx = e.page_index ?? 0;
-      if (!pageMap[idx]) pageMap[idx] = { index: idx, title: e.page_title || `Página ${idx + 1}`, views: 0, avgTimeMs: 0, timesArr: [] };
+      if (!pageMap[idx]) pageMap[idx] = { index: idx, title: e.page_title || `Página ${idx + 1}`, views: 0, timesArr: [] };
       pageMap[idx].views++;
       if (e.time_on_page_ms) pageMap[idx].timesArr.push(e.time_on_page_ms);
     });
-    const sorted = Object.values(pageMap).sort((a, b) => a.index - b.index);
-    sorted.forEach(p => {
-      p.avgTimeMs = p.timesArr.length > 0 ? p.timesArr.reduce((s, v) => s + v, 0) / p.timesArr.length : 0;
+
+    // Count abandonments per page using metadata.last_page_index from partial responses
+    const abandonsByPage: Record<number, number> = {};
+    filteredResponses.forEach(r => {
+      const meta = r.metadata as Record<string, any> | null;
+      if (meta?.status === 'partial' && meta?.last_page_index != null) {
+        const pageIdx = Number(meta.last_page_index);
+        abandonsByPage[pageIdx] = (abandonsByPage[pageIdx] || 0) + 1;
+      }
     });
-    return sorted;
-  }, [filteredEvents]);
+
+    const sorted = Object.values(pageMap).sort((a, b) => a.index - b.index);
+    return sorted.map(p => ({
+      ...p,
+      dropoffs: abandonsByPage[p.index] || 0,
+      avgTimeMs: p.timesArr.length > 0 ? p.timesArr.reduce((s, v) => s + v, 0) / p.timesArr.length : 0,
+    }));
+  }, [filteredEvents, filteredResponses]);
+
+  /* ── DROPOFF BY QUESTION (last answered question) ── */
+  const questionDropoffData = useMemo(() => {
+    // We need the form's page/element definitions to map answer keys to titles
+    const targetForms = formFilter === 'all' ? forms : forms.filter(f => f.id === formFilter);
+
+    // Build a map of elementId -> { title, pageTitle } for input elements only
+    const questionMeta: Record<string, { id: string; title: string; pageTitle: string }> = {};
+    const questionOrder: string[] = [];
+
+    targetForms.forEach(form => {
+      (form.pages || []).forEach((page, pageIdx) => {
+        (page.elements || []).forEach(el => {
+          if (el.type.startsWith('input_') && !questionMeta[el.id]) {
+            questionMeta[el.id] = {
+              id: el.id,
+              title: el.content || el.label || el.type,
+              pageTitle: page.title || `Página ${pageIdx + 1}`,
+            };
+            questionOrder.push(el.id);
+          }
+        });
+      });
+    });
+
+    // For each partial response, find the LAST answered question
+    const lastAnsweredCount: Record<string, number> = {};
+    const totalAnsweredCount: Record<string, number> = {};
+
+    filteredResponses.forEach(r => {
+      const meta = r.metadata as Record<string, any> | null;
+      const answers = r.answers || {};
+      const isPartial = meta?.status === 'partial';
+
+      // Count how many responses filled each question (for funnel)
+      const answeredKeys = Object.keys(answers).filter(k =>
+        !k.startsWith('__') && answers[k] !== '' && answers[k] !== null && answers[k] !== undefined
+      );
+
+      answeredKeys.forEach(k => {
+        totalAnsweredCount[k] = (totalAnsweredCount[k] || 0) + 1;
+      });
+
+      // For partial responses, find the last answered question in order
+      if (isPartial && answeredKeys.length > 0) {
+        let lastIdx = -1;
+        let lastQId = '';
+        answeredKeys.forEach(k => {
+          const orderIdx = questionOrder.indexOf(k);
+          if (orderIdx > lastIdx) {
+            lastIdx = orderIdx;
+            lastQId = k;
+          }
+        });
+        if (lastQId) {
+          lastAnsweredCount[lastQId] = (lastAnsweredCount[lastQId] || 0) + 1;
+        }
+      }
+    });
+
+    // Build result sorted by question order
+    return questionOrder.map(qId => ({
+      id: qId,
+      title: questionMeta[qId]?.title || qId,
+      pageTitle: questionMeta[qId]?.pageTitle || '',
+      totalFilled: totalAnsweredCount[qId] || 0,
+      abandonedHere: lastAnsweredCount[qId] || 0,
+    })).filter(q => q.totalFilled > 0 || q.abandonedHere > 0);
+  }, [filteredResponses, forms, formFilter]);
+
+  /* completion rate per form (pie) */
+  const pieData = useMemo(() => [
+    { name: 'Completas', value: completedSessions.length, color: 'hsl(var(--success))' },
+    { name: 'Abandonos', value: totalSessions - completedSessions.length, color: 'hsl(var(--destructive))' },
+  ], [completedSessions.length, totalSessions]);
 
   /* top forms by responses */
   const topFormsData = useMemo(() => {
@@ -182,14 +321,6 @@ export default function AnalyticsDashboard() {
     });
     return Object.values(map).sort((a, b) => b.sessions - a.sessions).slice(0, 8);
   }, [sessions, forms]);
-
-  /* completion rate per form (pie) */
-  const pieData = useMemo(() => {
-    return [
-      { name: 'Completas', value: completedSessions.length, color: 'hsl(var(--success))' },
-      { name: 'Abandonos', value: totalSessions - completedSessions.length, color: 'hsl(var(--destructive))' },
-    ];
-  }, [completedSessions.length, totalSessions]);
 
   const tooltipStyle = {
     contentStyle: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 12 },
@@ -279,7 +410,7 @@ export default function AnalyticsDashboard() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Conclusão vs Abandono</CardTitle>
             </CardHeader>
-            <CardContent className="h-[260px] flex items-center justify-center">
+            <CardContent className="h-[260px] flex items-center justify-center relative">
               {totalSessions === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem dados</p>
               ) : (
@@ -304,80 +435,132 @@ export default function AnalyticsDashboard() {
           </Card>
         </div>
 
-        {/* Funnel + Top forms */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Dropoff funnel */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <ArrowDownRight className="h-4 w-4 text-muted-foreground" />
-                Funil de drop-off por página
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {funnelData.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Sem dados de páginas</p>
-              ) : (
-                <div className="space-y-2">
-                  {funnelData.map((page, i) => {
-                    const maxViews = funnelData[0]?.views || 1;
-                    const pct = Math.round((page.views / maxViews) * 100);
-                    const dropPct = i > 0 ? Math.round(((funnelData[i - 1].views - page.views) / funnelData[i - 1].views) * 100) : 0;
-                    return (
-                      <div key={page.index} className="space-y-1">
+        {/* Dropoff analysis — tabbed */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ArrowDownRight className="h-4 w-4 text-muted-foreground" />
+              Análise de drop-off
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="page" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="page" className="text-xs">Por página</TabsTrigger>
+                <TabsTrigger value="question" className="text-xs">Por pergunta</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="page">
+                {pageDropoffData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">Sem dados de páginas</p>
+                ) : (
+                  <div className="space-y-3">
+                    {pageDropoffData.map((page, i) => (
+                      <DropoffBar
+                        key={page.index}
+                        label={page.title}
+                        total={page.views}
+                        dropoffs={page.dropoffs}
+                        index={i}
+                        maxTotal={pageDropoffData[0]?.views || 1}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="question">
+                {questionDropoffData.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      {formFilter === 'all'
+                        ? 'Selecione um formulário para ver o drop-off por pergunta'
+                        : 'Sem dados de perguntas'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {questionDropoffData.map((q, i) => (
+                      <div key={q.id} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-foreground truncate max-w-[180px]">{page.title}</span>
-                          <div className="flex items-center gap-3">
-                            <span className="tabular-nums text-muted-foreground">{page.views} views</span>
-                            {i > 0 && dropPct > 0 && (
-                              <span className="text-destructive text-[10px] font-semibold">-{dropPct}%</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium text-foreground truncate block max-w-[280px]">
+                              <span className="text-muted-foreground mr-1.5">{i + 1}.</span>
+                              {q.title}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{q.pageTitle}</span>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="tabular-nums text-muted-foreground">{q.totalFilled} preencheram</span>
+                            {q.abandonedHere > 0 && (
+                              <span className="text-destructive text-[10px] font-semibold tabular-nums">
+                                {q.abandonedHere} abandonaram aqui
+                              </span>
                             )}
-                            <span className="text-[10px] text-muted-foreground">{msToReadable(page.avgTimeMs)}</span>
                           </div>
                         </div>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{
-                              width: `${pct}%`,
-                              background: `linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))`,
-                            }}
-                          />
+                        <div className="h-2.5 rounded-full bg-muted overflow-hidden flex">
+                          {(() => {
+                            const maxFilled = questionDropoffData[0]?.totalFilled || 1;
+                            const fillPct = Math.round(((q.totalFilled - q.abandonedHere) / maxFilled) * 100);
+                            const dropPct = Math.round((q.abandonedHere / maxFilled) * 100);
+                            return (
+                              <>
+                                <div
+                                  className="h-full rounded-l-full transition-all duration-700"
+                                  style={{
+                                    width: `${Math.max(fillPct, q.totalFilled > 0 ? 2 : 0)}%`,
+                                    background: `linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.7))`,
+                                  }}
+                                />
+                                {q.abandonedHere > 0 && (
+                                  <div
+                                    className="h-full transition-all duration-700"
+                                    style={{
+                                      width: `${dropPct}%`,
+                                      background: `hsl(var(--destructive) / 0.6)`,
+                                    }}
+                                  />
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
-          {/* Top forms */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                Top formulários
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {topFormsData.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Sem dados</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={topFormsData} layout="vertical" margin={{ left: 0, right: 16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={100} />
-                    <Tooltip {...tooltipStyle} />
-                    <Bar dataKey="sessions" name="Sessões" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={14} />
-                    <Bar dataKey="completed" name="Completas" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} barSize={14} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Top forms */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              Top formulários
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topFormsData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sem dados</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={topFormsData} layout="vertical" margin={{ left: 0, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={100} />
+                  <Tooltip {...tooltipStyle} />
+                  <Bar dataKey="sessions" name="Sessões" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={14} />
+                  <Bar dataKey="completed" name="Completas" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} barSize={14} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
