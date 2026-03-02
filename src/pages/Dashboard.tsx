@@ -3,7 +3,7 @@ import { useFormStore } from '@/hooks/useFormStore';
 import { useTags, useAllFormTags } from '@/hooks/useTags';
 import { useFolders } from '@/hooks/useFolders';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Plus, FileText, MoreHorizontal, Trash2,
   Tag, X, Folder, FolderInput,
@@ -16,8 +16,64 @@ import {
 } from '@/components/ui/dropdown-menu';
 import FolderTree from '@/components/FolderTree';
 import { FormTagsPicker, MoveToFolderMenu } from '@/components/dashboard/FormMenus';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, subDays, format, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+/* ── Inline sparkline chart ── */
+function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: number[] }) {
+  const maxVal = Math.max(...responses, ...dropoffs, 1);
+  const w = 100;
+  const h = 28;
+  const barW = 8;
+  const gap = (w - barW * 7) / 6;
+
+  // Dropoff line points
+  const linePoints = dropoffs.map((v, i) => {
+    const x = i * (barW + gap) + barW / 2;
+    const y = h - (v / maxVal) * (h - 2) - 1;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg width={w} height={h} className="flex-shrink-0" viewBox={`0 0 ${w} ${h}`}>
+      {/* Response bars */}
+      {responses.map((v, i) => {
+        const barH = Math.max((v / maxVal) * (h - 2), v > 0 ? 2 : 0);
+        const x = i * (barW + gap);
+        const y = h - barH;
+        return (
+          <rect
+            key={i}
+            x={x} y={y}
+            width={barW} height={barH}
+            rx={2}
+            fill="hsl(var(--primary))"
+            opacity={0.6}
+          />
+        );
+      })}
+      {/* Dropoff line */}
+      {dropoffs.some(v => v > 0) && (
+        <polyline
+          points={linePoints}
+          fill="none"
+          stroke="hsl(var(--destructive))"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={0.8}
+        />
+      )}
+      {/* Dropoff dots */}
+      {dropoffs.map((v, i) => {
+        if (v === 0) return null;
+        const x = i * (barW + gap) + barW / 2;
+        const y = h - (v / maxVal) * (h - 2) - 1;
+        return <circle key={i} cx={x} cy={y} r={1.5} fill="hsl(var(--destructive))" />;
+      })}
+    </svg>
+  );
+}
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   draft: { label: 'Rascunho', className: 'bg-muted text-muted-foreground' },
@@ -38,6 +94,49 @@ export default function Dashboard() {
 
   const formIds = forms.map(f => f.id);
   const formTagsMap = useAllFormTags(formIds);
+
+  // Fetch last 7 days of responses & sessions per form for sparkline
+  const [sparkData, setSparkData] = useState<Record<string, { responses: number[]; dropoffs: number[] }>>({});
+
+  useEffect(() => {
+    if (forms.length === 0) return;
+    const since = startOfDay(subDays(new Date(), 6)).toISOString();
+
+    Promise.all([
+      supabase.from('form_responses').select('form_id, created_at').gte('created_at', since).limit(1000),
+      supabase.from('form_sessions').select('form_id, started_at, status').gte('started_at', since).limit(1000),
+    ]).then(([respRes, sessRes]) => {
+      const respData = (respRes.data || []) as { form_id: string; created_at: string }[];
+      const sessData = (sessRes.data || []) as { form_id: string; started_at: string; status: string }[];
+
+      // Build 7-day buckets per form
+      const days: string[] = [];
+      for (let i = 6; i >= 0; i--) days.push(format(subDays(new Date(), i), 'yyyy-MM-dd'));
+
+      const result: Record<string, { responses: number[]; dropoffs: number[] }> = {};
+
+      for (const form of forms) {
+        const rBuckets = new Array(7).fill(0);
+        const dBuckets = new Array(7).fill(0);
+
+        respData.filter(r => r.form_id === form.id).forEach(r => {
+          const d = format(new Date(r.created_at), 'yyyy-MM-dd');
+          const idx = days.indexOf(d);
+          if (idx >= 0) rBuckets[idx]++;
+        });
+
+        sessData.filter(s => s.form_id === form.id && s.status !== 'completed').forEach(s => {
+          const d = format(new Date(s.started_at), 'yyyy-MM-dd');
+          const idx = days.indexOf(d);
+          if (idx >= 0) dBuckets[idx]++;
+        });
+
+        result[form.id] = { responses: rBuckets, dropoffs: dBuckets };
+      }
+
+      setSparkData(result);
+    });
+  }, [forms]);
 
   const getFormTagIds = useCallback((formId: string) => localTagsMap[formId] ?? formTagsMap[formId] ?? [], [localTagsMap, formTagsMap]);
 
@@ -212,6 +311,14 @@ export default function Dashboard() {
                           </div>
                         )}
                       </div>
+                    </div>
+                    {/* Sparkline */}
+                    <div className="flex-shrink-0 hidden sm:block" title="Últimos 7 dias: barras = respostas, linha = abandonos">
+                      {sparkData[form.id] ? (
+                        <InlineChart responses={sparkData[form.id].responses} dropoffs={sparkData[form.id].dropoffs} />
+                      ) : (
+                        <div className="w-[100px] h-7" />
+                      )}
                     </div>
 
                     {/* Actions */}
