@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.form-responses-read]
 verify_jwt = false
+
+[functions.form-ssr-generate]
+verify_jwt = false
+
+[functions.execute-workflow]
+verify_jwt = false
