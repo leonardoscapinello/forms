@@ -580,6 +580,31 @@ export default function FormPreview() {
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
 
+  // Flow-aware "last page" detection: a page is last if its outgoing edges
+  // only lead to 'end' node or it has no outgoing edges at all (terminal)
+  const isFlowLastPage = useMemo(() => {
+    if (currentPageIndex === null || !currentPage) return false;
+    const edges = form?.flowEdges || [];
+    const nodeId = `p-${currentPage.id}`;
+    const outEdges = edges.filter(e => e.source === nodeId);
+    if (outEdges.length === 0) return true; // no outgoing edges = terminal
+    // Check if ALL paths from this node lead to 'end' (BFS, skipping non-page nodes)
+    const visited = new Set<string>();
+    const queue = outEdges.map(e => e.target);
+    while (queue.length > 0) {
+      const n = queue.shift()!;
+      if (visited.has(n)) continue;
+      visited.add(n);
+      if (n === 'end') continue;
+      if (n.startsWith('p-')) return false; // leads to another page → not last
+      // Non-page node (condition, variable-op, etc.) — follow its edges
+      for (const e of edges) {
+        if (e.source === n && !visited.has(e.target)) queue.push(e.target);
+      }
+    }
+    return true; // all paths lead to 'end'
+  }, [currentPageIndex, currentPage, form?.flowEdges]);
+
 
   // Auto-complete when user reaches a true terminal page (no inputs/buttons and no outgoing flow)
   useEffect(() => {
@@ -591,7 +616,7 @@ export default function FormPreview() {
     const hasInputFields = page.elements?.some(el => el.type.startsWith('input_'));
     const hasActionButtons = page.elements?.some(el => el.type === 'button');
     const hasOutgoingFlow = (form.flowEdges || []).some(edge => edge.source === `p-${page.id}`);
-    const isLastPage = currentPageIndex === pages.length - 1;
+    const isLastPage = isFlowLastPage;
 
     if (!hasInputFields && !hasActionButtons && !hasOutgoingFlow && isLastPage) {
       setFinished(true);
@@ -1427,7 +1452,7 @@ export default function FormPreview() {
   }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, applyPageVariableAssignments, isEditorPreview]);
 
   // Keyboard navigation: Enter = next (always), ArrowDown = next (except last page), ArrowUp = back
-  const isLastPage = currentPageIndex !== null && currentPageIndex === pages.length - 1;
+  const isLastPage = isFlowLastPage;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -1717,7 +1742,7 @@ export default function FormPreview() {
         const hasActionButtons = currentPage?.elements?.some(el => el.type === 'button');
         if (hasActionButtons) return null;
         const canGoBack = currentPageIndex !== null && (currentPageIndex > 0 || !!form?.showWelcomeScreen);
-        const isLastPage = currentPageIndex !== null && currentPageIndex === pages.length - 1;
+        const isLastPage = isFlowLastPage;
         return (
           <div className="fixed bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-50">
             <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-lg px-2 py-1.5">
