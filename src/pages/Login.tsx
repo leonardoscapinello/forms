@@ -18,22 +18,32 @@ export default function Login() {
 
   // Check if setup is needed by trying setup-admin with a dry-run
   useEffect(() => {
+    let cancelled = false;
+
     async function check() {
       try {
-        const res = await supabase.functions.invoke('setup-admin', {
-          body: { email: '', password: '' },
-        });
+        const res = await Promise.race([
+          supabase.functions.invoke('setup-admin', {
+            body: { email: '', password: '' },
+          }),
+          new Promise<never>((_, reject) =>
+            window.setTimeout(() => reject(new Error('setup_check_timeout')), 5000)
+          ),
+        ]);
+
+        if (cancelled) return;
+
         // When function returns 403, supabase puts it in res.error
         // res.data may contain the JSON body, or it may be null
-        const data = res.data as any;
+        const data = (res as any).data as any;
         const dataError = typeof data?.error === 'string' ? data.error : '';
-        
+
         if (dataError.includes('Setup already completed') || dataError.includes('Users exist')) {
           setSetupMode(false);
-        } else if (res.error) {
+        } else if ((res as any).error) {
           // Non-2xx response: try to read the error context
           // FunctionsHttpError stores the response, check if it's a 403 (setup done)
-          const ctx = (res.error as any)?.context;
+          const ctx = ((res as any).error as any)?.context;
           if (ctx?.status === 403) {
             setSetupMode(false);
           } else {
@@ -45,11 +55,17 @@ export default function Login() {
           setSetupMode(true);
         }
       } catch {
-        setSetupMode(false);
+        if (!cancelled) setSetupMode(false);
+      } finally {
+        if (!cancelled) setCheckingSetup(false);
       }
-      setCheckingSetup(false);
     }
+
     check();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {

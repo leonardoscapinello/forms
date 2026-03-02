@@ -258,32 +258,54 @@ export default function FormPreview() { // perf-v2
       setPublicLoading(false);
     };
 
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+      new Promise<T>((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
+        promise
+          .then((value) => {
+            window.clearTimeout(timer);
+            resolve(value);
+          })
+          .catch((err) => {
+            window.clearTimeout(timer);
+            reject(err);
+          });
+      });
+
     // Source 1: prefetch (started in main.tsx before React mounted)
-    const fromPrefetch = consumePrefetchedForm(id).then((result) => {
-      if (result?.data && !result.error) return result.data;
-      throw new Error('prefetch_miss');
-    });
+    const fromPrefetch = withTimeout(
+      consumePrefetchedForm(id).then((result) => {
+        if (result?.data && !result.error) return result.data;
+        throw new Error('prefetch_miss');
+      }),
+      2500,
+      'prefetch'
+    );
 
     // Source 2: lightweight edge function via raw fetch (avoids Supabase SDK overhead)
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
     const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-    const fromEdge = fetch(`${SUPABASE_URL}/functions/v1/form-public-get?id=${id}`, {
-      headers: {
-        'apikey': ANON_KEY,
-        'Authorization': `Bearer ${ANON_KEY}`,
-        'Accept': 'application/json',
-      },
-      cache: 'no-store',
-    }).then(async (res) => {
-      if (!res.ok) throw new Error('edge_fetch_failed');
-      const data = await res.json();
-      if (data.error) throw new Error('edge_data_error');
-      return data;
-    });
+    const fromEdge = withTimeout(
+      fetch(`${SUPABASE_URL}/functions/v1/form-public-get?id=${id}`, {
+        headers: {
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'Accept': 'application/json',
+        },
+        cache: 'no-store',
+      }).then(async (res) => {
+        if (!res.ok) throw new Error('edge_fetch_failed');
+        const data = await res.json();
+        if (data.error) throw new Error('edge_data_error');
+        return data;
+      }),
+      6000,
+      'edge'
+    );
 
-    // Source 3: direct Supabase query (slowest, but most reliable)
+    // Source 3: direct backend query (slowest, but most reliable)
     // Only start this after a short delay to avoid unnecessary load if edge resolves fast
-    const fromDirectQuery = new Promise<any>((resolve, reject) => {
+    const fromDirectQuery = withTimeout(new Promise<any>((resolve, reject) => {
       const timer = setTimeout(() => {
         supabase
           .from('forms')
@@ -298,21 +320,26 @@ export default function FormPreview() { // perf-v2
       // Clean up timer if we resolve early
       fromPrefetch.then(() => clearTimeout(timer)).catch(() => {});
       fromEdge.then(() => clearTimeout(timer)).catch(() => {});
-    });
+    }), 7000, 'direct');
 
     let resolved = false;
     let failures = 0;
     const totalSources = 3;
+    const loadingFailSafeTimer = window.setTimeout(() => {
+      if (!cancelled && !resolved) setPublicLoading(false);
+    }, 10000);
 
     const resolveOnce = (data: any) => {
       if (cancelled || resolved) return;
       resolved = true;
+      window.clearTimeout(loadingFailSafeTimer);
       parseFormData(data);
     };
 
     const handleFailure = () => {
       failures += 1;
       if (!cancelled && !resolved && failures >= totalSources) {
+        window.clearTimeout(loadingFailSafeTimer);
         setPublicLoading(false);
       }
     };
@@ -323,6 +350,7 @@ export default function FormPreview() { // perf-v2
 
     return () => {
       cancelled = true;
+      window.clearTimeout(loadingFailSafeTimer);
     };
   }, [id, storeForm]);
 
