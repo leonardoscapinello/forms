@@ -46,9 +46,10 @@ interface Props {
   unlockElement?: () => void;
   isLockedByOther?: (elementId: string) => CollaboratorPresence | null;
   formStyle?: import('@/types/form').FormStyle;
+  hideToolbar?: boolean;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -411,7 +412,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
   return (
     <div className="flex h-full w-full">
-      <ElementToolbar onAdd={handleAdd} />
+      {!hideToolbar && <ElementToolbar onAdd={handleAdd} />}
 
       {/* Center — Preview canvas */}
       <div
