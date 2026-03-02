@@ -40,10 +40,25 @@ serve(async (req) => {
     // Test mode
     if (body.test) {
       const text = body.text || 'Teste de sentimento';
-      const result = await analyzeSentiment(text, useLovable, openaiKey, model, LOVABLE_API_KEY);
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      try {
+        const result = await analyzeSentiment(text, useLovable, openaiKey, model, LOVABLE_API_KEY);
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '';
+        if (msg === 'rate_limited') {
+          return new Response(JSON.stringify({ error: 'rate_limited', message: 'Limite de requisições atingido. Aguarde alguns minutos e tente novamente.' }), {
+            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (msg === 'payment_required') {
+          return new Response(JSON.stringify({ error: 'payment_required', message: 'Créditos insuficientes.' }), {
+            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        throw e;
+      }
     }
 
     // Batch analysis for form responses
