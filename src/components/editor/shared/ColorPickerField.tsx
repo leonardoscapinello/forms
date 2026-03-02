@@ -161,7 +161,7 @@ export default function ColorPickerField({
             </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[320px] p-3 space-y-3 max-h-[420px] overflow-y-auto" align="start" side="left">
+        <PopoverContent className="w-auto min-w-[300px] p-3 space-y-3 max-h-[420px] overflow-y-auto" align="start" side="left">
           {/* Brand palette by group */}
           {GROUPS.map(group => {
             const colors = BRAND_PALETTE.filter(c => c.group === group);
@@ -169,7 +169,7 @@ export default function ColorPickerField({
             return (
               <div key={group}>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{group}</p>
-                <div className="flex flex-wrap gap-1">
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${colors.length}, 24px)` }}>
                   {colors.map(c => {
                     const isSelected = value?.toLowerCase() === c.hex.toLowerCase();
                     const isLight = isLightColor(c.hex);
@@ -178,9 +178,7 @@ export default function ColorPickerField({
                         key={c.hex}
                         type="button"
                         onClick={() => onChange(c.hex.toLowerCase())}
-                        className={`flex flex-col items-center w-[25px] group relative ${
-                          isSelected ? 'ring-1 ring-primary rounded-md' : ''
-                        }`}
+                        className={`flex flex-col items-center group relative ${isSelected ? 'ring-1 ring-primary rounded-md' : ''}`}
                         title={`${c.hex} — ${c.name}`}
                       >
                         <div
