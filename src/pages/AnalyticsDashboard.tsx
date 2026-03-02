@@ -322,10 +322,21 @@ export default function AnalyticsDashboard() {
     return Object.values(map).sort((a, b) => b.sessions - a.sessions).slice(0, 8);
   }, [sessions, forms]);
 
-  const tooltipStyle = {
-    contentStyle: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 12 },
-    labelStyle: { color: 'hsl(var(--foreground))', fontWeight: 600 },
-    itemStyle: { color: 'hsl(var(--foreground))' },
+  const CustomTooltip = ({ active, payload, label, labelFormatter }: any) => {
+    if (!active || !payload?.length) return null;
+    const formattedLabel = labelFormatter ? labelFormatter(label) : label;
+    return (
+      <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-lg text-xs space-y-1.5">
+        <p className="font-semibold text-foreground text-[13px]">{formattedLabel}</p>
+        {payload.map((entry: any, i: number) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+            <span className="text-muted-foreground">{entry.name}</span>
+            <span className="ml-auto font-semibold text-foreground tabular-nums">{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -398,7 +409,7 @@ export default function AnalyticsDashboard() {
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                     tickFormatter={v => format(parseISO(v), 'dd/MM')} />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
-                  <Tooltip {...tooltipStyle} labelFormatter={v => format(parseISO(v as string), "dd 'de' MMMM", { locale: ptBR })} />
+                  <Tooltip content={<CustomTooltip labelFormatter={(v: string) => format(parseISO(v), "dd 'de' MMMM", { locale: ptBR })} />} cursor={{ stroke: 'hsl(var(--border))' }} />
                   <Area type="monotone" dataKey="sessões" stroke="hsl(var(--primary))" fill="url(#grad-sessions)" strokeWidth={2} />
                   <Area type="monotone" dataKey="completas" stroke="hsl(var(--success))" fill="url(#grad-completed)" strokeWidth={2} />
                 </AreaChart>
@@ -420,7 +431,7 @@ export default function AnalyticsDashboard() {
                     <Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} strokeWidth={0}>
                       {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip {...tooltipStyle} />
+                    <Tooltip content={<CustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
               )}
@@ -554,7 +565,7 @@ export default function AnalyticsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={100} />
-                  <Tooltip {...tooltipStyle} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--accent) / 0.3)' }} />
                   <Bar dataKey="sessions" name="Sessões" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={14} />
                   <Bar dataKey="completed" name="Completas" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} barSize={14} />
                 </BarChart>
