@@ -21,6 +21,16 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Check if user has custom OpenAI config with systemPrompt
+    const { data: aiSettings } = await supabase
+      .from('integration_settings')
+      .select('config')
+      .eq('integration_type', 'openai')
+      .maybeSingle();
+
+    const aiConfig = (aiSettings?.config as any) || {};
+    const customSystemPrompt = aiConfig.systemPrompt || '';
+
     // Fetch last 100 responses for this form
     const { data: responses, error } = await supabase
       .from('form_responses')
@@ -37,7 +47,7 @@ serve(async (req) => {
       });
     }
 
-    // Extract text answers for sentiment analysis
+    // Extract text answers for analysis
     const textAnswers: string[] = [];
     const completionTimes: number[] = [];
     const responseLengths: number[] = [];
@@ -55,7 +65,6 @@ serve(async (req) => {
       if (totalChars > 0) responseLengths.push(totalChars);
     }
 
-    // Prepare summary for AI
     const sampleAnswers = textAnswers.slice(0, 40).join(' | ');
     const avgTime = completionTimes.length > 0
       ? Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length / 1000)
@@ -64,29 +73,34 @@ serve(async (req) => {
       ? Math.round(responseLengths.reduce((a, b) => a + b, 0) / responseLengths.length)
       : null;
 
-    const prompt = `Você é um especialista em analytics de marketing e UX research com visão de CMO (Chief Marketing Officer). Analise os dados de respostas de um formulário corporativo de alto impacto e forneça insights estratégicos profundos.
+    const baseContext = `FORM RESPONSE DATA:
+- Total responses analyzed: ${responses.length}
+- Average completion time: ${avgTime ? `${avgTime} seconds` : 'N/A'}
+- Average response length: ${avgChars ? `${avgChars} characters` : 'N/A'}
+- Sample text responses: ${sampleAnswers || '(no text responses available)'}`;
 
-DADOS:
-- Total de respostas: ${responses.length}
-- Tempo médio de conclusão: ${avgTime ? `${avgTime} segundos` : 'N/A'}
-- Comprimento médio das respostas: ${avgChars ? `${avgChars} caracteres` : 'N/A'}
-- Respostas em texto (amostra): ${sampleAnswers || '(nenhuma resposta em texto disponível)'}
+    const systemPrompt = customSystemPrompt || `You are an elite behavioral psychologist and consumer intelligence analyst. Analyze form response data and return structured insights.`;
 
-Analise e retorne um JSON com:
+    const prompt = `${baseContext}
+
+Provide a comprehensive aggregate analysis as JSON with:
 1. sentiment_overall: 'positive' | 'neutral' | 'negative' | 'mixed'
-2. sentiment_score: número de -1.0 a 1.0
-3. sentiment_summary: parágrafo sobre sentimento geral com implicações de negócio
-4. writing_style: análise do estilo de escrita (formal/informal, objetividade, engajamento)
-5. engagement_quality: string descritiva com justificativa (ex: 'Alto engajamento — respostas longas indicam interesse genuíno')
-6. key_themes: array de até 5 temas principais encontrados
-7. response_quality_score: número de 0 a 100
-8. cmo_insights: array de 5-6 insights estratégicos de alto valor para CMO sobre captação de leads, qualidade da audiência, intenção de compra, objeções e oportunidades
-9. recommendations: array de 4-5 recomendações acionáveis para melhorar conversão e qualidade das respostas
-10. completion_analysis: análise sobre tempo de conclusão, indicadores de fricção e otimizações de UX
-11. lead_quality_indicators: array de 2-3 sinais que indicam qualidade do lead baseado nas respostas
-12. drop_off_hypothesis: hipótese sobre por que usuários abandonam o formulário
+2. sentiment_score: -1.0 to 1.0
+3. sentiment_summary: paragraph about overall sentiment with business implications
+4. behavioral_patterns: { response_style, engagement_level, detected_signals[], writing_personality_distribution: { analytical%, expressive%, driver%, amiable% } }
+5. engagement_quality: descriptive string with justification
+6. key_themes: array of up to 5 main themes
+7. response_quality_score: 0 to 100
+8. conversion_signals: { avg_purchase_intent, avg_problem_urgency, avg_investment_readiness, avg_trust_level, overall_avg_lead_score, lead_tier_distribution: { hot%, warm%, cold%, unqualified% } }
+9. cmo_insights: array of 5-6 high-value strategic insights for CMO
+10. recommendations: array of 4-5 actionable recommendations
+11. completion_analysis: analysis of completion times and UX friction
+12. lead_quality_indicators: array of 2-3 lead quality signals
+13. drop_off_hypothesis: hypothesis about form abandonment
+14. dashboard_tags: array of 5-8 machine-readable labels for filtering
+15. recommended_approach: { ideal_tone, primary_objection, emotional_hook, urgency_trigger }
 
-Retorne SOMENTE o JSON válido, sem markdown ou texto adicional.`;
+Return ONLY valid JSON.`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -97,7 +111,7 @@ Retorne SOMENTE o JSON válido, sem markdown ou texto adicional.`;
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
         messages: [
-          { role: 'system', content: 'You are an expert marketing analytics AI specializing in lead generation, conversion optimization, and CMO-level strategic insights. Always respond with valid JSON only, no markdown.' },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
         temperature: 0.3,
@@ -123,7 +137,6 @@ Retorne SOMENTE o JSON válido, sem markdown ou texto adicional.`;
     const aiData = await aiResponse.json();
     const rawContent = aiData.choices?.[0]?.message?.content || '{}';
 
-    // Clean markdown fences if present
     const jsonStr = rawContent
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
