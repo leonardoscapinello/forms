@@ -27,12 +27,24 @@ function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: n
   const barW = 8;
   const gap = (w - barW * 7) / 6;
 
-  // Dropoff line points
-  const linePoints = dropoffs.map((v, i) => {
-    const x = i * (barW + gap) + barW / 2;
-    const y = h - (v / maxVal) * (h - 2) - 1;
-    return `${x},${y}`;
-  }).join(' ');
+  // Smooth cubic bezier path from dropoff points
+  const dPoints = dropoffs.map((v, i) => ({
+    x: i * (barW + gap) + barW / 2,
+    y: h - (v / maxVal) * (h - 2) - 1,
+  }));
+
+  function smoothPath(pts: { x: number; y: number }[]) {
+    if (pts.length < 2) return '';
+    let d = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const cx = (pts[i].x + pts[i + 1].x) / 2;
+      d += ` C${cx},${pts[i].y} ${cx},${pts[i + 1].y} ${pts[i + 1].x},${pts[i + 1].y}`;
+    }
+    return d;
+  }
+
+  const barColor = 'hsl(35 30% 72%)';
+  const lineColor = 'hsl(var(--destructive))';
 
   return (
     <svg width={w} height={h} className="flex-shrink-0" viewBox={`0 0 ${w} ${h}`}>
@@ -47,29 +59,26 @@ function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: n
             x={x} y={y}
             width={barW} height={barH}
             rx={2}
-            fill="hsl(var(--primary))"
-            opacity={0.6}
+            fill={barColor}
+            opacity={0.7}
           />
         );
       })}
-      {/* Dropoff line */}
+      {/* Dropoff smooth line */}
       {dropoffs.some(v => v > 0) && (
-        <polyline
-          points={linePoints}
+        <path
+          d={smoothPath(dPoints)}
           fill="none"
-          stroke="hsl(var(--destructive))"
+          stroke={lineColor}
           strokeWidth={1.5}
           strokeLinecap="round"
-          strokeLinejoin="round"
           opacity={0.8}
         />
       )}
       {/* Dropoff dots */}
       {dropoffs.map((v, i) => {
         if (v === 0) return null;
-        const x = i * (barW + gap) + barW / 2;
-        const y = h - (v / maxVal) * (h - 2) - 1;
-        return <circle key={i} cx={x} cy={y} r={1.5} fill="hsl(var(--destructive))" />;
+        return <circle key={i} cx={dPoints[i].x} cy={dPoints[i].y} r={1.5} fill={lineColor} />;
       })}
     </svg>
   );
