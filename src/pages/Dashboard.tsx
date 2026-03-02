@@ -91,6 +91,7 @@ function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: n
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   draft: { label: 'Rascunho', className: 'bg-muted text-muted-foreground' },
   published: { label: 'Ativo', className: 'bg-[#8A7D4A]/10 text-[#6B5D2F] border border-[#B3AB86]/30' },
+  closed: { label: 'Fechado', className: 'bg-destructive/10 text-destructive border border-destructive/20' },
   archived: { label: 'Arquivado', className: 'bg-muted/50 text-muted-foreground/60' },
 };
 

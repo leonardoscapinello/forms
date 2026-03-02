@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain } from 'lucide-react';
+import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain, Lock } from 'lucide-react';
 
 
 interface Props {
@@ -475,6 +475,61 @@ export default function FormSettings({ form, onUpdate }: Props) {
                 onCheckedChange={v => onUpdate({ enableSentimentAnalysis: v })}
               />
             </div>
+          </div>
+        </div>
+
+        {/* ─── Encerrar formulário ─── */}
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-destructive" />
+              <h3 className="text-sm font-semibold text-foreground">Encerrar formulário</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+              Fecha o formulário para novas respostas. Quem tentar acessar verá uma mensagem ou será redirecionado.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm">Formulário fechado</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Quando ativo, ninguém poderá enviar novas respostas.
+                </p>
+              </div>
+              <Switch
+                checked={form.status === 'closed'}
+                onCheckedChange={v => onUpdate({ status: v ? 'closed' : 'published' })}
+              />
+            </div>
+
+            {form.status === 'closed' && (
+              <>
+                <div className="border-t border-border" />
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Mensagem de encerramento</Label>
+                  <Input
+                    value={form.closedMessage || ''}
+                    onChange={e => onUpdate({ closedMessage: e.target.value })}
+                    placeholder="Este formulário não está mais aceitando respostas."
+                    className="text-xs h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">URL de redirecionamento (opcional)</Label>
+                  <Input
+                    value={form.closedRedirectUrl || ''}
+                    onChange={e => onUpdate({ closedRedirectUrl: e.target.value })}
+                    placeholder="https://seusite.com/obrigado"
+                    className="text-xs font-mono h-9"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Se preenchido, o respondente será redirecionado ao invés de ver a mensagem.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

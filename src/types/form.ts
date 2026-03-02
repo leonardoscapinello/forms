@@ -598,7 +598,9 @@ export interface FormData {
   /** Form variables for dynamic content and logic */
   variables?: FormVariable[];
   style: FormStyle;
-  status: 'draft' | 'published' | 'archived';
+  status: 'draft' | 'published' | 'closed' | 'archived';
+  closedMessage?: string;
+  closedRedirectUrl?: string;
   createdAt: string;
   updatedAt: string;
   responseCount: number;
