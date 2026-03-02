@@ -75,14 +75,24 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
       <SidebarContent className="gap-0">
         <div className="h-14 flex items-center px-5 border-b border-sidebar-border shrink-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
-          <img
-            src={collapsed ? '/images/twobrain-icon.svg' : '/images/twobrain-logo-dark.svg'}
-            alt="twobrain"
-            className={cn(
-              'w-auto group-data-[collapsible=icon]:mx-auto',
-              collapsed ? 'h-7' : 'h-5',
-            )}
-          />
+          <div className="relative">
+            <img
+              src="/images/twobrain-logo-dark.svg"
+              alt="twobrain"
+              className={cn(
+                'h-5 w-auto transition-all duration-300 ease-in-out',
+                collapsed ? 'opacity-0 scale-90 absolute inset-0' : 'opacity-100 scale-100',
+              )}
+            />
+            <img
+              src="/images/twobrain-icon.svg"
+              alt="twobrain"
+              className={cn(
+                'h-7 w-auto transition-all duration-300 ease-in-out group-data-[collapsible=icon]:mx-auto',
+                collapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-90 absolute inset-0',
+              )}
+            />
+          </div>
         </div>
 
         <section className="p-4 group-data-[collapsible=icon]:p-2">
