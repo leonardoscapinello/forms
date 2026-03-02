@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.resend-send]
 verify_jwt = false
+
+[functions.analyze-sentiment]
+verify_jwt = false
+
+[functions.analyze-form-responses]
+verify_jwt = false
