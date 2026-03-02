@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { LocalInput } from './shared/LocalInput';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -432,6 +433,16 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
                 })}
               </div>
             )}
+          </div>
+
+          {/* Fire once toggle */}
+          <div className="flex items-center gap-2 px-2.5 py-1.5">
+            <Switch
+              checked={nodeData.fireOnce !== false}
+              onCheckedChange={v => onChange({ ...nodeData, fireOnce: v })}
+              className="scale-75"
+            />
+            <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
           </div>
 
           {/* Info pill */}
