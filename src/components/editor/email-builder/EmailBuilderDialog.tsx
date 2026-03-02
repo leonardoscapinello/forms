@@ -971,9 +971,10 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) handleAttemptClose(); }}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden [&>button]:hidden">
+      <DialogContent className="email-builder-dialog max-w-[95vw] w-[1200px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <style dangerouslySetInnerHTML={{ __html: `.email-builder-dialog > button { display: none !important; }` }} />
         {/* ─── Top bar ─── */}
-        <div className="flex items-center justify-between pl-4 pr-14 h-12 border-b border-border/50 flex-shrink-0 bg-background">
+        <div className="flex items-center justify-between px-4 h-12 border-b border-border/50 flex-shrink-0 bg-background">
           <div className="flex items-center gap-3 min-w-0">
             {step === 'editor' && !hasExistingContent && (
               <button onClick={() => setStep('template')}
