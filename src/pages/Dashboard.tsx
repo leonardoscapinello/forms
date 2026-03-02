@@ -5,6 +5,10 @@ import { useFolders } from '@/hooks/useFolders';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Plus, FileText, MoreHorizontal, Trash2,
   Tag, X, Folder, FolderInput,
 } from 'lucide-react';
@@ -100,6 +104,7 @@ export default function Dashboard() {
   const [filterTagId, setFilterTagId] = useState<string | null>(null);
   const [localTagsMap, setLocalTagsMap] = useState<Record<string, string[]>>({});
   const [draggingFormId, setDraggingFormId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   const formIds = forms.map(f => f.id);
   const formTagsMap = useAllFormTags(formIds);
@@ -361,7 +366,7 @@ export default function Dashboard() {
                           </DropdownMenuSubContent>
                         </DropdownMenuSub>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => deleteForm(form.id)}>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget({ id: form.id, title: form.title })}>
                           <Trash2 className="mr-2 h-4 w-4" />Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -373,6 +378,27 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir formulário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <span className="font-semibold">"{deleteTarget?.title || 'este formulário'}"</span>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteTarget) { deleteForm(deleteTarget.id); setDeleteTarget(null); } }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
