@@ -1,8 +1,5 @@
-import { lazy, Suspense } from 'react';
+import FlowCanvas from '@/components/editor/FlowCanvas';
 import { useEditorForm } from '@/hooks/useEditorForm';
-import { Loader2 } from 'lucide-react';
-
-const FlowCanvas = lazy(() => import('@/components/editor/FlowCanvas'));
 
 export default function EditorWorkflow() {
   const ctx = useEditorForm();
