@@ -20,9 +20,10 @@ interface Props {
   onSelectElement?: (id: string) => void;
   stepNumber?: number;
   lockedBy?: CollaboratorPresence | null;
+  designMode?: boolean;
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy, designMode }: Props) {
   const {
     attributes,
     listeners,
@@ -31,7 +32,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: element.id });
+  } = useSortable({ id: element.id, disabled: !!designMode || !!lockedBy });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,7 +58,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
         ...(lockedBy ? { '--tw-ring-color': lockedBy.color } as React.CSSProperties : {}),
       }}
       data-sortable-id={element.id}
-      draggable={element.type !== 'columns' && !lockedBy}
+      draggable={!designMode && element.type !== 'columns' && !lockedBy}
       onDragStart={handleNativeDragStart}
       className={`group relative rounded-xl transition-all duration-200 border ${
         lockedBy
@@ -70,7 +71,8 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
                 ? 'ring-2 ring-primary ring-offset-2 ring-offset-background border-primary/30'
                 : 'border-border/30 hover:border-border/60 hover:ring-1 hover:ring-border'
       }`}
-      onClick={(e) => { e.stopPropagation(); if (!lockedBy) onSelect(); }}
+      onPointerDownCapture={designMode ? (e) => { e.stopPropagation(); if (!lockedBy) onSelect(); } : undefined}
+      onClick={!designMode ? (e) => { e.stopPropagation(); if (!lockedBy) onSelect(); } : undefined}
     >
       {/* Lock indicator */}
       {lockedBy && <ElementLockIndicator lockedBy={lockedBy} />}
@@ -85,34 +87,37 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
       )}
 
       {/* Drag handle + delete */}
-      <div className={`absolute -left-10 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 transition-opacity duration-150 ${
-        isDragging ? 'opacity-0' : isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-      }`}>
-        <button
-          {...attributes}
-          {...listeners}
-          onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
-          className="p-1.5 rounded-md hover:bg-muted cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {!designMode && (
+        <div className={`absolute -left-10 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 transition-opacity duration-150 ${
+          isDragging ? 'opacity-0' : isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}>
+          <button
+            {...attributes}
+            {...listeners}
+            onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            className="p-1.5 rounded-md hover:bg-muted cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       <div className={`transition-opacity duration-200 ${isDragging ? 'opacity-0' : 'opacity-100'}`}>
-        {element.type === 'columns' && onElementChange ? (
+        {element.type === 'columns' ? (
           <ColumnsEditor
             element={element}
-            onChange={onElementChange}
+            onChange={onElementChange || (() => {})}
             onRemoveFromMain={onRemoveFromMain}
             onMoveToMain={onMoveToMain}
             selectedId={selectedId}
             onSelectElement={onSelectElement}
+            designMode={designMode}
           />
         ) : (
           <ElementPreview element={element} stepNumber={stepNumber} />
