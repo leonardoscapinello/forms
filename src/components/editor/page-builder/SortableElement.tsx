@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { PageElement } from '@/types/pageElements';
+import type { FormStyle } from '@/types/form';
 import { GripVertical, Trash2 } from 'lucide-react';
 import ElementPreview from './ElementPreview';
 import ColumnsEditor from './ColumnsEditor';
@@ -21,9 +22,10 @@ interface Props {
   stepNumber?: number;
   lockedBy?: CollaboratorPresence | null;
   designMode?: boolean;
+  formStyle?: FormStyle;
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy, designMode }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy, designMode, formStyle }: Props) {
   const {
     attributes,
     listeners,
@@ -119,7 +121,7 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
             designMode={designMode}
           />
         ) : (
-          <ElementPreview element={element} stepNumber={stepNumber} />
+          <ElementPreview element={element} stepNumber={stepNumber} formStyle={formStyle} />
         )}
       </div>
     </div>

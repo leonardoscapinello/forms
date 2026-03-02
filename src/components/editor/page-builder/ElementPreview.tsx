@@ -1,5 +1,5 @@
 import { PageElement } from '@/types/pageElements';
-import { Button } from '@/components/ui/button';
+import type { FormStyle } from '@/types/form';
 import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon, Bell } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
@@ -12,16 +12,19 @@ import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 
+import { Button } from '@/components/ui/button';
+
 interface Props {
   element: PageElement;
   stepNumber?: number;
+  formStyle?: FormStyle;
 }
 
 /**
  * Renders a page element in the editor canvas with the SAME visual style
  * used in FormPreview, ensuring WYSIWYG parity.
  */
-export default function ElementPreview({ element, stepNumber }: Props) {
+export default function ElementPreview({ element, stepNumber, formStyle }: Props) {
   const { type, style } = element;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
@@ -83,21 +86,21 @@ export default function ElementPreview({ element, stepNumber }: Props) {
 
   /** Typeform-style "N → enunciado" header — mirrors FormPreview exactly */
   const withFieldHeader = (content: React.ReactNode) => (
-    <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <span className="text-2xl font-semibold mt-0.5" style={{ color: '#203300' }}>{stepNumber ?? '?'}</span>
-        <span className="text-2xl font-semibold mt-0.5" style={{ color: '#203300' }}>→</span>
+    <div className="space-y-3 md:space-y-6">
+      <div className="flex items-start gap-1.5 md:gap-3">
+        <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit' }}>{stepNumber ?? '?'}</span>
+        <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit' }}>→</span>
         <div>
-          <h2 className="text-2xl font-semibold text-foreground leading-snug">
+          <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
             {element.label || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-base text-muted-foreground mt-2">{element.description}</p>
+            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{element.description}</p>
           )}
         </div>
       </div>
-      <div className="pl-14">
+      <div className="pl-7 md:pl-12 lg:pl-14">
         {content}
       </div>
     </div>
@@ -270,7 +273,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
           type="text"
           readOnly
           placeholder={element.placeholder || (type === 'input_document' ? '000.000.000-00' : type === 'input_company' ? '00.000.000/0000-00' : 'Digite aqui...')}
-          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40"
+          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
         />
       );
 
@@ -280,7 +283,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
           readOnly
           placeholder={element.placeholder || 'Digite sua mensagem...'}
           rows={3}
-          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-xl py-2 text-foreground placeholder:text-muted-foreground/40 resize-none"
+          className="w-full bg-transparent border-0 border-b-2 border-border outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors"
         />
       );
 
@@ -288,7 +291,7 @@ export default function ElementPreview({ element, stepNumber }: Props) {
       return withFieldHeader(
         <div className="flex items-center gap-3 border-0 border-b-2 border-border py-2 text-muted-foreground/40">
           <CalendarIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-          <span className="text-xl">{element.placeholder || 'Selecione a data'}</span>
+          <span className="text-base md:text-lg lg:text-xl">{element.placeholder || 'Selecione a data'}</span>
         </div>
       );
 

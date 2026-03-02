@@ -409,6 +409,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
           stepNumber={isField ? formFieldIndex : undefined}
           lockedBy={lockedBy}
           designMode={designMode}
+          formStyle={formStyle}
         />
       );
       if (isExternalDragOver && dropIndex === idx + 1) {
@@ -495,7 +496,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                       </button>
                     </div>
                   )}
-                  <ElementPreview element={el} />
+                  <ElementPreview element={el} formStyle={formStyle} />
                 </div>
               ))}
             </div>
@@ -570,6 +571,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                 <div className="rounded-xl bg-card/95 shadow-xl ring-2 ring-primary/40 p-4 max-w-2xl opacity-90 backdrop-blur-sm">
                   <ElementPreview
                     element={activeElement}
+                    formStyle={formStyle}
                     stepNumber={
                       activeElement.type.startsWith('input_')
                         ? elements.slice(0, elements.indexOf(activeElement) + 1).filter(e => e.type.startsWith('input_')).length
