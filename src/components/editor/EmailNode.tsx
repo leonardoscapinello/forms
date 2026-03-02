@@ -257,8 +257,8 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps & { is
                 </div>
               </div>
 
-              {/* Footer: Test button */}
-              <div className="border-t border-border px-3 py-2.5">
+              {/* Footer */}
+              <div className="border-t border-border px-3 py-2.5 space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -277,15 +277,14 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps & { is
                   )}
                   {testing ? 'Enviando…' : testResult === 'success' ? 'Enviado!' : testResult === 'error' ? 'Falhou' : 'Enviar teste'}
                 </Button>
-              </div>
-              {/* Fire once toggle */}
-              <div className="flex items-center gap-2 pt-1">
-                <Switch
-                  checked={nodeData.fireOnce !== false}
-                  onCheckedChange={v => onChange({ ...nodeData, fireOnce: v })}
-                  className="scale-75"
-                />
-                <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">Disparar apenas 1× por sessão</span>
+                  <Switch
+                    checked={nodeData.fireOnce !== false}
+                    onCheckedChange={v => onChange({ fireOnce: v })}
+                    className="scale-75 origin-right"
+                  />
+                </div>
               </div>
             </div>
           )}
