@@ -21,33 +21,50 @@ import { validateEmailFormat } from '@/lib/emailValidation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 
 // Lazy-loaded heavy preview components — only loaded when the form actually uses them
-const PhoneFieldPreview = lazy(() => import('@/components/preview/PhoneFieldPreview'));
-const EmailDomainSuggestions = lazy(() => import('@/components/preview/EmailDomainSuggestions'));
-const HeightWeightField = lazy(() => import('@/components/preview/HeightWeightField'));
-const ChartLivePreview = lazy(() => import('@/components/editor/chart-designer/ChartLivePreview'));
-const ComparativeChartPreview = lazy(() => import('@/components/preview/charts/ComparativeChartPreview'));
-const CircularProgressPreview = lazy(() => import('@/components/preview/CircularProgressPreview'));
-const IOSNotification = lazy(() => import('@/components/preview/IOSNotification'));
-const DateFieldPreview = lazy(() => import('@/components/preview/DateFieldPreview'));
-const TimerPreview = lazy(() => import('@/components/preview/TimerPreview'));
-const ListPreview = lazy(() => import('@/components/preview/ListPreview'));
-const LoadingPreview = lazy(() => import('@/components/preview/LoadingPreview'));
-const DocumentFieldPreview = lazy(() => import('@/components/preview/DocumentFieldPreview'));
-const CompanyFieldPreview = lazy(() => import('@/components/preview/CompanyFieldPreview'));
-const AddressFieldPreview = lazy(() => import('@/components/preview/AddressFieldPreview'));
-const ProgressBarColumn = lazy(() => import('@/components/preview/ProgressBarColumn'));
-const BeforeAfterSlider = lazy(() => import('@/components/preview/BeforeAfterSlider'));
-const DebugPanel = lazy(() => import('@/components/preview/DebugPanel'));
-// Section previews — lazy loaded to reduce initial bundle
-const ArgumentsPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.ArgumentsPreview })));
-const TestimonialsPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.TestimonialsPreview })));
-const FAQPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.FAQPreview })));
-const PricingPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.PricingPreview })));
-const CarouselPreview = lazy(() => import('@/components/editor/page-builder/SectionPreviews').then(m => ({ default: m.CarouselPreview })));
+const loadPhoneFieldPreview = () => import('@/components/preview/PhoneFieldPreview');
+const PhoneFieldPreview = lazy(loadPhoneFieldPreview);
+const loadEmailDomainSuggestions = () => import('@/components/preview/EmailDomainSuggestions');
+const EmailDomainSuggestions = lazy(loadEmailDomainSuggestions);
+const loadHeightWeightField = () => import('@/components/preview/HeightWeightField');
+const HeightWeightField = lazy(loadHeightWeightField);
+const loadChartLivePreview = () => import('@/components/editor/chart-designer/ChartLivePreview');
+const ChartLivePreview = lazy(loadChartLivePreview);
+const loadComparativeChartPreview = () => import('@/components/preview/charts/ComparativeChartPreview');
+const ComparativeChartPreview = lazy(loadComparativeChartPreview);
+const loadCircularProgressPreview = () => import('@/components/preview/CircularProgressPreview');
+const CircularProgressPreview = lazy(loadCircularProgressPreview);
+const loadIOSNotification = () => import('@/components/preview/IOSNotification');
+const IOSNotification = lazy(loadIOSNotification);
+const loadDateFieldPreview = () => import('@/components/preview/DateFieldPreview');
+const DateFieldPreview = lazy(loadDateFieldPreview);
+const loadTimerPreview = () => import('@/components/preview/TimerPreview');
+const TimerPreview = lazy(loadTimerPreview);
+const loadListPreview = () => import('@/components/preview/ListPreview');
+const ListPreview = lazy(loadListPreview);
+const loadLoadingPreview = () => import('@/components/preview/LoadingPreview');
+const LoadingPreview = lazy(loadLoadingPreview);
+const loadDocumentFieldPreview = () => import('@/components/preview/DocumentFieldPreview');
+const DocumentFieldPreview = lazy(loadDocumentFieldPreview);
+const loadCompanyFieldPreview = () => import('@/components/preview/CompanyFieldPreview');
+const CompanyFieldPreview = lazy(loadCompanyFieldPreview);
+const loadAddressFieldPreview = () => import('@/components/preview/AddressFieldPreview');
+const AddressFieldPreview = lazy(loadAddressFieldPreview);
+const loadProgressBarColumn = () => import('@/components/preview/ProgressBarColumn');
+const ProgressBarColumn = lazy(loadProgressBarColumn);
+const loadBeforeAfterSlider = () => import('@/components/preview/BeforeAfterSlider');
+const BeforeAfterSlider = lazy(loadBeforeAfterSlider);
 
-// Wrapper to avoid Suspense boundary per element — shows nothing while loading (instant swap)
+// Section previews — lazy loaded to reduce initial bundle
+const loadSectionPreviews = () => import('@/components/editor/page-builder/SectionPreviews');
+const ArgumentsPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.ArgumentsPreview })));
+const TestimonialsPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.TestimonialsPreview })));
+const FAQPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.FAQPreview })));
+const PricingPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.PricingPreview })));
+const CarouselPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.CarouselPreview })));
+
+// Wrapper to keep Suspense local and avoid route-level blank/loading screens
 function LazyWrap({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div className="animate-pulse h-10 rounded bg-muted/30" />}>{children}</Suspense>;
+  return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/30 animate-pulse" />}>{children}</Suspense>;
 }
 
 function buildDefaults(form: AppFormData | null) {
@@ -69,6 +86,93 @@ function buildDefaults(form: AppFormData | null) {
   return defaults;
 }
 
+function prefetchLazyComponentsForElements(elements?: PageElement[]) {
+  if (!elements || elements.length === 0) return;
+
+  const loaders = new Set<() => Promise<unknown>>();
+
+  const collect = (items: PageElement[]) => {
+    for (const el of items) {
+      switch (el.type) {
+        case 'input_phone':
+          loaders.add(loadPhoneFieldPreview);
+          break;
+        case 'input_email':
+          loaders.add(loadEmailDomainSuggestions);
+          break;
+        case 'input_weight':
+          loaders.add(loadHeightWeightField);
+          break;
+        case 'chart':
+          loaders.add(loadChartLivePreview);
+          break;
+        case 'comparative_chart':
+          loaders.add(loadComparativeChartPreview);
+          break;
+        case 'circular_progress':
+          loaders.add(loadCircularProgressPreview);
+          break;
+        case 'notification':
+          loaders.add(loadIOSNotification);
+          break;
+        case 'input_date':
+          loaders.add(loadDateFieldPreview);
+          break;
+        case 'timer':
+          loaders.add(loadTimerPreview);
+          break;
+        case 'list':
+          loaders.add(loadListPreview);
+          break;
+        case 'loading':
+          loaders.add(loadLoadingPreview);
+          break;
+        case 'input_document':
+          loaders.add(loadDocumentFieldPreview);
+          break;
+        case 'input_company':
+          loaders.add(loadCompanyFieldPreview);
+          break;
+        case 'input_address':
+          loaders.add(loadAddressFieldPreview);
+          break;
+        case 'progress_bar':
+          loaders.add(loadProgressBarColumn);
+          break;
+        case 'before_after':
+          loaders.add(loadBeforeAfterSlider);
+          break;
+        case 'arguments':
+        case 'testimonials':
+        case 'faq':
+        case 'pricing':
+        case 'carousel':
+          loaders.add(loadSectionPreviews);
+          break;
+        case 'columns': {
+          const columns = (el as any).columnData || [];
+          for (const col of columns) {
+            collect((col?.elements || []) as PageElement[]);
+          }
+          break;
+        }
+      }
+    }
+  };
+
+  collect(elements);
+  if (loaders.size === 0) return;
+
+  const run = () => {
+    Promise.allSettled([...loaders].map((loader) => loader())).catch(() => {});
+  };
+
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(run);
+  } else {
+    setTimeout(run, 0);
+  }
+}
 
 /** Resolve userData (email, phone, name) from a UserDataMapping and current answers */
 function resolveUserData(
@@ -684,6 +788,23 @@ export default function FormPreview() {
   // This ensures progress always increases linearly regardless of workflow page order
   const journeyStep = pageHistoryRef.current.length + (currentPageIndex !== null ? 1 : 0);
   const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? Math.min((journeyStep / totalSteps) * 100, 100) : 0;
+
+  // Prefetch lazy preview chunks for current + next screen to avoid blank/loading between transitions
+  useEffect(() => {
+    if (!form) return;
+
+    const currentElements = isWelcome
+      ? (form.showWelcomeScreen ? (form.welcomePage?.elements || []) : (pages[0]?.elements || []))
+      : isThankYou
+        ? (form.thankYouPage?.elements || [])
+        : (currentPage?.elements || []);
+
+    prefetchLazyComponentsForElements(currentElements);
+
+    if (!isWelcome && !isThankYou && currentPageIndex !== null) {
+      prefetchLazyComponentsForElements(pages[currentPageIndex + 1]?.elements || []);
+    }
+  }, [form, pages, currentPage, currentPageIndex, isWelcome, isThankYou]);
 
   /** Check if a page has any meaningful elements for the respondent */
   const isPageEmpty = useCallback((page: import('@/types/form').FunnelPage | undefined): boolean => {
@@ -1679,6 +1800,13 @@ export default function FormPreview() {
         const showDefaultWelcome = isWelcome && form.showWelcomeScreen && (!form.welcomePage?.elements?.length);
         const showDefaultThankYou = isThankYou && !form.thankYouPage?.elements?.length;
         const isDefaultScreen = showDefaultWelcome || showDefaultThankYou;
+        const contentContainerStyle = isDefaultScreen ? { maxWidth: 672, padding: '32px 16px' } : {
+          maxWidth: 672 + paddingX * 2,
+          paddingLeft: `clamp(${mobilePaddingX}px, 4vw, ${paddingX}px)`,
+          paddingRight: `clamp(${mobilePaddingX}px, 4vw, ${paddingX}px)`,
+          paddingTop: paddingY,
+          paddingBottom: paddingY,
+        };
 
         return (
           <div
@@ -1686,6 +1814,11 @@ export default function FormPreview() {
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
+              <Suspense fallback={
+                <div className="w-full mx-auto my-auto" style={contentContainerStyle}>
+                  <div className="w-full min-h-[160px] rounded-xl bg-muted/30 animate-pulse" />
+                </div>
+              }>
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
@@ -1695,13 +1828,7 @@ export default function FormPreview() {
                 exit="exit"
                 transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
                 className="w-full mx-auto my-auto"
-                style={isDefaultScreen ? { maxWidth: 672, padding: '32px 16px' } : {
-                  maxWidth: 672 + paddingX * 2,
-                  paddingLeft: `clamp(${mobilePaddingX}px, 4vw, ${paddingX}px)`,
-                  paddingRight: `clamp(${mobilePaddingX}px, 4vw, ${paddingX}px)`,
-                  paddingTop: paddingY,
-                  paddingBottom: paddingY,
-                }}
+                style={contentContainerStyle}
               >
                 {/* Default welcome (no custom elements) */}
                 {showDefaultWelcome && (
@@ -1843,6 +1970,7 @@ export default function FormPreview() {
                   </>
                 )}
               </motion.div>
+              </Suspense>
             </AnimatePresence>
           </div>
         );
