@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const ResponsivePreview = lazy(() => import('@/components/editor/ResponsivePreview'));
 
@@ -130,9 +130,18 @@ function EditorLayoutInner() {
       </header>
 
       <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
-        <div className="flex-1 flex overflow-hidden">
-          <Outlet />
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPath}
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+            className="flex-1 flex overflow-hidden"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </Suspense>
 
       <AnimatePresence>
