@@ -225,7 +225,7 @@ function resolveUserData(
   return result;
 }
 
-export default function FormPreview() {
+export default function FormPreview() { // perf-v2
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const store = useFormStoreSafe();
@@ -2375,13 +2375,16 @@ function InteractiveElement({
     : null;
 
   // Report blocked state to parent (only while checking)
+  const onBlockedChangeRef = useRef(onBlockedChange);
+  onBlockedChangeRef.current = onBlockedChange;
+
   useEffect(() => {
     if (element.type === 'input_email') {
-      onBlockedChange(emailChecking);
+      onBlockedChangeRef.current(emailChecking);
     } else {
-      onBlockedChange(false);
+      onBlockedChangeRef.current(false);
     }
-  }, [emailChecking, element.type, onBlockedChange]);
+  }, [emailChecking, element.type]);
 
   // Register validator for email fields (format + optional smart validation)
   useEffect(() => {
