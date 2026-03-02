@@ -113,18 +113,22 @@ export default function Dashboard() {
   // Fetch last 7 days of responses & sessions per form for sparkline
   const [sparkData, setSparkData] = useState<Record<string, { responses: number[]; dropoffs: number[] }>>({});
 
+  // Stabilize dependency: only re-fetch when form IDs actually change
+  const formIdsKey = useMemo(() => forms.map(f => f.id).sort().join(','), [forms]);
+
   useEffect(() => {
     if (forms.length === 0) return;
+    const formIds = forms.map(f => f.id);
     const since = startOfDay(subDays(new Date(), 6)).toISOString();
 
+    // Filter by user's form IDs to avoid full-table scan
     Promise.all([
-      supabase.from('form_responses').select('form_id, created_at').gte('created_at', since).limit(1000),
-      supabase.from('form_sessions').select('form_id, started_at, status').gte('started_at', since).limit(1000),
+      supabase.from('form_responses').select('form_id, created_at').gte('created_at', since).in('form_id', formIds).limit(1000),
+      supabase.from('form_sessions').select('form_id, started_at, status').gte('started_at', since).in('form_id', formIds).limit(1000),
     ]).then(([respRes, sessRes]) => {
       const respData = (respRes.data || []) as { form_id: string; created_at: string }[];
       const sessData = (sessRes.data || []) as { form_id: string; started_at: string; status: string }[];
 
-      // Build 7-day buckets per form
       const days: string[] = [];
       for (let i = 6; i >= 0; i--) days.push(format(subDays(new Date(), i), 'yyyy-MM-dd'));
 
@@ -151,7 +155,8 @@ export default function Dashboard() {
 
       setSparkData(result);
     });
-  }, [forms]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formIdsKey]);
 
   const getFormTagIds = useCallback((formId: string) => localTagsMap[formId] ?? formTagsMap[formId] ?? [], [localTagsMap, formTagsMap]);
 
