@@ -379,13 +379,45 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
 
         {/* Structured Data */}
         <Section icon={Code2} title="Dados estruturados (JSON-LD)" description="Schema.org markup para rich results nos buscadores." defaultOpen={false}>
-          <Field label="JSON-LD" hint="Cole um objeto JSON-LD válido. Será inserido como <script type='application/ld+json'>.">
-            <Textarea
-              value={seo.structuredData || ''}
-              onChange={e => update({ structuredData: e.target.value })}
-              placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "WebPage",\n  "name": "Meu formulário"\n}'}
-              className="text-xs font-mono min-h-[120px] resize-y"
-            />
+          <Field label="JSON-LD" hint="Edite o JSON-LD gerado automaticamente ou cole um personalizado.">
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5"
+                onClick={() => {
+                  const formUrl = `${window.location.origin}/f/${form.id}`;
+                  const jsonLd: Record<string, unknown> = {
+                    '@context': 'https://schema.org',
+                    '@type': seo.ogType === 'article' ? 'Article' : 'WebPage',
+                    'name': seo.title || form.title || '',
+                    'description': seo.description || '',
+                    'url': seo.canonicalUrl || formUrl,
+                  };
+                  if (seo.ogImage) jsonLd.image = seo.ogImage;
+                  if (seo.keywords) {
+                    jsonLd.keywords = seo.keywords;
+                  }
+                  jsonLd.publisher = {
+                    '@type': 'Organization',
+                    'name': window.location.hostname,
+                    ...(seo.favicon ? { logo: seo.favicon } : {}),
+                  };
+                  jsonLd.dateModified = new Date().toISOString().split('T')[0];
+                  update({ structuredData: JSON.stringify(jsonLd, null, 2) });
+                  toast.success('JSON-LD gerado com base nas informações do formulário');
+                }}
+              >
+                <Code2 className="h-3 w-3" />
+                Gerar automaticamente
+              </Button>
+              <Textarea
+                value={seo.structuredData || ''}
+                onChange={e => update({ structuredData: e.target.value })}
+                placeholder={'{\n  "@context": "https://schema.org",\n  "@type": "WebPage",\n  "name": "Meu formulário"\n}'}
+                className="text-xs font-mono min-h-[120px] resize-y"
+              />
+            </div>
           </Field>
         </Section>
       </div>
