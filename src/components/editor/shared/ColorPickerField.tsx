@@ -5,13 +5,9 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 const COLOR_PRESETS = [
-  // Row 1 - Basics
   '#000000', '#333333', '#666666', '#999999', '#cccccc', '#ffffff',
-  // Row 2 - Warm
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#fca5a5', '#fed7aa',
-  // Row 3 - Cool
   '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7',
-  // Row 4 - Accent
   '#ec4899', '#f43f5e', '#14b8a6', '#0ea5e9', '#7c3aed', '#c084fc',
 ];
 
@@ -33,11 +29,26 @@ export default function ColorPickerField({
   allowTransparent = true,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [hexInput, setHexInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isTransparent = !value || value === 'transparent';
 
-  // Find a friendly name for the color
-  const colorName = isTransparent ? placeholder : getColorName(value);
+  // Sync hex input when value changes externally
+  useEffect(() => {
+    if (!open) return;
+    setHexInput(isTransparent ? '' : value.replace('#', ''));
+  }, [value, open, isTransparent]);
+
+  const commitHex = () => {
+    const cleaned = hexInput.replace(/[^0-9a-fA-F]/g, '');
+    if (cleaned.length === 3 || cleaned.length === 6) {
+      const full = cleaned.length === 3
+        ? cleaned.split('').map(c => c + c).join('')
+        : cleaned;
+      onChange('#' + full.toLowerCase());
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -46,25 +57,26 @@ export default function ColorPickerField({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-2 w-full h-9 px-2 rounded-md border border-input bg-background hover:bg-accent/50 transition-colors cursor-pointer"
+            className="flex items-center gap-2 w-full h-8 px-2 rounded-md border border-input bg-background hover:bg-accent/50 transition-colors cursor-pointer"
+            title={isTransparent ? placeholder : value}
           >
             <div
-              className="h-5 w-5 rounded-md border border-border flex-shrink-0 relative overflow-hidden"
+              className="h-4 w-4 rounded border border-border flex-shrink-0 relative overflow-hidden"
               style={{ backgroundColor: isTransparent ? 'transparent' : value }}
             >
               {isTransparent && (
                 <div className="absolute inset-0">
-                  <svg width="20" height="20" viewBox="0 0 20 20" className="w-full h-full">
-                    <rect width="10" height="10" fill="#e5e7eb" />
-                    <rect x="10" y="10" width="10" height="10" fill="#e5e7eb" />
-                    <rect x="10" width="10" height="10" fill="#fff" />
-                    <rect y="10" width="10" height="10" fill="#fff" />
+                  <svg width="16" height="16" viewBox="0 0 16 16" className="w-full h-full">
+                    <rect width="8" height="8" fill="#e5e7eb" />
+                    <rect x="8" y="8" width="8" height="8" fill="#e5e7eb" />
+                    <rect x="8" width="8" height="8" fill="#fff" />
+                    <rect y="8" width="8" height="8" fill="#fff" />
                   </svg>
                 </div>
               )}
             </div>
-            <span className="text-xs text-muted-foreground truncate flex-1 text-left">
-              {colorName === 'Cor personalizada' ? '' : colorName}
+            <span className="text-[11px] text-muted-foreground truncate flex-1 text-left">
+              {isTransparent ? placeholder : ''}
             </span>
           </button>
         </PopoverTrigger>
@@ -75,9 +87,7 @@ export default function ColorPickerField({
               <button
                 key={color}
                 type="button"
-                onClick={() => {
-                  onChange(color);
-                }}
+                onClick={() => onChange(color)}
                 className={`h-6 w-full rounded-md border transition-all hover:scale-110 ${
                   value === color
                     ? 'border-primary ring-1 ring-primary shadow-sm'
@@ -89,16 +99,30 @@ export default function ColorPickerField({
             ))}
           </div>
 
-          {/* Selected color preview */}
-          {!isTransparent && (
-            <div className="flex items-center gap-2">
-              <div
-                className="h-8 w-8 rounded-md border border-border flex-shrink-0"
-                style={{ backgroundColor: value }}
+          {/* Hex input */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="h-7 w-7 rounded-md border border-border flex-shrink-0"
+              style={{ backgroundColor: isTransparent ? 'transparent' : value }}
+            />
+            <div className="flex items-center flex-1 h-7 rounded-md border border-input bg-background px-2">
+              <span className="text-[11px] text-muted-foreground select-none">#</span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={hexInput}
+                onChange={e => {
+                  const v = e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+                  setHexInput(v);
+                }}
+                onBlur={commitHex}
+                onKeyDown={e => { if (e.key === 'Enter') commitHex(); }}
+                placeholder="000000"
+                className="flex-1 bg-transparent text-[11px] text-foreground outline-none w-0 font-mono"
+                maxLength={6}
               />
-              <span className="text-xs text-foreground">{colorName}</span>
             </div>
-          )}
+          </div>
 
           {/* Transparent / Remove */}
           {allowTransparent && (
@@ -106,9 +130,7 @@ export default function ColorPickerField({
               variant="outline"
               size="sm"
               className="w-full text-xs h-7 gap-1.5"
-              onClick={() => {
-                onChange('');
-              }}
+              onClick={() => onChange('')}
             >
               <X className="h-3 w-3" />
               Remover cor
@@ -152,5 +174,5 @@ function getColorName(hex: string): string {
     '#FAFAF6': 'Creme',
     '#203300': 'Verde escuro',
   };
-  return map[hex.toLowerCase()] || map[hex] || 'Cor personalizada';
+  return map[hex.toLowerCase()] || map[hex] || hex;
 }
