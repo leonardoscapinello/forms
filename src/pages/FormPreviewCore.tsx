@@ -464,11 +464,16 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       const newMax = Math.max(currentPageIndex, maxPageVisitedRef.current);
       maxPageVisitedRef.current = newMax;
       if (sessionId) {
-        ;(supabase as any).from('form_sessions').update({
-          current_page_index: currentPageIndex,
-          pages_visited: newMax + 1,
-          last_seen_at: now,
-        }).eq('id', sessionId).then(() => {});
+        saveViaBackend({
+          kind: 'session',
+          action: 'update',
+          payload: {
+            current_page_index: currentPageIndex,
+            pages_visited: newMax + 1,
+            last_seen_at: now,
+          },
+          match: { id: sessionId },
+        });
       }
       ;(supabase as any).from('form_page_events').insert({
         session_id: sessionId,
