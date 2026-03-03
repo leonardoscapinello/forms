@@ -56,8 +56,34 @@ serve(async (req) => {
 
     const { email, password, displayName, role } = await req.json();
 
-    if (!email || !password) {
+    // ── Input validation ──
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
       return new Response(JSON.stringify({ error: 'Email and password are required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email) || email.length > 255) {
+      return new Response(JSON.stringify({ error: 'Invalid email format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (password.length < 8 || password.length > 128) {
+      return new Response(JSON.stringify({ error: 'Password must be between 8 and 128 characters' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (displayName !== undefined && (typeof displayName !== 'string' || displayName.length > 100)) {
+      return new Response(JSON.stringify({ error: 'Display name must be under 100 characters' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (role !== undefined && role !== 'admin' && role !== 'user') {
+      return new Response(JSON.stringify({ error: 'Invalid role' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

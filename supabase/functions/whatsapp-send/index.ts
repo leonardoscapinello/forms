@@ -14,8 +14,43 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { instanceId, recipientNumber, messageText, mediaUrl, mediaType, mediaFileName, testMode } = body;
 
-    if (!instanceId || !recipientNumber) {
+    if (!instanceId || typeof instanceId !== 'string' || !recipientNumber || typeof recipientNumber !== 'string') {
       return new Response(JSON.stringify({ success: false, error: 'instanceId and recipientNumber are required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate phone number format (digits, +, spaces, dashes, parens only, max 20 chars)
+    if (!/^[\d\s\-\+\(\)]{5,20}$/.test(recipientNumber)) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid phone number format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate optional text fields
+    if (messageText !== undefined && (typeof messageText !== 'string' || messageText.length > 10_000)) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid message text' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (mediaUrl !== undefined && typeof mediaUrl === 'string') {
+      try {
+        const u = new URL(mediaUrl);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error();
+      } catch {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid media URL' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    if (mediaType !== undefined && !['image', 'video', 'audio', 'document'].includes(mediaType)) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid media type' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

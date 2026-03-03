@@ -72,6 +72,32 @@ serve(async (req) => {
       );
     }
 
+    // ── Input validation ──
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'video/mp4', 'application/pdf', 'audio/mpeg', 'audio/wav'];
+
+    if (file.size > MAX_FILE_SIZE) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'File exceeds 50MB limit.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return new Response(
+        JSON.stringify({ success: false, message: `File type "${file.type}" not allowed.` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Sanitize file path: no directory traversal, max 500 chars
+    if (filePath.length > 500 || /\.\./.test(filePath) || /[<>:"|?*\x00-\x1f]/.test(filePath)) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Invalid file path.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     const payloadHash = await sha256(fileBytes);
 

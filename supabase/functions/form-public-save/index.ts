@@ -160,15 +160,53 @@ async function appendToSheet(supabase: any, formId: string, payload: Record<stri
   }
 }
 
+const VALID_KINDS = ['response', 'session'] as const;
+const VALID_ACTIONS = ['insert', 'upsert', 'update'] as const;
+const MAX_BODY_SIZE = 500_000; // 500KB
+
+function isValidKind(v: unknown): v is SaveBody['kind'] {
+  return typeof v === 'string' && (VALID_KINDS as readonly string[]).includes(v);
+}
+function isValidAction(v: unknown): v is SaveBody['action'] {
+  return typeof v === 'string' && (VALID_ACTIONS as readonly string[]).includes(v);
+}
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = (await req.json()) as SaveBody;
-    if (!body?.kind || !body?.action || !body?.payload) {
+    const rawBody = await req.text();
+    if (rawBody.length > MAX_BODY_SIZE) {
+      return new Response(JSON.stringify({ success: false, error: 'payload_too_large' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = JSON.parse(rawBody) as SaveBody;
+    if (!isValidKind(body?.kind) || !isValidAction(body?.action) || !isPlainObject(body?.payload)) {
       return new Response(JSON.stringify({ success: false, error: 'invalid_payload' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate match is a plain object if provided
+    if (body.match !== undefined && !isPlainObject(body.match)) {
+      return new Response(JSON.stringify({ success: false, error: 'invalid_match' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate onConflict is a short string if provided
+    if (body.onConflict !== undefined && (typeof body.onConflict !== 'string' || body.onConflict.length > 200)) {
+      return new Response(JSON.stringify({ success: false, error: 'invalid_onConflict' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

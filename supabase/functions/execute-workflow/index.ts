@@ -364,11 +364,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    if (rawBody.length > 500_000) {
+      return new Response(JSON.stringify({ success: false, error: 'payload_too_large' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = JSON.parse(rawBody);
     const { formId, answers, responseId, metadata } = body;
 
-    if (!formId || !answers || !responseId) {
-      return new Response(JSON.stringify({ success: false, error: 'missing_required_fields' }), {
+    if (!formId || typeof formId !== 'string' || formId.length > 100) {
+      return new Response(JSON.stringify({ success: false, error: 'invalid_formId' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!responseId || typeof responseId !== 'string' || responseId.length > 100) {
+      return new Response(JSON.stringify({ success: false, error: 'invalid_responseId' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+      return new Response(JSON.stringify({ success: false, error: 'invalid_answers' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
