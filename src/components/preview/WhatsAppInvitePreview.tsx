@@ -97,10 +97,10 @@ export default function WhatsAppInvitePreview({ element }: Props) {
 
           {/* Participant count */}
           <div className="flex items-center gap-1.5" style={{ marginTop: 2 }}>
-            <svg viewBox="0 0 16 16" fill="#667781" width="11" height="11">
+            <svg viewBox="0 0 16 16" fill="#4e5d66" width="11" height="11">
               <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm9.5-5a.5.5 0 01.5.5v1h1a.5.5 0 010 1h-1v1a.5.5 0 01-1 0v-1h-1a.5.5 0 010-1h1v-1a.5.5 0 01.5-.5z" />
             </svg>
-            <span style={{ fontSize: 12, color: '#667781' }}>
+            <span style={{ fontSize: 12, color: '#4e5d66' }}>
               {waParticipantCount} participantes
             </span>
           </div>
@@ -130,10 +130,10 @@ export default function WhatsAppInvitePreview({ element }: Props) {
               background: '#f0f2f5',
             }}
           >
-            <svg viewBox="0 0 16 16" fill="#667781" width="10" height="10">
+            <svg viewBox="0 0 16 16" fill="#4e5d66" width="10" height="10">
               <path d="M8 1a4 4 0 00-4 4v2H3a1 1 0 00-1 1v6a1 1 0 001 1h10a1 1 0 001-1V8a1 1 0 00-1-1h-1V5a4 4 0 00-4-4zm2.5 6h-5V5a2.5 2.5 0 015 0v2z" />
             </svg>
-            <span style={{ fontSize: 10, color: '#667781', letterSpacing: 0.2 }}>
+            <span style={{ fontSize: 10, color: '#4e5d66', letterSpacing: 0.2 }}>
               Criptografia de ponta a ponta
             </span>
           </div>
