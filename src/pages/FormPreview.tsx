@@ -1,6 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { toast as sonnerToast } from 'sonner';
 import { useFormStoreSafe } from '@/hooks/useFormStore';
+
+// Dynamic import — sonner is NOT on the critical rendering path
+const sonnerToast: any = (...args: any[]) => {
+  import('sonner').then(({ toast }) => (toast as any)(...args));
+};
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
