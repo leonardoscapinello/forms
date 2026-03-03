@@ -173,9 +173,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       setAnswers(prev => ({ ...ctxAns, ...prev }));
     });
 
-    // Request geolocation asynchronously ONLY after user interacts (saves 3-5s GPS timeout)
+    // Request geolocation ONLY when explicitly enabled in form settings
     // Uses a one-shot interaction listener to defer the heavy geo call
-    if (form.enableGeolocation !== false) {
+    if (form.enableGeolocation === true) {
       const geoHandler = () => {
         requestGeolocation().then((geo) => {
           if (geo.source !== 'none') {
@@ -195,14 +195,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           }
         });
       };
-      // Start geo after first click/touch OR after 3s idle — whichever comes first
-      const triggerGeo = () => {
-        geoHandler();
-        window.removeEventListener('pointerdown', triggerGeo);
-        clearTimeout(geoTimer);
-      };
-      window.addEventListener('pointerdown', triggerGeo, { once: true, passive: true });
-      const geoTimer = setTimeout(triggerGeo, 3000);
+      // Only trigger on user interaction — never auto-trigger to avoid blocking rendering
+      window.addEventListener('pointerdown', geoHandler, { once: true, passive: true });
+      return () => window.removeEventListener('pointerdown', geoHandler);
     }
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
