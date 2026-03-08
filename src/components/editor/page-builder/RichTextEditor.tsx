@@ -90,11 +90,20 @@ export default function RichTextEditor({ value, onChange, placeholder, className
   }, [emitChange, updateActiveFormats]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       document.execCommand('insertLineBreak');
       emitChange();
     }
+  }, [emitChange]);
+
+  /** Strip external formatting on paste — keep only allowed tags */
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    emitChange();
   }, [emitChange]);
 
   /** Insert text at cursor position inside contentEditable */
