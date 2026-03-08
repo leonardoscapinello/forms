@@ -1178,6 +1178,7 @@ function FlowCanvasInner({
           onAddABTest={handleDropAddABTest}
           onAddWait={handleDropAddWait}
           onAddJump={handleDropAddJump}
+          onAddAI={handleDropAddAI}
           onClose={() => setDropMenu(null)}
         />
       )}
