@@ -200,6 +200,7 @@ export default function PageListPanel({
                           ? 'hover:bg-muted border border-destructive/30 bg-destructive/5'
                           : 'hover:bg-muted border border-transparent'
                   }`}
+                  data-page-drop-id={page.id}
                   onClick={() => onSelectPage(page.id)}
                   title={isDisconnected ? 'Esta página não está conectada ao fluxo e não será exibida' : undefined}
                   onDragOver={(e) => {

@@ -56,6 +56,7 @@ interface Props {
   designMode?: boolean;
   designSelectedId?: string | null;
   onDesignSelect?: (id: string | null) => void;
+  onMoveElementToPage?: (element: PageElement, targetPageId: string) => void;
 }
 
 export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar, readOnly, designMode, designSelectedId, onDesignSelect }: Props) {
