@@ -1,5 +1,6 @@
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   isDisabled: boolean;
@@ -31,8 +32,25 @@ export function NodeToggleSwitch({ isDisabled, onToggle }: Props) {
 /** Badge shown on disabled nodes */
 export function DisabledBadge() {
   return (
-    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+    <span className="node-disabled-overlay text-[9px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
       Desativado
     </span>
+  );
+}
+
+/** Badge shown when node is part of an infinite loop */
+export function LoopWarningBadge() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-warning bg-warning/15 px-1.5 py-0.5 rounded cursor-help">
+          <AlertTriangle className="h-3 w-3" />
+          Loop infinito
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs max-w-[200px]">
+        Este nó faz parte de um circuito que nunca alcança o fim do formulário. Adicione uma saída para evitar loops infinitos.
+      </TooltipContent>
+    </Tooltip>
   );
 }

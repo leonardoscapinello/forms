@@ -119,6 +119,24 @@
   transform: scale(1.6);
 }
 
+/* Highlight the entire node when it's a valid drop target during connection */
+.react-flow.connecting .react-flow__node:not(.connecting) .react-flow__handle.connectingto {
+  animation: handle-pulse-active 0.8s ease-in-out infinite;
+}
+
+/* Visual ring on the node card when it's a valid connection target */
+.react-flow.connecting .react-flow__node.react-flow__node-valid-target > div:first-child {
+  outline: 2px solid hsl(var(--foreground) / 0.35);
+  outline-offset: 4px;
+  border-radius: 14px;
+  transition: outline 0.15s ease, outline-offset 0.15s ease;
+}
+
+/* Disabled nodes should look non-connectable */
+.react-flow.connecting .react-flow__node.react-flow__node-valid-target > div:first-child:has(.node-disabled-overlay) {
+  outline: none;
+}
+
 .react-flow.connecting {
   cursor: grabbing !important;
 }
