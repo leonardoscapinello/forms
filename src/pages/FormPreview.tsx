@@ -3,7 +3,7 @@ import { useFormStoreSafe } from '@/hooks/useFormStore';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { FormData as AppFormData } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
-import { consumePrefetchedForm, hasPrefetchedForm } from '@/lib/formPrefetch';
+import { consumePrefetchedForm } from '@/lib/formPrefetch';
 
 // Start loading Core chunk IMMEDIATELY — runs in parallel with data fetch
 const coreModule = import('./FormPreviewCore');
