@@ -91,6 +91,53 @@ export default function InteractiveElement({
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
+  // ── Field style overrides from formStyle ──────────────────────────────
+  const fBg = formStyle?.fieldBgColor || undefined;
+  const fBorder = formStyle?.fieldBorderColor || undefined;
+  const fFocusBorder = formStyle?.fieldFocusBorderColor || fBorder || undefined;
+  const fText = formStyle?.fieldTextColor || undefined;
+  const fPlaceholder = formStyle?.fieldPlaceholderColor || undefined;
+  const fRadius = formStyle?.fieldBorderRadius;
+  const fBorderW = formStyle?.fieldBorderWidth;
+  const fHeight = formStyle?.fieldHeight;
+
+  // Inline style applied to every text input / textarea
+  const fieldInputStyle: React.CSSProperties = {
+    ...(fBg ? { backgroundColor: fBg } : {}),
+    ...(fBorder ? { borderColor: fBorder } : {}),
+    ...(fText ? { color: fText } : {}),
+    ...(fRadius !== undefined ? { borderRadius: fRadius } : {}),
+    ...(fBorderW !== undefined ? { borderWidth: fBorderW, borderBottomWidth: fBorderW } : {}),
+    ...(fHeight !== undefined ? { height: fHeight } : {}),
+  };
+  const hasFieldOverrides = Object.keys(fieldInputStyle).length > 0;
+
+  // CSS for placeholder color (can't set via inline style alone)
+  const placeholderCssId = `ph-${element.id}`;
+  const placeholderCss = fPlaceholder
+    ? `#${placeholderCssId}::placeholder { color: ${fPlaceholder} !important; }`
+    : '';
+
+  // Selection option styles (select / radio / multi-select)
+  const optionSelectedStyle: React.CSSProperties = {
+    borderColor: formStyle?.fieldFocusBorderColor || formStyle?.fieldBorderColor || '#2C2817',
+    backgroundColor: formStyle?.fieldFocusBorderColor
+      ? `${formStyle.fieldFocusBorderColor}12`
+      : formStyle?.fieldBorderColor
+        ? `${formStyle.fieldBorderColor}12`
+        : 'rgba(44,40,23,0.04)',
+  };
+  const optionDefaultStyle: React.CSSProperties = {
+    borderColor: formStyle?.fieldBorderColor || undefined,
+  };
+  const optionBadgeSelectedStyle: React.CSSProperties = {
+    borderColor: optionSelectedStyle.borderColor,
+    backgroundColor: optionSelectedStyle.borderColor as string,
+  };
+  const optionBadgeDefaultStyle: React.CSSProperties = {
+    borderColor: formStyle?.fieldBorderColor || undefined,
+  };
+
   // Universal style wrappers matching ElementPreview
   const containerStyle: React.CSSProperties = {};
   if (style?.margin !== undefined) containerStyle.margin = style.margin;
