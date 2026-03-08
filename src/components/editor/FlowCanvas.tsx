@@ -64,6 +64,7 @@ const nodeTypes = {
   waitNode: WaitNode,
   jumpNode: JumpNode,
   aiNode: AINode,
+  imageGenNode: ImageGenNode,
 };
 
 const edgeTypes = {
