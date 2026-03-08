@@ -718,7 +718,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
-    if (!edges.length) return { nextNodeId: null, updatedAnswers: currentAnswers };
+    if (!edges.length) {
+      console.warn('[walkWorkflow] No flowEdges defined — canvas has no connections');
+      return { nextNodeId: null, updatedAnswers: currentAnswers };
+    }
 
     // Helper: apply all operations of a variable-op node
     const applyVopNode = (vopId: string, ans: Record<string, any>): Record<string, any> => {
@@ -768,11 +771,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     const disabledNodes = new Set(f?.disabledNodes || []);
 
     for (let i = 0; i < 200; i++) {
-      if (visited.has(currentNodeId)) break;
+      if (visited.has(currentNodeId)) {
+        console.warn('[walkWorkflow] Cycle detected at node:', currentNodeId);
+        break;
+      }
       visited.add(currentNodeId);
 
       const outEdges = edges.filter(e => e.source === currentNodeId);
-      if (outEdges.length === 0) break; // dead end
+      if (outEdges.length === 0) {
+        console.warn('[walkWorkflow] Dead end — no outgoing edges from:', currentNodeId);
+        break;
+      }
 
       // Determine which edge to follow
       let nextEdge = outEdges[0]; // default: first edge
@@ -786,6 +795,23 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           const handleId = `branch-${matchedBranchId}`;
           const branchEdge = outEdges.find(e => e.sourceHandle === handleId);
           if (branchEdge) nextEdge = branchEdge;
+        }
+      }
+
+      // If current node is an AB test, pick variant by weight
+      if (currentNodeId.startsWith('ab-')) {
+        const abId = currentNodeId.replace('ab-', '');
+        const abNode = f?.abTestNodes?.find(n => n.id === abId);
+        if (abNode && abNode.variants?.length) {
+          const totalWeight = abNode.variants.reduce((s, v) => s + v.weight, 0);
+          let random = Math.random() * totalWeight;
+          let chosenVariant = abNode.variants[0];
+          for (const variant of abNode.variants) {
+            random -= variant.weight;
+            if (random <= 0) { chosenVariant = variant; break; }
+          }
+          const variantEdge = outEdges.find(e => e.sourceHandle === `ab-${chosenVariant.id}`);
+          if (variantEdge) nextEdge = variantEdge;
         }
       }
 
@@ -1017,26 +1043,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         continue;
       }
 
-      // Intermediate: A/B Test node — pick random variant based on weights
+      // Intermediate: A/B Test node — handled above via sourceHandle selection
       if (target.startsWith('ab-')) {
-        const abId = target.replace('ab-', '');
-        const abNode = f?.abTestNodes?.find(n => n.id === abId);
-        if (abNode && abNode.variants?.length) {
-          const totalWeight = abNode.variants.reduce((s, v) => s + v.weight, 0);
-          let random = Math.random() * totalWeight;
-          let chosenVariant = abNode.variants[0];
-          for (const variant of abNode.variants) {
-            random -= variant.weight;
-            if (random <= 0) { chosenVariant = variant; break; }
-          }
-          // Handle ID matches ABTestNode component: `ab-${variant.id}`
-          const variantEdge = edges.find(e => e.source === target && e.sourceHandle === `ab-${chosenVariant.id}`);
-          if (variantEdge) {
-            // Keep traversing from the variant's target (don't strip p- prefix)
-            currentNodeId = variantEdge.target;
-            continue;
-          }
-        }
         currentNodeId = target;
         continue;
       }
@@ -1119,6 +1127,28 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         continue;
       }
 
+      // Intermediate: ImageGen node — fire-and-forget image composition
+      if (target.startsWith('ig-')) {
+        if (!effectiveSkip) {
+          const igId = target.replace('ig-', '');
+          const igNode = f?.imageGenNodes?.find(n => n.id === igId);
+          const shouldFire = igNode ? (igNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          if (igNode && f && shouldFire) {
+            firedNodesRef.current.add(target);
+            // ImageGen composition is handled client-side; store output var if configured
+            if (igNode.outputVariableId) {
+              const outVar = f?.variables?.find(v => v.id === igNode.outputVariableId);
+              if (outVar) {
+                // For now, mark as pending — actual canvas rendering happens in preview
+                currentAns = { ...currentAns, [`__var_${outVar.name}`]: '__imagegen_pending__' };
+              }
+            }
+          }
+        }
+        currentNodeId = target;
+        continue;
+      }
+
       // Intermediate: Jump node — redirect to target page
       if (target.startsWith('jp-')) {
         const jpId = target.replace('jp-', '');
@@ -1131,15 +1161,40 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         continue;
       }
 
+      // Intermediate: condition node — branch selection handled above
       if (target.startsWith('c-')) {
         currentNodeId = target;
         continue;
       }
 
       // Any other node (start, unknown) — just advance
+      console.warn('[walkWorkflow] Unknown node type, advancing through:', target);
       currentNodeId = target;
     }
 
+    // If we reached here, traversal ended without finding a page or 'end' node.
+    // Attempt BFS fallback: find the nearest reachable page from the last visited node.
+    console.warn('[walkWorkflow] Traversal ended without destination. Last node:', currentNodeId, 'Visited:', [...visited]);
+    const bfsQueue = [currentNodeId];
+    const bfsVisited = new Set(visited);
+    while (bfsQueue.length > 0) {
+      const node = bfsQueue.shift()!;
+      const outEdges = edges.filter(e => e.source === node);
+      for (const edge of outEdges) {
+        if (bfsVisited.has(edge.target)) continue;
+        bfsVisited.add(edge.target);
+        if (edge.target.startsWith('p-')) {
+          console.warn('[walkWorkflow] BFS found page:', edge.target);
+          return { nextNodeId: edge.target, updatedAnswers: currentAns };
+        }
+        if (edge.target === 'end') {
+          return { nextNodeId: 'end', updatedAnswers: currentAns };
+        }
+        bfsQueue.push(edge.target);
+      }
+    }
+
+    console.warn('[walkWorkflow] No reachable page found from:', fromNodeId);
     return { nextNodeId: null, updatedAnswers: currentAns };
   }, []);
 
