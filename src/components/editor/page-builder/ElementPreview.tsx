@@ -174,7 +174,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
           style={{ ...elementStyle, fontFamily: normalizeFontFamily(style?.fontFamily) }}
-          dangerouslySetInnerHTML={{ __html: element.content || '' }}
+          dangerouslySetInnerHTML={{ __html: renderRichTextWithReadableFieldTokens(element.content) }}
         />
       );
 
