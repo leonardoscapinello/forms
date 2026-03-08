@@ -217,19 +217,15 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Salvar resultado em</label>
-              <Select value={nodeData.outputVariableId || ''} onValueChange={v => onChange({ outputVariableId: v })}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Selecione variável" />
-                </SelectTrigger>
-                <SelectContent>
-                  {variables.filter(v => v.type === 'text').map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                  ))}
-                  {variables.filter(v => v.type === 'text').length === 0 && (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">Crie uma variável de texto primeiro</div>
-                  )}
-                </SelectContent>
-              </Select>
+              <VariableSelect
+                value={nodeData.outputVariableId || ''}
+                variables={variables.filter(v => v.type === 'text')}
+                onValueChange={v => onChange({ outputVariableId: v })}
+                onCreateVariable={onCreateVariable}
+                placeholder="Selecione variável"
+                accentClass="text-node-ai-accent"
+                className="h-9 text-sm"
+              />
               {outputVariable && (
                 <p className="text-[10px] text-muted-foreground">
                   Resultado → <span className="font-semibold text-node-ai-accent">{`{{${outputVariable.name}}}`}</span>
