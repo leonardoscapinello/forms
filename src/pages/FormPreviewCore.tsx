@@ -134,12 +134,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         const saved = localStorage.getItem(storageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed.answers && typeof parsed.pageIndex === 'number') {
-            setAnswers({ ...defaults, ...parsed.answers });
-            setCurrentPageIndex(parsed.pageIndex);
-            maxPageVisitedRef.current = parsed.maxPage ?? parsed.pageIndex;
+          const parsedPageIndex = Number(parsed.pageIndex);
+          const hasValidSavedIndex = Number.isInteger(parsedPageIndex)
+            && parsedPageIndex >= 0
+            && parsedPageIndex < (form.pages?.length ?? 0);
 
-            prefetchLazyComponentsForElements(form.pages?.[parsed.pageIndex]?.elements || [], 'immediate');
+          if (parsed.answers && hasValidSavedIndex) {
+            setAnswers({ ...defaults, ...parsed.answers });
+            setCurrentPageIndex(parsedPageIndex);
+            maxPageVisitedRef.current = parsed.maxPage ?? parsedPageIndex;
+
+            prefetchLazyComponentsForElements(form.pages?.[parsedPageIndex]?.elements || [], 'immediate');
             setIsInitialStateReady(true);
 
             // Capture context after paint
@@ -500,6 +505,19 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
+
+  // Self-healing: if restored page index is invalid, recover to a safe starting point
+  useEffect(() => {
+    if (currentPageIndex === null) return;
+    if (currentPage) return;
+
+    if (pages.length === 0) {
+      setCurrentPageIndex(null);
+      return;
+    }
+
+    setCurrentPageIndex(form?.showWelcomeScreen ? null : 0);
+  }, [currentPageIndex, currentPage, pages.length, form?.showWelcomeScreen]);
 
   // Flow-aware "last page" detection: a page is last if its outgoing edges
   // only lead to 'end' node or it has no outgoing edges at all (terminal)
@@ -1784,6 +1802,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 )}
 
                 {/* Page content (normal pages) */}
+                {!currentPage && !isWelcome && !isThankYou && (
+                  <p className="text-muted-foreground text-center py-8">Carregando campos...</p>
+                )}
                 {currentPage && !isThankYou && (
                   <>
                     {currentPage.elements.length === 0 ? (
