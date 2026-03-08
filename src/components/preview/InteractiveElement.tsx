@@ -674,16 +674,21 @@ export default function InteractiveElement({
 
     case 'input_number':
       return withFieldHeader(
-        <input
-          type="number"
-          value={t(value) || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t(element.placeholder) || '0'}
-          min={element.min}
-          max={element.max}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          autoFocus
-        />
+        <>
+          {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-num`)}</style>}
+          <input
+            id={`${placeholderCssId}-num`}
+            type="number"
+            value={t(value) || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t(element.placeholder) || '0'}
+            min={element.min}
+            max={element.max}
+            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            style={fieldInputStyle}
+            autoFocus
+          />
+        </>
       );
 
     case 'input_textarea':
