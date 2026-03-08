@@ -175,6 +175,12 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     const edges = form?.flowEdges || [];
     const pages = form?.pages || [];
     if (pages.length === 0) return new Set<string>();
+
+    // If there's no 'start' node in any edge source, the workflow hasn't been
+    // configured yet — treat all pages as connected (no red indicators).
+    const hasStartNode = edges.some(e => e.source === 'start');
+    if (!hasStartNode) return new Set<string>();
+
     const visited = new Set<string>();
     const queue = ['start'];
     while (queue.length > 0) {
