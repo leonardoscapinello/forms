@@ -174,6 +174,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
               {nodeData.objective === 'custom' ? 'Prompt personalizado' : 'Instruções adicionais (opcional)'}
             </label>
             <VariableInput
+              as="textarea"
               value={nodeData.prompt || ''}
               onChange={v => onChange({ prompt: v })}
               variables={variables}
@@ -186,7 +187,6 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
                 : nodeData.objective === 'extract' ? 'Ex: Extraia o nome e a principal dor do lead...'
                 : 'Escreva o prompt usando {{variáveis}}...'
               }
-              multiline
             />
           </div>
 
