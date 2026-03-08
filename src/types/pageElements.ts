@@ -53,7 +53,9 @@ export type PageElementType =
   | 'input_quiz_icon'
   | 'input_quiz_image'
   // Effects
-  | 'confetti';
+  | 'confetti'
+  // Card element
+  | 'card';
 
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
