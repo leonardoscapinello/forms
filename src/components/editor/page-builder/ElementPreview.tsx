@@ -722,6 +722,16 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
         </div>
       );
 
+    case 'card':
+      return (
+        <CardPreview
+          items={element.cardItems || []}
+          columns={element.cardColumns}
+          imageHeight={element.cardImageHeight}
+          interactive={false}
+        />
+      );
+
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;
   }

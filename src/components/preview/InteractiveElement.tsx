@@ -1351,6 +1351,17 @@ export default function InteractiveElement({
       );
     }
 
+    case 'card':
+      return wrapWithStyle(
+        <CardPreview
+          items={element.cardItems || []}
+          columns={element.cardColumns}
+          imageHeight={element.cardImageHeight}
+          interactive={true}
+          onNavigate={onNavigate}
+        />
+      );
+
     default:
       return null;
   }
