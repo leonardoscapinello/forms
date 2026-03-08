@@ -545,6 +545,10 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.content = 'Escreva seu texto aqui...';
       base.style = { fontSize: 'base' };
       break;
+    case 'rich_text':
+      base.content = '<p>Escreva seu parágrafo aqui...</p>';
+      base.style = { fontSize: 'base' };
+      break;
     case 'image':
       base.src = '';
       base.alt = 'Imagem';
