@@ -91,6 +91,53 @@ export default function InteractiveElement({
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
+  // ── Field style overrides from formStyle ──────────────────────────────
+  const fBg = formStyle?.fieldBgColor || undefined;
+  const fBorder = formStyle?.fieldBorderColor || undefined;
+  const fFocusBorder = formStyle?.fieldFocusBorderColor || fBorder || undefined;
+  const fText = formStyle?.fieldTextColor || undefined;
+  const fPlaceholder = formStyle?.fieldPlaceholderColor || undefined;
+  const fRadius = formStyle?.fieldBorderRadius;
+  const fBorderW = formStyle?.fieldBorderWidth;
+  const fHeight = formStyle?.fieldHeight;
+
+  // Inline style applied to every text input / textarea
+  const fieldInputStyle: React.CSSProperties = {
+    ...(fBg ? { backgroundColor: fBg } : {}),
+    ...(fBorder ? { borderColor: fBorder } : {}),
+    ...(fText ? { color: fText } : {}),
+    ...(fRadius !== undefined ? { borderRadius: fRadius } : {}),
+    ...(fBorderW !== undefined ? { borderWidth: fBorderW, borderBottomWidth: fBorderW } : {}),
+    ...(fHeight !== undefined ? { height: fHeight } : {}),
+  };
+  const hasFieldOverrides = Object.keys(fieldInputStyle).length > 0;
+
+  // CSS for placeholder color (can't set via inline style alone)
+  const placeholderCssId = `ph-${element.id}`;
+  const placeholderCss = fPlaceholder
+    ? `#${placeholderCssId}::placeholder { color: ${fPlaceholder} !important; }`
+    : '';
+
+  // Selection option styles (select / radio / multi-select)
+  const optionSelectedStyle: React.CSSProperties = {
+    borderColor: formStyle?.fieldFocusBorderColor || formStyle?.fieldBorderColor || '#2C2817',
+    backgroundColor: formStyle?.fieldFocusBorderColor
+      ? `${formStyle.fieldFocusBorderColor}12`
+      : formStyle?.fieldBorderColor
+        ? `${formStyle.fieldBorderColor}12`
+        : 'rgba(44,40,23,0.04)',
+  };
+  const optionDefaultStyle: React.CSSProperties = {
+    borderColor: formStyle?.fieldBorderColor || undefined,
+  };
+  const optionBadgeSelectedStyle: React.CSSProperties = {
+    borderColor: optionSelectedStyle.borderColor,
+    backgroundColor: optionSelectedStyle.borderColor as string,
+  };
+  const optionBadgeDefaultStyle: React.CSSProperties = {
+    borderColor: formStyle?.fieldBorderColor || undefined,
+  };
+
   // Universal style wrappers matching ElementPreview
   const containerStyle: React.CSSProperties = {};
   if (style?.margin !== undefined) containerStyle.margin = style.margin;
@@ -496,7 +543,9 @@ export default function InteractiveElement({
       return withFieldHeader(
         <div className="space-y-2">
           <div className="relative">
+            {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-email`)}</style>}
             <input
+              id={`${placeholderCssId}-email`}
               type="text"
               inputMode="email"
               value={t(value) || ''}
@@ -514,6 +563,7 @@ export default function InteractiveElement({
               className={`w-full bg-transparent border-0 border-b-2 outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
                 emailError ? 'border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
               }`}
+              style={fieldInputStyle}
               autoFocus
             />
             <AnimatePresence mode="wait">
@@ -570,14 +620,19 @@ export default function InteractiveElement({
 
     case 'input_text':
       return withFieldHeader(
-        <input
-          type="text"
-          value={t(value) || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t(element.placeholder) || 'Digite aqui...'}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
-          autoFocus
-        />
+        <>
+          {placeholderCss && <style>{placeholderCss}</style>}
+          <input
+            id={placeholderCssId}
+            type="text"
+            value={t(value) || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t(element.placeholder) || 'Digite aqui...'}
+            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
+            style={fieldInputStyle}
+            autoFocus
+          />
+        </>
       );
 
     case 'input_address':
@@ -619,28 +674,38 @@ export default function InteractiveElement({
 
     case 'input_number':
       return withFieldHeader(
-        <input
-          type="number"
-          value={t(value) || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t(element.placeholder) || '0'}
-          min={element.min}
-          max={element.max}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          autoFocus
-        />
+        <>
+          {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-num`)}</style>}
+          <input
+            id={`${placeholderCssId}-num`}
+            type="number"
+            value={t(value) || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t(element.placeholder) || '0'}
+            min={element.min}
+            max={element.max}
+            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            style={fieldInputStyle}
+            autoFocus
+          />
+        </>
       );
 
     case 'input_textarea':
       return withFieldHeader(
-        <textarea
-          value={t(value) || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t(element.placeholder) || 'Digite sua mensagem...'}
-          rows={3}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
-          autoFocus
-        />
+        <>
+          {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-ta`)}</style>}
+          <textarea
+            id={`${placeholderCssId}-ta`}
+            value={t(value) || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t(element.placeholder) || 'Digite sua mensagem...'}
+            rows={3}
+            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
+            style={fieldInputStyle}
+            autoFocus
+          />
+        </>
       );
 
     case 'input_date':
@@ -706,19 +771,18 @@ export default function InteractiveElement({
                 whileTap={{ scale: 0.97 }}
                 animate={isSelected ? {
                   scale: [1, 1.02, 1],
-                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
                 } : {}}
                 transition={{ duration: 0.35 }}
-                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
-                  isSelected
-                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
-                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
+                  isSelected ? 'shadow-sm' : ''
                 }`}
+                style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
                   className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
+                    isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
+                  style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
                   animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
                   transition={{ duration: 0.3 }}
                 >
@@ -743,19 +807,18 @@ export default function InteractiveElement({
                 whileTap={{ scale: 0.97 }}
                 animate={isSelected ? {
                   scale: [1, 1.02, 1],
-                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
                 } : {}}
                 transition={{ duration: 0.35 }}
-                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
-                  isSelected
-                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
-                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
+                  isSelected ? 'shadow-sm' : ''
                 }`}
+                style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
                   className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
+                    isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
+                  style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
                   animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
                   transition={{ duration: 0.3 }}
                 >
@@ -995,19 +1058,18 @@ export default function InteractiveElement({
                 whileTap={{ scale: 0.97 }}
                 animate={isSelected ? {
                   scale: [1, 1.02, 1],
-                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
                 } : {}}
                 transition={{ duration: 0.35 }}
-                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
-                  isSelected
-                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
-                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
+                  isSelected ? 'shadow-sm' : ''
                 }`}
+                style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
                   className={`h-6 w-6 md:h-7 md:w-7 rounded-md border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
+                    isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
+                  style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
                   animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
                   transition={{ duration: 0.3 }}
                 >
@@ -1016,8 +1078,9 @@ export default function InteractiveElement({
                 <span className="text-base md:text-lg flex-1">{t(opt.label)}</span>
                 <motion.div
                   className={`h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-[#2C2817] bg-[#2C2817]' : 'border-border'
+                    isSelected ? 'text-white' : 'border-border'
                   }`}
+                  style={isSelected ? { borderColor: optionSelectedStyle.borderColor, backgroundColor: optionSelectedStyle.borderColor as string } : optionBadgeDefaultStyle}
                   animate={isSelected ? { scale: [1, 1.2, 1] } : {}}
                   transition={{ duration: 0.2 }}
                 >
