@@ -1,7 +1,9 @@
 import { useCallback, useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
+import type { FormVariable } from '@/types/form';
 import ElementPreview from './ElementPreview';
+import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 import { Plus, Trash2, GripVertical, ArrowUpFromLine, ArrowLeft, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
