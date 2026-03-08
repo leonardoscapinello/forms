@@ -49,7 +49,7 @@ export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLooku
   html = html.replace(/~(.*?)~/g, '<del>$1</del>');
   html = html.replace(/\{\{(.*?)\}\}/g, (_match, token: string) => {
     if (token.startsWith('field:')) {
-      const elementId = token.slice('field:'.length);
+      const elementId = token.slice('field:'.length).trim();
       const fieldLabel = elementLookup?.[elementId];
       const safeLabel = (fieldLabel || 'Campo')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
