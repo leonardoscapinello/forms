@@ -31,6 +31,8 @@ interface FirePixelOptions {
   sourceUrl?: string;
   userAgent?: string;
   customParams?: Record<string, any>;
+  /** Whether client-side pixel was already fired (for dedup in server logs) */
+  firedClient?: boolean;
   // webhook-specific
   webhookUrl?: string;
   webhookMethod?: string;
