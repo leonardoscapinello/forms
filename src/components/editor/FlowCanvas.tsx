@@ -139,6 +139,7 @@ function FlowCanvasInner({
   onWaitAddAtPosition, onWaitChange, onWaitDelete,
   onJumpAddAtPosition, onJumpChange, onJumpDelete,
   onAIAddAtPosition, onAIChange, onAIDelete,
+  onImageGenAddAtPosition, onImageGenChange, onImageGenDelete,
   onFormUpdate, onPageSelect, onCreateVariable,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
