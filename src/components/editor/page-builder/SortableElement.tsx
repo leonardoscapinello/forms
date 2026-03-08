@@ -1,12 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { PageElement } from '@/types/pageElements';
-import type { FormStyle } from '@/types/form';
+import type { FormStyle, FormVariable } from '@/types/form';
 import { GripVertical, Trash2 } from 'lucide-react';
 import ElementPreview from './ElementPreview';
 import ColumnsEditor from './ColumnsEditor';
 import ElementLockIndicator from '@/components/editor/collaboration/ElementLockIndicator';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
+import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 
 interface Props {
   element: PageElement;
