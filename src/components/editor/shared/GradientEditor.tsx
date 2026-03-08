@@ -3,7 +3,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, RotateCw, Shuffle } from 'lucide-react';
+import { Plus, Trash2, RotateCw, Shuffle, ClipboardPaste } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ColorPickerField from './ColorPickerField';
 
@@ -432,6 +433,21 @@ export default function GradientEditor({ value, onChange }: Props) {
     return 'custom';
   });
   const [selectedStop, setSelectedStop] = useState<number | null>(0);
+  const [cssInput, setCssInput] = useState('');
+  const [showCssInput, setShowCssInput] = useState(false);
+
+  const applyCssInput = useCallback((raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const parsed = parseCssToConfig(trimmed);
+    if (parsed) {
+      setConfig(parsed);
+      onChange(configToCss(parsed));
+      setSelectedStop(0);
+      setCssInput('');
+      setShowCssInput(false);
+    }
+  }, [onChange]);
 
   const updateConfig = useCallback((patch: Partial<GradientConfig>) => {
     setConfig(prev => {
@@ -614,12 +630,20 @@ export default function GradientEditor({ value, onChange }: Props) {
 
               {/* Action buttons */}
               <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost" size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  onClick={reverseStops}
-                  title="Inverter direção"
-                >
+              <Button
+                variant="ghost" size="sm"
+                className={`h-7 w-7 p-0 transition-colors ${showCssInput ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setShowCssInput(v => !v)}
+                title="Colar CSS"
+              >
+                <ClipboardPaste className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost" size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                onClick={reverseStops}
+                title="Inverter direção"
+              >
                   <Shuffle className="h-3.5 w-3.5" />
                 </Button>
                 <Button
@@ -633,6 +657,41 @@ export default function GradientEditor({ value, onChange }: Props) {
               </div>
             </div>
           </div>
+
+          {/* CSS paste input */}
+          {showCssInput && (
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Colar CSS</Label>
+              <div className="flex gap-1.5">
+                <Input
+                  value={cssInput}
+                  onChange={e => setCssInput(e.target.value)}
+                  onPaste={e => {
+                    const pasted = e.clipboardData.getData('text');
+                    if (pasted) {
+                      e.preventDefault();
+                      setCssInput(pasted);
+                      // Auto-apply on paste
+                      setTimeout(() => applyCssInput(pasted), 0);
+                    }
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter') applyCssInput(cssInput); }}
+                  placeholder="linear-gradient(135deg, #ff0 0%, #f00 100%)"
+                  className="h-7 text-[11px] font-mono flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] shrink-0"
+                  onClick={() => applyCssInput(cssInput)}
+                  disabled={!cssInput.trim()}
+                >
+                  Aplicar
+                </Button>
+              </div>
+              <p className="text-[9px] text-muted-foreground/60">Cole um degradê CSS (linear-gradient, radial-gradient ou conic-gradient)</p>
+            </div>
+          )}
 
           {/* Color stops list */}
           <div className="space-y-1 group">
