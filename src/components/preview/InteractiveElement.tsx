@@ -771,19 +771,18 @@ export default function InteractiveElement({
                 whileTap={{ scale: 0.97 }}
                 animate={isSelected ? {
                   scale: [1, 1.02, 1],
-                  boxShadow: ['0 0 0 0px rgba(44,40,23,0)', '0 0 0 4px rgba(44,40,23,0.15)', '0 0 0 0px rgba(44,40,23,0)'],
                 } : {}}
                 transition={{ duration: 0.35 }}
-                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 ${
-                  isSelected
-                    ? 'border-[#2C2817] bg-[#2C2817]/5 text-foreground shadow-sm'
-                    : 'border-border hover:bg-[#2C2817]/5 hover:border-[#2C2817]/30 text-foreground'
+                className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
+                  isSelected ? 'shadow-sm' : ''
                 }`}
+                style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
                   className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 text-xs font-bold flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? 'border-[#2C2817] bg-[#2C2817] text-white' : 'border-border text-muted-foreground'
+                    isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
+                  style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
                   animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
                   transition={{ duration: 0.3 }}
                 >
