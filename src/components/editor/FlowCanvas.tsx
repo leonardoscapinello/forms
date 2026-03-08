@@ -1131,6 +1131,7 @@ function FlowCanvasInner({
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onEdgesDelete={onEdgeDelete}
+        isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
