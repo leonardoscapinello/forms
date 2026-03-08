@@ -130,12 +130,12 @@ export default function Login() {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'hsl(var(--primary-foreground) / 0.12)' }}
+              style={{ background: 'rgba(255,255,255,0.08)' }}
             >
               <img
                 src="/images/twobrain-icon.svg"
                 alt="twobrain"
-                className="h-5 w-5"
+                className="h-5 w-5 brightness-0 invert"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
