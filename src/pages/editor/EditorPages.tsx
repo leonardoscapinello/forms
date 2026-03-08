@@ -25,37 +25,49 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
     }
   }, [editingPageId, editingWelcome, editingThankYou, flowOrderedPages]);
 
-  // Move element from the current page to another page
+  // Move element from the current page to another page (single atomic update)
   const handleMoveElementToPage = useCallback((element: PageElement, targetPageId: string) => {
     const sourcePageId = editingWelcome ? 'welcome' : editingThankYou ? 'thank-you' : editingPageId;
     if (!sourcePageId || sourcePageId === targetPageId) return;
 
-    // Remove from source page
-    if (sourcePageId === 'welcome' && welcomePage) {
-      const updatedElements = (welcomePage.elements || []).filter(e => e.id !== element.id);
-      updateFormData({ welcomePage: { ...welcomePage, elements: updatedElements } });
-    } else if (sourcePageId === 'thank-you' && thankYouPage) {
-      const updatedElements = (thankYouPage.elements || []).filter(e => e.id !== element.id);
-      updateFormData({ thankYouPage: { ...thankYouPage, elements: updatedElements } });
-    } else {
-      const sourcePage = (form.pages || []).find(p => p.id === sourcePageId);
-      if (sourcePage) {
-        handlePageChange(sourcePageId, { elements: (sourcePage.elements || []).filter(e => e.id !== element.id) });
-      }
+    const patch: Partial<FormData> = {};
+
+    // Handle welcome/thank-you as source or target specially
+    const isSourceWelcome = sourcePageId === 'welcome';
+    const isSourceThankYou = sourcePageId === 'thank-you';
+    const isTargetWelcome = targetPageId === 'welcome';
+    const isTargetThankYou = targetPageId === 'thank-you';
+
+    if (isSourceWelcome && welcomePage) {
+      patch.welcomePage = { ...welcomePage, elements: (welcomePage.elements || []).filter(e => e.id !== element.id) };
+    } else if (isSourceThankYou && thankYouPage) {
+      patch.thankYouPage = { ...thankYouPage, elements: (thankYouPage.elements || []).filter(e => e.id !== element.id) };
     }
 
-    // Add to target page
-    if (targetPageId === 'welcome' && welcomePage) {
-      updateFormData({ welcomePage: { ...welcomePage, elements: [...(welcomePage.elements || []), element] } });
-    } else if (targetPageId === 'thank-you' && thankYouPage) {
-      updateFormData({ thankYouPage: { ...thankYouPage, elements: [...(thankYouPage.elements || []), element] } });
-    } else {
-      const targetPage = (form.pages || []).find(p => p.id === targetPageId);
-      if (targetPage) {
-        handlePageChange(targetPageId, { elements: [...(targetPage.elements || []), element] });
-      }
+    if (isTargetWelcome && welcomePage) {
+      const base = patch.welcomePage || welcomePage;
+      patch.welcomePage = { ...base, elements: [...(base.elements || []), element] };
+    } else if (isTargetThankYou && thankYouPage) {
+      const base = patch.thankYouPage || thankYouPage;
+      patch.thankYouPage = { ...base, elements: [...(base.elements || []), element] };
     }
-  }, [editingWelcome, editingThankYou, editingPageId, welcomePage, thankYouPage, form.pages, updateFormData, handlePageChange]);
+
+    // For regular pages, update pages array in one shot
+    if (!isSourceWelcome && !isSourceThankYou || !isTargetWelcome && !isTargetThankYou) {
+      const updatedPages = (form.pages || []).map(p => {
+        if (p.id === sourcePageId && !isSourceWelcome && !isSourceThankYou) {
+          return { ...p, elements: (p.elements || []).filter(e => e.id !== element.id) };
+        }
+        if (p.id === targetPageId && !isTargetWelcome && !isTargetThankYou) {
+          return { ...p, elements: [...(p.elements || []), element] };
+        }
+        return p;
+      });
+      patch.pages = updatedPages;
+    }
+
+    updateFormData(patch);
+  }, [editingWelcome, editingThankYou, editingPageId, welcomePage, thankYouPage, form.pages, updateFormData]);
 
   return (
     <>

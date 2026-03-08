@@ -203,22 +203,26 @@ export default function PageListPanel({
                   onClick={() => onSelectPage(page.id)}
                   title={isDisconnected ? 'Esta página não está conectada ao fluxo e não será exibida' : undefined}
                   onDragOver={(e) => {
-                    // Only accept element-move drops (not on current page)
-                    if (e.dataTransfer.types.includes('element-move-json') && page.id !== selectedPageId) {
+                    const hasElementData = Array.from(e.dataTransfer.types).includes('element-move-json');
+                    if (hasElementData) {
                       e.preventDefault();
+                      e.stopPropagation();
                       e.dataTransfer.dropEffect = 'move';
                       setDragOverPageId(page.id);
                     }
                   }}
                   onDragEnter={(e) => {
-                    if (e.dataTransfer.types.includes('element-move-json') && page.id !== selectedPageId) {
+                    const hasElementData = Array.from(e.dataTransfer.types).includes('element-move-json');
+                    if (hasElementData) {
                       e.preventDefault();
+                      e.stopPropagation();
                       setDragOverPageId(page.id);
                     }
                   }}
                   onDragLeave={() => setDragOverPageId(prev => prev === page.id ? null : prev)}
                   onDrop={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     setDragOverPageId(null);
                     const moveJson = e.dataTransfer.getData('element-move-json');
                     if (moveJson && onMoveElementToPage) {
