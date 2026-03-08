@@ -160,7 +160,7 @@ export function interpolateTextToHtml(
   return text.replace(/\{\{(?:webhook:[^}]+|ctx\.\w+|param\.[^}]+|field:[^}]+|\w+)\}\}/g, (token) => {
     const resolved = resolve(token);
     if (!resolved) return '';
-    return `<mark class="${VAR_HTML[resolved.type]} var-highlight-readable">${esc(resolved.value)}</mark>`;
+    return esc(resolved.value);
   });
 }
 
