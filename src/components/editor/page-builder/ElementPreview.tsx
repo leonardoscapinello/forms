@@ -31,8 +31,23 @@ interface Props {
  * Renders a page element in the editor canvas with the SAME visual style
  * used in FormPreview, ensuring WYSIWYG parity.
  */
-export default function ElementPreview({ element, stepNumber, formStyle }: Props) {
+export default function ElementPreview({ element, stepNumber, formStyle, elementLookup, variables }: Props) {
   const { type, style } = element;
+
+  /** Render text content with friendly variable labels instead of raw IDs */
+  const renderVarContent = (text: string | undefined, fallback: string, className?: string, inlineStyle?: React.CSSProperties) => {
+    const content = text || fallback;
+    const hasToken = content.includes('{{');
+    if (!hasToken) return <span className={className} style={inlineStyle}>{content}</span>;
+    return (
+      <VariableHighlightOverlay
+        text={content}
+        className={className}
+        elementLookup={elementLookup}
+        displayFieldLabels
+      />
+    );
+  };
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // Outer wrapper styles (margin)
