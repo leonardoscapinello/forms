@@ -79,7 +79,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
         ? 'border-node-ai-accent shadow-md ring-2 ring-node-ai-accent/20'
         : 'border-border'
     }`}>
-      {isNodeDisabled && <NodeDisabledOverlay />}
+      {isNodeDisabled && <DisabledBadge />}
 
       <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-ai-accent !border-2 !border-card" />
       <Handle type="source" position={Position.Right} id="default" className="!w-3 !h-3 !bg-node-ai-accent !border-2 !border-card" />
