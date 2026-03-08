@@ -1432,17 +1432,26 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         }
       }
 
-      if (currentNodeHasOutEdges) {
+      // Canvas is the single source of truth for execution order.
+      // If walkWorkflow returned null, check if we have ANY flow edges defined.
+      const hasAnyFlowEdges = (formRef.current?.flowEdges || []).length > 0;
+
+      if (hasAnyFlowEdges) {
+        // Flow edges exist but walkWorkflow couldn't resolve a destination.
+        // This means the current node's path in the canvas doesn't reach another page.
+        // Respect the canvas: if it says there's no next page, finish.
+        console.warn('[goNext] walkWorkflow returned null despite flow edges existing. Finishing form. fromNode:', fromNodeId);
         setFinished(true);
         return;
       }
 
-      // Fallback: sequential navigation — skip empty pages
+      // Fallback: sequential navigation ONLY when NO flow edges are defined at all
+      // (legacy forms or forms without any canvas connections)
       const findNextNonEmpty = (startIdx: number): number => {
         for (let i = startIdx; i < pages.length; i++) {
           if (!isPageEmpty(pages[i])) return i;
         }
-        return -1; // all remaining pages are empty
+        return -1;
       };
 
       if (currentPageIndex === null) {
