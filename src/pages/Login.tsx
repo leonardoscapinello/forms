@@ -76,7 +76,19 @@ export default function Login() {
     setError('');
     setLoading(true);
     const { error: err } = await signIn(email, password);
-    if (err) setError(err);
+    if (err) {
+      setError(err);
+    } else {
+      // signIn succeeded at Supabase level — the useAuth hook will check
+      // the role and sign out if unauthorized, which sets the sessionStorage flag.
+      // We give it a moment to process, then check.
+      await new Promise(r => setTimeout(r, 1500));
+      const flag = sessionStorage.getItem('auth_unauthorized');
+      if (flag) {
+        setError('Acesso não autorizado. Sua conta não possui permissão para acessar esta ferramenta.');
+        sessionStorage.removeItem('auth_unauthorized');
+      }
+    }
     setLoading(false);
   };
 
@@ -103,6 +115,8 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setError('');
     setGoogleLoading(true);
+    // Clear any previous unauthorized flag
+    sessionStorage.removeItem('auth_unauthorized');
     try {
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
@@ -115,6 +129,15 @@ export default function Login() {
     }
     setGoogleLoading(false);
   };
+
+  // Check for unauthorized flag (set by useAuth when user has no role)
+  useEffect(() => {
+    const flag = sessionStorage.getItem('auth_unauthorized');
+    if (flag) {
+      setError('Acesso não autorizado. Sua conta não possui permissão para acessar esta ferramenta. Solicite acesso a um administrador.');
+      sessionStorage.removeItem('auth_unauthorized');
+    }
+  }, []);
 
   if (checkingSetup) {
     return (
