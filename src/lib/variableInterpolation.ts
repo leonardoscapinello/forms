@@ -252,6 +252,5 @@ export function interpolateTextToNodes(
   // If no variables were found, return plain text (avoids unnecessary wrapper)
   if (!hasVar) return nodes.length === 1 && typeof nodes[0] === 'string' ? nodes[0] : createElement(Fragment, null, ...nodes);
 
-  // Wrap in var-highlight-readable span so descendant styles apply
-  return createElement('span', { className: 'var-highlight-readable' }, ...nodes);
+  return createElement(Fragment, null, ...nodes);
 }
