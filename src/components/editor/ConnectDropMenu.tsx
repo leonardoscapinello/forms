@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X, GitMerge, Clock, CornerDownRight, Sparkles } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X, GitMerge, Clock, CornerDownRight, Sparkles, ImageIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   onAddWait: () => void;
   onAddJump: () => void;
   onAddAI: () => void;
+  onAddImageGen: () => void;
   onClose: () => void;
 }
 
@@ -36,7 +37,7 @@ const CATEGORIES = [
 export default function ConnectDropMenu({
   onAddPage, onAddCondition, onAddVariableOp,
   onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail,
-  onAddABTest, onAddWait, onAddJump, onAddAI, onClose,
+  onAddABTest, onAddWait, onAddJump, onAddAI, onAddImageGen, onClose,
 }: Props) {
   const [search, setSearch] = useState('');
 
@@ -52,7 +53,8 @@ export default function ConnectDropMenu({
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, iconColor: 'text-node-whatsapp-accent', bgColor: 'bg-node-whatsapp', action: () => { onAddWhatsApp(); onClose(); }, category: 'integration' },
     { id: 'email', label: 'E-mail', icon: Mail, iconColor: 'text-node-email-accent', bgColor: 'bg-node-email', action: () => { onAddEmail(); onClose(); }, category: 'integration' },
     { id: 'ai', label: 'Inteligência Artificial', icon: Sparkles, iconColor: 'text-node-ai-accent', bgColor: 'bg-node-ai', action: () => { onAddAI(); onClose(); }, category: 'integration' },
-  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onAddABTest, onAddWait, onAddJump, onAddAI, onClose]);
+    { id: 'imagegen', label: 'Gerar Imagem', icon: ImageIcon, iconColor: 'text-node-imagegen-accent', bgColor: 'bg-node-imagegen', action: () => { onAddImageGen(); onClose(); }, category: 'integration' },
+  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onAddABTest, onAddWait, onAddJump, onAddAI, onAddImageGen, onClose]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;

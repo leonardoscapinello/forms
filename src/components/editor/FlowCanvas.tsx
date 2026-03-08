@@ -937,6 +937,12 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onAIAddAtPosition]);
 
+  const handleDropAddImageGen = useCallback(() => {
+    if (!dropMenu) return;
+    onImageGenAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onImageGenAddAtPosition]);
+
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -1012,6 +1018,12 @@ function FlowCanvasInner({
     onAIAddAtPosition(contextMenu.flowPos, 'start');
     setContextMenu(null);
   }, [contextMenu, onAIAddAtPosition]);
+
+  const handleCtxAddImageGen = useCallback(() => {
+    if (!contextMenu) return;
+    onImageGenAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onImageGenAddAtPosition]);
 
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
@@ -1212,6 +1224,7 @@ function FlowCanvasInner({
           onAddWait={handleDropAddWait}
           onAddJump={handleDropAddJump}
           onAddAI={handleDropAddAI}
+          onAddImageGen={handleDropAddImageGen}
           onClose={() => setDropMenu(null)}
         />
       )}
@@ -1229,6 +1242,7 @@ function FlowCanvasInner({
           onAddWait={handleCtxAddWait}
           onAddJump={handleCtxAddJump}
           onAddAI={handleCtxAddAI}
+          onAddImageGen={handleCtxAddImageGen}
           onClose={() => setContextMenu(null)}
         />
       )}
