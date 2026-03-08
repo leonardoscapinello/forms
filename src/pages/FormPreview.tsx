@@ -51,11 +51,17 @@ export default function FormPreview() {
       };
     };
 
-    const parseFormData = (payload: any) => {
-      if (cancelled) return;
+    const parseFormData = (payload: any): AppFormData | null => {
       const form = normalizeFormPayload(payload);
-      setPublicForm(form);
-      setPublicLoading(false);
+      return form;
+    };
+
+    const formTimestamp = (candidate: AppFormData | null): number => {
+      if (!candidate) return 0;
+      const raw = candidate.updatedAt || candidate.createdAt;
+      if (!raw) return 0;
+      const ts = Date.parse(raw);
+      return Number.isFinite(ts) ? ts : 0;
     };
 
     const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
@@ -104,31 +110,40 @@ export default function FormPreview() {
       fromEdge.then(() => clearTimeout(timer)).catch(() => {});
     }), 7000, 'direct');
 
-    let resolved = false;
+    let bestTimestamp = -1;
+    let succeeded = false;
     let failures = 0;
     const totalSources = 3;
     const loadingFailSafeTimer = window.setTimeout(() => {
-      if (!cancelled && !resolved) setPublicLoading(false);
+      if (!cancelled && !succeeded) setPublicLoading(false);
     }, 10000);
 
-    const resolveOnce = (data: any) => {
-      if (cancelled || resolved) return;
-      resolved = true;
+    const handleSourceSuccess = (data: any) => {
+      if (cancelled) return;
+      const candidate = parseFormData(data);
+      const candidateTs = formTimestamp(candidate);
+
+      if (candidate && (!succeeded || candidateTs >= bestTimestamp)) {
+        bestTimestamp = candidateTs;
+        setPublicForm(candidate);
+      }
+
+      succeeded = true;
       window.clearTimeout(loadingFailSafeTimer);
-      parseFormData(data);
+      setPublicLoading(false);
     };
 
     const handleFailure = () => {
       failures += 1;
-      if (!cancelled && !resolved && failures >= totalSources) {
+      if (!cancelled && !succeeded && failures >= totalSources) {
         window.clearTimeout(loadingFailSafeTimer);
         setPublicLoading(false);
       }
     };
 
-    Promise.resolve(fromPrefetch).then(resolveOnce).catch(handleFailure);
-    Promise.resolve(fromEdge).then(resolveOnce).catch(handleFailure);
-    Promise.resolve(fromDirectQuery).then(resolveOnce).catch(handleFailure);
+    Promise.resolve(fromPrefetch).then(handleSourceSuccess).catch(handleFailure);
+    Promise.resolve(fromEdge).then(handleSourceSuccess).catch(handleFailure);
+    Promise.resolve(fromDirectQuery).then(handleSourceSuccess).catch(handleFailure);
 
     return () => {
       cancelled = true;
