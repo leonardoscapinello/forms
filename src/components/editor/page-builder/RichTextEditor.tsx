@@ -46,14 +46,17 @@ const COLORS = [
 export default function RichTextEditor({ value, onChange, placeholder, className, variables = [], integrationNodes = [], allInputElements = [], trackedParams }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
+  const isFocusedRef = useRef(false);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [varPickerOpen, setVarPickerOpen] = useState(false);
 
+  // Sync external value → DOM only when NOT focused (prevents cursor jump)
   useEffect(() => {
     if (isInternalChange.current) {
       isInternalChange.current = false;
       return;
     }
+    if (isFocusedRef.current) return; // never rebuild while typing
     if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || '';
     }
@@ -87,11 +90,20 @@ export default function RichTextEditor({ value, onChange, placeholder, className
   }, [emitChange, updateActiveFormats]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       document.execCommand('insertLineBreak');
       emitChange();
     }
+  }, [emitChange]);
+
+  /** Strip external formatting on paste — keep only allowed tags */
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    emitChange();
   }, [emitChange]);
 
   /** Insert text at cursor position inside contentEditable */
@@ -306,16 +318,24 @@ export default function RichTextEditor({ value, onChange, placeholder, className
           </div>
         )}
         <div
-          ref={editorRef}
+          ref={(node) => {
+            (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            // Initialize content on mount
+            if (node && !node.dataset.initialized) {
+              node.innerHTML = value || '';
+              node.dataset.initialized = '1';
+            }
+          }}
           contentEditable
           suppressContentEditableWarning
           className="min-h-[120px] px-3 py-2 text-sm text-foreground outline-none leading-relaxed focus:ring-0 [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through"
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onMouseUp={updateActiveFormats}
           onKeyUp={updateActiveFormats}
-          onFocus={updateActiveFormats}
-          dangerouslySetInnerHTML={{ __html: value || '' }}
+          onFocus={() => { isFocusedRef.current = true; updateActiveFormats(); }}
+          onBlur={() => { isFocusedRef.current = false; }}
         />
       </div>
     </div>
