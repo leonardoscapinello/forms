@@ -101,6 +101,8 @@ export default {
           "wait-accent": "hsl(var(--node-wait-accent))",
           jump: "hsl(var(--node-jump))",
           "jump-accent": "hsl(var(--node-jump-accent))",
+          ai: "hsl(var(--node-ai))",
+          "ai-accent": "hsl(var(--node-ai-accent))",
         },
       },
       borderRadius: {
