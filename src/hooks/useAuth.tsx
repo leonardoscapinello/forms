@@ -68,8 +68,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Only re-fetch profile on actual sign-in, not token refreshes
         if (event === 'SIGNED_IN' && nextSession?.user) {
-          setTimeout(() => {
-            if (mounted) fetchUserData(nextSession.user.id);
+          setTimeout(async () => {
+            if (!mounted) return;
+            const authorized = await fetchUserData(nextSession.user.id);
+            if (!authorized && mounted) {
+              // User not authorized — sign them out
+              await supabase.auth.signOut();
+              setUser(null);
+              setSession(null);
+              setProfile(null);
+              setRole(null);
+              // Store unauthorized flag for Login page to display
+              sessionStorage.setItem('auth_unauthorized', '1');
+            }
           }, 0);
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
