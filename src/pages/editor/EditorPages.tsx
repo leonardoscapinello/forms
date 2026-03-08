@@ -5,6 +5,8 @@ import type { PageElement } from '@/types/pageElements';
 import type { FunnelPageStyle, FormData } from '@/types/form';
 import PageListPanel from '@/components/editor/PageListPanel';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
+import { scanElementReferences, autoFixReferencesOnMove } from '@/lib/elementReferenceScanner';
+import { toast } from 'sonner';
 
 /* v3 cache-bust */ export default function EditorPages() {
   const ctx = useEditorForm();
@@ -29,6 +31,10 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
   const handleMoveElementToPage = useCallback((element: PageElement, targetPageId: string) => {
     const sourcePageId = editingWelcome ? 'welcome' : editingThankYou ? 'thank-you' : editingPageId;
     if (!sourcePageId || sourcePageId === targetPageId) return;
+
+    // Scan for references to understand impact
+    const refs = scanElementReferences(form, element.id);
+    const autoFixPatch = autoFixReferencesOnMove(form, element.id, targetPageId);
 
     const patch: Partial<FormData> = {};
 
@@ -66,8 +72,34 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
       patch.pages = updatedPages;
     }
 
+    // Merge auto-fix patch (e.g. variable sourcePageId updates)
+    if (autoFixPatch.variables) {
+      patch.variables = autoFixPatch.variables;
+    }
+
     updateFormData(patch);
-  }, [editingWelcome, editingThankYou, editingPageId, welcomePage, thankYouPage, form.pages, updateFormData]);
+
+    // Show impact feedback
+    const autoFixed = refs.filter(r => r.autoFixable);
+    const warnings = refs.filter(r => !r.autoFixable);
+
+    if (autoFixed.length > 0) {
+      toast.info(
+        `${autoFixed.length} referência${autoFixed.length > 1 ? 's' : ''} atualizada${autoFixed.length > 1 ? 's' : ''} automaticamente`,
+        { description: autoFixed.map(r => r.label).join('\n'), duration: 5000 }
+      );
+    }
+
+    if (warnings.length > 0) {
+      toast.warning(
+        `⚠️ ${warnings.length} referência${warnings.length > 1 ? 's' : ''} pode${warnings.length > 1 ? 'm' : ''} ser afetada${warnings.length > 1 ? 's' : ''}`,
+        {
+          description: warnings.map(r => `• ${r.label}`).join('\n'),
+          duration: 8000,
+        }
+      );
+    }
+  }, [editingWelcome, editingThankYou, editingPageId, welcomePage, thankYouPage, form, updateFormData]);
 
   return (
     <>
