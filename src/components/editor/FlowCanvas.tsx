@@ -592,10 +592,11 @@ function FlowCanvasInner({
     const abTestChanged = prev.abTestNodes !== form.abTestNodes;
     const waitChanged = prev.waitNodes !== form.waitNodes;
     const jumpChanged = prev.jumpNodes !== form.jumpNodes;
+    const imageGenChanged = prev.imageGenNodes !== form.imageGenNodes;
     const varsChanged = prev.variables !== form.variables;
     const edgesChanged = prev.flowEdges !== form.flowEdges;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || varsChanged || edgesChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || imageGenChanged || varsChanged || edgesChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
