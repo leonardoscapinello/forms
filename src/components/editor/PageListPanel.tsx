@@ -250,9 +250,9 @@ export default function PageListPanel({
                 >
                   {activeDropPageId === page.id ? (
                     <>
-                      <span className="text-[10px] text-primary font-semibold w-4 text-center flex-shrink-0">↓</span>
-                      <FileText className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
-                      <span className="text-xs font-semibold text-primary truncate flex-1">Soltar aqui</span>
+                      <span className="text-[10px] text-foreground font-semibold w-4 text-center flex-shrink-0">↓</span>
+                      <FileText className="h-3.5 w-3.5 flex-shrink-0 text-foreground" />
+                      <span className="text-xs font-semibold text-foreground truncate flex-1">Soltar aqui</span>
                     </>
                   ) : (
                     <>
