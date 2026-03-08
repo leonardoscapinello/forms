@@ -1261,6 +1261,18 @@ export default function InteractiveElement({
         />
       );
 
+    case 'confetti':
+      return (
+        <Suspense fallback={null}>
+          <ConfettiPreview
+            direction={element.confettiDirection || 'top'}
+            intensity={element.confettiIntensity || 'explosion'}
+            duration={element.confettiDuration || 3000}
+            colors={element.confettiColors}
+          />
+        </Suspense>
+      );
+
     default:
       return null;
   }

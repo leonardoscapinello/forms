@@ -55,6 +55,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   input_quiz_image: ImagePlus,
   input_document: FileText,
   input_company: Building2,
+  confetti: PartyPopper,
 };
 
 interface Props {
