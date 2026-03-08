@@ -2,9 +2,12 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, us
 import { FormData, DEFAULT_FORM_STYLE, createDefaultFunnelPage } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useNetworkStatus } from './useNetworkStatus';
+import { toast } from 'sonner';
 import React from 'react';
 
 const DEBOUNCE_MS = 1000;
+const OFFLINE_STORAGE_KEY = 'formstore_offline_queue';
 
 interface DbForm {
   id: string;
