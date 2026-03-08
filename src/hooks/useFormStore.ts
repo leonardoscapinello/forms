@@ -60,6 +60,7 @@ const FormStoreContext = createContext<FormStoreContextType | null>(null);
 
 export function FormStoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const online = useNetworkStatus();
   const [forms, setForms] = useState<FormData[]>([]);
   const [loaded, setLoaded] = useState(false);
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -68,6 +69,8 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   // Keep a ref to latest forms for debounce callbacks
   const formsRef = useRef<FormData[]>(forms);
   formsRef.current = forms;
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
 
   // Load forms from DB on auth
   useEffect(() => {
