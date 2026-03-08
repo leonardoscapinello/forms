@@ -40,39 +40,35 @@ function createParticles(
 ): Particle[] {
   const particles: Particle[] = [];
   const isExplosion = intensity === 'explosion';
-  const speed = isExplosion ? 12 : 4;
 
   for (let i = 0; i < count; i++) {
     let x: number, y: number, vx: number, vy: number;
 
     if (direction === 'sides') {
       const fromLeft = Math.random() > 0.5;
-      x = fromLeft ? -10 : canvasW + 10;
-      y = canvasH * 0.1 + Math.random() * canvasH * 0.4;
-      const angle = fromLeft
-        ? (-Math.PI / 4 + Math.random() * Math.PI / 3)
-        : (Math.PI - Math.PI / 4 + Math.random() * Math.PI / 3);
-      const v = speed * (0.5 + Math.random());
-      vx = Math.cos(angle) * v * (isExplosion ? 1.8 : 1);
-      vy = Math.sin(angle) * v - (isExplosion ? 4 : 1);
+      x = fromLeft ? canvasW * 0.1 : canvasW * 0.9;
+      y = canvasH * 0.3 + Math.random() * canvasH * 0.2;
+      const spread = isExplosion ? 3.5 : 1.5;
+      vx = (fromLeft ? 1 : -1) * (Math.random() * spread + 0.5);
+      vy = -(Math.random() * (isExplosion ? 5 : 2.5) + 1);
     } else {
-      // top-down
+      // top — gentle rain from above
       x = Math.random() * canvasW;
-      y = isExplosion ? canvasH * 0.3 : -10;
-      vx = (Math.random() - 0.5) * (isExplosion ? speed * 2 : 2);
-      vy = isExplosion ? -(speed * (0.5 + Math.random())) : speed * (0.3 + Math.random() * 0.5);
+      y = -(Math.random() * 40);
+      vx = (Math.random() - 0.5) * (isExplosion ? 3 : 1.2);
+      vy = Math.random() * (isExplosion ? 1.5 : 0.8) + 0.5;
     }
 
     particles.push({
       x, y, vx, vy,
-      w: 4 + Math.random() * 6,
-      h: 6 + Math.random() * 10,
+      w: 3 + Math.random() * 4,
+      h: 4 + Math.random() * 6,
       color: DEFAULT_COLORS[Math.floor(Math.random() * DEFAULT_COLORS.length)],
       rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.3,
-      opacity: 0.9 + Math.random() * 0.1,
-      gravity: 0.12 + Math.random() * 0.08,
-      drag: 0.98 + Math.random() * 0.015,
+      rotationSpeed: (Math.random() - 0.5) * 0.15,
+      opacity: 0.85 + Math.random() * 0.15,
+      gravity: 0.06 + Math.random() * 0.04,
+      drag: 0.985 + Math.random() * 0.01,
     });
   }
   return particles;
