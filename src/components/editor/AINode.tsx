@@ -12,7 +12,7 @@ import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { InputElementGroup } from './VariableAssignPanel';
-import NodeDisabledOverlay from './NodeDisabledOverlay';
+import { NodeToggleSwitch, DisabledBadge } from './NodeDisabledOverlay';
 
 const OBJECTIVES: { value: AIObjective; label: string; description: string }[] = [
   { value: 'summarize', label: '📝 Resumir', description: 'Gera um resumo das respostas coletadas' },
