@@ -130,7 +130,12 @@ export const VariableContentEditable = forwardRef<VariableContentEditableRef, Pr
 
   useEffect(() => {
     if (!editorRef.current) return;
-    if (isFocusedRef.current && lastRawRef.current === value) return;
+    // NEVER rebuild DOM while user is typing — it destroys cursor position
+    if (isFocusedRef.current) {
+      lastRawRef.current = value;
+      return;
+    }
+    if (lastRawRef.current === value) return;
     lastRawRef.current = value;
     buildDOM(editorRef.current, value);
   }, [value, buildDOM]);
