@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useEditorForm } from '@/hooks/useEditorForm';
 import { createDefaultPageElement } from '@/types/pageElements';
 import type { PageElement } from '@/types/pageElements';
