@@ -65,7 +65,7 @@ interface Props {
   elementLookup?: ElementLookup;
   variables?: FormVariable[];
 
-export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode }: Props) {
+export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode, elementLookup, variables }: Props) {
   const columnCount = element.columnCount || 2;
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
