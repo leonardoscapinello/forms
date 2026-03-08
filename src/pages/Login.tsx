@@ -103,22 +103,22 @@ export default function Login() {
     <div className="min-h-screen flex bg-background">
       {/* Left — branding */}
       <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] relative flex-col justify-between p-10 overflow-hidden"
-        style={{ background: 'hsl(var(--primary))' }}
+        style={{ background: '#0C0E17' }}
       >
         {/* Decorative grid */}
-        <div className="absolute inset-0 opacity-[0.07]"
+        <div className="absolute inset-0 opacity-[0.04]"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary-foreground)) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)`,
             backgroundSize: '32px 32px',
           }}
         />
 
         {/* Decorative circles */}
-        <div className="absolute -top-20 -right-20 w-[300px] h-[300px] rounded-full border-2 opacity-10"
-          style={{ borderColor: 'hsl(var(--primary-foreground))' }}
+        <div className="absolute -top-20 -right-20 w-[300px] h-[300px] rounded-full border-2 opacity-[0.06]"
+          style={{ borderColor: 'hsl(var(--primary))' }}
         />
-        <div className="absolute -bottom-32 -left-16 w-[400px] h-[400px] rounded-full border opacity-[0.06]"
-          style={{ borderColor: 'hsl(var(--primary-foreground))' }}
+        <div className="absolute -bottom-32 -left-16 w-[400px] h-[400px] rounded-full border opacity-[0.03]"
+          style={{ borderColor: 'hsl(var(--primary))' }}
         />
 
         {/* Top: logo */}
