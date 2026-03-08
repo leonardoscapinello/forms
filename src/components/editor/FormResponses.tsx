@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle } from 'lucide-react';
+import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
