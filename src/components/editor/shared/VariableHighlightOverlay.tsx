@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
 
 type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
