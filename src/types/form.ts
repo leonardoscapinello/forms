@@ -667,6 +667,8 @@ export interface FormData {
   waitNodes?: WaitNodeData[];
   /** Jump to page nodes */
   jumpNodes?: JumpNodeData[];
+  /** AI processing nodes */
+  aiNodes?: AINodeData[];
   /** Pixel events fired automatically when the form is loaded */
   pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];
