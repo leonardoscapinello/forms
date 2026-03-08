@@ -43,6 +43,8 @@ const loadProgressBarColumn = () => import('@/components/preview/ProgressBarColu
 const ProgressBarColumn = lazy(loadProgressBarColumn);
 const loadBeforeAfterSlider = () => import('@/components/preview/BeforeAfterSlider');
 const BeforeAfterSlider = lazy(loadBeforeAfterSlider);
+const loadConfettiPreview = () => import('@/components/preview/ConfettiPreview');
+const ConfettiPreview = lazy(loadConfettiPreview);
 
 const loadSectionPreviews = () => import('@/components/editor/page-builder/SectionPreviews');
 const ArgumentsPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.ArgumentsPreview })));
