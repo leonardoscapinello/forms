@@ -240,7 +240,9 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
         if (subKeys) {
           elements.push({ elementId: el.id, elementLabel: baseLabel });
-          for (const sk of subKeys) elements.push({ elementId: `${el.id}.${sk}`, elementLabel: `${baseLabel} › ${sk}` });
+          for (const sk of subKeys) {
+            elements.push({ elementId: `${el.id}.${sk.key}`, elementLabel: `${baseLabel} › ${sk.label}` });
+          }
         } else {
           elements.push({ elementId: el.id, elementLabel: baseLabel });
         }
