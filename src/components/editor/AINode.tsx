@@ -39,7 +39,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
 
   return (
     <>
-      <div className={`nodrag nopan nowheel relative rounded-xl border-2 bg-card shadow-sm w-[200px] transition-all ${
+      <div className={`relative rounded-xl border-2 bg-card shadow-sm w-[200px] transition-all ${
         isNodeDisabled ? 'opacity-50 grayscale'
         : selected
           ? 'border-node-ai-accent shadow-md ring-2 ring-node-ai-accent/20'
@@ -75,7 +75,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
         </div>
 
         {/* Body — compact summary + config button */}
-        <div className="px-2 py-2 space-y-1.5" onClick={e => e.stopPropagation()}>
+        <div className="nodrag nopan nowheel px-2 py-2 space-y-1.5" onClick={e => e.stopPropagation()}>
           {/* Objective chip */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-medium text-foreground">{objectiveLabel}</span>
