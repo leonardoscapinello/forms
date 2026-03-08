@@ -75,7 +75,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
         </div>
 
         {/* Body — compact summary + config button */}
-        <div className="px-2 py-2 space-y-1.5" onClick={e => e.stopPropagation()}>
+        <div className="nodrag nopan nowheel px-2 py-2 space-y-1.5" onClick={e => e.stopPropagation()}>
           {/* Objective chip */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-medium text-foreground">{objectiveLabel}</span>
