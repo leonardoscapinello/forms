@@ -909,6 +909,15 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.confettiIntensity = 'explosion';
       base.confettiDuration = 3000;
       break;
+    case 'card':
+      base.cardColumns = 3;
+      base.cardImageHeight = 200;
+      base.cardItems = [
+        { id: crypto.randomUUID(), title: 'Card 1', description: 'Descrição do card', badges: ['Badge'], actionType: 'go_to_page' },
+        { id: crypto.randomUUID(), title: 'Card 2', description: 'Descrição do card', badges: ['Badge'], actionType: 'go_to_page' },
+        { id: crypto.randomUUID(), title: 'Card 3', description: 'Descrição do card', badges: ['Badge'], actionType: 'go_to_page' },
+      ];
+      break;
   }
 
   return base;
