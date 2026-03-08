@@ -331,6 +331,60 @@ async function walkWorkflow(
         continue;
       }
 
+      // AI node
+      if (target.startsWith('ai-')) {
+        const aiId = target.replace('ai-', '');
+        const aiNode = (formData.aiNodes || []).find((n: any) => n.id === aiId);
+        if (aiNode) {
+          try {
+            // Gather input data from selected sources
+            const inputData: Record<string, any> = {};
+            for (const sourceId of aiNode.inputSources || []) {
+              const val = currentAnswers[sourceId];
+              if (val !== undefined && val !== null) {
+                const element = (formData.pages || []).flatMap((p: any) => p.elements || []).find((el: any) => el.id === sourceId);
+                const label = element?.label || element?.placeholder || sourceId;
+                inputData[label] = val;
+              }
+            }
+
+            const resolvedPrompt = interpolate(aiNode.prompt || '', currentAnswers, variables);
+
+            const aiResponse = await fetch(`${supabaseUrl}/functions/v1/ai-process`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+              body: JSON.stringify({
+                objective: aiNode.objective || 'custom',
+                prompt: resolvedPrompt,
+                systemPrompt: aiNode.systemPrompt || '',
+                inputData,
+                model: aiNode.model,
+                maxTokens: aiNode.maxTokens || 500,
+                temperature: aiNode.temperature ?? 0.7,
+              }),
+            });
+
+            if (aiResponse.ok) {
+              const aiData = await aiResponse.json();
+              if (aiData.success && aiData.result && aiNode.outputVariableId) {
+                const outVar = variables.find((v: any) => v.id === aiNode.outputVariableId);
+                if (outVar) {
+                  currentAnswers[`__var_${outVar.name}`] = aiData.result;
+                }
+              }
+            } else {
+              await aiResponse.text(); // consume body
+              errors.push(`ai_error: status ${aiResponse.status}`);
+            }
+          } catch (err) {
+            errors.push(`ai_error: ${err}`);
+          }
+        }
+        const aiOut = edges.find((e: any) => e.source === target);
+        if (aiOut) nextNodeId = aiOut.target;
+        continue;
+      }
+
       // Wait node — server-side just passes through (wait is client-side only)
       if (target.startsWith('wt-')) {
         const wtOut = edges.find((e: any) => e.source === target);

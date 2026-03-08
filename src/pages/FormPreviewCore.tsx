@@ -1041,6 +1041,66 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         continue;
       }
 
+      // Intermediate: AI node — call ai-process edge function
+      if (target.startsWith('ai-')) {
+        if (!effectiveSkip) {
+          const aiId = target.replace('ai-', '');
+          const aiNode = f?.aiNodes?.find(n => n.id === aiId);
+          const shouldFire = aiNode ? (aiNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          if (aiNode && f && shouldFire) {
+            firedNodesRef.current.add(target);
+
+            // Gather input data from selected sources
+            const inputData: Record<string, any> = {};
+            for (const sourceId of aiNode.inputSources || []) {
+              const val = currentAns[sourceId];
+              if (val !== undefined && val !== null) {
+                // Try to find a human label for the field
+                const element = f.pages?.flatMap(p => p.elements || []).find(el => el.id === sourceId);
+                const label = element?.label || element?.placeholder || sourceId;
+                inputData[label] = val;
+              }
+            }
+
+            const resolvedPrompt = interpolateText(aiNode.prompt || '', f.variables || [], currentAns);
+
+            const body = {
+              objective: aiNode.objective || 'custom',
+              prompt: resolvedPrompt,
+              systemPrompt: aiNode.systemPrompt || '',
+              inputData,
+              model: aiNode.model,
+              maxTokens: aiNode.maxTokens || 500,
+              temperature: aiNode.temperature ?? 0.7,
+            };
+
+            const isSync = (aiNode.executionMode || 'sync') === 'sync';
+
+            const doInvoke = async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke('ai-process', { body });
+                if (!error && data?.success && data.result && aiNode.outputVariableId) {
+                  const outVar = f?.variables?.find(v => v.id === aiNode.outputVariableId);
+                  if (outVar) {
+                    currentAns = { ...currentAns, [`__var_${outVar.name}`]: data.result };
+                  }
+                }
+              } catch (err) {
+                console.error('AI node error:', err);
+              }
+            };
+
+            if (isSync) {
+              await doInvoke();
+            } else {
+              enqueueTask(doInvoke, `ai:${aiId}`);
+            }
+          }
+        }
+        currentNodeId = target;
+        continue;
+      }
+
       // Intermediate: Jump node — redirect to target page
       if (target.startsWith('jp-')) {
         const jpId = target.replace('jp-', '');
