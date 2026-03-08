@@ -447,6 +447,10 @@ export interface PageElement {
   companyVisibleFields?: CompanyFieldKey[];
   /** Company field: which fields the user can manually edit */
   companyEditableFields?: CompanyFieldKey[];
+  // Card element
+  cardItems?: CardItem[];
+  cardColumns?: 1 | 2 | 3;
+  cardImageHeight?: number; // px
   // Confetti element
   confettiDirection?: 'top' | 'sides';
   confettiIntensity?: 'subtle' | 'explosion';
