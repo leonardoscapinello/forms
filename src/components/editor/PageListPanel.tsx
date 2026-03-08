@@ -248,24 +248,32 @@ export default function PageListPanel({
                     }
                   }}
                 >
-                  <span className="text-[10px] text-muted-foreground font-mono w-4 text-center flex-shrink-0">
-                    {index + 1}
-                  </span>
-                  {isDisconnected ? (
-                    <Unplug className="h-3.5 w-3.5 flex-shrink-0 text-destructive/70" />
+                  {activeDropPageId === page.id ? (
+                    <>
+                      <span className="text-[10px] text-primary font-semibold w-4 text-center flex-shrink-0">↓</span>
+                      <FileText className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                      <span className="text-xs font-semibold text-primary truncate flex-1">Soltar aqui</span>
+                    </>
                   ) : (
-                    <FileText className="h-3.5 w-3.5 flex-shrink-0" />
-                  )}
-                  <span className={`text-xs font-medium truncate flex-1 ${isDisconnected ? 'text-destructive/70' : ''}`}>{page.title || 'Sem título'}</span>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] text-muted-foreground">{page.elements?.length || 0}</span>
-                    {pages.length > 1 && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onDeletePage(page.id); }}
-                        className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                    <>
+                      <span className="text-[10px] text-muted-foreground font-mono w-4 text-center flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      {isDisconnected ? (
+                        <Unplug className="h-3.5 w-3.5 flex-shrink-0 text-destructive/70" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                      )}
+                      <span className={`text-xs font-medium truncate flex-1 ${isDisconnected ? 'text-destructive/70' : ''}`}>{page.title || 'Sem título'}</span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] text-muted-foreground">{page.elements?.length || 0}</span>
+                        {pages.length > 1 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDeletePage(page.id); }}
+                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                     )}
                   </div>
                 </div>
