@@ -870,6 +870,11 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.waButtonLabel = 'Entrar no grupo';
       base.waParticipantCount = 128;
       break;
+    case 'confetti':
+      base.confettiDirection = 'top';
+      base.confettiIntensity = 'explosion';
+      base.confettiDuration = 3000;
+      break;
   }
 
   return base;
