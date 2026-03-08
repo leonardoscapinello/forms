@@ -1262,8 +1262,11 @@ export default function InteractiveElement({
         />
       );
 
-    case 'confetti':
-      return (
+    case 'confetti': {
+      const portalTarget = typeof document !== 'undefined' ? document.body : null;
+      if (!portalTarget) return null;
+
+      return createPortal(
         <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 9999 }}>
           <Suspense fallback={null}>
             <ConfettiPreview
@@ -1273,8 +1276,10 @@ export default function InteractiveElement({
               colors={element.confettiColors}
             />
           </Suspense>
-        </div>
+        </div>,
+        portalTarget,
       );
+    }
 
     default:
       return null;
