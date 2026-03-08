@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { X, Plus, Trash2, Star, ChevronDown, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
+import RichTextEditor from './RichTextEditor';
 import {
   ColorPickerField,
   TypographySelector,
