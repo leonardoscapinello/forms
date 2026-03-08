@@ -104,6 +104,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
         {/* Elements count */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {isNodeDisabled && <DisabledBadge />}
+          {isInLoop && !isNodeDisabled && <LoopWarningBadge />}
           {isEmpty ? (
             <span className="text-[10px] text-warning font-medium flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
