@@ -12,6 +12,7 @@ import type { PageElementType } from '@/types/pageElements';
 const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   heading: Heading,
   text: Type,
+  rich_text: AlignLeft,
   image: Image,
   button: MousePointerClick,
   divider: Minus,
