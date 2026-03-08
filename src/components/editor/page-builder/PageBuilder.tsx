@@ -59,7 +59,7 @@ interface Props {
   onMoveElementToPage?: (element: PageElement, targetPageId: string) => void;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar, readOnly, designMode, designSelectedId, onDesignSelect }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar, readOnly, designMode, designSelectedId, onDesignSelect, onMoveElementToPage }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -67,6 +67,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const dragCounterRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
   const lastColumnOverRef = useRef<string | null>(null);
+  const externalPageDropTargetRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
