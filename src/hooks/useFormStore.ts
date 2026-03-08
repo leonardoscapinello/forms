@@ -250,6 +250,38 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     setLastSavedTimes(prev => new Map(prev).set(id, now));
   }, [user, saveToOfflineQueue, removeFromOfflineQueue]);
 
+  // Replay offline queue when back online
+  useEffect(() => {
+    if (!online || !user) return;
+    try {
+      const raw = sessionStorage.getItem(OFFLINE_STORAGE_KEY);
+      if (!raw) return;
+      const queue: Record<string, { title: string; status: string; data: unknown }> = JSON.parse(raw);
+      const ids = Object.keys(queue);
+      if (ids.length === 0) return;
+
+      toast.dismiss('offline-toast');
+
+      (async () => {
+        for (const id of ids) {
+          const entry = queue[id];
+          if (!entry) continue;
+          const { error } = await supabase
+            .from('forms')
+            .update({ title: entry.title, status: entry.status, data: entry.data })
+            .eq('id', id);
+          if (!error) {
+            delete queue[id];
+            const now = new Date().toISOString();
+            setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
+            setLastSavedTimes(prev => new Map(prev).set(id, now));
+          }
+        }
+        sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
+      })();
+    } catch {}
+  }, [online, user]);
+
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {
     setForms(prev => {
       const updated = prev.map(f =>
