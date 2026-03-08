@@ -427,6 +427,11 @@ export interface PageElement {
   companyVisibleFields?: CompanyFieldKey[];
   /** Company field: which fields the user can manually edit */
   companyEditableFields?: CompanyFieldKey[];
+  // Confetti element
+  confettiDirection?: 'top' | 'sides';
+  confettiIntensity?: 'subtle' | 'explosion';
+  confettiDuration?: number; // ms
+  confettiColors?: string[];
   style?: PageElementStyle;
 }
 
