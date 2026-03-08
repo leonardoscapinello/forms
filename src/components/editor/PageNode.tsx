@@ -17,6 +17,7 @@ interface PageNodeData {
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
   isDisconnected?: boolean;
+  isInLoop?: boolean;
   isNodeDisabled?: boolean;
   onToggleDisabled?: () => void;
   onCreateVariable?: (variable: FormVariable) => void;
