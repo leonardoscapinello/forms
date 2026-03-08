@@ -558,7 +558,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                       </button>
                     </div>
                   )}
-                  <ElementPreview element={el} formStyle={formStyle} />
+                  <ElementPreview element={el} formStyle={formStyle} elementLookup={elementLookup} variables={variables} />
                 </div>
               ))}
             </div>
