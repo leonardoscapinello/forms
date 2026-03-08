@@ -103,6 +103,8 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setError('');
     setGoogleLoading(true);
+    // Clear any previous unauthorized flag
+    sessionStorage.removeItem('auth_unauthorized');
     try {
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
@@ -115,6 +117,15 @@ export default function Login() {
     }
     setGoogleLoading(false);
   };
+
+  // Check for unauthorized flag (set by useAuth when user has no role)
+  useEffect(() => {
+    const flag = sessionStorage.getItem('auth_unauthorized');
+    if (flag) {
+      setError('Acesso não autorizado. Sua conta não possui permissão para acessar esta ferramenta. Solicite acesso a um administrador.');
+      sessionStorage.removeItem('auth_unauthorized');
+    }
+  }, []);
 
   if (checkingSetup) {
     return (
