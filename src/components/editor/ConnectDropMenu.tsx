@@ -14,6 +14,7 @@ interface Props {
   onAddWait: () => void;
   onAddJump: () => void;
   onAddAI: () => void;
+  onAddImageGen: () => void;
   onClose: () => void;
 }
 
