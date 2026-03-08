@@ -4,7 +4,7 @@ import { Sparkles, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData } from '@/types/form';
+import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData, FormVariableType } from '@/types/form';
 import type { InputElementGroup } from './VariableAssignPanel';
 import { DisabledBadge } from './NodeDisabledOverlay';
 import AIConfigDialog from './ai-node/AIConfigDialog';
