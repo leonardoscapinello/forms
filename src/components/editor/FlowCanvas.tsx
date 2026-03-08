@@ -114,6 +114,9 @@ interface Props {
   onAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
   onAIDelete: (nodeId: string) => void;
+  onImageGenAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onImageGenChange: (nodeId: string, patch: Partial<ImageGenNodeData>) => void;
+  onImageGenDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
   onCreateVariable?: (variable: FormVariable) => void;
