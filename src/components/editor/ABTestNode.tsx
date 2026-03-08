@@ -93,7 +93,7 @@ export default function ABTestNode({ data }: Props & { data: Props['data'] & { i
               type="source"
               position={Position.Right}
               id={`ab-${variant.id}`}
-              className="!w-3 !h-3 !bg-node-abtest-accent !border-2 !border-card"
+              className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card"
               style={{ top: `${68 + i * 40}px` }}
             />
           </div>

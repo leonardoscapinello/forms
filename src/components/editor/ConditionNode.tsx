@@ -144,7 +144,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                   type="source"
                   position={Position.Right}
                   id={`branch-${branch.id}`}
-                  className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card !absolute !right-[-18px]"
+                  className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card !absolute !right-[-18px]"
                   style={{ top: 14, position: 'absolute' }}
                 />
 

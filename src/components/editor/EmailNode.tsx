@@ -98,8 +98,8 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps & { is
             : 'border-border'
         }`}>
 
-          <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-email-accent !border-2 !border-card" />
-          <Handle type="source" position={Position.Right} id="default" className="!w-3 !h-3 !bg-node-email-accent !border-2 !border-card" />
+           <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
+          <Handle type="source" position={Position.Right} id="default" className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
 
           {/* Header */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-node-email-accent/30 bg-node-email rounded-t-xl">

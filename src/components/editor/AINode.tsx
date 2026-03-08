@@ -47,8 +47,8 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
       }`}>
         {isNodeDisabled && <DisabledBadge />}
 
-        <Handle type="target" position={Position.Left} style={{ top: '50%' }} className="!w-2.5 !h-2.5 !bg-node-ai-accent !border-2 !border-card" />
-        <Handle type="source" position={Position.Right} id="default" style={{ top: '50%' }} className="!w-2.5 !h-2.5 !bg-node-ai-accent !border-2 !border-card" />
+        <Handle type="target" position={Position.Left} style={{ top: '50%' }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
+        <Handle type="source" position={Position.Right} id="default" style={{ top: '50%' }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
 
         {/* Header */}
         <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-node-ai-accent/20 bg-node-ai rounded-t-xl">
