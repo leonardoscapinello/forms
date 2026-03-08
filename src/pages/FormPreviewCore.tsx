@@ -1827,8 +1827,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                     )}
                   </>
                 )}
-              </motion.div>
               </Suspense>
+              </motion.div>
             </AnimatePresence>
           </div>
         );
