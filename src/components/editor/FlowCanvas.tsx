@@ -279,6 +279,58 @@ function FlowCanvasInner({
     return visited;
   }, [form.flowEdges]);
 
+  // Detect infinite loops (cycles that have no exit to 'end' or unvisited nodes)
+  const infiniteLoopNodeIds = useMemo(() => {
+    const edges = form.flowEdges || [];
+    if (edges.length === 0) return new Set<string>();
+
+    // Build adjacency list
+    const adj = new Map<string, string[]>();
+    for (const e of edges) {
+      if (!adj.has(e.source)) adj.set(e.source, []);
+      adj.get(e.source)!.push(e.target);
+    }
+
+    // Find all nodes that can reach 'end' (or have no outgoing edges = implicit end)
+    const canReachEnd = new Set<string>();
+    // BFS backwards from 'end' and from nodes with no outgoing edges
+    const terminalNodes = new Set<string>();
+    const allNodes = new Set<string>();
+    for (const e of edges) { allNodes.add(e.source); allNodes.add(e.target); }
+    for (const n of allNodes) {
+      if (n === 'end' || !adj.has(n) || adj.get(n)!.length === 0) {
+        terminalNodes.add(n);
+      }
+    }
+
+    // Reverse BFS from terminal nodes
+    const reverseAdj = new Map<string, string[]>();
+    for (const e of edges) {
+      if (!reverseAdj.has(e.target)) reverseAdj.set(e.target, []);
+      reverseAdj.get(e.target)!.push(e.source);
+    }
+    const queue = [...terminalNodes];
+    for (const n of queue) canReachEnd.add(n);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const prev of (reverseAdj.get(cur) || [])) {
+        if (!canReachEnd.has(prev)) {
+          canReachEnd.add(prev);
+          queue.push(prev);
+        }
+      }
+    }
+
+    // Nodes reachable from start but that cannot reach any terminal = infinite loop
+    const loopNodes = new Set<string>();
+    for (const nodeId of reachableNodeIds) {
+      if (nodeId !== 'start' && !canReachEnd.has(nodeId)) {
+        loopNodes.add(nodeId);
+      }
+    }
+    return loopNodes;
+  }, [form.flowEdges, reachableNodeIds]);
+
   const buildNodes = useCallback((): Node[] => {
     const n: Node[] = [];
 
