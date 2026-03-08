@@ -1224,6 +1224,7 @@ function FlowCanvasInner({
           onAddWait={handleDropAddWait}
           onAddJump={handleDropAddJump}
           onAddAI={handleDropAddAI}
+          onAddImageGen={handleDropAddImageGen}
           onClose={() => setDropMenu(null)}
         />
       )}
