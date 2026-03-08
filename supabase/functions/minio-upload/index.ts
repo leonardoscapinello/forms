@@ -74,7 +74,7 @@ serve(async (req) => {
 
     // ── Input validation ──
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'video/mp4', 'application/pdf', 'audio/mpeg', 'audio/wav'];
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/tiff', 'video/mp4', 'application/pdf', 'audio/mpeg', 'audio/wav'];
 
     if (file.size > MAX_FILE_SIZE) {
       return new Response(

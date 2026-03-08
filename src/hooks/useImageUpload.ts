@@ -36,6 +36,7 @@ export function useImageUpload(opts: UseImageUploadOptions = {}) {
             maxWidthOrHeight: 2048,
             useWebWorker: true,
             fileType: 'image/webp',
+            initialQuality: 0.82,
           });
         } catch {
           // If compression fails, upload original
