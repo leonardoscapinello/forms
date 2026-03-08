@@ -76,7 +76,19 @@ export default function Login() {
     setError('');
     setLoading(true);
     const { error: err } = await signIn(email, password);
-    if (err) setError(err);
+    if (err) {
+      setError(err);
+    } else {
+      // signIn succeeded at Supabase level — the useAuth hook will check
+      // the role and sign out if unauthorized, which sets the sessionStorage flag.
+      // We give it a moment to process, then check.
+      await new Promise(r => setTimeout(r, 1500));
+      const flag = sessionStorage.getItem('auth_unauthorized');
+      if (flag) {
+        setError('Acesso não autorizado. Sua conta não possui permissão para acessar esta ferramenta.');
+        sessionStorage.removeItem('auth_unauthorized');
+      }
+    }
     setLoading(false);
   };
 
