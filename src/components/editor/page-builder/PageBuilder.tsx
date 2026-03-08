@@ -77,17 +77,23 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   useEffect(() => {
     if (!activeId) {
       externalPageDropTargetRef.current = null;
+      window.dispatchEvent(new CustomEvent('element-drag-over-page', { detail: { pageId: null } }));
       return;
     }
 
     const handlePointerMove = (event: PointerEvent) => {
       const el = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
       const pageTarget = el?.closest('[data-page-drop-id]') as HTMLElement | null;
-      externalPageDropTargetRef.current = pageTarget?.dataset.pageDropId || null;
+      const targetId = pageTarget?.dataset.pageDropId || null;
+      externalPageDropTargetRef.current = targetId;
+      window.dispatchEvent(new CustomEvent('element-drag-over-page', { detail: { pageId: targetId } }));
     };
 
     window.addEventListener('pointermove', handlePointerMove);
-    return () => window.removeEventListener('pointermove', handlePointerMove);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.dispatchEvent(new CustomEvent('element-drag-over-page', { detail: { pageId: null } }));
+    };
   }, [activeId]);
 
   // Custom collision: prioritize column droppables, fall back to sortable reorder
