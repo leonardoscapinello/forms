@@ -28,7 +28,7 @@ interface Props {
   variables?: FormVariable[];
 }
 
-export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy, designMode, formStyle }: Props) {
+export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy, designMode, formStyle, elementLookup, variables }: Props) {
   const {
     attributes,
     listeners,
