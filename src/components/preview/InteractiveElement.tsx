@@ -620,14 +620,19 @@ export default function InteractiveElement({
 
     case 'input_text':
       return withFieldHeader(
-        <input
-          type="text"
-          value={t(value) || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t(element.placeholder) || 'Digite aqui...'}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
-          autoFocus
-        />
+        <>
+          {placeholderCss && <style>{placeholderCss}</style>}
+          <input
+            id={placeholderCssId}
+            type="text"
+            value={t(value) || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t(element.placeholder) || 'Digite aqui...'}
+            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
+            style={fieldInputStyle}
+            autoFocus
+          />
+        </>
       );
 
     case 'input_address':
