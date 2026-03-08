@@ -1802,6 +1802,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 )}
 
                 {/* Page content (normal pages) */}
+                {!currentPage && !isWelcome && !isThankYou && (
+                  <p className="text-muted-foreground text-center py-8">Carregando campos...</p>
+                )}
                 {currentPage && !isThankYou && (
                   <>
                     {currentPage.elements.length === 0 ? (
