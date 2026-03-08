@@ -512,11 +512,11 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados e métricas',
-    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress', 'timer', 'loading'],
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress'],
   },
   effects: {
     label: 'Animações e efeitos',
-    types: ['confetti', 'notification'],
+    types: ['confetti', 'notification', 'loading', 'timer'],
   },
   sections: {
     label: 'Seções prontas',
