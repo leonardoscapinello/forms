@@ -318,16 +318,24 @@ export default function RichTextEditor({ value, onChange, placeholder, className
           </div>
         )}
         <div
-          ref={editorRef}
+          ref={(node) => {
+            (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            // Initialize content on mount
+            if (node && !node.dataset.initialized) {
+              node.innerHTML = value || '';
+              node.dataset.initialized = '1';
+            }
+          }}
           contentEditable
           suppressContentEditableWarning
           className="min-h-[120px] px-3 py-2 text-sm text-foreground outline-none leading-relaxed focus:ring-0 [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through"
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onMouseUp={updateActiveFormats}
           onKeyUp={updateActiveFormats}
-          onFocus={updateActiveFormats}
-          dangerouslySetInnerHTML={{ __html: value || '' }}
+          onFocus={() => { isFocusedRef.current = true; updateActiveFormats(); }}
+          onBlur={() => { isFocusedRef.current = false; }}
         />
       </div>
     </div>
