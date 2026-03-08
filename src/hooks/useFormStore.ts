@@ -268,7 +268,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
           if (!entry) continue;
           const { error } = await supabase
             .from('forms')
-            .update({ title: entry.title, status: entry.status, data: entry.data as Record<string, unknown> })
+            .update({ title: entry.title, status: entry.status, data: entry.data as any })
             .eq('id', id);
           if (!error) {
             delete queue[id];
