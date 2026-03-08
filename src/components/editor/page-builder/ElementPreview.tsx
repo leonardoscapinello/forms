@@ -204,7 +204,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
               fontSize: style?.fontSize ? (style.fontSize === 'base' ? '1rem' : style.fontSize === 'lg' ? '1.125rem' : style.fontSize === 'xl' ? '1.25rem' : style.fontSize === '2xl' ? '1.5rem' : undefined) : undefined,
             }}
           >
-            {element.content || 'Botão'}
+            {renderVarContent(element.content, 'Botão')}
           </Button>
         </div>
       );
