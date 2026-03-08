@@ -433,6 +433,21 @@ export default function GradientEditor({ value, onChange }: Props) {
     return 'custom';
   });
   const [selectedStop, setSelectedStop] = useState<number | null>(0);
+  const [cssInput, setCssInput] = useState('');
+  const [showCssInput, setShowCssInput] = useState(false);
+
+  const applyCssInput = useCallback((raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const parsed = parseCssToConfig(trimmed);
+    if (parsed) {
+      setConfig(parsed);
+      onChange(configToCss(parsed));
+      setSelectedStop(0);
+      setCssInput('');
+      setShowCssInput(false);
+    }
+  }, [onChange]);
 
   const updateConfig = useCallback((patch: Partial<GradientConfig>) => {
     setConfig(prev => {
