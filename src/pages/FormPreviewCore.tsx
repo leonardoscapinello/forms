@@ -1568,8 +1568,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       s.color = formStyle.textColor;
     }
 
-    // Override --primary inside form preview for field focus/selected borders
-    (s as any)['--primary'] = '48 24% 62%'; /* #B3AB86 */
+    // Override --primary inside form preview to match the form's configured primary color
+    if (formStyle?.primaryColor) {
+      (s as any)['--primary'] = formStyle.primaryColor;
+    }
 
     return s;
   }, [form?.globalPageStyle, form?.style]);
