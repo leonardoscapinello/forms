@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData } from '@/types/form';
+import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData, FormVariableType } from '@/types/form';
 import { VariableInput } from '../shared';
 import { LocalInput } from '../shared/LocalInput';
 import { toast } from 'sonner';
