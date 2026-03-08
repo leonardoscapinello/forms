@@ -29,6 +29,8 @@ interface Props {
   onUpdateVariable?: (id: string, patch: Partial<FormVariable>) => void;
   onDeleteVariable?: (id: string) => void;
   disconnectedPageIds?: Set<string>;
+  /** Called when an element is dropped onto a page row to move it there */
+  onMoveElementToPage?: (element: PageElement, targetPageId: string) => void;
 }
 
 const VARIABLE_TYPE_LABELS: Record<FormVariableType, string> = {
