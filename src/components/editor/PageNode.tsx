@@ -62,8 +62,8 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
       }`}
       onDoubleClick={onSelect}
     >
-      <Handle type="target" position={Position.Left} style={{ top: 18, background: '#B3AB86', borderColor: 'hsl(var(--card))' }} className="!w-3 !h-3 !border-2" />
-      <Handle type="source" position={Position.Right} style={{ background: '#B3AB86', borderColor: 'hsl(var(--card))' }} className="!w-3 !h-3 !border-2" />
+      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
+      <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
 
       {/* Header */}
       <div className={`flex items-center gap-2 px-3 py-2 border-b rounded-t-xl ${
