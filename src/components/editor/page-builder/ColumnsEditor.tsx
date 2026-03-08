@@ -1,7 +1,9 @@
 import { useCallback, useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
+import type { FormVariable } from '@/types/form';
 import ElementPreview from './ElementPreview';
+import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 import { Plus, Trash2, GripVertical, ArrowUpFromLine, ArrowLeft, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
@@ -60,9 +62,11 @@ interface Props {
   selectedId?: string | null;
   onSelectElement?: (id: string) => void;
   designMode?: boolean;
+  elementLookup?: ElementLookup;
+  variables?: FormVariable[];
 }
 
-export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode }: Props) {
+export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode, elementLookup, variables }: Props) {
   const columnCount = element.columnCount || 2;
   const columns = element.columnData || [];
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
@@ -346,7 +350,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
               )}
 
               {/* Element content */}
-              <ElementPreview element={el} />
+              <ElementPreview element={el} elementLookup={elementLookup} variables={variables} />
             </div>
           ))}
 

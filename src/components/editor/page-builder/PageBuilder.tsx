@@ -484,6 +484,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
           lockedBy={lockedBy}
           designMode={designMode}
           formStyle={formStyle}
+          elementLookup={elementLookup}
+          variables={variables}
         />
       );
       if (isExternalDragOver && dropIndex === idx + 1) {
