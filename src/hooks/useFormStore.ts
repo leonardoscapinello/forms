@@ -2,9 +2,12 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, us
 import { FormData, DEFAULT_FORM_STYLE, createDefaultFunnelPage } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useNetworkStatus } from './useNetworkStatus';
+import { toast } from 'sonner';
 import React from 'react';
 
 const DEBOUNCE_MS = 1000;
+const OFFLINE_STORAGE_KEY = 'formstore_offline_queue';
 
 interface DbForm {
   id: string;
@@ -57,6 +60,7 @@ const FormStoreContext = createContext<FormStoreContextType | null>(null);
 
 export function FormStoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const online = useNetworkStatus();
   const [forms, setForms] = useState<FormData[]>([]);
   const [loaded, setLoaded] = useState(false);
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -65,6 +69,8 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   // Keep a ref to latest forms for debounce callbacks
   const formsRef = useRef<FormData[]>(forms);
   formsRef.current = forms;
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
 
   // Load forms from DB on auth
   useEffect(() => {
@@ -184,12 +190,40 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return () => { channel.unsubscribe(); };
   }, [user?.id]);
 
+  // Save form data to sessionStorage for offline resilience
+  const saveToOfflineQueue = useCallback((id: string) => {
+    try {
+      const form = formsRef.current.find(f => f.id === id);
+      if (!form || !user) return;
+      const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
+      queue[id] = formToDb(form, user.id);
+      sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
+    } catch {
+      // sessionStorage may be unavailable
+    }
+  }, [user]);
+
+  const removeFromOfflineQueue = useCallback((id: string) => {
+    try {
+      const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
+      delete queue[id];
+      sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
+    } catch {}
+  }, []);
+
   // Flush pending update to DB
   const flushUpdate = useCallback(async (id: string) => {
     if (!user) return;
 
     const form = formsRef.current.find(f => f.id === id);
     if (!form) return;
+
+    // If offline, queue locally instead of hitting DB
+    if (!onlineRef.current) {
+      saveToOfflineQueue(id);
+      setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
+      return;
+    }
 
     setSaveStatuses(prev => new Map(prev).set(id, 'saving'));
 
@@ -204,14 +238,49 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       .eq('id', id);
 
     if (error) {
+      // Network may have dropped mid-request — queue offline
+      saveToOfflineQueue(id);
       setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
       return;
     }
 
+    removeFromOfflineQueue(id);
     const now = new Date().toISOString();
     setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
     setLastSavedTimes(prev => new Map(prev).set(id, now));
-  }, [user]);
+  }, [user, saveToOfflineQueue, removeFromOfflineQueue]);
+
+  // Replay offline queue when back online
+  useEffect(() => {
+    if (!online || !user) return;
+    try {
+      const raw = sessionStorage.getItem(OFFLINE_STORAGE_KEY);
+      if (!raw) return;
+      const queue: Record<string, { title: string; status: string; data: unknown }> = JSON.parse(raw);
+      const ids = Object.keys(queue);
+      if (ids.length === 0) return;
+
+      toast.dismiss('offline-toast');
+
+      (async () => {
+        for (const id of ids) {
+          const entry = queue[id];
+          if (!entry) continue;
+          const { error } = await supabase
+            .from('forms')
+            .update({ title: entry.title, status: entry.status, data: entry.data as any })
+            .eq('id', id);
+          if (!error) {
+            delete queue[id];
+            const now = new Date().toISOString();
+            setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
+            setLastSavedTimes(prev => new Map(prev).set(id, now));
+          }
+        }
+        sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
+      })();
+    } catch {}
+  }, [online, user]);
 
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {
     setForms(prev => {
