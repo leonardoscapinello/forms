@@ -4,6 +4,7 @@ export type PageElementType =
   // Visual elements
   | 'heading'
   | 'text'
+  | 'rich_text'
   | 'image'
   | 'button'
   | 'divider'
@@ -445,6 +446,7 @@ export interface PageConfig {
 export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   heading: 'Título',
   text: 'Texto',
+  rich_text: 'Parágrafo',
   image: 'Imagem',
   button: 'Botão',
   divider: 'Divisor',
@@ -508,7 +510,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   content: {
     label: 'Conteúdo',
-    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert'],
+    types: ['heading', 'rich_text', 'text', 'image', 'video', 'button', 'list', 'alert'],
   },
   data: {
     label: 'Dados e métricas',
@@ -541,6 +543,10 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       break;
     case 'text':
       base.content = 'Escreva seu texto aqui...';
+      base.style = { fontSize: 'base' };
+      break;
+    case 'rich_text':
+      base.content = '<p>Escreva seu parágrafo aqui...</p>';
       base.style = { fontSize: 'base' };
       break;
     case 'image':

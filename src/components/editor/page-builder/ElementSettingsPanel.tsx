@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { X, Plus, Trash2, Star, ChevronDown, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
+import RichTextEditor from './RichTextEditor';
 import {
   ColorPickerField,
   TypographySelector,
@@ -797,6 +798,18 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   {...varProps}
                 />
               )}
+            </div>
+          )}
+
+          {/* ─── Rich text: inline editor ─── */}
+          {element.type === 'rich_text' && (
+            <div className="space-y-2">
+              <Label>Conteúdo</Label>
+              <RichTextEditor
+                value={element.content || ''}
+                onChange={v => onChange({ content: v })}
+                placeholder="Escreva seu parágrafo..."
+              />
             </div>
           )}
 

@@ -130,6 +130,15 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
         </div>
       );
 
+    case 'rich_text':
+      return (
+        <div
+          className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
+          style={{ ...elementStyle, fontFamily: normalizeFontFamily(style?.fontFamily) }}
+          dangerouslySetInnerHTML={{ __html: element.content || '' }}
+        />
+      );
+
     case 'image': {
       const maxH = element.imageMaxHeight || 400;
       const objectFit = element.imageObjectFit || 'cover';
