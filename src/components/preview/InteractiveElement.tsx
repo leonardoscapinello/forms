@@ -543,7 +543,9 @@ export default function InteractiveElement({
       return withFieldHeader(
         <div className="space-y-2">
           <div className="relative">
+            {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-email`)}</style>}
             <input
+              id={`${placeholderCssId}-email`}
               type="text"
               inputMode="email"
               value={t(value) || ''}
@@ -561,6 +563,7 @@ export default function InteractiveElement({
               className={`w-full bg-transparent border-0 border-b-2 outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
                 emailError ? 'border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
               }`}
+              style={fieldInputStyle}
               autoFocus
             />
             <AnimatePresence mode="wait">
