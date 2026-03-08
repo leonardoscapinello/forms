@@ -550,6 +550,8 @@ export interface AINodeData {
   temperature?: number;
   /** If true (default), skip firing if already fired in this session */
   fireOnce?: boolean;
+}
+
 // ── Image Gen Node ──────────────────────────────────────────────────────────
 
 export type ImageGenLayerType = 'text' | 'image' | 'shape';
