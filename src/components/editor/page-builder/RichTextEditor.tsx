@@ -454,11 +454,6 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         <div
           ref={(node) => {
             (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-            // Initialize content on mount
-            if (node && !node.dataset.initialized) {
-              node.innerHTML = value || '';
-              node.dataset.initialized = '1';
-            }
           }}
           contentEditable
           suppressContentEditableWarning
