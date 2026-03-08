@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X, GitMerge, Clock, CornerDownRight, Sparkles } from 'lucide-react';
+import { FileText, GitBranch, Variable, Webhook, BarChart2, MessageSquare, Mail, Search, X, GitMerge, Clock, CornerDownRight, Sparkles, ImageIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface Props {
