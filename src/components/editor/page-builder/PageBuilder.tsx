@@ -189,8 +189,14 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     const externalTargetPageId = externalPageDropTargetRef.current;
     externalPageDropTargetRef.current = null;
     if (draggedElement && externalTargetPageId && onMoveElementToPage && pageId && externalTargetPageId !== pageId) {
+      const targetPage = pages?.find(p => p.id === externalTargetPageId);
+      const targetName = externalTargetPageId === 'welcome' ? 'Tela de início'
+        : externalTargetPageId === 'thank-you' ? 'Tela de obrigado'
+        : targetPage?.title || 'Sem título';
       onMoveElementToPage(draggedElement, externalTargetPageId);
       if (selectedId === active.id) setSelectedId(null);
+      // Show toast feedback
+      import('sonner').then(({ toast }) => toast.success(`Elemento movido para "${targetName}"`));
       return;
     }
 
