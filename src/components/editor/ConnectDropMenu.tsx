@@ -51,7 +51,8 @@ export default function ConnectDropMenu({
     { id: 'analytics', label: 'Analytics', icon: BarChart2, iconColor: 'text-node-analytics-accent', bgColor: 'bg-node-analytics', action: () => { onAddAnalytics(); onClose(); }, category: 'integration' },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, iconColor: 'text-node-whatsapp-accent', bgColor: 'bg-node-whatsapp', action: () => { onAddWhatsApp(); onClose(); }, category: 'integration' },
     { id: 'email', label: 'E-mail', icon: Mail, iconColor: 'text-node-email-accent', bgColor: 'bg-node-email', action: () => { onAddEmail(); onClose(); }, category: 'integration' },
-  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onAddABTest, onAddWait, onAddJump, onClose]);
+    { id: 'ai', label: 'Inteligência Artificial', icon: Sparkles, iconColor: 'text-node-ai-accent', bgColor: 'bg-node-ai', action: () => { onAddAI(); onClose(); }, category: 'integration' },
+  ], [onAddPage, onAddCondition, onAddVariableOp, onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail, onAddABTest, onAddWait, onAddJump, onAddAI, onClose]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
