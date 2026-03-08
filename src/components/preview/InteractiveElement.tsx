@@ -45,6 +45,7 @@ const ProgressBarColumn = lazy(loadProgressBarColumn);
 const loadBeforeAfterSlider = () => import('@/components/preview/BeforeAfterSlider');
 const BeforeAfterSlider = lazy(loadBeforeAfterSlider);
 import ConfettiPreview from '@/components/preview/ConfettiPreview';
+import CardPreview from '@/components/preview/CardPreview';
 
 const loadSectionPreviews = () => import('@/components/editor/page-builder/SectionPreviews');
 const ArgumentsPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.ArgumentsPreview })));
