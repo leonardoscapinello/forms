@@ -4,7 +4,7 @@ import { FileText, Variable, AlertTriangle } from 'lucide-react';
 import { FunnelPage, FormVariable, VariableAssignment, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import VariableAssignPanel, { InputElementGroup } from './VariableAssignPanel';
-import { NodeToggleSwitch, DisabledBadge } from './NodeDisabledOverlay';
+import { NodeToggleSwitch, DisabledBadge, LoopWarningBadge } from './NodeDisabledOverlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface PageNodeData {
@@ -17,13 +17,14 @@ interface PageNodeData {
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
   isDisconnected?: boolean;
+  isInLoop?: boolean;
   isNodeDisabled?: boolean;
   onToggleDisabled?: () => void;
   onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, isNodeDisabled = false, onToggleDisabled, onCreateVariable } = data;
+  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, isInLoop = false, isNodeDisabled = false, onToggleDisabled, onCreateVariable } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
   const [varPopoverOpen, setVarPopoverOpen] = useState(false);
@@ -103,6 +104,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
         {/* Elements count */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {isNodeDisabled && <DisabledBadge />}
+          {isInLoop && !isNodeDisabled && <LoopWarningBadge />}
           {isEmpty ? (
             <span className="text-[10px] text-warning font-medium flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
