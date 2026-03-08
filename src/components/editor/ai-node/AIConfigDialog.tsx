@@ -141,9 +141,9 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Campos de entrada
-              {selectedInputCount > 0 && (
+              {localSources.length > 0 && (
                 <span className="ml-1.5 text-[10px] font-normal text-node-ai-accent">
-                  {selectedInputCount} selecionado(s)
+                  {localSources.length} selecionado(s)
                 </span>
               )}
             </label>
@@ -151,25 +151,19 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
               <div className="grid grid-cols-2 gap-1.5 max-h-[120px] overflow-y-auto">
                 {allInputElements.map(group =>
                   group.elements.map(el => {
-                    const isSelected = (nodeData.inputSources || []).includes(el.elementId);
+                    const isSelected = localSources.includes(el.elementId);
                     return (
                       <button
                         key={el.elementId}
                         type="button"
-                        onClick={() => {
-                          const current = nodeData.inputSources || [];
-                          const next = isSelected
-                            ? current.filter(id => id !== el.elementId)
-                            : [...current, el.elementId];
-                          onChange({ inputSources: next });
-                        }}
-                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md border transition-all text-xs text-left ${
+                        onClick={() => toggleSource(el.elementId)}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md border text-xs text-left ${
                           isSelected
                             ? 'border-node-ai-accent bg-node-ai text-foreground font-medium'
                             : 'border-border hover:border-node-ai-accent/40 text-muted-foreground'
                         }`}
                       >
-                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                           isSelected ? 'border-node-ai-accent bg-node-ai-accent' : 'border-muted-foreground/30'
                         }`}>
                           {isSelected && (
