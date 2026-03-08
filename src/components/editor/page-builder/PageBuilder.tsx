@@ -77,17 +77,23 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   useEffect(() => {
     if (!activeId) {
       externalPageDropTargetRef.current = null;
+      window.dispatchEvent(new CustomEvent('element-drag-over-page', { detail: { pageId: null } }));
       return;
     }
 
     const handlePointerMove = (event: PointerEvent) => {
       const el = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
       const pageTarget = el?.closest('[data-page-drop-id]') as HTMLElement | null;
-      externalPageDropTargetRef.current = pageTarget?.dataset.pageDropId || null;
+      const targetId = pageTarget?.dataset.pageDropId || null;
+      externalPageDropTargetRef.current = targetId;
+      window.dispatchEvent(new CustomEvent('element-drag-over-page', { detail: { pageId: targetId } }));
     };
 
     window.addEventListener('pointermove', handlePointerMove);
-    return () => window.removeEventListener('pointermove', handlePointerMove);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.dispatchEvent(new CustomEvent('element-drag-over-page', { detail: { pageId: null } }));
+    };
   }, [activeId]);
 
   // Custom collision: prioritize column droppables, fall back to sortable reorder
@@ -183,8 +189,14 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     const externalTargetPageId = externalPageDropTargetRef.current;
     externalPageDropTargetRef.current = null;
     if (draggedElement && externalTargetPageId && onMoveElementToPage && pageId && externalTargetPageId !== pageId) {
+      const targetPage = pages?.find(p => p.id === externalTargetPageId);
+      const targetName = externalTargetPageId === 'welcome' ? 'Tela de início'
+        : externalTargetPageId === 'thank-you' ? 'Tela de obrigado'
+        : targetPage?.title || 'Sem título';
       onMoveElementToPage(draggedElement, externalTargetPageId);
       if (selectedId === active.id) setSelectedId(null);
+      // Show toast feedback
+      import('sonner').then(({ toast }) => toast.success(`Elemento movido para "${targetName}"`));
       return;
     }
 

@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageElement } from '@/types/pageElements';
 import { isValidVariableName } from '@/lib/variableInterpolation';
 import { toast } from 'sonner';
@@ -93,11 +93,24 @@ export default function PageListPanel({
   onMoveElementToPage,
 }: Props) {
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
+  const [dndKitHoverPageId, setDndKitHoverPageId] = useState<string | null>(null);
   const [pagesOpen, setPagesOpen] = useState(true);
   const [varsOpen, setVarsOpen] = useState(false);
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
   const [editingVarName, setEditingVarName] = useState('');
   const [settingsVarId, setSettingsVarId] = useState<string | null>(null);
+
+  // Listen for dnd-kit drag hover events from PageBuilder
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setDndKitHoverPageId(detail?.pageId || null);
+    };
+    window.addEventListener('element-drag-over-page', handler);
+    return () => window.removeEventListener('element-drag-over-page', handler);
+  }, []);
+
+  const activeDropPageId = dragOverPageId || dndKitHoverPageId;
 
   const allFields: { pageId: string; pageTitle: string; element: PageElement }[] = [];
   for (const page of pages) {
@@ -191,9 +204,9 @@ export default function PageListPanel({
                 return (
                 <div
                   key={page.id}
-                  className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
-                    dragOverPageId === page.id
-                      ? 'bg-primary/10 border border-primary/40 ring-1 ring-primary/30 scale-[1.02]'
+                  className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
+                    activeDropPageId === page.id
+                      ? 'bg-primary/15 border-2 border-primary/50 ring-2 ring-primary/20 scale-[1.03] shadow-sm'
                       : selectedPageId === page.id
                         ? 'bg-accent text-foreground border border-border'
                         : isDisconnected
@@ -235,26 +248,36 @@ export default function PageListPanel({
                     }
                   }}
                 >
-                  <span className="text-[10px] text-muted-foreground font-mono w-4 text-center flex-shrink-0">
-                    {index + 1}
-                  </span>
-                  {isDisconnected ? (
-                    <Unplug className="h-3.5 w-3.5 flex-shrink-0 text-destructive/70" />
+                  {activeDropPageId === page.id ? (
+                    <>
+                      <span className="text-[10px] text-primary font-semibold w-4 text-center flex-shrink-0">↓</span>
+                      <FileText className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                      <span className="text-xs font-semibold text-primary truncate flex-1">Soltar aqui</span>
+                    </>
                   ) : (
-                    <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                    <>
+                      <span className="text-[10px] text-muted-foreground font-mono w-4 text-center flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      {isDisconnected ? (
+                        <Unplug className="h-3.5 w-3.5 flex-shrink-0 text-destructive/70" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5 flex-shrink-0" />
+                      )}
+                      <span className={`text-xs font-medium truncate flex-1 ${isDisconnected ? 'text-destructive/70' : ''}`}>{page.title || 'Sem título'}</span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] text-muted-foreground">{page.elements?.length || 0}</span>
+                        {pages.length > 1 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDeletePage(page.id); }}
+                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
-                  <span className={`text-xs font-medium truncate flex-1 ${isDisconnected ? 'text-destructive/70' : ''}`}>{page.title || 'Sem título'}</span>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] text-muted-foreground">{page.elements?.length || 0}</span>
-                    {pages.length > 1 && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onDeletePage(page.id); }}
-                        className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
                 </div>
                 );
               })
