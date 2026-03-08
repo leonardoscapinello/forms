@@ -4,7 +4,7 @@ import { FileText, Variable, AlertTriangle } from 'lucide-react';
 import { FunnelPage, FormVariable, VariableAssignment, IntegrationNodeData } from '@/types/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import VariableAssignPanel, { InputElementGroup } from './VariableAssignPanel';
-import { NodeToggleSwitch, DisabledBadge } from './NodeDisabledOverlay';
+import { NodeToggleSwitch, DisabledBadge, LoopWarningBadge } from './NodeDisabledOverlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface PageNodeData {
