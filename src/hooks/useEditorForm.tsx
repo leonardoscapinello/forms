@@ -350,6 +350,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const abTest = useNodeCrud<ABTestNodeData>(form, updateForm, 'ab', 'abTestNodes');
   const wait = useNodeCrud<WaitNodeData>(form, updateForm, 'wt', 'waitNodes');
   const jump = useNodeCrud<JumpNodeData>(form, updateForm, 'jp', 'jumpNodes');
+  const ai = useNodeCrud<AINodeData>(form, updateForm, 'ai', 'aiNodes');
 
   // Wrappers that create default nodes and call factory.add
   const handleVariableOpAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
