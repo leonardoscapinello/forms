@@ -2347,7 +2347,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 </div>
               ))}
             </div>
-          )
+          )}
 
           </div>)}
 
