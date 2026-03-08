@@ -546,7 +546,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   sections: {
     label: 'Seções prontas',
-    types: ['arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel', 'whatsapp_invite'],
+    types: ['card', 'arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel', 'whatsapp_invite'],
   },
 };
 
