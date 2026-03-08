@@ -634,6 +634,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                   <ElementPreview
                     element={activeElement}
                     formStyle={formStyle}
+                    elementLookup={elementLookup}
+                    variables={variables}
                     stepNumber={
                       activeElement.type.startsWith('input_')
                         ? elements.slice(0, elements.indexOf(activeElement) + 1).filter(e => e.type.startsWith('input_')).length
