@@ -384,7 +384,7 @@ export default function InteractiveElement({
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
           style={{ fontFamily: normalizeFontFamily(style?.fontFamily) }}
-          dangerouslySetInnerHTML={{ __html: t(element.content) || '' }}
+          dangerouslySetInnerHTML={{ __html: tHtml(element.content) || '' }}
         />
       );
 
