@@ -65,7 +65,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
                 : 'border-border'
         }`}
       >
-        <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-condition-accent !border-2 !border-card" />
+        <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
 
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-node-condition-accent/30 bg-node-condition rounded-t-xl">
