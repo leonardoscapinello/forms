@@ -93,11 +93,24 @@ export default function PageListPanel({
   onMoveElementToPage,
 }: Props) {
   const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
+  const [dndKitHoverPageId, setDndKitHoverPageId] = useState<string | null>(null);
   const [pagesOpen, setPagesOpen] = useState(true);
   const [varsOpen, setVarsOpen] = useState(false);
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
   const [editingVarName, setEditingVarName] = useState('');
   const [settingsVarId, setSettingsVarId] = useState<string | null>(null);
+
+  // Listen for dnd-kit drag hover events from PageBuilder
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setDndKitHoverPageId(detail?.pageId || null);
+    };
+    window.addEventListener('element-drag-over-page', handler);
+    return () => window.removeEventListener('element-drag-over-page', handler);
+  }, []);
+
+  const activeDropPageId = dragOverPageId || dndKitHoverPageId;
 
   const allFields: { pageId: string; pageTitle: string; element: PageElement }[] = [];
   for (const page of pages) {
