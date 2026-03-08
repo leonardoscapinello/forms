@@ -7,7 +7,7 @@ import {
   ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData,
   WhatsAppNodeData, EmailNodeData, ABTestNodeData, WaitNodeData, JumpNodeData,
-  AINodeData,
+  AINodeData, ImageGenNodeData,
 } from '@/types/form';
 import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
