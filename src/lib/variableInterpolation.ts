@@ -160,7 +160,7 @@ export function interpolateTextToHtml(
   return text.replace(/\{\{(?:webhook:[^}]+|ctx\.\w+|param\.[^}]+|field:[^}]+|\w+)\}\}/g, (token) => {
     const resolved = resolve(token);
     if (!resolved) return '';
-    return `<mark class="${VAR_HTML[resolved.type]} var-highlight-readable">${esc(resolved.value)}</mark>`;
+    return esc(resolved.value);
   });
 }
 
@@ -246,17 +246,11 @@ export function interpolateTextToNodes(
     }
 
     hasVar = true;
-    nodes.push(
-      createElement('mark', {
-        key: `var-${i}`,
-        className: VAR_TYPE_CLASS[varType],
-      }, value)
-    );
+    nodes.push(value);
   }
 
   // If no variables were found, return plain text (avoids unnecessary wrapper)
   if (!hasVar) return nodes.length === 1 && typeof nodes[0] === 'string' ? nodes[0] : createElement(Fragment, null, ...nodes);
 
-  // Wrap in var-highlight-readable span so descendant styles apply
-  return createElement('span', { className: 'var-highlight-readable' }, ...nodes);
+  return createElement(Fragment, null, ...nodes);
 }
