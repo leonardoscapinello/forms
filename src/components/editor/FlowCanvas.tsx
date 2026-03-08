@@ -40,6 +40,7 @@ import EmailNode from './EmailNode';
 import ABTestNode from './ABTestNode';
 import WaitNode from './WaitNode';
 import JumpNode from './JumpNode';
+import AINode from './AINode';
 import ConnectDropMenu from './ConnectDropMenu';
 import { FileText, Trash2, LayoutGrid, Power } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
