@@ -6,6 +6,7 @@ import type { FunnelPageStyle, FormData } from '@/types/form';
 import PageListPanel from '@/components/editor/PageListPanel';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import { scanElementReferences, autoFixReferencesOnMove } from '@/lib/elementReferenceScanner';
+import { validateFormIntegrity } from '@/lib/formIntegrityValidator';
 import { toast } from 'sonner';
 
 /* v3 cache-bust */ export default function EditorPages() {
@@ -96,6 +97,21 @@ import { toast } from 'sonner';
         {
           description: warnings.map(r => `• ${r.label}`).join('\n'),
           duration: 8000,
+        }
+      );
+    }
+
+    // Check ordering integrity AFTER the move (simulate the patched form)
+    const patchedForm = { ...form, ...patch };
+    const integrityIssues = validateFormIntegrity(patchedForm);
+    const elementRelatedIssues = integrityIssues.filter(i => i.elementId === element.id || i.elementId.startsWith(`${element.id}.`));
+
+    if (elementRelatedIssues.length > 0) {
+      toast.error(
+        `🚫 ${elementRelatedIssues.length} problema${elementRelatedIssues.length > 1 ? 's' : ''} de ordenação — publicação bloqueada`,
+        {
+          description: elementRelatedIssues.map(i => `• ${i.nodeLabel}: ${i.description}`).join('\n'),
+          duration: 10000,
         }
       );
     }
