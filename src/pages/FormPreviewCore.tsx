@@ -784,7 +784,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       const outEdges = edges.filter(e => e.source === currentNodeId);
       if (outEdges.length === 0) {
-        console.warn('[walkWorkflow] Dead end — no outgoing edges from:', currentNodeId);
+        console.warn('[walkWorkflow] Dead end — no outgoing edges from:', currentNodeId, '| All edges:', JSON.stringify(edges.map(e => ({ s: e.source, t: e.target }))));
         break;
       }
 
@@ -821,15 +821,18 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       }
 
       const target = nextEdge.target;
+      console.info(`[walkWorkflow] Step ${i}: ${currentNodeId} → ${target}`);
 
       // If the target node is disabled, skip it entirely (pass-through)
       if (disabledNodes.has(target) && target !== 'end') {
+        console.info('[walkWorkflow] Skipping disabled node:', target);
         currentNodeId = target;
         continue;
       }
 
       // Terminal: found a page
       if (target.startsWith('p-')) {
+        console.info('[walkWorkflow] ✓ Resolved to page:', target);
         return { nextNodeId: target, updatedAnswers: currentAns };
       }
 
