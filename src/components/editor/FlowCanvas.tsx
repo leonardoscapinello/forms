@@ -855,7 +855,8 @@ function FlowCanvasInner({
   const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
     if (!connectStartRef.current) return;
     const target = event.target as HTMLElement;
-    if (target.closest('.react-flow__handle')) return;
+    // If dropped on a handle or on a node body, the connection was completed (or intended) — don't show add menu
+    if (target.closest('.react-flow__handle') || target.closest('.react-flow__node')) return;
 
     const clientX = 'changedTouches' in event ? event.changedTouches[0].clientX : (event as MouseEvent).clientX;
     const clientY = 'changedTouches' in event ? event.changedTouches[0].clientY : (event as MouseEvent).clientY;
