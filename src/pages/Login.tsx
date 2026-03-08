@@ -165,9 +165,7 @@ export default function Login() {
 
         {/* Bottom: footer */}
         <div className="relative z-10">
-          <p className="text-xs"
-            style={{ color: 'hsl(var(--primary-foreground) / 0.4)' }}
-          >
+          <p className="text-xs text-white/25">
             © {new Date().getFullYear()} twobrain
           </p>
         </div>
