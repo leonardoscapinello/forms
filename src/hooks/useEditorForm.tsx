@@ -90,6 +90,9 @@ interface EditorFormContextType {
   handleAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   handleAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
   handleAIDelete: (nodeId: string) => void;
+  handleImageGenAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  handleImageGenChange: (nodeId: string, patch: Partial<ImageGenNodeData>) => void;
+  handleImageGenDelete: (nodeId: string) => void;
 
   // Variables CRUD
   handleAddVariable: () => void;
