@@ -222,6 +222,7 @@ export default function PageListPanel({
                   onDragLeave={() => setDragOverPageId(prev => prev === page.id ? null : prev)}
                   onDrop={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     setDragOverPageId(null);
                     const moveJson = e.dataTransfer.getData('element-move-json');
                     if (moveJson && onMoveElementToPage) {
