@@ -32,7 +32,7 @@ function ImageGenNode({ data, selected }: NodeProps & { data: ImageGenNodeProps 
 
   return (
     <>
-      <div className={`nodrag nopan nowheel relative rounded-xl border-2 bg-card shadow-sm w-[200px] transition-all ${
+      <div className={`relative rounded-xl border-2 bg-card shadow-sm w-[200px] transition-all ${
         isNodeDisabled ? 'opacity-50 grayscale'
         : selected
           ? 'border-node-imagegen-accent shadow-md ring-2 ring-node-imagegen-accent/20'
