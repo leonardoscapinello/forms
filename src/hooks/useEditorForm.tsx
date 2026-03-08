@@ -420,6 +420,12 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const handleAIChange = ai.change;
   const handleAIDelete = ai.del;
 
+  const handleImageGenAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    imageGen.add({ id: crypto.randomUUID(), layers: [], outputWidth: 1080, outputHeight: 1080 }, pos, src, sh);
+  }, [imageGen]);
+  const handleImageGenChange = imageGen.change;
+  const handleImageGenDelete = imageGen.del;
+
   // ─── Variables CRUD ───────────────────────────────────────────────
 
   const handleAddVariable = useCallback(() => {
