@@ -510,7 +510,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   content: {
     label: 'Conteúdo',
-    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert'],
+    types: ['heading', 'rich_text', 'text', 'image', 'video', 'button', 'list', 'alert'],
   },
   data: {
     label: 'Dados e métricas',
