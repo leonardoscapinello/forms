@@ -114,11 +114,11 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
         <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit' }}>→</span>
         <div>
           <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
-            {element.label || 'Sem título'}
+            {renderVarContent(element.label, 'Sem título')}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{element.description}</p>
+            <div className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{renderVarContent(element.description, '')}</div>
           )}
         </div>
       </div>
