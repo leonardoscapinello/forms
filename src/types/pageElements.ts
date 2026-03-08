@@ -446,6 +446,7 @@ export interface PageConfig {
 export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   heading: 'Título',
   text: 'Texto',
+  rich_text: 'Parágrafo',
   image: 'Imagem',
   button: 'Botão',
   divider: 'Divisor',
