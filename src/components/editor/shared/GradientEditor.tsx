@@ -658,6 +658,41 @@ export default function GradientEditor({ value, onChange }: Props) {
             </div>
           </div>
 
+          {/* CSS paste input */}
+          {showCssInput && (
+            <div className="space-y-1.5">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Colar CSS</Label>
+              <div className="flex gap-1.5">
+                <Input
+                  value={cssInput}
+                  onChange={e => setCssInput(e.target.value)}
+                  onPaste={e => {
+                    const pasted = e.clipboardData.getData('text');
+                    if (pasted) {
+                      e.preventDefault();
+                      setCssInput(pasted);
+                      // Auto-apply on paste
+                      setTimeout(() => applyCssInput(pasted), 0);
+                    }
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter') applyCssInput(cssInput); }}
+                  placeholder="linear-gradient(135deg, #ff0 0%, #f00 100%)"
+                  className="h-7 text-[11px] font-mono flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] shrink-0"
+                  onClick={() => applyCssInput(cssInput)}
+                  disabled={!cssInput.trim()}
+                >
+                  Aplicar
+                </Button>
+              </div>
+              <p className="text-[9px] text-muted-foreground/60">Cole um degradê CSS (linear-gradient, radial-gradient ou conic-gradient)</p>
+            </div>
+          )}
+
           {/* Color stops list */}
           <div className="space-y-1 group">
             <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">
