@@ -51,9 +51,8 @@ export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLooku
     if (token.startsWith('field:')) {
       const elementId = token.slice('field:'.length);
       const fieldLabel = elementLookup?.[elementId];
-      const safeLabel = fieldLabel
-        ? fieldLabel.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        : token;
+      const safeLabel = (fieldLabel || 'Campo')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       return `<span class="wa-var">{{${safeLabel}}}</span>`;
     }
     if (token.startsWith('ctx.')) {

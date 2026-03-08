@@ -12,11 +12,13 @@ for (const c of CONTEXT_KEYS) {
   CTX_LABEL_MAP[c.key] = c.label;
 }
 
+const FIELD_FALLBACK_LABEL = 'Campo';
+
 export function formatFieldTokensForDisplay(text: string, elementLookup?: ElementLookup): string {
   if (!text) return text;
   return text.replace(/\{\{field:([^}]+)\}\}/g, (_raw, elementId: string) => {
     const label = elementLookup?.[elementId];
-    return label ? `{{${label}}}` : `{{field:${elementId}}}`;
+    return `{{${label || FIELD_FALLBACK_LABEL}}}`;
   });
 }
 
