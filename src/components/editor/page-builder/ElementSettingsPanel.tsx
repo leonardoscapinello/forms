@@ -2174,6 +2174,181 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Card settings ─── */}
+          {element.type === 'card' && (
+            <div className="space-y-3">
+              <Label>Colunas</Label>
+              <Select value={String(element.cardColumns || 3)} onValueChange={v => onChange({ cardColumns: parseInt(v) as 1 | 2 | 3 })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 coluna</SelectItem>
+                  <SelectItem value="2">2 colunas</SelectItem>
+                  <SelectItem value="3">3 colunas</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Label>Altura da imagem (px)</Label>
+              <Input type="number" value={element.cardImageHeight ?? 200} onChange={e => onChange({ cardImageHeight: parseInt(e.target.value) || 200 })} className="h-8 text-xs" min={80} max={500} step={10} />
+
+              <div className="flex items-center justify-between pt-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cards</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => {
+                    const items = [...(element.cardItems || [])];
+                    items.push({
+                      id: crypto.randomUUID(),
+                      title: `Card ${items.length + 1}`,
+                      description: 'Descrição do card',
+                      badges: [],
+                      actionType: 'go_to_page',
+                    });
+                    onChange({ cardItems: items });
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar
+                </Button>
+              </div>
+
+              {(element.cardItems || []).map((card, idx) => (
+                <div key={card.id} className="space-y-2 p-3 rounded-lg border border-border/60 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground">Card {idx + 1}</span>
+                    <button
+                      onClick={() => {
+                        const items = (element.cardItems || []).filter(c => c.id !== card.id);
+                        onChange({ cardItems: items });
+                      }}
+                      className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <Label className="text-[11px]">Imagem</Label>
+                  <ImageSourcePicker
+                    compact
+                    value={card.imageUrl || ''}
+                    onChange={url => {
+                      const items = [...(element.cardItems || [])];
+                      items[idx] = { ...card, imageUrl: url };
+                      onChange({ cardItems: items });
+                    }}
+                    pathPrefix="cards"
+                    showPreview
+                    alt={card.title}
+                  />
+
+                  <Label className="text-[11px]">Título</Label>
+                  <Input
+                    value={card.title}
+                    onChange={e => {
+                      const items = [...(element.cardItems || [])];
+                      items[idx] = { ...card, title: e.target.value };
+                      onChange({ cardItems: items });
+                    }}
+                    className="h-7 text-xs"
+                  />
+
+                  <Label className="text-[11px]">Descrição</Label>
+                  <Input
+                    value={card.description || ''}
+                    onChange={e => {
+                      const items = [...(element.cardItems || [])];
+                      items[idx] = { ...card, description: e.target.value };
+                      onChange({ cardItems: items });
+                    }}
+                    className="h-7 text-xs"
+                  />
+
+                  <Label className="text-[11px]">Badges (separados por vírgula)</Label>
+                  <Input
+                    value={(card.badges || []).join(', ')}
+                    onChange={e => {
+                      const items = [...(element.cardItems || [])];
+                      items[idx] = { ...card, badges: e.target.value.split(',').map(s => s.trim()).filter(Boolean) };
+                      onChange({ cardItems: items });
+                    }}
+                    className="h-7 text-xs"
+                    placeholder="AO VIVO, 12/01"
+                  />
+
+                  <Label className="text-[11px]">Ação ao clicar</Label>
+                  <Select
+                    value={card.actionType}
+                    onValueChange={v => {
+                      const items = [...(element.cardItems || [])];
+                      items[idx] = { ...card, actionType: v as CardActionType };
+                      onChange({ cardItems: items });
+                    }}
+                  >
+                    <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="go_to_page">Ir para uma página</SelectItem>
+                      <SelectItem value="open_modal">Abrir modal</SelectItem>
+                      <SelectItem value="copy_text">Copiar texto</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {card.actionType === 'go_to_page' && pages && pages.length > 0 && (
+                    <>
+                      <Label className="text-[11px]">Página destino</Label>
+                      <Select
+                        value={card.actionTargetPageId || ''}
+                        onValueChange={v => {
+                          const items = [...(element.cardItems || [])];
+                          items[idx] = { ...card, actionTargetPageId: v };
+                          onChange({ cardItems: items });
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          {pages.map(p => (
+                            <SelectItem key={p.id} value={p.id} className="text-xs">{p.title || 'Sem título'}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+
+                  {card.actionType === 'open_modal' && (
+                    <>
+                      <Label className="text-[11px]">Conteúdo da modal</Label>
+                      <Textarea
+                        value={card.actionModalContent || ''}
+                        onChange={e => {
+                          const items = [...(element.cardItems || [])];
+                          items[idx] = { ...card, actionModalContent: e.target.value };
+                          onChange({ cardItems: items });
+                        }}
+                        className="text-xs min-h-[60px]"
+                        placeholder="Conteúdo exibido ao abrir..."
+                      />
+                    </>
+                  )}
+
+                  {card.actionType === 'copy_text' && (
+                    <>
+                      <Label className="text-[11px]">Texto para copiar</Label>
+                      <Input
+                        value={card.actionCopyText || ''}
+                        onChange={e => {
+                          const items = [...(element.cardItems || [])];
+                          items[idx] = { ...card, actionCopyText: e.target.value };
+                          onChange({ cardItems: items });
+                        }}
+                        className="h-7 text-xs"
+                        placeholder="Texto copiado ao clicar"
+                      />
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+
           </div>)}
 
           {/* ══ APARÊNCIA ══ */}
