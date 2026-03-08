@@ -49,6 +49,23 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       />
     );
   };
+
+  const renderRichTextWithReadableFieldTokens = (html: string | undefined) => {
+    if (!html || !html.includes('{{field:')) return html || '';
+
+    const escapeHtml = (value: string) => value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return html.replace(/\{\{field:([^}]+)\}\}/g, (_match, rawElementId: string) => {
+      const elementId = rawElementId.trim();
+      const label = elementLookup?.[elementId];
+      const display = label ? `{{${escapeHtml(label)}}}` : `{{field:${escapeHtml(elementId)}}}`;
+      return `<mark class="var-highlight var-highlight-field var-highlight-readable">${display}</mark>`;
+    });
+  };
+
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // Outer wrapper styles (margin)
@@ -157,7 +174,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
           style={{ ...elementStyle, fontFamily: normalizeFontFamily(style?.fontFamily) }}
-          dangerouslySetInnerHTML={{ __html: element.content || '' }}
+          dangerouslySetInnerHTML={{ __html: renderRichTextWithReadableFieldTokens(element.content) }}
         />
       );
 
