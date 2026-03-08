@@ -216,13 +216,13 @@ export function validateFormIntegrity(form: FormData): IntegrityIssue[] {
       ...(integ.webhookHeaders || []),
       ...(integ.webhookQueryParams || []),
     ];
+    const integLabel = integ.webhookUrl ? `Webhook "${integ.webhookUrl.slice(0, 30)}"` : `Webhook ${integ.id.slice(0, 6)}`;
     for (const param of allParams) {
       if (!param.value) continue;
-      // Check direct element ID references
       for (const page of form.pages || []) {
         for (const el of page.elements || []) {
           if (param.value.includes(el.id)) {
-            checkElement(flowNodeId, `Webhook "${integ.label}"`, el.id, 'webhook',
+            checkElement(flowNodeId, integLabel, el.id, 'webhook',
               `Campo {element} precisa estar antes deste webhook no workflow`);
           }
         }
