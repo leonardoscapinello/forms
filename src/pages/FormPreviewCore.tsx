@@ -134,12 +134,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         const saved = localStorage.getItem(storageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed.answers && typeof parsed.pageIndex === 'number') {
-            setAnswers({ ...defaults, ...parsed.answers });
-            setCurrentPageIndex(parsed.pageIndex);
-            maxPageVisitedRef.current = parsed.maxPage ?? parsed.pageIndex;
+          const parsedPageIndex = Number(parsed.pageIndex);
+          const hasValidSavedIndex = Number.isInteger(parsedPageIndex)
+            && parsedPageIndex >= 0
+            && parsedPageIndex < (form.pages?.length ?? 0);
 
-            prefetchLazyComponentsForElements(form.pages?.[parsed.pageIndex]?.elements || [], 'immediate');
+          if (parsed.answers && hasValidSavedIndex) {
+            setAnswers({ ...defaults, ...parsed.answers });
+            setCurrentPageIndex(parsedPageIndex);
+            maxPageVisitedRef.current = parsed.maxPage ?? parsedPageIndex;
+
+            prefetchLazyComponentsForElements(form.pages?.[parsedPageIndex]?.elements || [], 'immediate');
             setIsInitialStateReady(true);
 
             // Capture context after paint
