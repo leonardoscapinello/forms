@@ -32,7 +32,8 @@ function getReadableDisplay(
   if (varType === 'field') {
     const idMatch = raw.match(/\{\{field:([^}]+)\}\}/);
     if (idMatch) {
-      const label = elementLookup?.[idMatch[1]];
+      const normalizedId = idMatch[1].trim();
+      const label = elementLookup?.[normalizedId];
       return `{{${label || FIELD_FALLBACK_LABEL}}}`;
     }
     return `{{${FIELD_FALLBACK_LABEL}}}`;

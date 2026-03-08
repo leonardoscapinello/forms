@@ -303,7 +303,7 @@ export default function WhatsAppMessageEditor({
 
   const resolveToken = useCallback((raw: string): VarTokenInfo => {
     if (raw.startsWith('{{field:')) {
-      const id = raw.slice(8, -2);
+      const id = raw.slice(8, -2).trim();
       return { label: elementLookup[id] || 'Campo', varType: 'field' };
     }
     if (raw.startsWith('{{webhook:')) {
