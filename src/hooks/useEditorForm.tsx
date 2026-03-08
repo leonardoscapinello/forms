@@ -87,6 +87,9 @@ interface EditorFormContextType {
   handleJumpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   handleJumpChange: (nodeId: string, patch: Partial<JumpNodeData>) => void;
   handleJumpDelete: (nodeId: string) => void;
+  handleAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  handleAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
+  handleAIDelete: (nodeId: string) => void;
 
   // Variables CRUD
   handleAddVariable: () => void;
