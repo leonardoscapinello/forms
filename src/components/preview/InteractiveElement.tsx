@@ -43,6 +43,8 @@ const loadProgressBarColumn = () => import('@/components/preview/ProgressBarColu
 const ProgressBarColumn = lazy(loadProgressBarColumn);
 const loadBeforeAfterSlider = () => import('@/components/preview/BeforeAfterSlider');
 const BeforeAfterSlider = lazy(loadBeforeAfterSlider);
+const loadConfettiPreview = () => import('@/components/preview/ConfettiPreview');
+const ConfettiPreview = lazy(loadConfettiPreview);
 
 const loadSectionPreviews = () => import('@/components/editor/page-builder/SectionPreviews');
 const ArgumentsPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.ArgumentsPreview })));
@@ -1257,6 +1259,18 @@ export default function InteractiveElement({
           gap={element.listGap}
           fontSize={element.style?.fontSize}
         />
+      );
+
+    case 'confetti':
+      return (
+        <Suspense fallback={null}>
+          <ConfettiPreview
+            direction={element.confettiDirection || 'top'}
+            intensity={element.confettiIntensity || 'explosion'}
+            duration={element.confettiDuration || 3000}
+            colors={element.confettiColors}
+          />
+        </Suspense>
       );
 
     default:

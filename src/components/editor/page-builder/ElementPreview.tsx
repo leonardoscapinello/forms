@@ -705,6 +705,13 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
       );
     }
 
+    case 'confetti':
+      return (
+        <div className="relative w-full h-24 rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden">
+          <span className="text-xs text-muted-foreground z-10">🎉 Confete ({element.confettiDirection === 'sides' ? 'laterais' : 'cima p/ baixo'} · {element.confettiIntensity === 'explosion' ? 'explosão' : 'sutil'})</span>
+        </div>
+      );
+
     default:
       return <div className="p-3 text-muted-foreground text-sm">Elemento desconhecido</div>;
   }

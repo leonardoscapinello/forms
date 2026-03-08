@@ -50,7 +50,9 @@ export type PageElementType =
   | 'input_yes_no'
   | 'input_multi_select'
   | 'input_quiz_icon'
-  | 'input_quiz_image';
+  | 'input_quiz_image'
+  // Effects
+  | 'confetti';
 
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
@@ -425,6 +427,11 @@ export interface PageElement {
   companyVisibleFields?: CompanyFieldKey[];
   /** Company field: which fields the user can manually edit */
   companyEditableFields?: CompanyFieldKey[];
+  // Confetti element
+  confettiDirection?: 'top' | 'sides';
+  confettiIntensity?: 'subtle' | 'explosion';
+  confettiDuration?: number; // ms
+  confettiColors?: string[];
   style?: PageElementStyle;
 }
 
@@ -481,6 +488,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_quiz_image: 'Quiz com imagem',
   input_document: 'Documento',
   input_company: 'Empresa',
+  confetti: 'Confete',
 };
 
 export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'sections';
@@ -504,7 +512,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   data: {
     label: 'Dados e métricas',
-    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress', 'timer', 'loading'],
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress', 'timer', 'loading', 'confetti'],
   },
   sections: {
     label: 'Seções prontas',
@@ -861,6 +869,11 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.waGroupLink = 'https://chat.whatsapp.com/';
       base.waButtonLabel = 'Entrar no grupo';
       base.waParticipantCount = 128;
+      break;
+    case 'confetti':
+      base.confettiDirection = 'top';
+      base.confettiIntensity = 'explosion';
+      base.confettiDuration = 3000;
       break;
   }
 

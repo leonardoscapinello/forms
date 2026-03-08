@@ -2136,6 +2136,30 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Confetti settings ─── */}
+          {element.type === 'confetti' && (
+            <div className="space-y-3">
+              <Label>Direção</Label>
+              <Select value={element.confettiDirection || 'top'} onValueChange={v => onChange({ confettiDirection: v as any })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="top">De cima para baixo</SelectItem>
+                  <SelectItem value="sides">Das laterais</SelectItem>
+                </SelectContent>
+              </Select>
+              <Label>Intensidade</Label>
+              <Select value={element.confettiIntensity || 'explosion'} onValueChange={v => onChange({ confettiIntensity: v as any })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="subtle">Sutil</SelectItem>
+                  <SelectItem value="explosion">Explosão</SelectItem>
+                </SelectContent>
+              </Select>
+              <Label>Duração (ms)</Label>
+              <Input type="number" value={element.confettiDuration ?? 3000} onChange={e => onChange({ confettiDuration: parseInt(e.target.value) || 3000 })} className="h-8 text-xs" min={500} max={10000} step={500} />
+            </div>
+          )}
+
           </div>)}
 
           {/* ══ APARÊNCIA ══ */}
