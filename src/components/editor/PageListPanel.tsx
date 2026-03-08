@@ -191,15 +191,44 @@ export default function PageListPanel({
                 return (
                 <div
                   key={page.id}
-                  className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
-                    selectedPageId === page.id
-                      ? 'bg-accent text-foreground border border-border'
-                      : isDisconnected
-                        ? 'hover:bg-muted border border-destructive/30 bg-destructive/5'
-                        : 'hover:bg-muted border border-transparent'
+                  className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
+                    dragOverPageId === page.id
+                      ? 'bg-primary/10 border border-primary/40 ring-1 ring-primary/30 scale-[1.02]'
+                      : selectedPageId === page.id
+                        ? 'bg-accent text-foreground border border-border'
+                        : isDisconnected
+                          ? 'hover:bg-muted border border-destructive/30 bg-destructive/5'
+                          : 'hover:bg-muted border border-transparent'
                   }`}
                   onClick={() => onSelectPage(page.id)}
                   title={isDisconnected ? 'Esta página não está conectada ao fluxo e não será exibida' : undefined}
+                  onDragOver={(e) => {
+                    // Only accept element-move drops (not on current page)
+                    if (e.dataTransfer.types.includes('element-move-json') && page.id !== selectedPageId) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverPageId(page.id);
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    if (e.dataTransfer.types.includes('element-move-json') && page.id !== selectedPageId) {
+                      e.preventDefault();
+                      setDragOverPageId(page.id);
+                    }
+                  }}
+                  onDragLeave={() => setDragOverPageId(prev => prev === page.id ? null : prev)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverPageId(null);
+                    const moveJson = e.dataTransfer.getData('element-move-json');
+                    if (moveJson && onMoveElementToPage) {
+                      try {
+                        const element = JSON.parse(moveJson) as PageElement;
+                        onMoveElementToPage(element, page.id);
+                        toast.success(`Elemento movido para "${page.title || 'Sem título'}"`);
+                      } catch { /* ignore */ }
+                    }
+                  }}
                 >
                   <span className="text-[10px] text-muted-foreground font-mono w-4 text-center flex-shrink-0">
                     {index + 1}
