@@ -738,6 +738,8 @@ export interface FormData {
   jumpNodes?: JumpNodeData[];
   /** AI processing nodes */
   aiNodes?: AINodeData[];
+  /** Image generation / composition nodes */
+  imageGenNodes?: ImageGenNodeData[];
   /** Pixel events fired automatically when the form is loaded */
   pixelLoadEvents?: FormPixelEvent[];
   nodePositions?: NodePosition[];
