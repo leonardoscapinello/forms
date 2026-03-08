@@ -62,7 +62,8 @@ interface Props {
   selectedId?: string | null;
   onSelectElement?: (id: string) => void;
   designMode?: boolean;
-}
+  elementLookup?: ElementLookup;
+  variables?: FormVariable[];
 
 export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode }: Props) {
   const columnCount = element.columnCount || 2;
