@@ -47,8 +47,110 @@ export default function RichTextEditor({ value, onChange, placeholder, className
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
   const isFocusedRef = useRef(false);
+  const hasInitializedRef = useRef(false);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [varPickerOpen, setVarPickerOpen] = useState(false);
+
+  const fieldLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const group of allInputElements) {
+      for (const el of group.elements) map[el.elementId] = el.elementLabel;
+    }
+    return map;
+  }, [allInputElements]);
+
+  const contextLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of CONTEXT_KEYS) map[c.key] = c.label;
+    return map;
+  }, []);
+
+  const createTokenSpan = useCallback((rawToken: string) => {
+    const span = document.createElement('span');
+    span.setAttribute('data-raw', rawToken);
+    span.setAttribute('contenteditable', 'false');
+
+    let tokenClass = 'var-token var-token-variable';
+    let label = rawToken.slice(2, -2);
+
+    if (rawToken.startsWith('{{field:')) {
+      const elementId = rawToken.slice(8, -2);
+      label = fieldLabelMap[elementId] || 'campo';
+      tokenClass = 'var-token var-token-field';
+    } else if (rawToken.startsWith('{{webhook:')) {
+      const parts = rawToken.slice(2, -2).split(':');
+      label = parts.length >= 3 ? parts.slice(2).join(':') : parts[parts.length - 1];
+      tokenClass = 'var-token var-token-webhook';
+    } else if (rawToken.startsWith('{{param.')) {
+      label = rawToken.slice(8, -2);
+      tokenClass = 'var-token var-token-param';
+    } else if (rawToken.startsWith('{{ctx.')) {
+      const key = rawToken.slice(6, -2);
+      label = contextLabelMap[key] || key;
+      tokenClass = 'var-token var-token-context';
+    }
+
+    span.className = tokenClass;
+    span.textContent = label;
+    return span;
+  }, [fieldLabelMap, contextLabelMap]);
+
+  const applyDisplayTokens = useCallback((rawHtml: string) => {
+    if (!editorRef.current) return;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = rawHtml || '';
+
+    const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+
+    const tokenRegex = /(\{\{.*?\}\})/g;
+    for (const textNode of textNodes) {
+      const text = textNode.textContent || '';
+      tokenRegex.lastIndex = 0;
+      if (!tokenRegex.test(text)) continue;
+
+      tokenRegex.lastIndex = 0;
+      const frag = document.createDocumentFragment();
+      let lastIndex = 0;
+      let match: RegExpExecArray | null;
+
+      while ((match = tokenRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          frag.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+        frag.appendChild(createTokenSpan(match[1]));
+        lastIndex = tokenRegex.lastIndex;
+      }
+
+      if (lastIndex < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+      }
+
+      textNode.parentNode?.replaceChild(frag, textNode);
+    }
+
+    editorRef.current.innerHTML = temp.innerHTML;
+
+    const last = editorRef.current.lastChild;
+    if (!last || last.nodeType !== Node.TEXT_NODE) {
+      editorRef.current.appendChild(document.createTextNode(''));
+    }
+  }, [createTokenSpan]);
+
+  const serializeRawHtml = useCallback(() => {
+    if (!editorRef.current) return '';
+    const clone = editorRef.current.cloneNode(true) as HTMLDivElement;
+
+    const tokens = clone.querySelectorAll<HTMLElement>('[data-raw]');
+    tokens.forEach((token) => {
+      const raw = token.getAttribute('data-raw') || token.textContent || '';
+      token.replaceWith(document.createTextNode(raw));
+    });
+
+    return clone.innerHTML;
+  }, []);
 
   // Sync external value → DOM only when NOT focused (prevents cursor jump)
   useEffect(() => {
@@ -56,17 +158,26 @@ export default function RichTextEditor({ value, onChange, placeholder, className
       isInternalChange.current = false;
       return;
     }
-    if (isFocusedRef.current) return; // never rebuild while typing
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || '';
+
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      applyDisplayTokens(value || '');
+      return;
     }
-  }, [value]);
+
+    if (isFocusedRef.current) return;
+
+    const currentRaw = serializeRawHtml();
+    if (currentRaw !== (value || '')) {
+      applyDisplayTokens(value || '');
+    }
+  }, [value, applyDisplayTokens, serializeRawHtml]);
 
   const emitChange = useCallback(() => {
     if (!editorRef.current) return;
     isInternalChange.current = true;
-    onChange(editorRef.current.innerHTML);
-  }, [onChange]);
+    onChange(serializeRawHtml());
+  }, [onChange, serializeRawHtml]);
 
   const execCmd = useCallback((cmd: string, val?: string) => {
     editorRef.current?.focus();
@@ -106,12 +217,35 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     emitChange();
   }, [emitChange]);
 
-  /** Insert text at cursor position inside contentEditable */
-  const insertAtCursor = useCallback((text: string) => {
-    editorRef.current?.focus();
-    document.execCommand('insertText', false, text);
+  /** Insert variable token as atomic highlighted span */
+  const insertAtCursor = useCallback((rawToken: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    const tokenSpan = createTokenSpan(rawToken);
+    const selection = window.getSelection();
+
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(tokenSpan);
+
+      const trailingText = document.createTextNode('');
+      tokenSpan.parentNode?.insertBefore(trailingText, tokenSpan.nextSibling);
+
+      const afterRange = document.createRange();
+      afterRange.setStart(trailingText, 0);
+      afterRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(afterRange);
+    } else {
+      editor.appendChild(tokenSpan);
+      editor.appendChild(document.createTextNode(''));
+    }
+
     emitChange();
-  }, [emitChange]);
+  }, [createTokenSpan, emitChange]);
 
   const webhookNodesWithFields = integrationNodes.filter(n => (n.responseFields?.length ?? 0) > 0);
   const activeParams = (trackedParams ?? DEFAULT_TRACKED_PARAMS).filter(p => p.enabled && p.key);
@@ -320,11 +454,6 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         <div
           ref={(node) => {
             (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-            // Initialize content on mount
-            if (node && !node.dataset.initialized) {
-              node.innerHTML = value || '';
-              node.dataset.initialized = '1';
-            }
           }}
           contentEditable
           suppressContentEditableWarning

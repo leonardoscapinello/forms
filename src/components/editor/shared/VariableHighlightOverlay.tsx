@@ -13,9 +13,9 @@ for (const c of CONTEXT_KEYS) {
 
 export function formatFieldTokensForDisplay(text: string, elementLookup?: ElementLookup): string {
   if (!text) return text;
-  return text.replace(/\{\{field:([^}]+)\}\}/g, (raw, elementId: string) => {
+  return text.replace(/\{\{field:([^}]+)\}\}/g, (_raw, elementId: string) => {
     const label = elementLookup?.[elementId];
-    return label ? `{{${label}}}` : raw;
+    return label ? `{{${label}}}` : '{{campo}}';
   });
 }
 

@@ -84,7 +84,7 @@ export default function VariableInput(props: Props) {
   const resolveToken = useCallback((raw: string): VarTokenInfo => {
     if (raw.startsWith('{{field:')) {
       const id = raw.slice(8, -2);
-      const label = elementLookup[id] || id.slice(0, 8);
+      const label = elementLookup[id] || 'campo';
       return { label, varType: 'field' };
     }
     if (raw.startsWith('{{webhook:')) {

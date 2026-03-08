@@ -70,24 +70,36 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const lastColumnOverRef = useRef<string | null>(null);
   const externalPageDropTargetRef = useRef<string | null>(null);
 
-  // Build elementId → friendly label lookup from all pages
+  // Build elementId → friendly label lookup from all known input elements + page scan fallback
   const elementLookup = useMemo<ElementLookup>(() => {
     const lookup: ElementLookup = {};
+
+    for (const group of allInputElements || []) {
+      for (const el of group.elements || []) {
+        if (el.elementId && el.elementLabel) lookup[el.elementId] = el.elementLabel;
+      }
+    }
+
+    const scanElements = (items: PageElement[] = []) => {
+      for (const el of items) {
+        if (el.label) lookup[el.id] = el.label;
+        else if (el.type.startsWith('input_')) lookup[el.id] = el.type.replace('input_', '').replace(/_/g, ' ');
+
+        if (el.type === 'columns' && el.columnData) {
+          for (const col of el.columnData) {
+            scanElements(col.elements || []);
+          }
+        }
+      }
+    };
+
     for (const page of pages || []) {
-      for (const el of page.elements || []) {
-        if (el.label) lookup[el.id] = el.label;
-        else if (el.type.startsWith('input_')) lookup[el.id] = el.type.replace('input_', '').replace(/_/g, ' ');
-      }
+      scanElements(page.elements || []);
     }
-    // Also include current page elements (for welcome/thank-you that aren't in pages[])
-    for (const el of elements || []) {
-      if (!lookup[el.id]) {
-        if (el.label) lookup[el.id] = el.label;
-        else if (el.type.startsWith('input_')) lookup[el.id] = el.type.replace('input_', '').replace(/_/g, ' ');
-      }
-    }
+    scanElements(elements || []);
+
     return lookup;
-  }, [pages, elements]);
+  }, [allInputElements, pages, elements]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
