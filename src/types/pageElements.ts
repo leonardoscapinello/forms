@@ -514,6 +514,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_document: 'Documento',
   input_company: 'Empresa',
   confetti: 'Confete',
+  card: 'Cards',
 };
 
 export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'effects' | 'sections';
