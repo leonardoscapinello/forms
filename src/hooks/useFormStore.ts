@@ -190,12 +190,40 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return () => { channel.unsubscribe(); };
   }, [user?.id]);
 
+  // Save form data to sessionStorage for offline resilience
+  const saveToOfflineQueue = useCallback((id: string) => {
+    try {
+      const form = formsRef.current.find(f => f.id === id);
+      if (!form || !user) return;
+      const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
+      queue[id] = formToDb(form, user.id);
+      sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
+    } catch {
+      // sessionStorage may be unavailable
+    }
+  }, [user]);
+
+  const removeFromOfflineQueue = useCallback((id: string) => {
+    try {
+      const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
+      delete queue[id];
+      sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
+    } catch {}
+  }, []);
+
   // Flush pending update to DB
   const flushUpdate = useCallback(async (id: string) => {
     if (!user) return;
 
     const form = formsRef.current.find(f => f.id === id);
     if (!form) return;
+
+    // If offline, queue locally instead of hitting DB
+    if (!onlineRef.current) {
+      saveToOfflineQueue(id);
+      setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
+      return;
+    }
 
     setSaveStatuses(prev => new Map(prev).set(id, 'saving'));
 
@@ -210,14 +238,17 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       .eq('id', id);
 
     if (error) {
+      // Network may have dropped mid-request — queue offline
+      saveToOfflineQueue(id);
       setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
       return;
     }
 
+    removeFromOfflineQueue(id);
     const now = new Date().toISOString();
     setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
     setLastSavedTimes(prev => new Map(prev).set(id, now));
-  }, [user]);
+  }, [user, saveToOfflineQueue, removeFromOfflineQueue]);
 
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {
     setForms(prev => {
