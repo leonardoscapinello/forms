@@ -32,9 +32,9 @@ function getReadableDisplay(
     const idMatch = raw.match(/\{\{field:([^}]+)\}\}/);
     if (idMatch) {
       const label = elementLookup?.[idMatch[1]];
-      return label ? `{{${label}}}` : raw;
+      return `{{${label || FIELD_FALLBACK_LABEL}}}`;
     }
-    return raw;
+    return `{{${FIELD_FALLBACK_LABEL}}}`;
   }
   if (varType === 'context') {
     const key = raw.slice(6, -2);
