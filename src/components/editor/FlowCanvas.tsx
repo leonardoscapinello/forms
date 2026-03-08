@@ -25,7 +25,7 @@ import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData,
-  ABTestNodeData, WaitNodeData, JumpNodeData, FormVariable,
+  ABTestNodeData, WaitNodeData, JumpNodeData, AINodeData, FormVariable,
 } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
@@ -40,6 +40,7 @@ import EmailNode from './EmailNode';
 import ABTestNode from './ABTestNode';
 import WaitNode from './WaitNode';
 import JumpNode from './JumpNode';
+import AINode from './AINode';
 import ConnectDropMenu from './ConnectDropMenu';
 import { FileText, Trash2, LayoutGrid, Power } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
@@ -61,6 +62,7 @@ const nodeTypes = {
   abTestNode: ABTestNode,
   waitNode: WaitNode,
   jumpNode: JumpNode,
+  aiNode: AINode,
 };
 
 const edgeTypes = {
@@ -107,6 +109,9 @@ interface Props {
   onJumpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onJumpChange: (nodeId: string, patch: Partial<JumpNodeData>) => void;
   onJumpDelete: (nodeId: string) => void;
+  onAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
+  onAIDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
   onCreateVariable?: (variable: FormVariable) => void;
@@ -128,6 +133,7 @@ function FlowCanvasInner({
   onABTestAddAtPosition, onABTestChange, onABTestDelete,
   onWaitAddAtPosition, onWaitChange, onWaitDelete,
   onJumpAddAtPosition, onJumpChange, onJumpDelete,
+  onAIAddAtPosition, onAIChange, onAIDelete,
   onFormUpdate, onPageSelect, onCreateVariable,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -190,6 +196,7 @@ function FlowCanvasInner({
   const abTestNodes = form.abTestNodes || [];
   const waitNodes = form.waitNodes || [];
   const jumpNodes = form.jumpNodes || [];
+  const aiNodes = form.aiNodes || [];
 
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
@@ -490,8 +497,27 @@ function FlowCanvasInner({
       });
     });
 
+    aiNodes.forEach((ai, i) => {
+      const nodeId = `ai-${ai.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
+      n.push({
+        id: nodeId,
+        type: 'aiNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 10) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: ai,
+          ...disabledProps(nodeId),
+          onChange: (patch: Partial<AINodeData>) => onAIChange(ai.id, patch),
+          onDelete: () => onAIDelete(ai.id),
+          variables,
+          integrationNodes,
+          allInputElements: prevElements,
+        },
+      });
+    });
+
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
