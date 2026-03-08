@@ -718,6 +718,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
+    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| effectiveSkip:', effectiveSkip);
+    if (edges.length > 0) {
+      console.info('[walkWorkflow] Edge map:', edges.map(e => `${e.source} → ${e.target}${e.sourceHandle ? ` [${e.sourceHandle}]` : ''}`).join(' | '));
+    }
+
     if (!edges.length) {
       console.warn('[walkWorkflow] No flowEdges defined — canvas has no connections');
       return { nextNodeId: null, updatedAnswers: currentAnswers };
@@ -779,7 +784,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       const outEdges = edges.filter(e => e.source === currentNodeId);
       if (outEdges.length === 0) {
-        console.warn('[walkWorkflow] Dead end — no outgoing edges from:', currentNodeId);
+        console.warn('[walkWorkflow] Dead end — no outgoing edges from:', currentNodeId, '| All edges:', JSON.stringify(edges.map(e => ({ s: e.source, t: e.target }))));
         break;
       }
 
@@ -816,15 +821,18 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       }
 
       const target = nextEdge.target;
+      console.info(`[walkWorkflow] Step ${i}: ${currentNodeId} → ${target}`);
 
       // If the target node is disabled, skip it entirely (pass-through)
       if (disabledNodes.has(target) && target !== 'end') {
+        console.info('[walkWorkflow] Skipping disabled node:', target);
         currentNodeId = target;
         continue;
       }
 
       // Terminal: found a page
       if (target.startsWith('p-')) {
+        console.info('[walkWorkflow] ✓ Resolved to page:', target);
         return { nextNodeId: target, updatedAnswers: currentAns };
       }
 
@@ -1434,13 +1442,42 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Canvas is the single source of truth for execution order.
       // If walkWorkflow returned null, check if we have ANY flow edges defined.
-      const hasAnyFlowEdges = (formRef.current?.flowEdges || []).length > 0;
+      const allFormEdges = formRef.current?.flowEdges || [];
+      const hasAnyFlowEdges = allFormEdges.length > 0;
+      const currentNodeOutEdges = allFormEdges.filter(e => e.source === fromNodeId);
 
       if (hasAnyFlowEdges) {
-        // Flow edges exist but walkWorkflow couldn't resolve a destination.
-        // This means the current node's path in the canvas doesn't reach another page.
-        // Respect the canvas: if it says there's no next page, finish.
-        console.warn('[goNext] walkWorkflow returned null despite flow edges existing. Finishing form. fromNode:', fromNodeId);
+        console.error('[goNext] walkWorkflow returned null. fromNode:', fromNodeId,
+          '| outEdges from current:', currentNodeOutEdges.length,
+          '| totalEdges:', allFormEdges.length,
+          '| edges:', JSON.stringify(allFormEdges.map(e => ({ s: e.source, t: e.target }))));
+
+        // RECOVERY: If the current page HAS outgoing edges but walkWorkflow failed,
+        // try a simple BFS to find the next page directly from the edges
+        if (currentNodeOutEdges.length > 0) {
+          console.warn('[goNext] Attempting BFS recovery from:', fromNodeId);
+          const bfsQueue = currentNodeOutEdges.map(e => e.target);
+          const bfsVisited = new Set<string>([fromNodeId]);
+          while (bfsQueue.length > 0) {
+            const node = bfsQueue.shift()!;
+            if (bfsVisited.has(node)) continue;
+            bfsVisited.add(node);
+            if (node.startsWith('p-')) {
+              const pageId = node.replace('p-', '');
+              const idx = pages.findIndex(p => p.id === pageId);
+              if (idx !== -1) {
+                console.warn('[goNext] BFS recovery found page:', node);
+                navigateToPage(idx, updatedAnswers);
+                return;
+              }
+            }
+            if (node === 'end') { setFinished(true); return; }
+            for (const e of allFormEdges) {
+              if (e.source === node && !bfsVisited.has(e.target)) bfsQueue.push(e.target);
+            }
+          }
+        }
+
         setFinished(true);
         return;
       }
