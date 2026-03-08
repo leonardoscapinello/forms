@@ -46,6 +46,8 @@
   --node-wait-accent: 180 50% 40%;
   --node-jump: 350 60% 94%;
   --node-jump-accent: 350 55% 50%;
+  --node-ai: 280 70% 94%;
+  --node-ai-accent: 280 60% 55%;
 }
 
 .dark {
