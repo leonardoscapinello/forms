@@ -13,6 +13,7 @@ interface Props {
   onAddABTest: () => void;
   onAddWait: () => void;
   onAddJump: () => void;
+  onAddAI: () => void;
   onClose: () => void;
 }
 
