@@ -497,6 +497,25 @@ function FlowCanvasInner({
       });
     });
 
+    aiNodes.forEach((ai, i) => {
+      const nodeId = `ai-${ai.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
+      n.push({
+        id: nodeId,
+        type: 'aiNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 10) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: ai,
+          ...disabledProps(nodeId),
+          onChange: (patch: Partial<AINodeData>) => onAIChange(ai.id, patch),
+          onDelete: () => onAIDelete(ai.id),
+          variables,
+          integrationNodes,
+          allInputElements: prevElements,
+        },
+      });
+    });
+
     return n;
   }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete]);
 
