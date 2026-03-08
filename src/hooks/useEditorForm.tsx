@@ -7,6 +7,7 @@ import {
   ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData,
   WhatsAppNodeData, EmailNodeData, ABTestNodeData, WaitNodeData, JumpNodeData,
+  AINodeData,
 } from '@/types/form';
 import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
@@ -86,6 +87,9 @@ interface EditorFormContextType {
   handleJumpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   handleJumpChange: (nodeId: string, patch: Partial<JumpNodeData>) => void;
   handleJumpDelete: (nodeId: string) => void;
+  handleAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  handleAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
+  handleAIDelete: (nodeId: string) => void;
 
   // Variables CRUD
   handleAddVariable: () => void;
@@ -346,6 +350,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const abTest = useNodeCrud<ABTestNodeData>(form, updateForm, 'ab', 'abTestNodes');
   const wait = useNodeCrud<WaitNodeData>(form, updateForm, 'wt', 'waitNodes');
   const jump = useNodeCrud<JumpNodeData>(form, updateForm, 'jp', 'jumpNodes');
+  const ai = useNodeCrud<AINodeData>(form, updateForm, 'ai', 'aiNodes');
 
   // Wrappers that create default nodes and call factory.add
   const handleVariableOpAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
@@ -399,6 +404,12 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const handleJumpChange = jump.change;
   const handleJumpDelete = jump.del;
 
+  const handleAIAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    ai.add({ id: crypto.randomUUID(), objective: 'custom', prompt: '', executionMode: 'sync' }, pos, src, sh);
+  }, [ai]);
+  const handleAIChange = ai.change;
+  const handleAIDelete = ai.del;
+
   // ─── Variables CRUD ───────────────────────────────────────────────
 
   const handleAddVariable = useCallback(() => {
@@ -437,6 +448,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
       handleABTestAddAtPosition, handleABTestChange, handleABTestDelete,
       handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
       handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
+      handleAIAddAtPosition, handleAIChange, handleAIDelete,
       handleAddVariable, handleUpdateVariable, handleDeleteVariable,
     };
   }, [
@@ -456,6 +468,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     handleABTestAddAtPosition, handleABTestChange, handleABTestDelete,
     handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
     handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
+    handleAIAddAtPosition, handleAIChange, handleAIDelete,
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
   ]);
 

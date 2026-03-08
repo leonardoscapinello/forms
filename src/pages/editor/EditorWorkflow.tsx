@@ -38,6 +38,9 @@ export default function EditorWorkflow() {
         onJumpAddAtPosition={ctx.handleJumpAddAtPosition}
         onJumpChange={ctx.handleJumpChange}
         onJumpDelete={ctx.handleJumpDelete}
+        onAIAddAtPosition={ctx.handleAIAddAtPosition}
+        onAIChange={ctx.handleAIChange}
+        onAIDelete={ctx.handleAIDelete}
         onFormUpdate={ctx.updateFormData}
         onPageSelect={ctx.handlePageSelectFromWorkflow}
         onCreateVariable={(newVar) => {
