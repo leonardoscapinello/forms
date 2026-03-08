@@ -48,6 +48,8 @@
   --node-jump-accent: 350 55% 50%;
   --node-ai: 280 70% 94%;
   --node-ai-accent: 280 60% 55%;
+  --node-imagegen: 15 80% 94%;
+  --node-imagegen-accent: 15 70% 50%;
 }
 
 .dark {
@@ -94,6 +96,8 @@
   --node-jump-accent: 350 45% 60%;
   --node-ai: 280 35% 22%;
   --node-ai-accent: 280 50% 70%;
+  --node-imagegen: 15 40% 20%;
+  --node-imagegen-accent: 15 60% 60%;
 }
 
 /* React Flow connection drag feedback */

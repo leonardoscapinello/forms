@@ -103,6 +103,8 @@ export default {
           "jump-accent": "hsl(var(--node-jump-accent))",
           ai: "hsl(var(--node-ai))",
           "ai-accent": "hsl(var(--node-ai-accent))",
+          imagegen: "hsl(var(--node-imagegen))",
+          "imagegen-accent": "hsl(var(--node-imagegen-accent))",
         },
       },
       borderRadius: {

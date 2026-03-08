@@ -25,7 +25,7 @@ import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData,
-  ABTestNodeData, WaitNodeData, JumpNodeData, AINodeData, FormVariable,
+  ABTestNodeData, WaitNodeData, JumpNodeData, AINodeData, ImageGenNodeData, FormVariable,
 } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
@@ -41,6 +41,7 @@ import ABTestNode from './ABTestNode';
 import WaitNode from './WaitNode';
 import JumpNode from './JumpNode';
 import AINode from './AINode';
+import ImageGenNode from './ImageGenNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import { FileText, Trash2, LayoutGrid, Power } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
@@ -63,6 +64,7 @@ const nodeTypes = {
   waitNode: WaitNode,
   jumpNode: JumpNode,
   aiNode: AINode,
+  imageGenNode: ImageGenNode,
 };
 
 const edgeTypes = {
@@ -112,6 +114,9 @@ interface Props {
   onAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
   onAIDelete: (nodeId: string) => void;
+  onImageGenAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onImageGenChange: (nodeId: string, patch: Partial<ImageGenNodeData>) => void;
+  onImageGenDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
   onCreateVariable?: (variable: FormVariable) => void;
@@ -134,6 +139,7 @@ function FlowCanvasInner({
   onWaitAddAtPosition, onWaitChange, onWaitDelete,
   onJumpAddAtPosition, onJumpChange, onJumpDelete,
   onAIAddAtPosition, onAIChange, onAIDelete,
+  onImageGenAddAtPosition, onImageGenChange, onImageGenDelete,
   onFormUpdate, onPageSelect, onCreateVariable,
 }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -197,6 +203,7 @@ function FlowCanvasInner({
   const waitNodes = form.waitNodes || [];
   const jumpNodes = form.jumpNodes || [];
   const aiNodes = form.aiNodes || [];
+  const imageGenNodes = form.imageGenNodes || [];
 
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
@@ -517,8 +524,28 @@ function FlowCanvasInner({
       });
     });
 
+    imageGenNodes.forEach((ig, i) => {
+      const nodeId = `ig-${ig.id}`;
+      const prevElements = getPreviousPageElements(nodeId);
+      n.push({
+        id: nodeId,
+        type: 'imageGenNode',
+        position: getStoredPosition(form, nodeId, (pages.length + 11) * NODE_SPACING, (i + 1) * 220),
+        data: {
+          nodeData: ig,
+          ...disabledProps(nodeId),
+          onChange: (patch: Partial<ImageGenNodeData>) => onImageGenChange(ig.id, patch),
+          onDelete: () => onImageGenDelete(ig.id),
+          variables,
+          integrationNodes,
+          allInputElements: prevElements,
+          onCreateVariable,
+        },
+      });
+    });
+
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, imageGenNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete, onImageGenChange, onImageGenDelete]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -565,10 +592,11 @@ function FlowCanvasInner({
     const abTestChanged = prev.abTestNodes !== form.abTestNodes;
     const waitChanged = prev.waitNodes !== form.waitNodes;
     const jumpChanged = prev.jumpNodes !== form.jumpNodes;
+    const imageGenChanged = prev.imageGenNodes !== form.imageGenNodes;
     const varsChanged = prev.variables !== form.variables;
     const edgesChanged = prev.flowEdges !== form.flowEdges;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || varsChanged || edgesChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || imageGenChanged || varsChanged || edgesChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {
@@ -772,6 +800,10 @@ function FlowCanvasInner({
         onWaitDelete(nodeId.replace('wt-', ''));
       } else if (nodeId.startsWith('jp-')) {
         onJumpDelete(nodeId.replace('jp-', ''));
+      } else if (nodeId.startsWith('ai-')) {
+        onAIDelete(nodeId.replace('ai-', ''));
+      } else if (nodeId.startsWith('ig-')) {
+        onImageGenDelete(nodeId.replace('ig-', ''));
       }
     }
 
