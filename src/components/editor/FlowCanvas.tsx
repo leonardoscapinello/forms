@@ -407,6 +407,7 @@ function FlowCanvasInner({
     // Helper to build disabled props for a node
     const disabledProps = (nodeId: string) => ({
       isNodeDisabled: (form.disabledNodes || []).includes(nodeId),
+      isInLoop: infiniteLoopNodeIds.has(nodeId),
       onToggleDisabled: () => {
         const current = form.disabledNodes || [];
         const next = current.includes(nodeId) ? current.filter(id => id !== nodeId) : [...current, nodeId];
