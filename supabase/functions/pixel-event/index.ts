@@ -175,14 +175,18 @@ serve(async (req) => {
       if (!enabled || !measurementId || !apiSecret) {
         results.ga4 = { skipped: true, reason: !enabled ? 'GA4 disabled in settings' : 'Measurement ID or API Secret not configured in Settings → Integrations' };
       } else {
+        // GA4 requires a stable client_id per user session — use responseId or fallback
+        const clientId = responseId || eventId;
+
         const payload = {
-          client_id: eventId,
+          client_id: clientId,
           events: [{
             name: eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
             params: {
               engagement_time_msec: 1,
               form_id: resolvedFormId,
               event_dedup_id: eventId,
+              session_id: clientId,
               ...(customParams || {}),
               ...Object.fromEntries(Object.entries(resolvedVariables).map(([k, v]) => [`var_${k}`, v])),
             },

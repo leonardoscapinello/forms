@@ -31,6 +31,8 @@ interface FirePixelOptions {
   sourceUrl?: string;
   userAgent?: string;
   customParams?: Record<string, any>;
+  /** Whether client-side pixel was already fired (for dedup in server logs) */
+  firedClient?: boolean;
   // webhook-specific
   webhookUrl?: string;
   webhookMethod?: string;
@@ -188,5 +190,5 @@ export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { tr
   });
 
   // 2. Server-side com retry — SEMPRE, independente do client
-  firePixel({ ...opts, firedClient } as FirePixelOptions);
+  firePixel({ ...opts, firedClient });
 }
