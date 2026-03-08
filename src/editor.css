@@ -48,6 +48,8 @@
   --node-jump-accent: 350 55% 50%;
   --node-ai: 280 70% 94%;
   --node-ai-accent: 280 60% 55%;
+  --node-imagegen: 15 80% 94%;
+  --node-imagegen-accent: 15 70% 50%;
 }
 
 .dark {
