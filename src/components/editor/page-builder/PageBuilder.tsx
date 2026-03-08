@@ -74,6 +74,22 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  useEffect(() => {
+    if (!activeId) {
+      externalPageDropTargetRef.current = null;
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const el = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+      const pageTarget = el?.closest('[data-page-drop-id]') as HTMLElement | null;
+      externalPageDropTargetRef.current = pageTarget?.dataset.pageDropId || null;
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+  }, [activeId]);
+
   // Custom collision: prioritize column droppables, fall back to sortable reorder
   const customCollision: CollisionDetection = useCallback((args) => {
     // Filter droppable containers to only column ones, then use pointerWithin
