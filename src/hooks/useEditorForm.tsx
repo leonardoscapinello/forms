@@ -404,6 +404,12 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const handleJumpChange = jump.change;
   const handleJumpDelete = jump.del;
 
+  const handleAIAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    ai.add({ id: crypto.randomUUID(), objective: 'custom', prompt: '', executionMode: 'sync' }, pos, src, sh);
+  }, [ai]);
+  const handleAIChange = ai.change;
+  const handleAIDelete = ai.del;
+
   // ─── Variables CRUD ───────────────────────────────────────────────
 
   const handleAddVariable = useCallback(() => {
