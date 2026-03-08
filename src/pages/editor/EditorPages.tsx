@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useEditorForm } from '@/hooks/useEditorForm';
 import { createDefaultPageElement } from '@/types/pageElements';
 import type { PageElement } from '@/types/pageElements';
@@ -24,6 +24,38 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
       setEditingPageId(flowOrderedPages[0].id);
     }
   }, [editingPageId, editingWelcome, editingThankYou, flowOrderedPages]);
+
+  // Move element from the current page to another page
+  const handleMoveElementToPage = useCallback((element: PageElement, targetPageId: string) => {
+    const sourcePageId = editingWelcome ? 'welcome' : editingThankYou ? 'thank-you' : editingPageId;
+    if (!sourcePageId || sourcePageId === targetPageId) return;
+
+    // Remove from source page
+    if (sourcePageId === 'welcome' && welcomePage) {
+      const updatedElements = (welcomePage.elements || []).filter(e => e.id !== element.id);
+      updateFormData({ welcomePage: { ...welcomePage, elements: updatedElements } });
+    } else if (sourcePageId === 'thank-you' && thankYouPage) {
+      const updatedElements = (thankYouPage.elements || []).filter(e => e.id !== element.id);
+      updateFormData({ thankYouPage: { ...thankYouPage, elements: updatedElements } });
+    } else {
+      const sourcePage = (form.pages || []).find(p => p.id === sourcePageId);
+      if (sourcePage) {
+        handlePageChange(sourcePageId, { elements: (sourcePage.elements || []).filter(e => e.id !== element.id) });
+      }
+    }
+
+    // Add to target page
+    if (targetPageId === 'welcome' && welcomePage) {
+      updateFormData({ welcomePage: { ...welcomePage, elements: [...(welcomePage.elements || []), element] } });
+    } else if (targetPageId === 'thank-you' && thankYouPage) {
+      updateFormData({ thankYouPage: { ...thankYouPage, elements: [...(thankYouPage.elements || []), element] } });
+    } else {
+      const targetPage = (form.pages || []).find(p => p.id === targetPageId);
+      if (targetPage) {
+        handlePageChange(targetPageId, { elements: [...(targetPage.elements || []), element] });
+      }
+    }
+  }, [editingWelcome, editingThankYou, editingPageId, welcomePage, thankYouPage, form.pages, updateFormData, handlePageChange]);
 
   return (
     <>
@@ -58,6 +90,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
         onUpdateVariable={handleUpdateVariable}
         onDeleteVariable={handleDeleteVariable}
         disconnectedPageIds={disconnectedPageIds}
+        onMoveElementToPage={handleMoveElementToPage}
       />
       {editingWelcome ? (
         <PageBuilder
