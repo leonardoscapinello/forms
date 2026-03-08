@@ -483,6 +483,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_quiz_image: 'Quiz com imagem',
   input_document: 'Documento',
   input_company: 'Empresa',
+  confetti: 'Confete',
 };
 
 export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'sections';
