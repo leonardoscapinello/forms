@@ -974,6 +974,12 @@ function FlowCanvasInner({
     setContextMenu(null);
   }, [contextMenu, onJumpAddAtPosition]);
 
+  const handleCtxAddAI = useCallback(() => {
+    if (!contextMenu) return;
+    onAIAddAtPosition(contextMenu.flowPos, 'start');
+    setContextMenu(null);
+  }, [contextMenu, onAIAddAtPosition]);
+
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
     if (node.id === 'start') return; // Can't delete start node
