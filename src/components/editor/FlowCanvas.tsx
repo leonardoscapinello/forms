@@ -361,6 +361,7 @@ function FlowCanvasInner({
           allInputElements: prevElements,
           trackedParams: form.trackedParams,
           isDisconnected: !reachableNodeIds.has(nodeId),
+          isInLoop: infiniteLoopNodeIds.has(nodeId),
           isNodeDisabled,
           onToggleDisabled: () => {
             const current = form.disabledNodes || [];
