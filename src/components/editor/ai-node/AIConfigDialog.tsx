@@ -34,6 +34,27 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Local state for input sources to avoid re-render lag on each toggle
+  const [localSources, setLocalSources] = useState<string[]>(nodeData.inputSources || []);
+  const commitTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Sync from parent when dialog opens
+  useEffect(() => {
+    if (open) setLocalSources(nodeData.inputSources || []);
+  }, [open]);
+
+  const toggleSource = useCallback((elementId: string) => {
+    setLocalSources(prev => {
+      const next = prev.includes(elementId)
+        ? prev.filter(id => id !== elementId)
+        : [...prev, elementId];
+      // Debounce the commit to parent
+      clearTimeout(commitTimer.current);
+      commitTimer.current = setTimeout(() => onChange({ inputSources: next }), 150);
+      return next;
+    });
+  }, [onChange]);
+
   const handleTest = useCallback(async () => {
     setTesting(true);
     setTestResult(null);
