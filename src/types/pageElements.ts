@@ -491,7 +491,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   confetti: 'Confete',
 };
 
-export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'sections';
+export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'effects' | 'sections';
 
 export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types: PageElementType[] }> = {
   layout: {
@@ -508,11 +508,15 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   content: {
     label: 'Conteúdo',
-    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert', 'notification'],
+    types: ['heading', 'text', 'image', 'video', 'button', 'list', 'alert'],
   },
   data: {
     label: 'Dados e métricas',
-    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress', 'timer', 'loading', 'confetti'],
+    types: ['chart', 'comparative_chart', 'progress_bar', 'horizontal_bar', 'circular_progress', 'timer', 'loading'],
+  },
+  effects: {
+    label: 'Animações e efeitos',
+    types: ['confetti', 'notification'],
   },
   sections: {
     label: 'Seções prontas',
