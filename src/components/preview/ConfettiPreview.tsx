@@ -238,6 +238,12 @@ export default function ConfettiPreview({
       running = false;
       window.removeEventListener('resize', onResize);
       cancelAnimationFrame(rafRef.current);
+      // Clear canvas immediately so it doesn't freeze as a static frame
+      const cvs = canvasRef.current;
+      if (cvs) {
+        const c = cvs.getContext('2d');
+        if (c) c.clearRect(0, 0, cvs.width, cvs.height);
+      }
     };
   }, [init, duration, editorPreview, resizeCanvas]);
 
