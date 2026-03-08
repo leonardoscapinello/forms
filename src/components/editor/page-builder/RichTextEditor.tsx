@@ -46,14 +46,17 @@ const COLORS = [
 export default function RichTextEditor({ value, onChange, placeholder, className, variables = [], integrationNodes = [], allInputElements = [], trackedParams }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
+  const isFocusedRef = useRef(false);
   const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
   const [varPickerOpen, setVarPickerOpen] = useState(false);
 
+  // Sync external value → DOM only when NOT focused (prevents cursor jump)
   useEffect(() => {
     if (isInternalChange.current) {
       isInternalChange.current = false;
       return;
     }
+    if (isFocusedRef.current) return; // never rebuild while typing
     if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || '';
     }
