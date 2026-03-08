@@ -41,6 +41,9 @@ export default function EditorWorkflow() {
         onAIAddAtPosition={ctx.handleAIAddAtPosition}
         onAIChange={ctx.handleAIChange}
         onAIDelete={ctx.handleAIDelete}
+        onImageGenAddAtPosition={ctx.handleImageGenAddAtPosition}
+        onImageGenChange={ctx.handleImageGenChange}
+        onImageGenDelete={ctx.handleImageGenDelete}
         onFormUpdate={ctx.updateFormData}
         onPageSelect={ctx.handlePageSelectFromWorkflow}
         onCreateVariable={(newVar) => {

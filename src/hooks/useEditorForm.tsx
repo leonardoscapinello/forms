@@ -7,7 +7,7 @@ import {
   ConditionNodeData, createDefaultConditionGroup, createDefaultFunnelPage,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData,
   WhatsAppNodeData, EmailNodeData, ABTestNodeData, WaitNodeData, JumpNodeData,
-  AINodeData,
+  AINodeData, ImageGenNodeData,
 } from '@/types/form';
 import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
@@ -90,6 +90,9 @@ interface EditorFormContextType {
   handleAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   handleAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
   handleAIDelete: (nodeId: string) => void;
+  handleImageGenAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  handleImageGenChange: (nodeId: string, patch: Partial<ImageGenNodeData>) => void;
+  handleImageGenDelete: (nodeId: string) => void;
 
   // Variables CRUD
   handleAddVariable: () => void;
@@ -357,6 +360,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const wait = useNodeCrud<WaitNodeData>(form, updateForm, 'wt', 'waitNodes');
   const jump = useNodeCrud<JumpNodeData>(form, updateForm, 'jp', 'jumpNodes');
   const ai = useNodeCrud<AINodeData>(form, updateForm, 'ai', 'aiNodes');
+  const imageGen = useNodeCrud<ImageGenNodeData>(form, updateForm, 'ig', 'imageGenNodes');
 
   // Wrappers that create default nodes and call factory.add
   const handleVariableOpAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
@@ -416,6 +420,12 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const handleAIChange = ai.change;
   const handleAIDelete = ai.del;
 
+  const handleImageGenAddAtPosition = useCallback((pos: Position, src: string, sh?: string) => {
+    imageGen.add({ id: crypto.randomUUID(), layers: [], outputWidth: 1080, outputHeight: 1080 }, pos, src, sh);
+  }, [imageGen]);
+  const handleImageGenChange = imageGen.change;
+  const handleImageGenDelete = imageGen.del;
+
   // ─── Variables CRUD ───────────────────────────────────────────────
 
   const handleAddVariable = useCallback(() => {
@@ -455,6 +465,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
       handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
       handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
       handleAIAddAtPosition, handleAIChange, handleAIDelete,
+      handleImageGenAddAtPosition, handleImageGenChange, handleImageGenDelete,
       handleAddVariable, handleUpdateVariable, handleDeleteVariable,
     };
   }, [
@@ -475,6 +486,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
     handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
     handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
     handleAIAddAtPosition, handleAIChange, handleAIDelete,
+    handleImageGenAddAtPosition, handleImageGenChange, handleImageGenDelete,
     handleAddVariable, handleUpdateVariable, handleDeleteVariable,
   ]);
 
