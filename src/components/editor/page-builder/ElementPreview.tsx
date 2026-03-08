@@ -50,19 +50,40 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
     );
   };
 
-  const renderRichTextWithReadableFieldTokens = (html: string | undefined) => {
-    if (!html || !html.includes('{{field:')) return html || '';
+  const renderRichTextWithReadableTokens = (html: string | undefined) => {
+    if (!html || !html.includes('{{')) return html || '';
 
     const escapeHtml = (value: string) => value
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    return html.replace(/\{\{field:([^}]+)\}\}/g, (_match, rawElementId: string) => {
-      const elementId = rawElementId.trim();
-      const label = elementLookup?.[elementId];
-      const display = `{{${escapeHtml(label || 'Campo')}}}`;
-      return `<mark class="var-highlight var-highlight-field var-highlight-readable">${display}</mark>`;
+    return html.replace(/\{\{(.*?)\}\}/g, (_match, inner: string) => {
+      let label = inner;
+      let cssClass = 'var-highlight var-highlight-variable';
+
+      if (inner.startsWith('field:')) {
+        const elementId = inner.slice(6).trim();
+        label = elementLookup?.[elementId] || 'Campo';
+        cssClass = 'var-highlight var-highlight-field';
+      } else if (inner.startsWith('webhook:')) {
+        const parts = inner.split(':');
+        label = parts.length >= 3 ? parts.slice(2).join(':') : parts[parts.length - 1];
+        cssClass = 'var-highlight var-highlight-webhook';
+      } else if (inner.startsWith('ctx.')) {
+        label = inner.slice(4);
+        cssClass = 'var-highlight var-highlight-context';
+      } else if (inner.startsWith('param.')) {
+        label = inner.slice(6);
+        cssClass = 'var-highlight var-highlight-param';
+      } else {
+        // Plain variable — try friendly name
+        const v = variables?.find(vr => vr.name === inner);
+        label = v?.name || inner;
+        cssClass = 'var-highlight var-highlight-variable';
+      }
+
+      return `<mark class="${cssClass} var-highlight-readable">${escapeHtml(`{{${label}}}`)}</mark>`;
     });
   };
 
@@ -174,7 +195,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
           style={{ ...elementStyle, fontFamily: normalizeFontFamily(style?.fontFamily) }}
-          dangerouslySetInnerHTML={{ __html: renderRichTextWithReadableFieldTokens(element.content) }}
+          dangerouslySetInnerHTML={{ __html: renderRichTextWithReadableTokens(element.content) }}
         />
       );
 
