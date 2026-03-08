@@ -9,7 +9,7 @@ function EndNode({ selected }: NodeProps) {
         selected ? 'border-primary shadow-md ring-2 ring-primary/10' : 'border-border'
       }`}
     >
-      <Handle type="target" position={Position.Left} style={{ background: '#B3AB86', borderColor: 'hsl(var(--card))' }} className="!w-3 !h-3 !border-2" />
+      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
       <div className="flex items-center justify-center gap-2 px-4 py-4">
         <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
           <CheckCircle className="h-4 w-4 text-success" />
