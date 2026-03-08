@@ -7,7 +7,7 @@ import { PageElement } from '@/types/pageElements';
 import { FormVariable, FormStyle } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
-import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
+import { interpolateText, interpolateTextToNodes, interpolateTextToHtml } from '@/lib/variableInterpolation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { validateEmailFormat } from '@/lib/emailValidation';
 
@@ -89,6 +89,7 @@ export default function InteractiveElement({
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
+  const tHtml = (text: string | undefined) => text ? interpolateTextToHtml(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // ── Field style overrides from formStyle ──────────────────────────────
@@ -383,7 +384,7 @@ export default function InteractiveElement({
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
           style={{ fontFamily: normalizeFontFamily(style?.fontFamily) }}
-          dangerouslySetInnerHTML={{ __html: t(element.content) || '' }}
+          dangerouslySetInnerHTML={{ __html: tHtml(element.content) || '' }}
         />
       );
 

@@ -97,6 +97,73 @@ export function isValidVariableName(name: string): boolean {
   return /^[a-zA-Z_]\w*$/.test(name);
 }
 
+/**
+ * Like interpolateText but returns an HTML string with variable values wrapped
+ * in `<mark class="var-highlight ...">` badges — safe for dangerouslySetInnerHTML
+ * in rich_text elements on the public preview.
+ */
+export function interpolateTextToHtml(
+  text: string,
+  variables: FormVariable[],
+  answers: Record<string, any>,
+): string {
+  if (!text) return text;
+
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const VAR_HTML: Record<VarType, string> = {
+    variable: 'var-highlight var-highlight-variable',
+    webhook: 'var-highlight var-highlight-webhook',
+    field: 'var-highlight var-highlight-field',
+    param: 'var-highlight var-highlight-param',
+    context: 'var-highlight var-highlight-context',
+  };
+
+  const resolve = (token: string): { value: string; type: VarType } | null => {
+    const inner = token.slice(2, -2); // remove {{ and }}
+
+    if (inner.startsWith('webhook:')) {
+      const parts = inner.split(':');
+      const nodeId = parts[1];
+      const path = parts.slice(2).join(':');
+      const data = answers[`__webhook_${nodeId}`];
+      const val = data ? String(getNestedValue(data, path) ?? '') : '';
+      return val ? { value: val, type: 'webhook' } : null;
+    }
+    if (inner.startsWith('ctx.')) {
+      const val = String(answers[`__ctx_${inner.slice(4)}`] ?? '');
+      return val ? { value: val, type: 'context' } : null;
+    }
+    if (inner.startsWith('param.')) {
+      const val = String(answers[`__param_${inner.slice(6)}`] ?? '');
+      return val ? { value: val, type: 'param' } : null;
+    }
+    if (inner.startsWith('field:')) {
+      const val = String(answers[inner.slice(6)] ?? '');
+      return val ? { value: val, type: 'field' } : null;
+    }
+
+    const variable = variables.find(v => v.name === inner);
+    if (!variable) return null;
+    const override = answers[`__var_${inner}`];
+    let val = '';
+    if (override !== undefined && override !== null) {
+      val = String(override);
+    } else if (variable.type === 'response' && variable.sourceElementId) {
+      val = String(answers[variable.sourceElementId] ?? variable.defaultValue ?? '');
+    } else {
+      val = variable.defaultValue || '';
+    }
+    return val ? { value: val, type: 'variable' } : null;
+  };
+
+  return text.replace(/\{\{(?:webhook:[^}]+|ctx\.\w+|param\.[^}]+|field:[^}]+|\w+)\}\}/g, (token) => {
+    const resolved = resolve(token);
+    if (!resolved) return '';
+    return `<mark class="${VAR_HTML[resolved.type]} var-highlight-readable">${esc(resolved.value)}</mark>`;
+  });
+}
+
 type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
 
 const VAR_TYPE_CLASS: Record<VarType, string> = {
