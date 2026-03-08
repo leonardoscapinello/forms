@@ -136,7 +136,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       return (
         <div className={alignClass}>
           <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
-            {element.content || 'Título'}
+            {renderVarContent(element.content, 'Título')}
           </div>
         </div>
       );
@@ -145,9 +145,9 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
     case 'text':
       return (
         <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
-            {element.content || ''}
-          </p>
+          <div className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
+            {renderVarContent(element.content, '')}
+          </div>
         </div>
       );
 
