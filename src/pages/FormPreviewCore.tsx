@@ -718,6 +718,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
+    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| effectiveSkip:', effectiveSkip);
+    if (edges.length > 0) {
+      console.info('[walkWorkflow] Edge map:', edges.map(e => `${e.source} → ${e.target}${e.sourceHandle ? ` [${e.sourceHandle}]` : ''}`).join(' | '));
+    }
+
     if (!edges.length) {
       console.warn('[walkWorkflow] No flowEdges defined — canvas has no connections');
       return { nextNodeId: null, updatedAnswers: currentAnswers };
