@@ -47,7 +47,7 @@ export default function WaitNode({ data }: Props & { data: Props['data'] & { isN
 
   return (
     <div className={`bg-card rounded-xl border border-node-wait-accent/30 shadow-sm w-64 overflow-hidden ${isNodeDisabled ? 'opacity-50 grayscale' : ''}`}>
-      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-wait-accent !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
 
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 bg-node-wait border-b border-node-wait-accent/20 rounded-t-xl">
