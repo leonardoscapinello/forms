@@ -49,7 +49,7 @@ export default function ABTestNode({ data }: Props & { data: Props['data'] & { i
 
   return (
     <div className={`bg-card rounded-xl border border-node-abtest-accent/30 shadow-sm w-72 overflow-hidden ${isNodeDisabled ? 'opacity-50 grayscale' : ''}`}>
-      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-node-abtest-accent !border-2 !border-card" />
+      <Handle type="target" position={Position.Left} style={{ top: 18 }} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-card" />
 
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 bg-node-abtest border-b border-node-abtest-accent/20 rounded-t-xl">
