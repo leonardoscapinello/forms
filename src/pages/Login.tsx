@@ -141,9 +141,7 @@ export default function Login() {
                 }}
               />
             </div>
-            <span className="text-lg font-semibold tracking-tight"
-              style={{ color: 'hsl(var(--primary-foreground))' }}
-            >
+            <span className="text-lg font-semibold tracking-tight text-white/90">
               twobrain
             </span>
           </div>
