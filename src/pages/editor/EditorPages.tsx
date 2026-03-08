@@ -5,6 +5,8 @@ import type { PageElement } from '@/types/pageElements';
 import type { FunnelPageStyle, FormData } from '@/types/form';
 import PageListPanel from '@/components/editor/PageListPanel';
 import PageBuilder from '@/components/editor/page-builder/PageBuilder';
+import { scanElementReferences, autoFixReferencesOnMove } from '@/lib/elementReferenceScanner';
+import { toast } from 'sonner';
 
 /* v3 cache-bust */ export default function EditorPages() {
   const ctx = useEditorForm();
