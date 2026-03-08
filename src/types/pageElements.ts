@@ -4,6 +4,7 @@ export type PageElementType =
   // Visual elements
   | 'heading'
   | 'text'
+  | 'rich_text'
   | 'image'
   | 'button'
   | 'divider'
