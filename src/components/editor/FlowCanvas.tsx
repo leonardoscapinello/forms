@@ -62,6 +62,7 @@ const nodeTypes = {
   abTestNode: ABTestNode,
   waitNode: WaitNode,
   jumpNode: JumpNode,
+  aiNode: AINode,
 };
 
 const edgeTypes = {
