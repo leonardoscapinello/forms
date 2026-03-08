@@ -207,6 +207,38 @@ export default function FormResponses({ form }: Props) {
     return { total: t, completed: c, partial: Math.max(t - c, 0) };
   }, [rows]);
 
+  // Drop-off stats per field column
+  const dropOffStats = useMemo(() => {
+    if (rows.length === 0) return [];
+    const totalCount = rows.length;
+    return fields.map((field, idx) => {
+      const answered = rows.filter(r => {
+        const val = field.subKey
+          ? (r.answers?.[field.id] && typeof r.answers[field.id] === 'object' && !Array.isArray(r.answers[field.id])
+            ? r.answers[field.id][field.subKey]
+            : r.answers?.[`${field.id}.${field.subKey}`])
+          : r.answers?.[field.id];
+        return val !== undefined && val !== null && val !== '';
+      }).length;
+      const pctOfTotal = Math.round((answered / totalCount) * 100);
+      // Previous field answered count for sequential drop calculation
+      const prevAnswered = idx === 0 ? totalCount : (() => {
+        const pf = fields[idx - 1];
+        return rows.filter(r => {
+          const val = pf.subKey
+            ? (r.answers?.[pf.id] && typeof r.answers[pf.id] === 'object' && !Array.isArray(r.answers[pf.id])
+              ? r.answers[pf.id][pf.subKey]
+              : r.answers?.[`${pf.id}.${pf.subKey}`])
+            : r.answers?.[pf.id];
+          return val !== undefined && val !== null && val !== '';
+        }).length;
+      })();
+      const pctOfPrev = prevAnswered > 0 ? Math.round((answered / prevAnswered) * 100) : 0;
+      const dropFromPrev = prevAnswered > 0 ? Math.round(((prevAnswered - answered) / prevAnswered) * 100) : 0;
+      return { answered, pctOfTotal, pctOfPrev, dropFromPrev };
+    });
+  }, [rows, fields]);
+
   const exportCSV = useCallback(() => {
     const headers = ['#', 'ID', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label), ...paramColumns.map(p => `🔗 ${p.label}`)];
     const csvRows = [headers.join(',')];
