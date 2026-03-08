@@ -825,7 +825,16 @@ function FlowCanvasInner({
     }
   }, [onEdgesChangeBase, saveEdges, setEdges]);
 
+  const isValidConnection = useCallback((connection: Connection) => {
+    // Block self-connections
+    if (connection.source === connection.target) return false;
+    // Block connections to disabled nodes
+    if ((form.disabledNodes || []).includes(connection.target!)) return false;
+    return true;
+  }, [form.disabledNodes]);
+
   const onConnect: OnConnect = useCallback((connection: Connection) => {
+    if (!isValidConnection(connection)) return;
     const sourceHandle = connection.sourceHandle;
     const sourceNodeId = connection.source;
     const isBranchHandle = sourceHandle?.startsWith('branch-');
@@ -837,7 +846,7 @@ function FlowCanvasInner({
       saveEdges(updated);
       return updated;
     });
-  }, [setEdges, saveEdges]);
+  }, [setEdges, saveEdges, isValidConnection]);
 
   const onEdgeDelete = useCallback((deletedEdges: Edge[]) => {
     setEdges(prev => {
