@@ -80,6 +80,27 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
+  const compressImage = useCallback(async (file: globalThis.File): Promise<globalThis.File> => {
+    // Only compress raster images (skip SVGs, PDFs, etc.)
+    const COMPRESSIBLE = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff'];
+    if (!COMPRESSIBLE.includes(file.type)) return file;
+
+    try {
+      const imageCompression = (await import('browser-image-compression')).default;
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 2048,
+        useWebWorker: true,
+        fileType: 'image/webp',
+        initialQuality: 0.82,
+      });
+      return compressed;
+    } catch {
+      // Fallback: upload original if compression fails
+      return file;
+    }
+  }, []);
+
   const uploadFile = useCallback(async (file: globalThis.File): Promise<UploadedFile | null> => {
     if (file.size > maxFileSize * 1024 * 1024) {
       setError(`Arquivo muito grande. Máximo: ${maxFileSize}MB`);
@@ -97,11 +118,17 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
       }
     }
 
-    const ext = file.name.split('.').pop() || 'bin';
-    const path = `uploads/${crypto.randomUUID()}.${ext}`;
+    // Compress images/GIFs to WebP before upload
+    const processedFile = await compressImage(file);
+    const isConverted = processedFile.type === 'image/webp' && file.type !== 'image/webp';
+
+    const originalExt = file.name.split('.').pop() || 'bin';
+    const ext = isConverted ? 'webp' : originalExt;
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const path = `uploads/${crypto.randomUUID()}-${baseName}.${ext}`;
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', processedFile);
     formData.append('path', path);
 
     try {
@@ -115,12 +142,18 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
         setError(data?.message || 'Erro ao enviar arquivo.');
         return null;
       }
-      return { name: file.name, size: file.size, type: file.type, url: data.url, path: data.path };
+      return {
+        name: isConverted ? `${baseName}.webp` : file.name,
+        size: processedFile.size,
+        type: processedFile.type,
+        url: data.url,
+        path: data.path,
+      };
     } catch (err: any) {
       setError(`Erro de conexão: ${err.message}`);
       return null;
     }
-  }, [maxFileSize, allowedFileTypes]);
+  }, [maxFileSize, allowedFileTypes, compressImage]);
 
   const handleFiles = useCallback(async (fileList: FileList) => {
     setError('');
