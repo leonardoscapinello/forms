@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData, FormVariableType } from '@/types/form';
 import { VariableInput } from '../shared';
+import VariableSelect from '../shared/VariableSelect';
 import { LocalInput } from '../shared/LocalInput';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
