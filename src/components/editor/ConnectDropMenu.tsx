@@ -37,7 +37,7 @@ const CATEGORIES = [
 export default function ConnectDropMenu({
   onAddPage, onAddCondition, onAddVariableOp,
   onAddIntegration, onAddAnalytics, onAddWhatsApp, onAddEmail,
-  onAddABTest, onAddWait, onAddJump, onAddAI, onClose,
+  onAddABTest, onAddWait, onAddJump, onAddAI, onAddImageGen, onClose,
 }: Props) {
   const [search, setSearch] = useState('');
 
