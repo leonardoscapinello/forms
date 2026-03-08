@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
@@ -1261,8 +1262,11 @@ export default function InteractiveElement({
         />
       );
 
-    case 'confetti':
-      return (
+    case 'confetti': {
+      const portalTarget = typeof document !== 'undefined' ? document.body : null;
+      if (!portalTarget) return null;
+
+      return createPortal(
         <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 9999 }}>
           <Suspense fallback={null}>
             <ConfettiPreview
@@ -1272,8 +1276,10 @@ export default function InteractiveElement({
               colors={element.confettiColors}
             />
           </Suspense>
-        </div>
+        </div>,
+        portalTarget,
       );
+    }
 
     default:
       return null;

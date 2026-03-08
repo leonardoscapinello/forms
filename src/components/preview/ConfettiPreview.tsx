@@ -6,8 +6,11 @@ export type ConfettiIntensity = 'subtle' | 'explosion';
 interface Props {
   direction?: ConfettiDirection;
   intensity?: ConfettiIntensity;
+  /** Primary colors for confetti pieces */
   colors?: string[];
+  /** Duration in ms before stopping emission (particles still fall). 0 = one burst */
   duration?: number;
+  /** Whether this is an editor preview (smaller, looping) */
   editorPreview?: boolean;
 }
 
@@ -16,92 +19,21 @@ interface Particle {
   y: number;
   vx: number;
   vy: number;
-  width: number;
-  height: number;
+  w: number;
+  h: number;
   color: string;
-  /** 3D tilt angles for realistic tumbling */
-  tiltX: number;
-  tiltY: number;
-  tiltZ: number;
-  tiltVx: number;
-  tiltVy: number;
-  tiltVz: number;
+  rotation: number;
+  spin: number;
+  flipPhase: number;
+  flipSpeed: number;
   opacity: number;
-  /** Terminal velocity — unique per particle based on size */
-  terminalVy: number;
-  /** Air resistance coefficient (cross-section dependent) */
-  dragCoeff: number;
-  /** Lateral wobble phase */
-  wobblePhase: number;
-  wobbleSpeed: number;
-  wobbleAmplitude: number;
-  /** Shape: 0 = rectangle, 1 = circle, 2 = strip */
-  shape: number;
+  age: number;
+  maxLife: number;
+  air: number;
 }
 
 const DEFAULT_COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A78BFA', '#F97316', '#06B6D4', '#EC4899'];
-
-// Physics constants (pixels ≈ scaled world)
-const GRAVITY = 0.14;        // px/frame² — gentle gravitational pull
-const AIR_DRAG = 0.012;      // base air resistance factor
-const LATERAL_DRAG = 0.02;   // extra lateral damping (air resistance on X)
-
-function createParticle(
-  canvasW: number,
-  canvasH: number,
-  direction: ConfettiDirection,
-  intensity: ConfettiIntensity,
-  color: string,
-): Particle {
-  const isExplosion = intensity === 'explosion';
-
-  let x: number, y: number, vx: number, vy: number;
-
-  if (direction === 'sides') {
-    const fromLeft = Math.random() > 0.5;
-    x = fromLeft ? canvasW * 0.05 : canvasW * 0.95;
-    y = canvasH * 0.15 + Math.random() * canvasH * 0.25;
-    const speed = isExplosion ? 4 + Math.random() * 3 : 1.5 + Math.random() * 2;
-    const angle = fromLeft
-      ? (-Math.PI / 3 + Math.random() * Math.PI / 4)
-      : (Math.PI + Math.PI / 3 - Math.random() * Math.PI / 4);
-    vx = Math.cos(angle) * speed;
-    vy = Math.sin(angle) * speed - (isExplosion ? 3 : 1.2);
-  } else {
-    // Top: burst upward then rain down (like a cannon shot upward)
-    x = canvasW * 0.2 + Math.random() * canvasW * 0.6;
-    y = isExplosion ? canvasH * 0.35 : -10;
-    vx = (Math.random() - 0.5) * (isExplosion ? 6 : 2);
-    vy = isExplosion
-      ? -(3 + Math.random() * 4)       // burst upward
-      : (0.3 + Math.random() * 0.6);   // gentle fall
-  }
-
-  const width = 3 + Math.random() * 5;
-  const height = 5 + Math.random() * 8;
-  const area = width * height;
-
-  // Larger pieces have more drag but also higher terminal velocity
-  const terminalVy = 1.8 + (area / 80) + Math.random() * 0.6;
-  const dragCoeff = AIR_DRAG * (0.8 + area / 60);
-
-  return {
-    x, y, vx, vy, width, height, color,
-    tiltX: Math.random() * Math.PI * 2,
-    tiltY: Math.random() * Math.PI * 2,
-    tiltZ: Math.random() * Math.PI * 2,
-    tiltVx: (Math.random() - 0.5) * 0.08,
-    tiltVy: (Math.random() - 0.5) * 0.06,
-    tiltVz: (Math.random() - 0.5) * 0.1,
-    opacity: 0.9 + Math.random() * 0.1,
-    terminalVy,
-    dragCoeff,
-    wobblePhase: Math.random() * Math.PI * 2,
-    wobbleSpeed: 0.03 + Math.random() * 0.04,
-    wobbleAmplitude: 0.3 + Math.random() * 0.8,
-    shape: Math.floor(Math.random() * 3),
-  };
-}
+const GRAVITY = 0.11;
 
 function createParticles(
   count: number,
@@ -112,10 +44,52 @@ function createParticles(
   usedColors: string[],
 ): Particle[] {
   const particles: Particle[] = [];
+  const isExplosion = intensity === 'explosion';
+
   for (let i = 0; i < count; i++) {
-    const color = usedColors[Math.floor(Math.random() * usedColors.length)];
-    particles.push(createParticle(canvasW, canvasH, direction, intensity, color));
+    let x = 0;
+    let y = 0;
+    let vx = 0;
+    let vy = 0;
+
+    if (direction === 'sides') {
+      const fromLeft = Math.random() > 0.5;
+      x = fromLeft ? -16 : canvasW + 16;
+      y = canvasH * (0.18 + Math.random() * 0.36);
+
+      const horizontal = isExplosion ? 3.8 + Math.random() * 2.2 : 1.8 + Math.random() * 1.6;
+      vx = (fromLeft ? 1 : -1) * horizontal;
+      vy = (Math.random() - 0.65) * (isExplosion ? 2.4 : 1.2); // leve subida inicial, sem sumir da tela
+    } else {
+      // Chuva realista de cima
+      x = Math.random() * canvasW;
+      y = -20 - Math.random() * 80;
+      vx = (Math.random() - 0.5) * (isExplosion ? 3.2 : 1.5);
+      vy = isExplosion ? 1.6 + Math.random() * 2.8 : 0.8 + Math.random() * 1.4;
+    }
+
+    const w = 3 + Math.random() * 4;
+    const h = 5 + Math.random() * 7;
+
+    particles.push({
+      x,
+      y,
+      vx,
+      vy,
+      w,
+      h,
+      color: usedColors[Math.floor(Math.random() * usedColors.length)],
+      rotation: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.14,
+      flipPhase: Math.random() * Math.PI * 2,
+      flipSpeed: 0.08 + Math.random() * 0.12,
+      opacity: 0.9 + Math.random() * 0.1,
+      age: 0,
+      maxLife: (isExplosion ? 3400 : 4200) + Math.random() * 1200,
+      air: 0.006 + Math.random() * 0.012,
+    });
   }
+
   return particles;
 }
 
@@ -130,23 +104,43 @@ export default function ConfettiPreview({
   const rafRef = useRef<number>(0);
   const particlesRef = useRef<Particle[]>([]);
   const startRef = useRef(0);
+  const sizeRef = useRef({ width: 0, height: 0 });
 
   const usedColors = colors?.length ? colors : DEFAULT_COLORS;
 
-  const init = useCallback(() => {
+  const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    const width = Math.max(1, Math.round(window.innerWidth || rect.width || 1));
+    const height = Math.max(1, Math.round(window.innerHeight || rect.height || 1));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    sizeRef.current = { width, height };
+  }, []);
+
+  const init = useCallback(() => {
+    resizeCanvas();
+
+    const { width, height } = sizeRef.current;
+    if (!width || !height) return;
 
     const count = editorPreview
-      ? (intensity === 'explosion' ? 35 : 18)
-      : (intensity === 'explosion' ? 100 : 45);
+      ? (intensity === 'explosion' ? 36 : 20)
+      : (intensity === 'explosion' ? 100 : 52);
 
-    particlesRef.current = createParticles(count, canvas.width, canvas.height, direction, intensity, usedColors);
+    particlesRef.current = createParticles(count, width, height, direction, intensity, usedColors);
     startRef.current = performance.now();
-  }, [direction, intensity, usedColors, editorPreview]);
+  }, [direction, intensity, usedColors, editorPreview, resizeCanvas]);
 
   useEffect(() => {
     init();
@@ -162,92 +156,72 @@ export default function ConfettiPreview({
     const animate = (now: number) => {
       if (!running) return;
 
-      // Delta-time in frames (target 60fps)
-      const dt = Math.min((now - lastTime) / 16.667, 3);
+      const dt = Math.min((now - lastTime) / 16.667, 2);
       lastTime = now;
-
       const elapsed = now - startRef.current;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const { width, height } = sizeRef.current;
+
+      ctx.clearRect(0, 0, width, height);
 
       const alive: Particle[] = [];
-
       for (const p of particlesRef.current) {
-        // --- Physics step ---
-
-        // Gravity
+        // Gravidade + arrasto aerodinâmico proporcional à velocidade
+        const speed = Math.hypot(p.vx, p.vy);
+        if (speed > 0.001) {
+          const drag = p.air * speed;
+          p.vx -= (p.vx / speed) * drag * dt;
+          p.vy -= (p.vy / speed) * drag * dt;
+        }
         p.vy += GRAVITY * dt;
 
-        // Air drag: opposes velocity, stronger on larger cross-section
-        // Asymptotic approach to terminal velocity
-        if (p.vy > 0) {
-          const dragForce = p.dragCoeff * (p.vy / p.terminalVy) * dt;
-          p.vy = Math.max(0, p.vy - dragForce);
-        }
+        // Flutter/tumbling para realismo
+        p.flipPhase += p.flipSpeed * dt;
+        p.rotation += p.spin * dt;
 
-        // Lateral air resistance
-        p.vx -= p.vx * LATERAL_DRAG * dt;
-
-        // Lateral wobble (simulates air catching flat surface)
-        p.wobblePhase += p.wobbleSpeed * dt;
-        const wobble = Math.sin(p.wobblePhase) * p.wobbleAmplitude * (p.vy > 0 ? 1 : 0.3);
-        
-        p.x += (p.vx + wobble * 0.15) * dt;
+        const flutterX = Math.sin(p.flipPhase) * 0.18;
+        p.x += (p.vx + flutterX) * dt;
         p.y += p.vy * dt;
 
-        // 3D tumbling
-        p.tiltX += p.tiltVx * dt;
-        p.tiltY += p.tiltVy * dt;
-        p.tiltZ += p.tiltVz * dt;
+        p.age += 16.667 * dt;
 
-        // Dampen tumble slowly (air friction on rotation)
-        p.tiltVx *= (1 - 0.001 * dt);
-        p.tiltVy *= (1 - 0.001 * dt);
-        p.tiltVz *= (1 - 0.001 * dt);
-
-        // Fade out towards end of duration
-        const fadeFraction = 0.65;
-        if (elapsed > (duration || 3000) * fadeFraction) {
-          const fadeProgress = (elapsed - (duration || 3000) * fadeFraction) / ((duration || 3000) * (1 - fadeFraction));
-          p.opacity = Math.max(0, (0.9 + Math.random() * 0.001) * (1 - fadeProgress));
+        const fadeStart = Math.min(duration, p.maxLife) * 0.72;
+        if (p.age > fadeStart) {
+          const fadeProgress = (p.age - fadeStart) / Math.max(1, (Math.min(duration, p.maxLife) - fadeStart));
+          p.opacity = Math.max(0, 1 - fadeProgress);
         }
 
-        if (p.opacity <= 0.01 || p.y > canvas.height + 60) continue;
+        if (
+          p.opacity <= 0.01 ||
+          p.age >= p.maxLife ||
+          p.y > height + 80 ||
+          p.x < -120 ||
+          p.x > width + 120
+        ) {
+          continue;
+        }
 
-        // --- Render ---
-        // Simulate 3D projection via scale from tilt
-        const scaleX = Math.abs(Math.cos(p.tiltY));
-        const scaleY = Math.abs(Math.cos(p.tiltX));
-        const projW = Math.max(0.4, p.width * scaleX);
-        const projH = Math.max(0.4, p.height * scaleY);
+        const flipScale = 0.25 + Math.abs(Math.sin(p.flipPhase)) * 0.85;
 
         ctx.save();
         ctx.translate(p.x, p.y);
-        ctx.rotate(p.tiltZ);
-        ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.rotate(p.rotation);
+        ctx.globalAlpha = p.opacity * (0.65 + 0.35 * flipScale);
         ctx.fillStyle = p.color;
-
-        if (p.shape === 1) {
-          // Circle / dot
-          ctx.beginPath();
-          ctx.ellipse(0, 0, projW / 2, projH / 2, 0, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (p.shape === 2) {
-          // Thin strip / ribbon
-          ctx.fillRect(-projW / 2, -projH * 0.15, projW, projH * 0.3);
-        } else {
-          // Rectangle
-          ctx.fillRect(-projW / 2, -projH / 2, projW, projH);
-        }
-
+        ctx.fillRect(-p.w / 2, -(p.h * flipScale) / 2, p.w, p.h * flipScale);
         ctx.restore();
+
         alive.push(p);
       }
 
       particlesRef.current = alive;
 
-      if (alive.length === 0) {
-        if (editorPreview) {
-          setTimeout(() => { if (running) { init(); rafRef.current = requestAnimationFrame(animate); } }, 1000);
+      if (alive.length === 0 || elapsed >= duration + 1600) {
+        if (editorPreview && running) {
+          setTimeout(() => {
+            if (!running) return;
+            init();
+            rafRef.current = requestAnimationFrame(animate);
+          }, 900);
         }
         return;
       }
@@ -255,13 +229,17 @@ export default function ConfettiPreview({
       rafRef.current = requestAnimationFrame(animate);
     };
 
+    const onResize = () => resizeCanvas();
+    window.addEventListener('resize', onResize);
+
     rafRef.current = requestAnimationFrame(animate);
 
     return () => {
       running = false;
+      window.removeEventListener('resize', onResize);
       cancelAnimationFrame(rafRef.current);
     };
-  }, [init, duration, editorPreview]);
+  }, [init, duration, editorPreview, resizeCanvas]);
 
   return (
     <canvas
