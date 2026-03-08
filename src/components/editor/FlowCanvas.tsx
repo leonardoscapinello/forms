@@ -800,6 +800,10 @@ function FlowCanvasInner({
         onWaitDelete(nodeId.replace('wt-', ''));
       } else if (nodeId.startsWith('jp-')) {
         onJumpDelete(nodeId.replace('jp-', ''));
+      } else if (nodeId.startsWith('ai-')) {
+        onAIDelete(nodeId.replace('ai-', ''));
+      } else if (nodeId.startsWith('ig-')) {
+        onImageGenDelete(nodeId.replace('ig-', ''));
       }
     }
 
