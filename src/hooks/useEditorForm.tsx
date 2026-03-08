@@ -448,6 +448,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
       handleABTestAddAtPosition, handleABTestChange, handleABTestDelete,
       handleWaitAddAtPosition, handleWaitChange, handleWaitDelete,
       handleJumpAddAtPosition, handleJumpChange, handleJumpDelete,
+      handleAIAddAtPosition, handleAIChange, handleAIDelete,
       handleAddVariable, handleUpdateVariable, handleDeleteVariable,
     };
   }, [
