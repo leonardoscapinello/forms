@@ -27,9 +27,10 @@ interface Props {
   onChange: (patch: Partial<AINodeData>) => void;
   variables: FormVariable[];
   allInputElements: InputElementGroup[];
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
-export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange, variables, allInputElements }: Props) {
+export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange, variables, allInputElements, onCreateVariable }: Props) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
