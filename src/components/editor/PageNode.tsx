@@ -24,7 +24,7 @@ interface PageNodeData {
 }
 
 function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
-  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, isNodeDisabled = false, onToggleDisabled, onCreateVariable } = data;
+  const { page, index, onSelect, onChange, variables = [], integrationNodes = [], allInputElements = [], isDisconnected = false, isInLoop = false, isNodeDisabled = false, onToggleDisabled, onCreateVariable } = data;
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(page.title);
   const [varPopoverOpen, setVarPopoverOpen] = useState(false);
