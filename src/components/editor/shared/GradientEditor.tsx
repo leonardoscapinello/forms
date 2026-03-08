@@ -73,17 +73,21 @@ function parseColorToHexOpacity(raw: string): { color: string; opacity: number }
 function parseCssToConfig(css: string): GradientConfig | null {
   if (!css) return null;
   try {
+    // Strip common prefixes like "background:" and trim whitespace/newlines
+    let cleaned = css.replace(/\n/g, ' ').trim();
+    cleaned = cleaned.replace(/^background\s*:\s*/i, '').replace(/;\s*$/, '').trim();
+
     let type: GradientConfig['type'] = 'linear';
     let radialShape: 'circle' | 'ellipse' = 'circle';
     let radialSize = 'farthest-corner';
     let angle = 135;
 
-    if (css.startsWith('radial-gradient')) type = 'radial';
-    else if (css.startsWith('conic-gradient')) type = 'conic';
+    if (cleaned.startsWith('radial-gradient')) type = 'radial';
+    else if (cleaned.startsWith('conic-gradient')) type = 'conic';
 
-    const innerMatch = css.match(/\((.+)\)$/s);
+    const innerMatch = cleaned.match(/\((.+)\)$/s);
     if (!innerMatch) return null;
-    const inner = innerMatch[1];
+    const inner = innerMatch[1].trim();
     let stopsStr = inner;
 
     if (type === 'linear') {
@@ -93,8 +97,15 @@ function parseCssToConfig(css: string): GradientConfig | null {
       const dirMatch = inner.match(/^from\s+(\d+)deg\s*,\s*/);
       if (dirMatch) { angle = parseInt(dirMatch[1]); stopsStr = inner.slice(dirMatch[0].length); }
     } else if (type === 'radial') {
-      const dirMatch = inner.match(/^(circle|ellipse)\s+([\w-]+)\s*,\s*/);
-      if (dirMatch) { radialShape = dirMatch[1] as any; radialSize = dirMatch[2]; stopsStr = inner.slice(dirMatch[0].length); }
+      // Handle: circle at X% Y%, circle farthest-corner, ellipse, etc.
+      const atMatch = inner.match(/^(circle|ellipse)\s+at\s+[\d.]+%?\s+[\d.]+%?\s*,\s*/i);
+      if (atMatch) {
+        radialShape = atMatch[1].toLowerCase() as any;
+        stopsStr = inner.slice(atMatch[0].length);
+      } else {
+        const dirMatch = inner.match(/^(circle|ellipse)(?:\s+([\w-]+))?\s*,\s*/);
+        if (dirMatch) { radialShape = dirMatch[1] as any; if (dirMatch[2]) radialSize = dirMatch[2]; stopsStr = inner.slice(dirMatch[0].length); }
+      }
     }
 
     const stops: GradientStop[] = [];
