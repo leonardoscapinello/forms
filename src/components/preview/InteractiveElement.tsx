@@ -693,14 +693,19 @@ export default function InteractiveElement({
 
     case 'input_textarea':
       return withFieldHeader(
-        <textarea
-          value={t(value) || ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={t(element.placeholder) || 'Digite sua mensagem...'}
-          rows={3}
-          className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
-          autoFocus
-        />
+        <>
+          {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-ta`)}</style>}
+          <textarea
+            id={`${placeholderCssId}-ta`}
+            value={t(value) || ''}
+            onChange={e => onChange(e.target.value)}
+            placeholder={t(element.placeholder) || 'Digite sua mensagem...'}
+            rows={3}
+            className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
+            style={fieldInputStyle}
+            autoFocus
+          />
+        </>
       );
 
     case 'input_date':
