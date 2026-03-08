@@ -506,6 +506,19 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const pages = form?.pages || [];
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
 
+  // Self-healing: if restored page index is invalid, recover to a safe starting point
+  useEffect(() => {
+    if (currentPageIndex === null) return;
+    if (currentPage) return;
+
+    if (pages.length === 0) {
+      setCurrentPageIndex(null);
+      return;
+    }
+
+    setCurrentPageIndex(form?.showWelcomeScreen ? null : 0);
+  }, [currentPageIndex, currentPage, pages.length, form?.showWelcomeScreen]);
+
   // Flow-aware "last page" detection: a page is last if its outgoing edges
   // only lead to 'end' node or it has no outgoing edges at all (terminal)
   const isFlowLastPage = useMemo(() => {
