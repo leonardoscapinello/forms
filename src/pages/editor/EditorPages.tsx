@@ -100,6 +100,21 @@ import { toast } from 'sonner';
         }
       );
     }
+
+    // Check ordering integrity AFTER the move (simulate the patched form)
+    const patchedForm = { ...form, ...patch };
+    const integrityIssues = validateFormIntegrity(patchedForm);
+    const elementRelatedIssues = integrityIssues.filter(i => i.elementId === element.id || i.elementId.startsWith(`${element.id}.`));
+
+    if (elementRelatedIssues.length > 0) {
+      toast.error(
+        `🚫 ${elementRelatedIssues.length} problema${elementRelatedIssues.length > 1 ? 's' : ''} de ordenação — publicação bloqueada`,
+        {
+          description: elementRelatedIssues.map(i => `• ${i.nodeLabel}: ${i.description}`).join('\n'),
+          duration: 10000,
+        }
+      );
+    }
   }, [editingWelcome, editingThankYou, editingPageId, welcomePage, thankYouPage, form, updateFormData]);
 
   return (
