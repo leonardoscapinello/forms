@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
+import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
