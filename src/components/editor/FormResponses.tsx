@@ -394,7 +394,6 @@ export default function FormResponses({ form }: Props) {
                   </TableHead>
                 ))}
               </TableRow>
-            </TableHeader>
               {/* Drop-off analysis row */}
               {fields.length > 0 && dropOffStats.length > 0 && (
                 <TableRow className="bg-muted/30 border-b-2 border-border">
