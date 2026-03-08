@@ -109,6 +109,9 @@ interface Props {
   onJumpAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
   onJumpChange: (nodeId: string, patch: Partial<JumpNodeData>) => void;
   onJumpDelete: (nodeId: string) => void;
+  onAIAddAtPosition: (position: { x: number; y: number }, sourceNodeId: string, sourceHandle?: string) => void;
+  onAIChange: (nodeId: string, patch: Partial<AINodeData>) => void;
+  onAIDelete: (nodeId: string) => void;
   onFormUpdate: (patch: Partial<FormDataType>) => void;
   onPageSelect: (pageId: string) => void;
   onCreateVariable?: (variable: FormVariable) => void;
