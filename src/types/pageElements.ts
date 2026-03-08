@@ -60,6 +60,23 @@ export type PageElementType =
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
 
+export type CardActionType = 'go_to_page' | 'open_modal' | 'copy_text';
+
+export interface CardItem {
+  id: string;
+  imageUrl?: string;
+  title: string;
+  description?: string;
+  badges?: string[];
+  actionType: CardActionType;
+  /** Target page ID for 'go_to_page' action */
+  actionTargetPageId?: string;
+  /** Text content for 'open_modal' action */
+  actionModalContent?: string;
+  /** Text to copy for 'copy_text' action */
+  actionCopyText?: string;
+}
+
 /** Keys for company field visibility/editability config */
 export type CompanyFieldKey =
   | 'razao_social' | 'nome_fantasia' | 'natureza_juridica' | 'porte'
