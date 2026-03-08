@@ -103,22 +103,22 @@ export default function Login() {
     <div className="min-h-screen flex bg-background">
       {/* Left — branding */}
       <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] relative flex-col justify-between p-10 overflow-hidden"
-        style={{ background: 'hsl(var(--primary))' }}
+        style={{ background: '#0C0E17' }}
       >
         {/* Decorative grid */}
-        <div className="absolute inset-0 opacity-[0.07]"
+        <div className="absolute inset-0 opacity-[0.04]"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary-foreground)) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)`,
             backgroundSize: '32px 32px',
           }}
         />
 
         {/* Decorative circles */}
-        <div className="absolute -top-20 -right-20 w-[300px] h-[300px] rounded-full border-2 opacity-10"
-          style={{ borderColor: 'hsl(var(--primary-foreground))' }}
+        <div className="absolute -top-20 -right-20 w-[300px] h-[300px] rounded-full border-2 opacity-[0.06]"
+          style={{ borderColor: 'hsl(var(--primary))' }}
         />
-        <div className="absolute -bottom-32 -left-16 w-[400px] h-[400px] rounded-full border opacity-[0.06]"
-          style={{ borderColor: 'hsl(var(--primary-foreground))' }}
+        <div className="absolute -bottom-32 -left-16 w-[400px] h-[400px] rounded-full border opacity-[0.03]"
+          style={{ borderColor: 'hsl(var(--primary))' }}
         />
 
         {/* Top: logo */}
@@ -130,20 +130,18 @@ export default function Login() {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'hsl(var(--primary-foreground) / 0.12)' }}
+              style={{ background: 'rgba(255,255,255,0.08)' }}
             >
               <img
                 src="/images/twobrain-icon.svg"
                 alt="twobrain"
-                className="h-5 w-5"
+                className="h-5 w-5 brightness-0 invert"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             </div>
-            <span className="text-lg font-semibold tracking-tight"
-              style={{ color: 'hsl(var(--primary-foreground))' }}
-            >
+            <span className="text-lg font-semibold tracking-tight text-white/90">
               twobrain
             </span>
           </div>
@@ -156,24 +154,18 @@ export default function Login() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="relative z-10 space-y-4"
         >
-          <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight"
-            style={{ color: 'hsl(var(--primary-foreground))' }}
-          >
+          <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-white">
             Funis conversacionais<br />
             de alta performance.
           </h2>
-          <p className="text-sm leading-relaxed max-w-[320px]"
-            style={{ color: 'hsl(var(--primary-foreground) / 0.65)' }}
-          >
+          <p className="text-sm leading-relaxed max-w-[320px] text-white/50">
             Crie, publique e otimize formulários inteligentes que convertem mais.
           </p>
         </motion.div>
 
         {/* Bottom: footer */}
         <div className="relative z-10">
-          <p className="text-xs"
-            style={{ color: 'hsl(var(--primary-foreground) / 0.4)' }}
-          >
+          <p className="text-xs text-white/25">
             © {new Date().getFullYear()} twobrain
           </p>
         </div>
