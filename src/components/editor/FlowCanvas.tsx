@@ -1079,8 +1079,8 @@ function FlowCanvasInner({
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
         className="bg-background"
-        connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
-        connectionRadius={40}
+        connectionLineStyle={{ stroke: 'hsl(var(--foreground) / 0.45)', strokeWidth: 2, strokeDasharray: '6 3' }}
+        connectionRadius={60}
         snapToGrid
         snapGrid={[20, 20]}
         deleteKeyCode={['Backspace', 'Delete']}
