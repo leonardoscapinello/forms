@@ -550,9 +550,78 @@ export interface AINodeData {
   temperature?: number;
   /** If true (default), skip firing if already fired in this session */
   fireOnce?: boolean;
+// ── Image Gen Node ──────────────────────────────────────────────────────────
+
+export type ImageGenLayerType = 'text' | 'image' | 'shape';
+
+export interface ImageGenTextLayer {
+  id: string;
+  type: 'text';
+  /** Content string — supports {{variable}}, {{field:id}}, etc. */
+  content: string;
+  /** X position in percentage (0–100) */
+  x: number;
+  /** Y position in percentage (0–100) */
+  y: number;
+  fontSize: number;
+  fontColor: string;
+  fontFamily?: string;
+  fontWeight?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  /** Max width in percentage of the canvas */
+  maxWidth?: number;
 }
 
-/** A pixel event fired automatically when the form loads */
+export interface ImageGenImageLayer {
+  id: string;
+  type: 'image';
+  /** Image URL or {{variable}} */
+  src: string;
+  x: number;
+  y: number;
+  /** Width in percentage (0–100) */
+  width: number;
+  /** Height in percentage (0–100) */
+  height: number;
+  borderRadius?: number;
+  opacity?: number;
+}
+
+export interface ImageGenShapeLayer {
+  id: string;
+  type: 'shape';
+  shapeType: 'rectangle' | 'circle' | 'badge';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fillColor: string;
+  borderRadius?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  opacity?: number;
+}
+
+export type ImageGenLayer = ImageGenTextLayer | ImageGenImageLayer | ImageGenShapeLayer;
+
+export interface ImageGenNodeData {
+  id: string;
+  label?: string;
+  /** Background image URL */
+  backgroundImage?: string;
+  /** Output image width in px (default 1200) */
+  outputWidth?: number;
+  /** Output image height in px (default 630) */
+  outputHeight?: number;
+  /** Layers rendered on top of the background */
+  layers: ImageGenLayer[];
+  /** Variable ID where the generated image URL is stored */
+  outputVariableId?: string;
+  /** If true (default), skip firing if already fired in this session */
+  fireOnce?: boolean;
+}
+
+
 export interface FormPixelEvent {
   id: string;
   platform: AnalyticsPlatform;
