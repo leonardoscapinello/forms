@@ -523,6 +523,35 @@ export interface JumpNodeData {
   targetPageId?: string;
 }
 
+// ── AI Node ─────────────────────────────────────────────────────────────────
+
+export type AIObjective = 'summarize' | 'classify' | 'generate' | 'extract' | 'custom';
+
+export interface AINodeData {
+  id: string;
+  label?: string;
+  /** What the AI should do */
+  objective: AIObjective;
+  /** Custom prompt (used when objective is 'custom' or as additional instruction) */
+  prompt?: string;
+  /** System-level instructions */
+  systemPrompt?: string;
+  /** Input fields: element IDs or variable names whose values feed the prompt */
+  inputSources?: string[];
+  /** Variable ID where the AI response text is stored */
+  outputVariableId?: string;
+  /** Whether to block the user flow until AI responds */
+  executionMode?: 'sync' | 'async';
+  /** AI model to use (defaults to gateway default) */
+  model?: string;
+  /** Max tokens for the response */
+  maxTokens?: number;
+  /** Temperature (0-1) for creativity */
+  temperature?: number;
+  /** If true (default), skip firing if already fired in this session */
+  fireOnce?: boolean;
+}
+
 /** A pixel event fired automatically when the form loads */
 export interface FormPixelEvent {
   id: string;
