@@ -50,7 +50,9 @@ export type PageElementType =
   | 'input_yes_no'
   | 'input_multi_select'
   | 'input_quiz_icon'
-  | 'input_quiz_image';
+  | 'input_quiz_image'
+  // Effects
+  | 'confetti';
 
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
