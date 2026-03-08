@@ -89,6 +89,7 @@ export default function InteractiveElement({
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
+  const tHtml = (text: string | undefined) => text ? interpolateTextToHtml(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // ── Field style overrides from formStyle ──────────────────────────────
