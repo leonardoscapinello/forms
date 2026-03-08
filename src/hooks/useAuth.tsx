@@ -22,18 +22,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<'admin' | 'user' | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = useCallback(async (userId: string) => {
+  const fetchUserData = useCallback(async (userId: string): Promise<boolean> => {
     try {
       const [profileRes, roleRes] = await Promise.all([
         supabase.from('profiles').select('display_name, email, avatar_url').eq('user_id', userId).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
       ]);
 
+      const userRole = roleRes.data?.role as 'admin' | 'user' | undefined;
+
+      // If user has no role, they are not authorized
+      if (!userRole) {
+        setProfile(null);
+        setRole(null);
+        return false;
+      }
+
       setProfile(profileRes.data ?? null);
-      setRole((roleRes.data?.role as 'admin' | 'user' | undefined) ?? null);
+      setRole(userRole ?? null);
+      return true;
     } catch {
       setProfile(null);
       setRole(null);
+      return false;
     }
   }, []);
 
