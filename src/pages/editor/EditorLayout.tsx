@@ -1,18 +1,20 @@
 import '@/editor.css';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useMemo, useState as useReactState } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useEditorForm, EditorFormProvider } from '@/hooks/useEditorForm';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, Share2, BarChart2, Settings, Monitor, Palette, MessageSquare, Search, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Eye, Cloud, Loader2, LayoutPanelLeft, GitBranch, Share2, BarChart2, Settings, Monitor, Palette, MessageSquare, Search, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import CollaboratorAvatars from '@/components/editor/collaboration/CollaboratorAvatars';
 import CursorOverlay from '@/components/editor/collaboration/CursorOverlay';
 import { AnimatePresence, motion } from 'framer-motion';
+import { validateFormIntegrity, type IntegrityIssue } from '@/lib/formIntegrityValidator';
+import { toast } from 'sonner';
 
 const ResponsivePreview = lazy(() => import('@/components/editor/ResponsivePreview'));
 
@@ -38,7 +40,26 @@ function EditorLayoutInner() {
   } = useEditorForm();
 
   const currentPath = location.pathname.split('/').pop() || 'pages';
+  const [showIntegrityBanner, setShowIntegrityBanner] = useReactState(false);
 
+  const integrityIssues = useMemo(() => validateFormIntegrity(form), [form]);
+  const hasIssues = integrityIssues.length > 0;
+
+  const handleStatusChange = (status: string) => {
+    if (status === 'published' && hasIssues) {
+      setShowIntegrityBanner(true);
+      toast.error(
+        `Não é possível publicar: ${integrityIssues.length} problema${integrityIssues.length > 1 ? 's' : ''} de integridade`,
+        {
+          description: integrityIssues.slice(0, 3).map(i => `• ${i.description}`).join('\n')
+            + (integrityIssues.length > 3 ? `\n• ... e mais ${integrityIssues.length - 3}` : ''),
+          duration: 8000,
+        }
+      );
+      return;
+    }
+    updateFormData({ status: status as any });
+  };
 
   return (
     <div
@@ -80,6 +101,17 @@ function EditorLayoutInner() {
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Integrity warning badge */}
+            {hasIssues && (
+              <button
+                onClick={() => setShowIntegrityBanner(prev => !prev)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors animate-in fade-in"
+                title={`${integrityIssues.length} problema${integrityIssues.length > 1 ? 's' : ''} de integridade`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{integrityIssues.length}</span>
+              </button>
+            )}
             <div className="hidden sm:block">
               <CollaboratorAvatars collaborators={collaborators} />
             </div>
@@ -116,15 +148,19 @@ function EditorLayoutInner() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[150px]">
-                <DropdownMenuItem onClick={() => updateFormData({ status: 'draft' })} className="text-xs gap-2">
+                <DropdownMenuItem onClick={() => handleStatusChange('draft')} className="text-xs gap-2">
                   <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
                   Rascunho
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateFormData({ status: 'published' })} className="text-xs gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <DropdownMenuItem
+                  onClick={() => handleStatusChange('published')}
+                  className={`text-xs gap-2 ${hasIssues ? 'opacity-60' : ''}`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${hasIssues ? 'bg-destructive' : 'bg-emerald-500'}`} />
                   Ativo
+                  {hasIssues && <AlertTriangle className="h-3 w-3 text-destructive ml-auto" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateFormData({ status: 'closed' })} className="text-xs gap-2">
+                <DropdownMenuItem onClick={() => handleStatusChange('closed')} className="text-xs gap-2">
                   <span className="w-2 h-2 rounded-full bg-destructive" />
                   Fechado
                 </DropdownMenuItem>
@@ -133,6 +169,51 @@ function EditorLayoutInner() {
           </div>
         </div>
       </header>
+
+      {/* Integrity issues banner */}
+      <AnimatePresence>
+        {showIntegrityBanner && hasIssues && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-destructive/5 border-b border-destructive/20 px-4 py-3">
+              <div className="flex items-start justify-between gap-3 max-w-4xl mx-auto">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1.5">
+                    <p className="font-semibold text-destructive">
+                      {integrityIssues.length} problema{integrityIssues.length > 1 ? 's' : ''} de integridade — publicação bloqueada
+                    </p>
+                    <ul className="space-y-1 text-destructive/80">
+                      {integrityIssues.map((issue, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="shrink-0 mt-0.5">•</span>
+                          <span>
+                            <strong>{issue.nodeLabel}:</strong> {issue.description}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-muted-foreground italic">
+                      Mova os campos referenciados para antes dos nós que os utilizam no workflow, ou ajuste as referências.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowIntegrityBanner(false)}
+                  className="shrink-0 p-1 rounded hover:bg-destructive/10 text-destructive/60 hover:text-destructive transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex overflow-hidden">
         <Suspense fallback={null}>
