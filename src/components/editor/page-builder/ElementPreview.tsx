@@ -5,6 +5,7 @@ import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
 import WhatsAppInvitePreview from '@/components/preview/WhatsAppInvitePreview';
+import CardPreview from '@/components/preview/CardPreview';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
