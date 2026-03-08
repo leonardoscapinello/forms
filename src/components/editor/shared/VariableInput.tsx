@@ -83,7 +83,7 @@ export default function VariableInput(props: Props) {
   // Resolve a raw token to display info
   const resolveToken = useCallback((raw: string): VarTokenInfo => {
     if (raw.startsWith('{{field:')) {
-      const id = raw.slice(8, -2);
+      const id = raw.slice(8, -2).trim();
       const label = elementLookup[id] || 'campo';
       return { label, varType: 'field' };
     }

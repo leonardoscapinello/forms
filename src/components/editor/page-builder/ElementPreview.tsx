@@ -61,7 +61,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
     return html.replace(/\{\{field:([^}]+)\}\}/g, (_match, rawElementId: string) => {
       const elementId = rawElementId.trim();
       const label = elementLookup?.[elementId];
-      const display = label ? `{{${escapeHtml(label)}}}` : `{{field:${escapeHtml(elementId)}}}`;
+      const display = `{{${escapeHtml(label || 'Campo')}}}`;
       return `<mark class="var-highlight var-highlight-field var-highlight-readable">${display}</mark>`;
     });
   };

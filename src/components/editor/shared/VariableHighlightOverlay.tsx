@@ -12,11 +12,14 @@ for (const c of CONTEXT_KEYS) {
   CTX_LABEL_MAP[c.key] = c.label;
 }
 
+const FIELD_FALLBACK_LABEL = 'Campo';
+
 export function formatFieldTokensForDisplay(text: string, elementLookup?: ElementLookup): string {
   if (!text) return text;
   return text.replace(/\{\{field:([^}]+)\}\}/g, (_raw, elementId: string) => {
-    const label = elementLookup?.[elementId];
-    return label ? `{{${label}}}` : `{{field:${elementId}}}`;
+    const normalizedId = elementId.trim();
+    const label = elementLookup?.[normalizedId];
+    return `{{${label || FIELD_FALLBACK_LABEL}}}`;
   });
 }
 
@@ -29,10 +32,11 @@ function getReadableDisplay(
   if (varType === 'field') {
     const idMatch = raw.match(/\{\{field:([^}]+)\}\}/);
     if (idMatch) {
-      const label = elementLookup?.[idMatch[1]];
-      return label ? `{{${label}}}` : raw;
+      const normalizedId = idMatch[1].trim();
+      const label = elementLookup?.[normalizedId];
+      return `{{${label || FIELD_FALLBACK_LABEL}}}`;
     }
-    return raw;
+    return `{{${FIELD_FALLBACK_LABEL}}}`;
   }
   if (varType === 'context') {
     const key = raw.slice(6, -2);

@@ -49,11 +49,10 @@ export function parseWhatsAppMarkdown(text: string, elementLookup?: ElementLooku
   html = html.replace(/~(.*?)~/g, '<del>$1</del>');
   html = html.replace(/\{\{(.*?)\}\}/g, (_match, token: string) => {
     if (token.startsWith('field:')) {
-      const elementId = token.slice('field:'.length);
+      const elementId = token.slice('field:'.length).trim();
       const fieldLabel = elementLookup?.[elementId];
-      const safeLabel = fieldLabel
-        ? fieldLabel.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        : token;
+      const safeLabel = (fieldLabel || 'Campo')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       return `<span class="wa-var">{{${safeLabel}}}</span>`;
     }
     if (token.startsWith('ctx.')) {
@@ -304,8 +303,8 @@ export default function WhatsAppMessageEditor({
 
   const resolveToken = useCallback((raw: string): VarTokenInfo => {
     if (raw.startsWith('{{field:')) {
-      const id = raw.slice(8, -2);
-      return { label: elementLookup[id] || id.slice(0, 8), varType: 'field' };
+      const id = raw.slice(8, -2).trim();
+      return { label: elementLookup[id] || 'Campo', varType: 'field' };
     }
     if (raw.startsWith('{{webhook:')) {
       const parts = raw.slice(2, -2).split(':');
