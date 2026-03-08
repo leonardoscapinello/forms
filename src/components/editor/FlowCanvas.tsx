@@ -1195,6 +1195,7 @@ function FlowCanvasInner({
           onAddABTest={handleCtxAddABTest}
           onAddWait={handleCtxAddWait}
           onAddJump={handleCtxAddJump}
+          onAddAI={handleCtxAddAI}
           onClose={() => setContextMenu(null)}
         />
       )}
