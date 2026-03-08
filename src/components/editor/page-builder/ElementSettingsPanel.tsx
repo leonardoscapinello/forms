@@ -800,6 +800,18 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             </div>
           )}
 
+          {/* ─── Rich text: inline editor ─── */}
+          {element.type === 'rich_text' && (
+            <div className="space-y-2">
+              <Label>Conteúdo</Label>
+              <RichTextEditor
+                value={element.content || ''}
+                onChange={v => onChange({ content: v })}
+                placeholder="Escreva seu parágrafo..."
+              />
+            </div>
+          )}
+
           {/* ─── Alert variant ─── */}
           {element.type === 'alert' && (
             <div className="space-y-2">
