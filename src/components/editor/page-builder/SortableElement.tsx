@@ -122,9 +122,11 @@ export default function SortableElement({ element, isSelected, isDragActive, onS
             selectedId={selectedId}
             onSelectElement={onSelectElement}
             designMode={designMode}
+            elementLookup={elementLookup}
+            variables={variables}
           />
         ) : (
-          <ElementPreview element={element} stepNumber={stepNumber} formStyle={formStyle} />
+          <ElementPreview element={element} stepNumber={stepNumber} formStyle={formStyle} elementLookup={elementLookup} variables={variables} />
         )}
       </div>
     </div>
