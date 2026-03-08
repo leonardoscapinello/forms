@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
+import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -68,6 +69,25 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const listRef = useRef<HTMLDivElement>(null);
   const lastColumnOverRef = useRef<string | null>(null);
   const externalPageDropTargetRef = useRef<string | null>(null);
+
+  // Build elementId → friendly label lookup from all pages
+  const elementLookup = useMemo<ElementLookup>(() => {
+    const lookup: ElementLookup = {};
+    for (const page of pages || []) {
+      for (const el of page.elements || []) {
+        if (el.label) lookup[el.id] = el.label;
+        else if (el.type.startsWith('input_')) lookup[el.id] = el.type.replace('input_', '').replace(/_/g, ' ');
+      }
+    }
+    // Also include current page elements (for welcome/thank-you that aren't in pages[])
+    for (const el of elements || []) {
+      if (!lookup[el.id]) {
+        if (el.label) lookup[el.id] = el.label;
+        else if (el.type.startsWith('input_')) lookup[el.id] = el.type.replace('input_', '').replace(/_/g, ' ');
+      }
+    }
+    return lookup;
+  }, [pages, elements]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -538,7 +558,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                       </button>
                     </div>
                   )}
-                  <ElementPreview element={el} formStyle={formStyle} />
+                  <ElementPreview element={el} formStyle={formStyle} elementLookup={elementLookup} variables={variables} />
                 </div>
               ))}
             </div>
@@ -614,6 +634,8 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                   <ElementPreview
                     element={activeElement}
                     formStyle={formStyle}
+                    elementLookup={elementLookup}
+                    variables={variables}
                     stepNumber={
                       activeElement.type.startsWith('input_')
                         ? elements.slice(0, elements.indexOf(activeElement) + 1).filter(e => e.type.startsWith('input_')).length

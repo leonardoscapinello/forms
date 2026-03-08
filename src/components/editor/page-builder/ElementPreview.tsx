@@ -1,5 +1,5 @@
 import { PageElement } from '@/types/pageElements';
-import type { FormStyle } from '@/types/form';
+import type { FormStyle, FormVariable } from '@/types/form';
 import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon, Bell } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
@@ -13,6 +13,7 @@ import CircularProgressPreview from '@/components/preview/CircularProgressPrevie
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { normalizeFontFamily } from '@/lib/fontUtils';
+import { VariableHighlightOverlay, type ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 
 import { Button } from '@/components/ui/button';
 
@@ -20,14 +21,33 @@ interface Props {
   element: PageElement;
   stepNumber?: number;
   formStyle?: FormStyle;
+  /** Maps element IDs → friendly labels for {{field:id}} display */
+  elementLookup?: ElementLookup;
+  /** Variables list for {{varName}} display */
+  variables?: FormVariable[];
 }
 
 /**
  * Renders a page element in the editor canvas with the SAME visual style
  * used in FormPreview, ensuring WYSIWYG parity.
  */
-export default function ElementPreview({ element, stepNumber, formStyle }: Props) {
+export default function ElementPreview({ element, stepNumber, formStyle, elementLookup, variables }: Props) {
   const { type, style } = element;
+
+  /** Render text content with friendly variable labels instead of raw IDs */
+  const renderVarContent = (text: string | undefined, fallback: string, className?: string, inlineStyle?: React.CSSProperties) => {
+    const content = text || fallback;
+    const hasToken = content.includes('{{');
+    if (!hasToken) return <span className={className} style={inlineStyle}>{content}</span>;
+    return (
+      <VariableHighlightOverlay
+        text={content}
+        className={className}
+        elementLookup={elementLookup}
+        displayFieldLabels
+      />
+    );
+  };
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
 
   // Outer wrapper styles (margin)
@@ -94,11 +114,11 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
         <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit' }}>→</span>
         <div>
           <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
-            {element.label || 'Sem título'}
+            {renderVarContent(element.label, 'Sem título')}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{element.description}</p>
+            <div className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{renderVarContent(element.description, '')}</div>
           )}
         </div>
       </div>
@@ -116,7 +136,7 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
       return (
         <div className={alignClass}>
           <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
-            {element.content || 'Título'}
+            {renderVarContent(element.content, 'Título')}
           </div>
         </div>
       );
@@ -125,9 +145,9 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
     case 'text':
       return (
         <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
-            {element.content || ''}
-          </p>
+          <div className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
+            {renderVarContent(element.content, '')}
+          </div>
         </div>
       );
 
@@ -184,7 +204,7 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
               fontSize: style?.fontSize ? (style.fontSize === 'base' ? '1rem' : style.fontSize === 'lg' ? '1.125rem' : style.fontSize === 'xl' ? '1.25rem' : style.fontSize === '2xl' ? '1.5rem' : undefined) : undefined,
             }}
           >
-            {element.content || 'Botão'}
+            {renderVarContent(element.content, 'Botão')}
           </Button>
         </div>
       );
@@ -228,9 +248,9 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
       return (
         <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${alertConfig.bg} ${alertConfig.border}`}>
           <AlertIcon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${alertConfig.iconColor}`} />
-          <p className={`text-sm leading-relaxed ${alertConfig.textColor}`}>
-            {element.content || 'Mensagem de atenção'}
-          </p>
+          <div className={`text-sm leading-relaxed ${alertConfig.textColor}`}>
+            {renderVarContent(element.content, 'Mensagem de atenção')}
+          </div>
         </div>
       );
     }
