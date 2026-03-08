@@ -90,7 +90,9 @@ export default function PageListPanel({
   isThankYouSelected, onSelectThankYou,
   variables = [], onAddVariable, onUpdateVariable, onDeleteVariable,
   disconnectedPageIds = new Set(),
+  onMoveElementToPage,
 }: Props) {
+  const [dragOverPageId, setDragOverPageId] = useState<string | null>(null);
   const [pagesOpen, setPagesOpen] = useState(true);
   const [varsOpen, setVarsOpen] = useState(false);
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
