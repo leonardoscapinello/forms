@@ -41,6 +41,7 @@ import ABTestNode from './ABTestNode';
 import WaitNode from './WaitNode';
 import JumpNode from './JumpNode';
 import AINode from './AINode';
+import ImageGenNode from './ImageGenNode';
 import ConnectDropMenu from './ConnectDropMenu';
 import { FileText, Trash2, LayoutGrid, Power } from 'lucide-react';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
