@@ -248,9 +248,9 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       return (
         <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${alertConfig.bg} ${alertConfig.border}`}>
           <AlertIcon className={`h-5 w-5 mt-0.5 flex-shrink-0 ${alertConfig.iconColor}`} />
-          <p className={`text-sm leading-relaxed ${alertConfig.textColor}`}>
-            {element.content || 'Mensagem de atenção'}
-          </p>
+          <div className={`text-sm leading-relaxed ${alertConfig.textColor}`}>
+            {renderVarContent(element.content, 'Mensagem de atenção')}
+          </div>
         </div>
       );
     }
