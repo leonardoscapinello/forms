@@ -1,5 +1,5 @@
 import { PageElement } from '@/types/pageElements';
-import type { FormStyle } from '@/types/form';
+import type { FormStyle, FormVariable } from '@/types/form';
 import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon, Bell } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
@@ -13,6 +13,7 @@ import CircularProgressPreview from '@/components/preview/CircularProgressPrevie
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { normalizeFontFamily } from '@/lib/fontUtils';
+import { VariableHighlightOverlay, type ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 
 import { Button } from '@/components/ui/button';
 
@@ -20,6 +21,10 @@ interface Props {
   element: PageElement;
   stepNumber?: number;
   formStyle?: FormStyle;
+  /** Maps element IDs → friendly labels for {{field:id}} display */
+  elementLookup?: ElementLookup;
+  /** Variables list for {{varName}} display */
+  variables?: FormVariable[];
 }
 
 /**
