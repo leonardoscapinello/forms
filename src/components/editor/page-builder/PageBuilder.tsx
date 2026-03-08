@@ -234,6 +234,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
+    externalPageDropTargetRef.current = null;
   }, []);
 
   // Move element from a column back to the main canvas
