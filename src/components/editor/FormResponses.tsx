@@ -395,6 +395,86 @@ export default function FormResponses({ form }: Props) {
                 ))}
               </TableRow>
             </TableHeader>
+              {/* Drop-off analysis row */}
+              {fields.length > 0 && dropOffStats.length > 0 && (
+                <TableRow className="bg-muted/30 border-b-2 border-border">
+                  <TableCell className="sticky left-0 bg-muted/30 z-10" />
+                  <TableCell />
+                  <TableCell className="sticky left-12 bg-muted/30 z-10">
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      <TrendingDown className="h-3 w-3" />
+                      Drop-off
+                    </div>
+                  </TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                  {Object.keys(sentimentData).length > 0 && (
+                    <>
+                      <TableCell />
+                      <TableCell />
+                    </>
+                  )}
+                  {fields.map((f, fi) => {
+                    const stat = dropOffStats[fi];
+                    if (!stat) return <TableCell key={`drop-${f.id}-${f.subKey || fi}`} />;
+                    const barColor = stat.pctOfTotal >= 70
+                      ? 'bg-emerald-500'
+                      : stat.pctOfTotal >= 40
+                        ? 'bg-amber-500'
+                        : 'bg-destructive';
+                    const dropColor = stat.dropFromPrev > 20
+                      ? 'text-destructive'
+                      : stat.dropFromPrev > 10
+                        ? 'text-amber-600'
+                        : 'text-muted-foreground';
+                    return (
+                      <TableCell key={`drop-${f.id}-${f.subKey || fi}`} className="min-w-[160px] max-w-[280px]">
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="space-y-1 cursor-default">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] font-semibold tabular-nums">{stat.pctOfTotal}%</span>
+                                  {fi > 0 && stat.dropFromPrev > 0 && (
+                                    <span className={`text-[10px] font-medium ${dropColor}`}>
+                                      −{stat.dropFromPrev}%
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                    style={{ width: `${stat.pctOfTotal}%` }}
+                                  />
+                                </div>
+                                <div className="text-[9px] text-muted-foreground tabular-nums">
+                                  {stat.answered}/{total} responderam
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs space-y-1 max-w-[200px]">
+                              <p className="font-semibold">{f.label}</p>
+                              <p>{stat.answered} de {total} responderam ({stat.pctOfTotal}%)</p>
+                              {fi > 0 && (
+                                <p className={dropColor}>
+                                  {stat.dropFromPrev > 0
+                                    ? `${stat.dropFromPrev}% abandonaram desde o campo anterior`
+                                    : 'Sem abandono em relação ao campo anterior'}
+                                </p>
+                              )}
+                              {fi > 0 && <p>Conversão sequencial: {stat.pctOfPrev}%</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                    );
+                  })}
+                  {variableColumns.map(v => <TableCell key={`drop-${v.key}`} />)}
+                  {paramColumns.map(p => <TableCell key={`drop-${p.key}`} />)}
+                </TableRow>
+              )}
+            </TableHeader>
             <TableBody>
               {filtered.map((row, idx) => {
                 const isComplete = row.metadata?.status === 'complete' || !!row.metadata?.submitted_at;
