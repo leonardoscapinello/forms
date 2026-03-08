@@ -24,6 +24,8 @@ interface Props {
   lockedBy?: CollaboratorPresence | null;
   designMode?: boolean;
   formStyle?: FormStyle;
+  elementLookup?: ElementLookup;
+  variables?: FormVariable[];
 }
 
 export default function SortableElement({ element, isSelected, isDragActive, onSelect, onDelete, onElementChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, stepNumber, lockedBy, designMode, formStyle }: Props) {
