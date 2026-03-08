@@ -50,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    // Track whether we already fetched user data from getSession
+    let initialFetchDone = false;
     const loadingTimeout = setTimeout(() => {
       if (mounted) setLoading(false);
     }, 4000);
@@ -61,28 +63,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // We handle INITIAL_SESSION via getSession below
         if (event === 'INITIAL_SESSION') return;
+        // Skip token refreshes entirely — no state changes needed
+        if (event === 'TOKEN_REFRESHED') return;
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
         setLoading(false);
 
-        // Only re-fetch profile on actual sign-in, not token refreshes
+        // Only re-fetch on SIGNED_IN if we haven't already fetched via getSession
         if (event === 'SIGNED_IN' && nextSession?.user) {
+          if (initialFetchDone) return; // Already fetched, skip duplicate
+          initialFetchDone = true;
           setTimeout(async () => {
             if (!mounted) return;
             const authorized = await fetchUserData(nextSession.user.id);
             if (!authorized && mounted) {
-              // User not authorized — sign them out
               await supabase.auth.signOut();
               setUser(null);
               setSession(null);
               setProfile(null);
               setRole(null);
-              // Store unauthorized flag for Login page to display
               sessionStorage.setItem('auth_unauthorized', '1');
             }
           }, 0);
         } else if (event === 'SIGNED_OUT') {
+          initialFetchDone = false;
           setProfile(null);
           setRole(null);
         }
@@ -98,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Don't block the whole app on profile/role fetch
+          initialFetchDone = true;
           setLoading(false);
           fetchUserData(session.user.id);
         } else {

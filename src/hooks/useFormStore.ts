@@ -102,27 +102,22 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
         setForms(parsed);
         setLoaded(true);
 
-        // Fetch response counts in background and patch store when done
+        // Fetch response counts in background using count-only queries (no row data transferred)
         if (formIds.length > 0) {
           (async () => {
             const countMap: Record<string, number> = {};
-            const chunks = [];
-            for (let i = 0; i < formIds.length; i += 20) {
-              chunks.push(formIds.slice(i, i + 20));
-            }
 
+            // Use individual count-only queries per form (head:true = no rows transferred)
             const results = await Promise.all(
-              chunks.map(chunk =>
-                supabase.from('form_responses').select('form_id', { count: 'exact', head: false }).in('form_id', chunk)
+              formIds.map(fid =>
+                supabase.from('form_responses').select('*', { count: 'exact', head: true }).eq('form_id', fid)
               )
             );
 
             if (cancelled) return;
 
-            results.forEach(res => {
-              (res.data || []).forEach((r: { form_id: string }) => {
-                countMap[r.form_id] = (countMap[r.form_id] || 0) + 1;
-              });
+            results.forEach((res, idx) => {
+              countMap[formIds[idx]] = res.count ?? 0;
             });
 
             if (cancelled) return;
