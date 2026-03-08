@@ -177,6 +177,17 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
+    const draggedElement = elements.find(e => e.id === active.id);
+
+    // External drop target (page row in left sidebar) — works with dnd-kit drag
+    const externalTargetPageId = externalPageDropTargetRef.current;
+    externalPageDropTargetRef.current = null;
+    if (draggedElement && externalTargetPageId && onMoveElementToPage && pageId && externalTargetPageId !== pageId) {
+      onMoveElementToPage(draggedElement, externalTargetPageId);
+      if (selectedId === active.id) setSelectedId(null);
+      return;
+    }
+
     if (!over && !lastColumnOverRef.current) return;
 
     // Determine the actual drop target — prefer lastColumnOverRef for column drops
@@ -190,7 +201,6 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
       const parts = columnDropId.split(':');
       const columnsElementId = parts[1];
       const colIdx = parseInt(parts[2]);
-      const draggedElement = elements.find(e => e.id === active.id);
 
       if (draggedElement && draggedElement.type !== 'columns') {
         // Remove from main list and add to column
@@ -220,7 +230,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onChange(arrayMove(elements, oldIndex, newIndex));
       }
     }
-  }, [elements, onChange, selectedId]);
+  }, [elements, onChange, selectedId, onMoveElementToPage, pageId]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
