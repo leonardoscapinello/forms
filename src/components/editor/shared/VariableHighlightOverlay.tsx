@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
+import type { FormVariable } from '@/types/form';
 
 type VarType = 'variable' | 'webhook' | 'field' | 'param' | 'context';
 
@@ -15,30 +16,43 @@ export function formatFieldTokensForDisplay(text: string, elementLookup?: Elemen
   if (!text) return text;
   return text.replace(/\{\{field:([^}]+)\}\}/g, (_raw, elementId: string) => {
     const label = elementLookup?.[elementId];
-    return label ? `{{${label}}}` : '{{campo}}';
+    return label ? `{{${label}}}` : `{{field:${elementId}}}`;
   });
 }
 
-function getReadableDisplay(raw: string, varType: VarType, elementLookup?: ElementLookup): string {
+function getReadableDisplay(
+  raw: string,
+  varType: VarType,
+  elementLookup?: ElementLookup,
+  variables?: FormVariable[],
+): string {
   if (varType === 'field') {
-    return formatFieldTokensForDisplay(raw, elementLookup);
+    const idMatch = raw.match(/\{\{field:([^}]+)\}\}/);
+    if (idMatch) {
+      const label = elementLookup?.[idMatch[1]];
+      return label ? `{{${label}}}` : raw;
+    }
+    return raw;
   }
   if (varType === 'context') {
-    // {{ctx.device}} → {{Dispositivo}}
-    const key = raw.slice(6, -2); // remove {{ctx. and }}
+    const key = raw.slice(6, -2);
     const label = CTX_LABEL_MAP[key];
     return label ? `{{${label}}}` : raw;
   }
   if (varType === 'param') {
-    // {{param.utm_source}} → {{utm_source}}
-    const key = raw.slice(8, -2); // remove {{param. and }}
+    const key = raw.slice(8, -2);
     return `{{${key}}}`;
   }
   if (varType === 'webhook') {
-    // {{webhook:id:field}} → {{field}}
-    const parts = raw.slice(2, -2).split(':'); // webhook, id, field
+    const parts = raw.slice(2, -2).split(':');
     const fieldName = parts.length >= 3 ? parts.slice(2).join(':') : parts[parts.length - 1];
     return `{{${fieldName}}}`;
+  }
+  // Plain variable — try to find a friendly name
+  if (varType === 'variable' && variables?.length) {
+    const varName = raw.slice(2, -2); // remove {{ and }}
+    const found = variables.find(v => v.name === varName || v.id === varName);
+    if (found) return `{{${found.name}}}`;
   }
   return raw;
 }
@@ -51,11 +65,13 @@ export function VariableHighlightOverlay({
   text,
   className,
   elementLookup,
+  variables,
   displayFieldLabels = false,
 }: {
   text: string;
   className?: string;
   elementLookup?: ElementLookup;
+  variables?: FormVariable[];
   displayFieldLabels?: boolean;
 }) {
   const parts = useMemo(() => {
@@ -83,7 +99,7 @@ export function VariableHighlightOverlay({
         varType = 'context';
       }
 
-      const display = displayFieldLabels ? getReadableDisplay(raw, varType, elementLookup) : raw;
+      const display = displayFieldLabels ? getReadableDisplay(raw, varType, elementLookup, variables) : raw;
 
       result.push({ text: raw, display, isVar: true, varType });
       lastIndex = regex.lastIndex;
@@ -92,7 +108,7 @@ export function VariableHighlightOverlay({
       result.push({ text: text.slice(lastIndex), display: text.slice(lastIndex), isVar: false, varType: 'variable' });
     }
     return result;
-  }, [text, elementLookup, displayFieldLabels]);
+  }, [text, elementLookup, variables, displayFieldLabels]);
 
   if (!text) return null;
 

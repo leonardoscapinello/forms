@@ -44,6 +44,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
         text={content}
         className={className}
         elementLookup={elementLookup}
+        variables={variables}
         displayFieldLabels
       />
     );
