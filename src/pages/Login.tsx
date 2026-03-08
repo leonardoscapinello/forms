@@ -154,15 +154,11 @@ export default function Login() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="relative z-10 space-y-4"
         >
-          <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight"
-            style={{ color: 'hsl(var(--primary-foreground))' }}
-          >
+          <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-white">
             Funis conversacionais<br />
             de alta performance.
           </h2>
-          <p className="text-sm leading-relaxed max-w-[320px]"
-            style={{ color: 'hsl(var(--primary-foreground) / 0.65)' }}
-          >
+          <p className="text-sm leading-relaxed max-w-[320px] text-white/50">
             Crie, publique e otimize formulários inteligentes que convertem mais.
           </p>
         </motion.div>
