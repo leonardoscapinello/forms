@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData } from '@/types/form';
+import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData, FormVariableType } from '@/types/form';
 import { VariableInput } from '../shared';
+import VariableSelect from '../shared/VariableSelect';
 import { LocalInput } from '../shared/LocalInput';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,9 +28,10 @@ interface Props {
   onChange: (patch: Partial<AINodeData>) => void;
   variables: FormVariable[];
   allInputElements: InputElementGroup[];
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
-export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange, variables, allInputElements }: Props) {
+export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange, variables, allInputElements, onCreateVariable }: Props) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -215,19 +217,15 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Salvar resultado em</label>
-              <Select value={nodeData.outputVariableId || ''} onValueChange={v => onChange({ outputVariableId: v })}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Selecione variável" />
-                </SelectTrigger>
-                <SelectContent>
-                  {variables.filter(v => v.type === 'text').map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                  ))}
-                  {variables.filter(v => v.type === 'text').length === 0 && (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">Crie uma variável de texto primeiro</div>
-                  )}
-                </SelectContent>
-              </Select>
+              <VariableSelect
+                value={nodeData.outputVariableId || ''}
+                variables={variables.filter(v => v.type === 'text')}
+                onValueChange={v => onChange({ outputVariableId: v })}
+                onCreateVariable={onCreateVariable}
+                placeholder="Selecione variável"
+                accentClass="text-node-ai-accent"
+                className="h-9 text-sm"
+              />
               {outputVariable && (
                 <p className="text-[10px] text-muted-foreground">
                   Resultado → <span className="font-semibold text-node-ai-accent">{`{{${outputVariable.name}}}`}</span>

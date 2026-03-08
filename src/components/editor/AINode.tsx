@@ -4,7 +4,7 @@ import { Sparkles, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData } from '@/types/form';
+import type { AINodeData, AIObjective, FormVariable, IntegrationNodeData, FormVariableType } from '@/types/form';
 import type { InputElementGroup } from './VariableAssignPanel';
 import { DisabledBadge } from './NodeDisabledOverlay';
 import AIConfigDialog from './ai-node/AIConfigDialog';
@@ -24,10 +24,11 @@ export interface AINodeProps {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDisabled?: boolean; onToggleDisabled?: () => void } }) {
-  const { nodeData, onChange, onDelete, variables = [], allInputElements = [], isNodeDisabled = false } = data;
+  const { nodeData, onChange, onDelete, variables = [], allInputElements = [], isNodeDisabled = false, onCreateVariable } = data;
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const outputVariable = variables.find(v => v.id === nodeData.outputVariableId);
@@ -125,6 +126,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
         onChange={onChange}
         variables={variables}
         allInputElements={allInputElements}
+        onCreateVariable={onCreateVariable}
       />
     </>
   );

@@ -512,6 +512,7 @@ function FlowCanvasInner({
           variables,
           integrationNodes,
           allInputElements: prevElements,
+          onCreateVariable,
         },
       });
     });
