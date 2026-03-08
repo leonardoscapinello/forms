@@ -743,7 +743,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
               ) : (
                 col.elements.map(el => (
                   <div key={el.id} className="text-sm [&_*]:!text-sm [&_h2]:!text-base">
-                    <ElementPreview element={el} />
+                    <ElementPreview element={el} elementLookup={elementLookup} variables={variables} />
                   </div>
                 ))
               )}

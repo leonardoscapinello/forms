@@ -349,7 +349,7 @@ export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onM
               )}
 
               {/* Element content */}
-              <ElementPreview element={el} />
+              <ElementPreview element={el} elementLookup={elementLookup} variables={variables} />
             </div>
           ))}
 
