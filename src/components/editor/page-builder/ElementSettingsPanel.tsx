@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType, ALL_COMPANY_FIELDS, COMPANY_FIELD_LABELS, CompanyFieldKey } from '@/types/pageElements';
+import { PageElement, PAGE_ELEMENT_LABELS, SelectOption, NotificationItem, ArgumentItem, TestimonialItem, FAQItem, PricingPlan, PricingFeature, CarouselImage, ProgressBarItem, ComparativeDataset, ComparativeDataPoint, ComparativeChartMode, ListItem, ListStyleType, ALL_COMPANY_FIELDS, COMPANY_FIELD_LABELS, CompanyFieldKey, CardItem, CardActionType } from '@/types/pageElements';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import type { InputElementGroup } from '../VariableAssignPanel';
 import { Input } from '@/components/ui/input';
