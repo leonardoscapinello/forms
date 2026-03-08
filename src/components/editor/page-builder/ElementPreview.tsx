@@ -5,6 +5,7 @@ import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
 import WhatsAppInvitePreview from '@/components/preview/WhatsAppInvitePreview';
+import CardPreview from '@/components/preview/CardPreview';
 import ChartLivePreview from '@/components/editor/chart-designer/ChartLivePreview';
 import ComparativeChartPreview from '@/components/preview/charts/ComparativeChartPreview';
 import TimerPreview from '@/components/preview/TimerPreview';
@@ -719,6 +720,16 @@ export default function ElementPreview({ element, stepNumber, formStyle }: Props
         <div className="relative w-full h-24 rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden">
           <span className="text-xs text-muted-foreground z-10">🎉 Confete ({element.confettiDirection === 'sides' ? 'laterais' : 'cima p/ baixo'} · {element.confettiIntensity === 'explosion' ? 'explosão' : 'sutil'})</span>
         </div>
+      );
+
+    case 'card':
+      return (
+        <CardPreview
+          items={element.cardItems || []}
+          columns={element.cardColumns}
+          imageHeight={element.cardImageHeight}
+          interactive={false}
+        />
       );
 
     default:

@@ -57,6 +57,7 @@ const ELEMENT_ICONS: Record<PageElementType, React.ElementType> = {
   input_document: FileText,
   input_company: Building2,
   confetti: PartyPopper,
+  card: LayoutGrid,
 };
 
 interface Props {

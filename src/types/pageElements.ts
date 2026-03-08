@@ -53,10 +53,29 @@ export type PageElementType =
   | 'input_quiz_icon'
   | 'input_quiz_image'
   // Effects
-  | 'confetti';
+  | 'confetti'
+  // Card element
+  | 'card';
 
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
+
+export type CardActionType = 'go_to_page' | 'open_modal' | 'copy_text';
+
+export interface CardItem {
+  id: string;
+  imageUrl?: string;
+  title: string;
+  description?: string;
+  badges?: string[];
+  actionType: CardActionType;
+  /** Target page ID for 'go_to_page' action */
+  actionTargetPageId?: string;
+  /** Text content for 'open_modal' action */
+  actionModalContent?: string;
+  /** Text to copy for 'copy_text' action */
+  actionCopyText?: string;
+}
 
 /** Keys for company field visibility/editability config */
 export type CompanyFieldKey =
@@ -428,6 +447,10 @@ export interface PageElement {
   companyVisibleFields?: CompanyFieldKey[];
   /** Company field: which fields the user can manually edit */
   companyEditableFields?: CompanyFieldKey[];
+  // Card element
+  cardItems?: CardItem[];
+  cardColumns?: 1 | 2 | 3;
+  cardImageHeight?: number; // px
   // Confetti element
   confettiDirection?: 'top' | 'sides';
   confettiIntensity?: 'subtle' | 'explosion';
@@ -491,6 +514,7 @@ export const PAGE_ELEMENT_LABELS: Record<PageElementType, string> = {
   input_document: 'Documento',
   input_company: 'Empresa',
   confetti: 'Confete',
+  card: 'Cards',
 };
 
 export type ElementCategory = 'layout' | 'content' | 'fields_text' | 'fields_choice' | 'data' | 'effects' | 'sections';
@@ -522,7 +546,7 @@ export const ELEMENT_CATEGORIES: Record<ElementCategory, { label: string; types:
   },
   sections: {
     label: 'Seções prontas',
-    types: ['arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel', 'whatsapp_invite'],
+    types: ['card', 'arguments', 'testimonials', 'faq', 'pricing', 'before_after', 'carousel', 'whatsapp_invite'],
   },
 };
 
@@ -884,6 +908,15 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.confettiDirection = 'top';
       base.confettiIntensity = 'explosion';
       base.confettiDuration = 3000;
+      break;
+    case 'card':
+      base.cardColumns = 3;
+      base.cardImageHeight = 200;
+      base.cardItems = [
+        { id: crypto.randomUUID(), title: 'Card 1', description: 'Descrição do card', badges: ['Badge'], actionType: 'go_to_page' },
+        { id: crypto.randomUUID(), title: 'Card 2', description: 'Descrição do card', badges: ['Badge'], actionType: 'go_to_page' },
+        { id: crypto.randomUUID(), title: 'Card 3', description: 'Descrição do card', badges: ['Badge'], actionType: 'go_to_page' },
+      ];
       break;
   }
 
