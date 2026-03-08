@@ -25,7 +25,7 @@ import {
   FunnelPage, FormData as FormDataType, FlowEdge,
   ConditionNodeData, createDefaultFunnelPage, createDefaultConditionGroup,
   VariableOpNodeData, IntegrationNodeData, AnalyticsNodeData, WhatsAppNodeData, EmailNodeData,
-  ABTestNodeData, WaitNodeData, JumpNodeData, AINodeData, FormVariable,
+  ABTestNodeData, WaitNodeData, JumpNodeData, AINodeData, ImageGenNodeData, FormVariable,
 } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import PageNode from './PageNode';
