@@ -246,12 +246,7 @@ export function interpolateTextToNodes(
     }
 
     hasVar = true;
-    nodes.push(
-      createElement('mark', {
-        key: `var-${i}`,
-        className: VAR_TYPE_CLASS[varType],
-      }, value)
-    );
+    nodes.push(value);
   }
 
   // If no variables were found, return plain text (avoids unnecessary wrapper)
