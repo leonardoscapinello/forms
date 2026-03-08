@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UserPlus, Lock, Mail, User, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Loader2, UserPlus, Lock, Mail, User } from 'lucide-react';
+
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" fill="#34A853"/>
+      <path d="M5.84 14.09A6.6 6.6 0 0 1 5.5 12c0-.72.12-1.42.34-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.78.43 3.46 1.18 4.93l3.66-2.84Z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53Z" fill="#EA4335"/>
+    </svg>
+  );
+}
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -13,6 +24,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [setupMode, setSetupMode] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [setupName, setSetupName] = useState('');
@@ -56,10 +68,7 @@ export default function Login() {
     }
 
     check();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -91,229 +100,164 @@ export default function Login() {
     setLoading(false);
   };
 
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
+      });
+      if (result?.error) {
+        setError(result.error instanceof Error ? result.error.message : String(result.error));
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao conectar com Google');
+    }
+    setGoogleLoading(false);
+  };
+
   if (checkingSetup) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left — branding */}
-      <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] relative flex-col justify-between p-10 overflow-hidden"
-        style={{ background: '#0C0E17' }}
-      >
-        {/* Decorative grid */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.5) 1px, transparent 0)`,
-            backgroundSize: '32px 32px',
-          }}
-        />
-
-        {/* Decorative circles */}
-        <div className="absolute -top-20 -right-20 w-[300px] h-[300px] rounded-full border-2 opacity-[0.06]"
-          style={{ borderColor: 'hsl(var(--primary))' }}
-        />
-        <div className="absolute -bottom-32 -left-16 w-[400px] h-[400px] rounded-full border opacity-[0.03]"
-          style={{ borderColor: 'hsl(var(--primary))' }}
-        />
-
-        {/* Top: logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative z-10"
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.08)' }}
-            >
-              <img
-                src="/images/twobrain-icon.svg"
-                alt="twobrain"
-                className="h-5 w-5 brightness-0 invert"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            </div>
-            <span className="text-lg font-semibold tracking-tight text-white/90">
-              twobrain
-            </span>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-[380px]">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 mb-8">
+          <div className="h-9 w-9 rounded-lg bg-foreground flex items-center justify-center">
+            <img
+              src="/images/twobrain-icon.svg"
+              alt="twobrain"
+              className="h-4.5 w-4.5 brightness-0 invert"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
           </div>
-        </motion.div>
+          <span className="text-base font-semibold text-foreground tracking-tight">twobrain</span>
+        </div>
 
-        {/* Center: tagline */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative z-10 space-y-4"
-        >
-          <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-white">
-            Funis conversacionais<br />
-            de alta performance.
-          </h2>
-          <p className="text-sm leading-relaxed max-w-[320px] text-white/50">
-            Crie, publique e otimize formulários inteligentes que convertem mais.
-          </p>
-        </motion.div>
-
-        {/* Bottom: footer */}
-        <div className="relative z-10">
-          <p className="text-xs text-white/25">
-            © {new Date().getFullYear()} twobrain
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">
+            {setupMode ? 'Configuração inicial' : 'Entrar'}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {setupMode
+              ? 'Crie a conta de administrador para começar.'
+              : 'Acesse sua conta para continuar.'}
           </p>
         </div>
-      </div>
 
-      {/* Right — form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="w-full max-w-[400px]"
-        >
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-12">
-            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
-              <img
-                src="/images/twobrain-icon.svg"
-                alt="twobrain"
-                className="h-4.5 w-4.5 brightness-0"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
+        {/* Setup banner */}
+        {setupMode && (
+          <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2.5">
+            <UserPlus className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-medium text-foreground">Primeiro acesso</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Esta conta terá controle total do sistema.
+              </p>
             </div>
-            <span className="text-base font-semibold text-foreground tracking-tight">twobrain</span>
           </div>
+        )}
 
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              {setupMode ? 'Configuração inicial' : 'Entrar na sua conta'}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              {setupMode
-                ? 'Crie a conta de administrador para começar a usar a plataforma.'
-                : 'Insira suas credenciais para acessar o painel.'}
-            </p>
-          </div>
-
-          {/* Setup banner */}
-          {setupMode && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 flex items-start gap-3"
-            >
-              <div className="mt-0.5 h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <UserPlus className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Primeiro acesso detectado</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Esta conta terá controle total do sistema.
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={setupMode ? handleSetup : handleLogin} className="space-y-5">
-            {setupMode && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Nome
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
-                  <Input
-                    value={setupName}
-                    onChange={e => setSetupName(e.target.value)}
-                    placeholder="Seu nome completo"
-                    className="pl-11 h-12 rounded-xl border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-colors"
-                    autoFocus
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Email
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="voce@empresa.com"
-                  required
-                  className="pl-11 h-12 rounded-xl border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-colors"
-                  autoFocus={!setupMode}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Senha
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={setupMode ? 'Crie uma senha forte' : '••••••••'}
-                  required
-                  className="pl-11 h-12 rounded-xl border-border bg-card text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-colors"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3"
-              >
-                <p className="text-sm text-destructive flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-destructive inline-block shrink-0" />
-                  {error}
-                </p>
-              </motion.div>
-            )}
-
+        {/* Google sign-in (only when not in setup mode) */}
+        {!setupMode && (
+          <>
             <Button
-              type="submit"
-              className="w-full h-12 text-sm font-semibold rounded-xl mt-1 gap-2"
-              disabled={loading}
+              type="button"
+              variant="outline"
+              className="w-full h-10 text-sm font-medium gap-2.5"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading}
             >
-              {loading ? (
+              {googleLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  {setupMode ? 'Criar administrador' : 'Continuar'}
-                  <ArrowRight className="h-4 w-4" />
-                </>
+                <GoogleIcon className="h-4 w-4" />
               )}
+              Continuar com Google
             </Button>
-          </form>
 
-          {/* Mobile footer */}
-          <p className="text-xs text-muted-foreground/50 text-center mt-10 lg:hidden">
-            © {new Date().getFullYear()} twobrain
-          </p>
-        </motion.div>
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-background px-3 text-muted-foreground">ou</span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Form */}
+        <form onSubmit={setupMode ? handleSetup : handleLogin} className="space-y-4">
+          {setupMode && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Nome</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
+                <Input
+                  value={setupName}
+                  onChange={e => setSetupName(e.target.value)}
+                  placeholder="Seu nome"
+                  className="pl-10 h-10"
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
+              <Input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="voce@empresa.com"
+                required
+                className="pl-10 h-10"
+                autoFocus={!setupMode}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Senha</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
+              <Input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="pl-10 h-10"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2.5">
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
+
+          <Button type="submit" className="w-full h-10 text-sm font-medium" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {setupMode ? 'Criar administrador' : 'Entrar'}
+          </Button>
+        </form>
+
+        <p className="text-[11px] text-muted-foreground/40 text-center mt-8">
+          © {new Date().getFullYear()} twobrain
+        </p>
       </div>
     </div>
   );
