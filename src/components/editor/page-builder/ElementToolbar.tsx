@@ -5,7 +5,7 @@ import {
   Hash, AlignLeft, Calendar, Ruler, Weight, ToggleLeft, ListChecks, Smile, ImagePlus, FileText, Building2,
   AlertTriangle, Bell, List, MessageSquareQuote, HelpCircle, CreditCard, Columns, GalleryHorizontal,
   LayoutGrid, BarChart3, Activity, Percent, Timer, GitCompareArrows, CircleDot as CircleProgress,
-  ListOrdered, Gauge, Loader, MessageCircle,
+  ListOrdered, Gauge, Loader, MessageCircle, PartyPopper,
 } from 'lucide-react';
 import type { PageElementType } from '@/types/pageElements';
 
