@@ -90,6 +90,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
         onUpdateVariable={handleUpdateVariable}
         onDeleteVariable={handleDeleteVariable}
         disconnectedPageIds={disconnectedPageIds}
+        onMoveElementToPage={handleMoveElementToPage}
       />
       {editingWelcome ? (
         <PageBuilder
