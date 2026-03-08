@@ -24,10 +24,11 @@ export interface AINodeProps {
   variables?: FormVariable[];
   integrationNodes?: IntegrationNodeData[];
   allInputElements?: InputElementGroup[];
+  onCreateVariable?: (variable: FormVariable) => void;
 }
 
 function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDisabled?: boolean; onToggleDisabled?: () => void } }) {
-  const { nodeData, onChange, onDelete, variables = [], allInputElements = [], isNodeDisabled = false } = data;
+  const { nodeData, onChange, onDelete, variables = [], allInputElements = [], isNodeDisabled = false, onCreateVariable } = data;
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const outputVariable = variables.find(v => v.id === nodeData.outputVariableId);
