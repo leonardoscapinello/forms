@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
 import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle } from 'lucide-react';
+import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -206,6 +207,38 @@ export default function FormResponses({ form }: Props) {
     return { total: t, completed: c, partial: Math.max(t - c, 0) };
   }, [rows]);
 
+  // Drop-off stats per field column
+  const dropOffStats = useMemo(() => {
+    if (rows.length === 0) return [];
+    const totalCount = rows.length;
+    return fields.map((field, idx) => {
+      const answered = rows.filter(r => {
+        const val = field.subKey
+          ? (r.answers?.[field.id] && typeof r.answers[field.id] === 'object' && !Array.isArray(r.answers[field.id])
+            ? r.answers[field.id][field.subKey]
+            : r.answers?.[`${field.id}.${field.subKey}`])
+          : r.answers?.[field.id];
+        return val !== undefined && val !== null && val !== '';
+      }).length;
+      const pctOfTotal = Math.round((answered / totalCount) * 100);
+      // Previous field answered count for sequential drop calculation
+      const prevAnswered = idx === 0 ? totalCount : (() => {
+        const pf = fields[idx - 1];
+        return rows.filter(r => {
+          const val = pf.subKey
+            ? (r.answers?.[pf.id] && typeof r.answers[pf.id] === 'object' && !Array.isArray(r.answers[pf.id])
+              ? r.answers[pf.id][pf.subKey]
+              : r.answers?.[`${pf.id}.${pf.subKey}`])
+            : r.answers?.[pf.id];
+          return val !== undefined && val !== null && val !== '';
+        }).length;
+      })();
+      const pctOfPrev = prevAnswered > 0 ? Math.round((answered / prevAnswered) * 100) : 0;
+      const dropFromPrev = prevAnswered > 0 ? Math.round(((prevAnswered - answered) / prevAnswered) * 100) : 0;
+      return { answered, pctOfTotal, pctOfPrev, dropFromPrev };
+    });
+  }, [rows, fields]);
+
   const exportCSV = useCallback(() => {
     const headers = ['#', 'ID', 'Status', 'Entrada', 'Envio', 'Duração', ...fields.map(f => f.label), ...variableColumns.map(v => v.label), ...paramColumns.map(p => `🔗 ${p.label}`)];
     const csvRows = [headers.join(',')];
@@ -361,6 +394,85 @@ export default function FormResponses({ form }: Props) {
                   </TableHead>
                 ))}
               </TableRow>
+              {/* Drop-off analysis row */}
+              {fields.length > 0 && dropOffStats.length > 0 && (
+                <TableRow className="bg-muted/30 border-b-2 border-border">
+                  <TableCell className="sticky left-0 bg-muted/30 z-10" />
+                  <TableCell />
+                  <TableCell className="sticky left-12 bg-muted/30 z-10">
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      <TrendingDown className="h-3 w-3" />
+                      Drop-off
+                    </div>
+                  </TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                  {Object.keys(sentimentData).length > 0 && (
+                    <>
+                      <TableCell />
+                      <TableCell />
+                    </>
+                  )}
+                  {fields.map((f, fi) => {
+                    const stat = dropOffStats[fi];
+                    if (!stat) return <TableCell key={`drop-${f.id}-${f.subKey || fi}`} />;
+                    const barColor = stat.pctOfTotal >= 70
+                      ? 'bg-emerald-500'
+                      : stat.pctOfTotal >= 40
+                        ? 'bg-amber-500'
+                        : 'bg-destructive';
+                    const dropColor = stat.dropFromPrev > 20
+                      ? 'text-destructive'
+                      : stat.dropFromPrev > 10
+                        ? 'text-amber-600'
+                        : 'text-muted-foreground';
+                    return (
+                      <TableCell key={`drop-${f.id}-${f.subKey || fi}`} className="min-w-[160px] max-w-[280px]">
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="space-y-1 cursor-default">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] font-semibold tabular-nums">{stat.pctOfTotal}%</span>
+                                  {fi > 0 && stat.dropFromPrev > 0 && (
+                                    <span className={`text-[10px] font-medium ${dropColor}`}>
+                                      −{stat.dropFromPrev}%
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                    style={{ width: `${stat.pctOfTotal}%` }}
+                                  />
+                                </div>
+                                <div className="text-[9px] text-muted-foreground tabular-nums">
+                                  {stat.answered}/{total} responderam
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs space-y-1 max-w-[200px]">
+                              <p className="font-semibold">{f.label}</p>
+                              <p>{stat.answered} de {total} responderam ({stat.pctOfTotal}%)</p>
+                              {fi > 0 && (
+                                <p className={dropColor}>
+                                  {stat.dropFromPrev > 0
+                                    ? `${stat.dropFromPrev}% abandonaram desde o campo anterior`
+                                    : 'Sem abandono em relação ao campo anterior'}
+                                </p>
+                              )}
+                              {fi > 0 && <p>Conversão sequencial: {stat.pctOfPrev}%</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                    );
+                  })}
+                  {variableColumns.map(v => <TableCell key={`drop-${v.key}`} />)}
+                  {paramColumns.map(p => <TableCell key={`drop-${p.key}`} />)}
+                </TableRow>
+              )}
             </TableHeader>
             <TableBody>
               {filtered.map((row, idx) => {
