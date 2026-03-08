@@ -7,7 +7,7 @@ import { PageElement } from '@/types/pageElements';
 import { FormVariable, FormStyle } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
 import Twemoji from '@/components/Twemoji';
-import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
+import { interpolateText, interpolateTextToNodes, interpolateTextToHtml } from '@/lib/variableInterpolation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { validateEmailFormat } from '@/lib/emailValidation';
 
