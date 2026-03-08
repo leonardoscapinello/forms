@@ -190,5 +190,5 @@ export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { tr
   });
 
   // 2. Server-side com retry — SEMPRE, independente do client
-  firePixel({ ...opts, firedClient } as FirePixelOptions);
+  firePixel({ ...opts, firedClient });
 }
