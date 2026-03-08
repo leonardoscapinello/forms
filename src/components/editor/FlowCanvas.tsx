@@ -196,6 +196,7 @@ function FlowCanvasInner({
   const abTestNodes = form.abTestNodes || [];
   const waitNodes = form.waitNodes || [];
   const jumpNodes = form.jumpNodes || [];
+  const aiNodes = form.aiNodes || [];
 
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
