@@ -103,8 +103,10 @@ export function VariableHighlightOverlay({
     context: 'var-highlight var-highlight-context',
   };
 
+  const isReadable = displayFieldLabels;
+
   return (
-    <div className={className} aria-hidden="true">
+    <div className={cn(className, isReadable && 'var-highlight-readable')} aria-hidden={!isReadable}>
       {parts.map((part, i) =>
         part.isVar ? (
           <mark key={i} className={varTypeClass[part.varType]}>
