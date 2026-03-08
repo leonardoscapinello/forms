@@ -937,6 +937,12 @@ function FlowCanvasInner({
     setDropMenu(null);
   }, [dropMenu, onAIAddAtPosition]);
 
+  const handleDropAddImageGen = useCallback(() => {
+    if (!dropMenu) return;
+    onImageGenAddAtPosition(dropMenu.flowPos, dropMenu.sourceNodeId, dropMenu.sourceHandle);
+    setDropMenu(null);
+  }, [dropMenu, onImageGenAddAtPosition]);
+
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
