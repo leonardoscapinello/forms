@@ -126,6 +126,7 @@ function AINode({ data, selected }: NodeProps & { data: AINodeProps & { isNodeDi
         onChange={onChange}
         variables={variables}
         allInputElements={allInputElements}
+        onCreateVariable={onCreateVariable}
       />
     </>
   );
