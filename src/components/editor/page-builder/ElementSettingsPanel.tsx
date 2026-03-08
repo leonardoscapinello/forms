@@ -809,6 +809,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 value={element.content || ''}
                 onChange={v => onChange({ content: v })}
                 placeholder="Escreva seu parágrafo..."
+                {...varProps}
               />
             </div>
           )}
