@@ -120,6 +120,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
           unlockElement={unlockElement}
           isLockedByOther={isLockedByOther}
           formStyle={form.style}
+          onMoveElementToPage={handleMoveElementToPage}
         />
       ) : editingThankYou ? (
         <PageBuilder
@@ -137,6 +138,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
           unlockElement={unlockElement}
           isLockedByOther={isLockedByOther}
           formStyle={form.style}
+          onMoveElementToPage={handleMoveElementToPage}
         />
       ) : editingPage ? (
         <PageBuilder
@@ -154,6 +156,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
           unlockElement={unlockElement}
           isLockedByOther={isLockedByOther}
           formStyle={form.style}
+          onMoveElementToPage={handleMoveElementToPage}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">

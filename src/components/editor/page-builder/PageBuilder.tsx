@@ -1,5 +1,5 @@
 // PageBuilder – drag-and-drop page editor
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
@@ -56,9 +56,10 @@ interface Props {
   designMode?: boolean;
   designSelectedId?: string | null;
   onDesignSelect?: (id: string | null) => void;
+  onMoveElementToPage?: (element: PageElement, targetPageId: string) => void;
 }
 
-export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar, readOnly, designMode, designSelectedId, onDesignSelect }: Props) {
+export default function PageBuilder({ elements, onChange, pageStyle, onPageStyleChange, pages, pageId, variables, integrationNodes, allInputElements, trackedParams, lockElement, unlockElement, isLockedByOther, formStyle, hideToolbar, readOnly, designMode, designSelectedId, onDesignSelect, onMoveElementToPage }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -66,11 +67,28 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const dragCounterRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
   const lastColumnOverRef = useRef<string | null>(null);
+  const externalPageDropTargetRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  useEffect(() => {
+    if (!activeId) {
+      externalPageDropTargetRef.current = null;
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const el = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+      const pageTarget = el?.closest('[data-page-drop-id]') as HTMLElement | null;
+      externalPageDropTargetRef.current = pageTarget?.dataset.pageDropId || null;
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+  }, [activeId]);
 
   // Custom collision: prioritize column droppables, fall back to sortable reorder
   const customCollision: CollisionDetection = useCallback((args) => {
@@ -159,6 +177,17 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
+    const draggedElement = elements.find(e => e.id === active.id);
+
+    // External drop target (page row in left sidebar) — works with dnd-kit drag
+    const externalTargetPageId = externalPageDropTargetRef.current;
+    externalPageDropTargetRef.current = null;
+    if (draggedElement && externalTargetPageId && onMoveElementToPage && pageId && externalTargetPageId !== pageId) {
+      onMoveElementToPage(draggedElement, externalTargetPageId);
+      if (selectedId === active.id) setSelectedId(null);
+      return;
+    }
+
     if (!over && !lastColumnOverRef.current) return;
 
     // Determine the actual drop target — prefer lastColumnOverRef for column drops
@@ -172,7 +201,6 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
       const parts = columnDropId.split(':');
       const columnsElementId = parts[1];
       const colIdx = parseInt(parts[2]);
-      const draggedElement = elements.find(e => e.id === active.id);
 
       if (draggedElement && draggedElement.type !== 'columns') {
         // Remove from main list and add to column
@@ -202,10 +230,11 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onChange(arrayMove(elements, oldIndex, newIndex));
       }
     }
-  }, [elements, onChange, selectedId]);
+  }, [elements, onChange, selectedId, onMoveElementToPage, pageId]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
+    externalPageDropTargetRef.current = null;
   }, []);
 
   // Move element from a column back to the main canvas
