@@ -3,7 +3,7 @@ import { useFormStoreSafe } from '@/hooks/useFormStore';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { FormData as AppFormData } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
-import { consumePrefetchedForm, hasPrefetchedForm } from '@/lib/formPrefetch';
+import { consumePrefetchedForm } from '@/lib/formPrefetch';
 
 // Start loading Core chunk IMMEDIATELY — runs in parallel with data fetch
 const coreModule = import('./FormPreviewCore');
@@ -31,17 +31,29 @@ export default function FormPreview() {
 
     let cancelled = false;
 
-    const parseFormData = (data: any) => {
-      if (cancelled) return;
-      const d = data.data as Record<string, unknown>;
-      const form: AppFormData = {
-        ...(d as unknown as AppFormData),
-        id: data.id,
-        title: data.title,
-        status: data.status as AppFormData['status'],
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
+    const normalizeFormPayload = (payload: any): AppFormData | null => {
+      if (!payload) return null;
+
+      // Handles: row, edge response row, prefetch { data: row, error }, and future { form: row }
+      const unwrapped = payload.form ?? payload.data ?? payload;
+      const row = unwrapped?.id && unwrapped?.data ? unwrapped : payload;
+      const blob = row?.data && typeof row.data === 'object' ? row.data : row;
+
+      if (!blob || typeof blob !== 'object') return null;
+
+      return {
+        ...(blob as AppFormData),
+        id: row?.id ?? (blob as any).id,
+        title: row?.title ?? (blob as any).title,
+        status: (row?.status ?? (blob as any).status) as AppFormData['status'],
+        createdAt: row?.created_at ?? row?.createdAt ?? (blob as any).createdAt,
+        updatedAt: row?.updated_at ?? row?.updatedAt ?? (blob as any).updatedAt,
       };
+    };
+
+    const parseFormData = (payload: any) => {
+      if (cancelled) return;
+      const form = normalizeFormPayload(payload);
       setPublicForm(form);
       setPublicLoading(false);
     };
@@ -55,9 +67,16 @@ export default function FormPreview() {
       });
 
     // Source 1: prefetch cache (started in main.tsx)
-    const fromPrefetch = hasPrefetchedForm(id)
-      ? withTimeout(consumePrefetchedForm(id), 5000, 'prefetch')
-      : Promise.reject(new Error('no_prefetch'));
+    // Always consume so we can reuse in-flight prefetch promise instead of dropping it.
+    const fromPrefetch = withTimeout(
+      consumePrefetchedForm(id).then((result: any) => {
+        const payload = result?.data ?? result;
+        if (!payload || payload?.error) throw new Error('prefetch_failed');
+        return payload;
+      }),
+      5000,
+      'prefetch'
+    );
 
     // Source 2: edge function
     const fromEdge = withTimeout(
