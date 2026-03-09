@@ -3,6 +3,27 @@ import { PageElement } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
 import { createElement, Fragment, ReactNode } from 'react';
 
+/** Stringify an object field value into a human-readable string (e.g. phone → ddi+number) */
+function stringifyFieldValue(val: any): string {
+  if (Array.isArray(val)) return val.map(v => typeof v === 'object' ? stringifyFieldValue(v) : String(v)).join(', ');
+  // Phone field: { ddi, number, countryCode }
+  if (val.ddi && val.number) return `${val.ddi}${val.number.replace(/\D/g, '')}`;
+  // Address: { street, number, city, state, zip, ... }
+  if (val.street !== undefined || val.city !== undefined) {
+    return [val.street, val.number, val.complement, val.neighborhood, val.city, val.state, val.zip].filter(Boolean).join(', ');
+  }
+  // Height/Weight: { height, weight }
+  if (val.height !== undefined || val.weight !== undefined) {
+    return [val.height && `${val.height}cm`, val.weight && `${val.weight}kg`].filter(Boolean).join(' / ');
+  }
+  // Full name: { first, last }
+  if (val.first !== undefined || val.last !== undefined) {
+    return [val.first, val.last].filter(Boolean).join(' ');
+  }
+  // Fallback: JSON
+  return JSON.stringify(val);
+}
+
 /** Get a value from an object using dot/bracket path */
 function getNestedValue(obj: any, path: string): any {
   const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
@@ -46,7 +67,9 @@ export function interpolateText(
   // Handle field references: {{field:elementId}}
   result = result.replace(/\{\{field:([^}]+)\}\}/g, (_match, elementId: string) => {
     const val = answers[elementId];
-    return val !== undefined && val !== null ? String(val) : '';
+    if (val === undefined || val === null) return '';
+    if (typeof val === 'object') return stringifyFieldValue(val);
+    return String(val);
   });
 
   // Then handle variable references: {{varName}}
@@ -139,7 +162,8 @@ export function interpolateTextToHtml(
       return val ? { value: val, type: 'param' } : null;
     }
     if (inner.startsWith('field:')) {
-      const val = String(answers[inner.slice(6)] ?? '');
+      const raw = answers[inner.slice(6)];
+      const val = raw !== undefined && raw !== null ? (typeof raw === 'object' ? stringifyFieldValue(raw) : String(raw)) : '';
       return val ? { value: val, type: 'field' } : null;
     }
 
@@ -224,7 +248,8 @@ export function interpolateTextToNodes(
       value = String(answers[`__param_${inner.slice(6)}`] ?? '');
     } else if (inner.startsWith('field:')) {
       varType = 'field';
-      value = String(answers[inner.slice(6)] ?? '');
+      const raw = answers[inner.slice(6)];
+      value = raw !== undefined && raw !== null ? (typeof raw === 'object' ? stringifyFieldValue(raw) : String(raw)) : '';
     } else {
       const variable = variables.find(v => v.name === inner);
       if (!variable) {
