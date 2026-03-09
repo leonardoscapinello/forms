@@ -337,14 +337,19 @@ async function walkWorkflow(
         const aiNode = (formData.aiNodes || []).find((n: any) => n.id === aiId);
         if (aiNode) {
           try {
-            // Gather input data from selected sources
+            // Gather input data from selected sources (serialize objects to readable strings)
             const inputData: Record<string, any> = {};
             for (const sourceId of aiNode.inputSources || []) {
               const val = currentAnswers[sourceId];
               if (val !== undefined && val !== null) {
                 const element = (formData.pages || []).flatMap((p: any) => p.elements || []).find((el: any) => el.id === sourceId);
                 const label = element?.label || element?.placeholder || sourceId;
-                inputData[label] = val;
+                // Serialize objects to readable strings to avoid [object Object]
+                if (typeof val === 'object' && val !== null) {
+                  inputData[label] = JSON.stringify(val, null, 2);
+                } else {
+                  inputData[label] = String(val);
+                }
               }
             }
 

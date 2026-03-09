@@ -1103,15 +1103,19 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             firedNodesRef.current.add(target);
             console.info('[walkWorkflow] Executing AI node:', target, '| inputs:', aiNode.inputSources?.length || 0, '| prompt:', aiNode.prompt?.slice(0, 50) + '...');
 
-            // Gather input data from selected sources
+            // Gather input data from selected sources (serialize objects to readable strings)
             const inputData: Record<string, any> = {};
             for (const sourceId of aiNode.inputSources || []) {
               const val = currentAns[sourceId];
               if (val !== undefined && val !== null) {
-                // Try to find a human label for the field
                 const element = f.pages?.flatMap(p => p.elements || []).find(el => el.id === sourceId);
                 const label = element?.label || element?.placeholder || sourceId;
-                inputData[label] = val;
+                // Serialize objects to readable strings to avoid [object Object]
+                if (typeof val === 'object') {
+                  inputData[label] = JSON.stringify(val, null, 2);
+                } else {
+                  inputData[label] = String(val);
+                }
               }
             }
 
