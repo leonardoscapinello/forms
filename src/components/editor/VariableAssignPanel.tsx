@@ -7,10 +7,19 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import VariableSelect from './shared/VariableSelect';
 
+export interface InputElementEntry {
+  elementId: string;
+  elementLabel: string;
+  /** Original element type (e.g. 'input_radio'). Omitted for compound sub-keys. */
+  elementType?: string;
+  /** Options for select/radio/quiz fields — used by ConditionGroupEditor for value dropdown */
+  options?: { id: string; label: string }[];
+}
+
 export interface InputElementGroup {
   pageId: string;
   pageTitle: string;
-  elements: { elementId: string; elementLabel: string }[];
+  elements: InputElementEntry[];
 }
 
 interface Props {
