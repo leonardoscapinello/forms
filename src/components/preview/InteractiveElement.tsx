@@ -1079,13 +1079,11 @@ export default function InteractiveElement({
                 key={opt.id}
                 onClick={() => toggleOption(opt.id)}
                 whileTap={{ scale: 0.97 }}
-                animate={isSelected ? {
-                  scale: [1, 1.02, 1],
-                } : {}}
-                transition={{ duration: 0.35 }}
+                animate={isSelected ? { scale: [1, 1.03, 0.98, 1.01, 1] } : {}}
+                transition={{ duration: 0.45 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
                   isSelected ? 'shadow-sm' : ''
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
                 style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
