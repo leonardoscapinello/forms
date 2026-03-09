@@ -1806,9 +1806,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     <LazyMotion features={domAnimation} strict>
     <main role="main">
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
       className="min-h-screen flex flex-col relative"
       style={outerContainerStyle}
     >
