@@ -136,7 +136,12 @@ export async function fireWebhookWithResponse(opts: FirePixelOptions): Promise<R
  * Tenta client-side (para deduplicação nos ad managers) e garante server-side.
  * Client-side é best-effort — não bloqueia se ausente/bloqueado.
  */
-export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { triggerType?: FirePixelOptions['triggerType']; onFired?: (record: PixelEventRecord) => void }): void {
+export function firePixelDual(
+  opts: Omit<FirePixelOptions, 'triggerType'> & {
+    triggerType?: FirePixelOptions['triggerType'];
+    onFired?: (record: PixelEventRecord) => void;
+  },
+): void {
   if (!isProductionEnvironment()) {
     // Still record the event even in non-production for webhook tracking
     opts.onFired?.({
@@ -151,6 +156,7 @@ export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { tr
     });
     return;
   }
+
   // 1. Client-side (best-effort, pode ser bloqueado por AdBlock)
   let firedClient = false;
   if (typeof window !== 'undefined') {
@@ -162,7 +168,8 @@ export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { tr
       }
       if (platform === 'google_analytics' && (window as any).gtag) {
         (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), {
-          event_dedup_id: eventId, ...(customParams || {})
+          event_dedup_id: eventId,
+          ...(customParams || {}),
         });
         firedClient = true;
       }
@@ -191,4 +198,72 @@ export function firePixelDual(opts: Omit<FirePixelOptions, 'triggerType'> & { tr
 
   // 2. Server-side com retry — SEMPRE, independente do client
   firePixel({ ...opts, firedClient });
+}
+
+/**
+ * Versão BLOQUEANTE do firePixelDual: aguarda o disparo server-side (útil quando o workflow
+ * precisa garantir que o nó foi processado antes de avançar).
+ */
+export async function firePixelDualBlocking(
+  opts: Omit<FirePixelOptions, 'triggerType'> & {
+    triggerType?: FirePixelOptions['triggerType'];
+    onFired?: (record: PixelEventRecord) => void;
+  },
+): Promise<void> {
+  if (!isProductionEnvironment()) {
+    // Still record the event even in non-production for webhook tracking
+    opts.onFired?.({
+      platform: opts.platform,
+      event_name: opts.eventName,
+      event_id: opts.eventId,
+      trigger_type: opts.triggerType || 'flow_node',
+      fired_client: false,
+      fired_server: false,
+      fired_at: new Date().toISOString(),
+      custom_params: opts.customParams,
+    });
+    return;
+  }
+
+  // 1. Client-side (best-effort)
+  let firedClient = false;
+  if (typeof window !== 'undefined') {
+    try {
+      const { platform, eventName, eventId, customParams } = opts;
+      if (platform === 'meta_pixel' && (window as any).fbq) {
+        (window as any).fbq('track', eventName, customParams || {}, { eventID: eventId });
+        firedClient = true;
+      }
+      if (platform === 'google_analytics' && (window as any).gtag) {
+        (window as any).gtag('event', eventName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), {
+          event_dedup_id: eventId,
+          ...(customParams || {}),
+        });
+        firedClient = true;
+      }
+      if (platform === 'tiktok_pixel' && (window as any).ttq) {
+        (window as any).ttq.track(eventName, customParams || {}, { event_id: eventId });
+        firedClient = true;
+      }
+      if (platform === 'linkedin_pixel' && (window as any).lintrk) {
+        (window as any).lintrk('track', { conversion_id: eventId });
+        firedClient = true;
+      }
+    } catch (_) {}
+  }
+
+  // Record the event for webhook tracking
+  opts.onFired?.({
+    platform: opts.platform,
+    event_name: opts.eventName,
+    event_id: opts.eventId,
+    trigger_type: opts.triggerType || 'flow_node',
+    fired_client: firedClient,
+    fired_server: true,
+    fired_at: new Date().toISOString(),
+    custom_params: opts.customParams,
+  });
+
+  // 2. Server-side com retry — aguardar aqui
+  await firePixel({ ...opts, firedClient });
 }

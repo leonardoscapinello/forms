@@ -16,7 +16,7 @@ import Twemoji from '@/components/Twemoji';
 import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
-import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
+import { firePixelDual, firePixelDualBlocking, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
 import { enqueueTask } from '@/lib/backgroundQueue';
 // consumePrefetchedForm/hasPrefetchedForm moved to shell (FormPreview.tsx)
@@ -69,6 +69,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
+  const [isFlowProcessing, setIsFlowProcessing] = useState(false);
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -715,12 +716,14 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     currentAnswers: Record<string, any>,
     skipSideEffects = false,
   ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any>; pendingWait?: { durationMs: number; feedback?: WaitFeedbackConfig; remainingNodeId: string } }> => {
-    // SAFETY NET: always skip side-effects in preview mode, regardless of caller
-    const effectiveSkip = skipSideEffects || isEditorPreviewRef.current;
+    // Em editor preview, pulamos integrações externas (webhooks/pixels/WhatsApp/email) por segurança,
+    // mas permitimos nós internos (IA/variáveis/condições) para que o fluxo seja testável.
+    const skipExternal = skipSideEffects || isEditorPreviewRef.current;
+    const skipAI = skipSideEffects && !isEditorPreviewRef.current;
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
-    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| effectiveSkip:', effectiveSkip);
+    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| skipExternal:', skipExternal, '| skipAI:', skipAI);
     if (edges.length > 0) {
       console.info('[walkWorkflow] Edge map:', edges.map(e => `${e.source} → ${e.target}${e.sourceHandle ? ` [${e.sourceHandle}]` : ''}`).join(' | '));
     }
@@ -853,7 +856,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: webhook integration node
       if (target.startsWith('int-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const intgId = target.replace('int-', '');
           const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
           const shouldFire = intgNode ? (intgNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -921,7 +924,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 console.error('Webhook (with mappings) error:', err);
               }
             } else {
-              enqueueTask(() => fireWebhookWithResponse(webhookOpts).then(() => {}), `webhook:${intgNode.webhookUrl}`);
+              // BLOQUEANTE: ainda dispara o webhook (sem mapeamento), mas aguarda conclusão antes de avançar
+              try {
+                await fireWebhookWithResponse(webhookOpts);
+              } catch (err) {
+                console.error('Webhook error:', err);
+              }
             }
           }
         }
@@ -931,7 +939,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: analytics node — fire server-side with retry (AdBlock-proof)
       if (target.startsWith('an-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const anId = target.replace('an-', '');
           const anNode = f?.analyticsNodes?.find(n => n.id === anId);
           const shouldFire = anNode ? (anNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -963,7 +971,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 f,
               );
 
-              firePixelDual({
+              await firePixelDualBlocking({
                 platform: entry.platform,
                 eventName,
                 eventId,
@@ -984,9 +992,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         currentNodeId = target;
         continue;
       }
-      // Intermediate: WhatsApp node — fire-and-forget via background queue
+      // Intermediate: WhatsApp node — processamento bloqueante
       if (target.startsWith('wa-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const waId = target.replace('wa-', '');
           const waNode = f?.whatsappNodes?.find(n => n.id === waId);
           const shouldFire = waNode ? (waNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -1007,19 +1015,22 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
             }
 
-            enqueueTask(
-              () => supabase.functions.invoke('whatsapp-send', { body }).then(() => {}),
-              `whatsapp:${resolvedNumber}`,
-            );
+            // Tentativa única (a própria função pode fazer retries). Em caso de falha, loga e segue.
+            try {
+              const { error } = await supabase.functions.invoke('whatsapp-send', { body });
+              if (error) console.error('[walkWorkflow] WhatsApp error:', error);
+            } catch (err) {
+              console.error('[walkWorkflow] WhatsApp exception:', err);
+            }
           }
         }
         currentNodeId = target;
         continue;
       }
 
-      // Intermediate: Email node — fire-and-forget via background queue
+      // Intermediate: Email node — processamento bloqueante
       if (target.startsWith('em-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const emId = target.replace('em-', '');
           const emNode = f?.emailNodes?.find(n => n.id === emId);
           const shouldFire = emNode ? (emNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -1043,10 +1054,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               useHtml: emNode.useHtml,
             };
 
-            enqueueTask(
-              () => supabase.functions.invoke('resend-send', { body }).then(() => {}).catch(() => {}),
-              `email:${resolvedTo}`,
-            );
+            try {
+              const { error } = await supabase.functions.invoke('resend-send', { body });
+              if (error) console.error('[walkWorkflow] Email error:', error);
+            } catch (err) {
+              console.error('[walkWorkflow] Email exception:', err);
+            }
           }
         }
         currentNodeId = target;
@@ -1067,7 +1080,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
           const durationMs = (wtNode.duration || 1) * multiplier;
           // Walk the rest of the workflow from the wait node to find the destination
-          const restResult = await walkWorkflow(target, currentAns, effectiveSkip);
+          const restResult = await walkWorkflow(target, currentAns, skipExternal);
           return {
             ...restResult,
             pendingWait: { durationMs, feedback: wtNode.feedback, remainingNodeId: target },
@@ -1081,10 +1094,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       if (target.startsWith('ai-')) {
         const aiId = target.replace('ai-', '');
         const aiNode = f?.aiNodes?.find(n => n.id === aiId);
-        
-        console.info('[walkWorkflow] Processing AI node:', target, '| effectiveSkip:', effectiveSkip, '| hasNode:', !!aiNode);
-        
-        if (!effectiveSkip) {
+
+        console.info('[walkWorkflow] Processing AI node:', target, '| skipAI:', skipAI, '| hasNode:', !!aiNode);
+
+        if (!skipAI) {
           const shouldFire = aiNode ? (aiNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
           if (aiNode && f && shouldFire) {
             firedNodesRef.current.add(target);
@@ -1114,14 +1127,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               temperature: aiNode.temperature ?? 0.7,
             };
 
-            const isSync = (aiNode.executionMode || 'sync') === 'sync';
-
             const doInvoke = async () => {
               try {
                 console.info('[walkWorkflow] AI invoke starting...', body);
                 const { data, error } = await supabase.functions.invoke('ai-process', { body });
                 console.info('[walkWorkflow] AI response:', { success: data?.success, hasResult: !!data?.result, error });
-                
+
                 if (!error && data?.success && data.result && aiNode.outputVariableId) {
                   const outVar = f?.variables?.find(v => v.id === aiNode.outputVariableId);
                   if (outVar) {
@@ -1141,19 +1152,15 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               }
             };
 
-            if (isSync) {
-              console.info('[walkWorkflow] Synchronous AI execution - awaiting result...');
-              currentAns = await doInvoke();
-              console.info('[walkWorkflow] Synchronous AI execution completed. Variables:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
-            } else {
-              console.info('[walkWorkflow] Asynchronous AI execution - enqueueing task');
-              enqueueTask(doInvoke, `ai:${aiId}`);
-            }
+            // BLOQUEANTE: sempre aguarda a IA antes de avançar
+            console.info('[walkWorkflow] Blocking AI execution - awaiting result...');
+            currentAns = await doInvoke();
+            console.info('[walkWorkflow] Blocking AI execution completed. Variables:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
           } else {
             console.info('[walkWorkflow] AI node skipped:', target, '| shouldFire:', shouldFire, '| alreadyFired:', firedNodesRef.current.has(target));
           }
         } else {
-          console.info('[walkWorkflow] AI node skipped (editor preview mode):', target);
+          console.info('[walkWorkflow] AI node skipped (skipAI=true):', target);
         }
         currentNodeId = target;
         continue;
@@ -1161,7 +1168,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: ImageGen node — fire-and-forget image composition
       if (target.startsWith('ig-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const igId = target.replace('ig-', '');
           const igNode = f?.imageGenNodes?.find(n => n.id === igId);
           const shouldFire = igNode ? (igNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -1248,6 +1255,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     if (isPageBlocked) return;
     if (!areRequiredFieldsFilled()) return;
     navigatingRef.current = true;
+    setIsFlowProcessing(true);
 
     try {
       // Run async validators for current page
@@ -1551,6 +1559,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         setFinished(true);
       }
     } finally {
+      setIsFlowProcessing(false);
       navigatingRef.current = false;
     }
   }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview]);
@@ -2031,8 +2040,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               <Button
                 variant="default"
                 size="sm"
-                onClick={waitFeedback ? undefined : goNext}
-                disabled={isPageBlocked || !!waitFeedback}
+                onClick={waitFeedback || isFlowProcessing ? undefined : goNext}
+                disabled={isPageBlocked || !!waitFeedback || isFlowProcessing}
                 className="h-9 gap-1.5 text-xs"
                 style={{
                   backgroundColor: form.style?.buttonBgColor || form.style?.primaryColor || undefined,
@@ -2063,6 +2072,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                         </span>
                       )}
                     </span>
+                  </>
+                ) : isFlowProcessing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Processando...</span>
                   </>
                 ) : isPageBlocked ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
