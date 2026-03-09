@@ -1927,8 +1927,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           (!!currentPage && (currentPage.elements?.length ?? 0) > 0)
         );
 
-        // Mount the animated screen only when the real UI is ready, so the entrance motion applies to real content.
-        const shouldMountAnimatedScreen = !isBootstrapping && (!screenUsesInteractiveElements || isInteractiveElementReady);
+        // Mount the content when data is ready; gate animation start with animationFrameReady
+        // so the browser paints the initial (invisible) state before framer-motion animates.
+        const contentReady = !isBootstrapping && (!screenUsesInteractiveElements || isInteractiveElementReady);
 
         return (
 
@@ -1937,13 +1938,13 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
-              {shouldMountAnimatedScreen && (
+              {contentReady && (
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
                 variants={variants}
                 initial="enter"
-                animate="center"
+                animate={animationFrameReady ? 'center' : 'enter'}
                 exit="exit"
                 transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full mx-auto my-auto"
