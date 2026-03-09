@@ -2040,8 +2040,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               <Button
                 variant="default"
                 size="sm"
-                onClick={waitFeedback ? undefined : goNext}
-                disabled={isPageBlocked || !!waitFeedback}
+                onClick={waitFeedback || isFlowProcessing ? undefined : goNext}
+                disabled={isPageBlocked || !!waitFeedback || isFlowProcessing}
                 className="h-9 gap-1.5 text-xs"
                 style={{
                   backgroundColor: form.style?.buttonBgColor || form.style?.primaryColor || undefined,
@@ -2072,6 +2072,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                         </span>
                       )}
                     </span>
+                  </>
+                ) : isFlowProcessing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Processando...</span>
                   </>
                 ) : isPageBlocked ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
