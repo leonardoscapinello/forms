@@ -1879,6 +1879,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           paddingBottom: paddingY,
         };
 
+        const screenUsesInteractiveElements = (
+          (isWelcome && form.showWelcomeScreen && (form.welcomePage?.elements?.length ?? 0) > 0) ||
+          (isThankYou && (form.thankYouPage?.elements?.length ?? 0) > 0) ||
+          (!!currentPage && (currentPage.elements?.length ?? 0) > 0)
+        );
+
+        // Mount the animated screen only when the real UI is ready, so the entrance motion applies to real content.
+        const shouldMountAnimatedScreen = !isBootstrapping && (!screenUsesInteractiveElements || isInteractiveElementReady);
+
+        return (
+
         return (
           <div
             ref={scrollContainerRef}
