@@ -764,16 +764,20 @@ export default function InteractiveElement({
     case 'input_checkbox':
       return withFieldHeader(
         <motion.button
-          onClick={() => onChange(!value)}
-          className="flex items-center gap-3 md:gap-4 text-left group"
+          onClick={() => {
+            const newVal = !value;
+            onChange(newVal);
+            if (newVal) triggerSelectionFeedback('checkbox-on');
+          }}
+          className={`flex items-center gap-3 md:gap-4 text-left group ${blinkingId === 'checkbox-on' ? 'animate-selection-tactile' : ''}`}
           whileTap={{ scale: 0.97 }}
         >
           <motion.div
             className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
               value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
             }`}
-            animate={value ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ duration: 0.25 }}
+            animate={value ? { scale: [1, 1.25, 0.95, 1.1, 1] } : {}}
+            transition={{ duration: 0.4 }}
           >
             {value && <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />}
           </motion.div>
