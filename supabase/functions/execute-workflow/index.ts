@@ -5,23 +5,69 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// ── Stringify compound field values ──
+
+function stringifyFieldValue(val: any): string {
+  if (Array.isArray(val)) return val.map((v: any) => typeof v === 'object' ? stringifyFieldValue(v) : String(v)).join(', ');
+  if (val.ddi && val.number) return `${val.ddi}${String(val.number).replace(/\D/g, '')}`;
+  if (val.street !== undefined || val.city !== undefined) {
+    return [val.street, val.number, val.complement, val.neighborhood, val.city, val.state, val.zip].filter(Boolean).join(', ');
+  }
+  if (val.height !== undefined || val.weight !== undefined) {
+    return [val.height && `${val.height}cm`, val.weight && `${val.weight}kg`].filter(Boolean).join(' / ');
+  }
+  if (val.first !== undefined || val.last !== undefined) {
+    return [val.first, val.last].filter(Boolean).join(' ');
+  }
+  return JSON.stringify(val);
+}
+
+function resolveAnswerValue(val: any): string {
+  if (val === undefined || val === null) return '';
+  if (typeof val === 'object') return stringifyFieldValue(val);
+  return String(val);
+}
+
 // ── Variable interpolation ──
 
 function interpolate(text: string, answers: Record<string, any>, variables: any[]): string {
   if (!text) return '';
-  return text.replace(/\{\{([^}]+)\}\}/g, (_, key) => {
+
+  // Handle webhook references: {{webhook:nodeId:path}}
+  let result = text.replace(/\{\{webhook:([^:}]+):([^}]+)\}\}/g, (_: string, nodeId: string, path: string) => {
+    const data = answers[`__webhook_${nodeId}`];
+    if (!data) return '';
+    const val = path.split('.').reduce((obj: any, key: string) => obj?.[key], data);
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+
+  // Handle context: {{ctx.device}}
+  result = result.replace(/\{\{ctx\.(\w+)\}\}/g, (_: string, key: string) => {
+    const val = answers[`__ctx_${key}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+
+  // Handle params: {{param.utm_source}}
+  result = result.replace(/\{\{param\.([^}]+)\}\}/g, (_: string, key: string) => {
+    const val = answers[`__param_${key}`];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+
+  // Handle field references: {{field:elementId}}
+  result = result.replace(/\{\{field:([^}]+)\}\}/g, (_: string, elementId: string) => {
+    return resolveAnswerValue(answers[elementId]);
+  });
+
+  // Handle variable references: {{varName}} and plain answer keys
+  return result.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
     const trimmed = key.trim();
-    // Check variables first
     const varMatch = variables.find((v: any) => v.name === trimmed || v.id === trimmed);
     if (varMatch) {
       const varKey = `__var_${varMatch.name}`;
-      return answers[varKey] !== undefined ? String(answers[varKey]) : varMatch.defaultValue || '';
+      return answers[varKey] !== undefined ? resolveAnswerValue(answers[varKey]) : varMatch.defaultValue || '';
     }
-    // Check answers
     if (answers[trimmed] !== undefined) {
-      const val = answers[trimmed];
-      if (typeof val === 'object') return JSON.stringify(val);
-      return String(val);
+      return resolveAnswerValue(answers[trimmed]);
     }
     return '';
   });
