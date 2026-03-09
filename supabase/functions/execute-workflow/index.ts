@@ -73,14 +73,40 @@ function interpolate(text: string, answers: Record<string, any>, variables: any[
   });
 }
 
+// ── Option label resolution for condition evaluation ──
+
+const OPTION_FIELD_TYPES = new Set([
+  'input_select', 'input_radio', 'input_quiz_icon', 'input_quiz_image', 'input_multi_select',
+]);
+
+/**
+ * Given a form element and a raw answer value (option ID), resolves the human-readable label.
+ */
+function resolveOptionLabelServer(element: any, rawValue: any): string {
+  if (!element || !rawValue || !OPTION_FIELD_TYPES.has(element.type)) {
+    return rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
+  }
+  const options = element.options || [];
+  if (element.type === 'input_multi_select' && Array.isArray(rawValue)) {
+    return rawValue.map((id: string) => {
+      const opt = options.find((o: any) => o.id === id);
+      return opt ? opt.label : String(id);
+    }).join(', ');
+  }
+  const opt = options.find((o: any) => o.id === rawValue);
+  return opt ? opt.label : String(rawValue);
+}
+
 // ── Condition evaluator ──
 
-function evaluateCondition(group: any, answers: Record<string, any>, variables: any[]): boolean {
+function evaluateCondition(group: any, answers: Record<string, any>, variables: any[], allElements?: any[]): boolean {
   if (!group) return true;
   const logic = group.logic || 'and';
 
   const ruleResults = (group.rules || []).map((rule: any) => {
     let actual: any;
+    let labelResolved: string | null = null;
+
     if (rule.subjectType === 'variable') {
       const v = variables.find((vr: any) => vr.id === rule.variableId);
       actual = v ? answers[`__var_${v.name}`] : undefined;
@@ -90,16 +116,31 @@ function evaluateCondition(group: any, answers: Record<string, any>, variables: 
       actual = answers[`__param_${rule.paramKey}`];
     } else {
       actual = answers[rule.questionId];
+      // Resolve option ID → label for comparison
+      if (allElements) {
+        const element = allElements.find((el: any) => el.id === rule.questionId);
+        if (element) {
+          labelResolved = resolveOptionLabelServer(element, actual);
+        }
+      }
     }
     const expected = rule.value;
     const actualStr = actual !== undefined && actual !== null ? String(actual) : '';
+    const labelStr = labelResolved ?? actualStr;
     const expectedStr = String(expected || '');
 
+    // Helper: check match against both raw and label
+    const matchAny = (check: (val: string) => boolean): boolean => {
+      return check(actualStr) || (labelStr !== actualStr && check(labelStr));
+    };
+
     switch (rule.operator) {
-      case 'equals': return actualStr === expectedStr;
-      case 'not_equals': return actualStr !== expectedStr;
-      case 'contains': return actualStr.toLowerCase().includes(expectedStr.toLowerCase());
-      case 'not_contains': return !actualStr.toLowerCase().includes(expectedStr.toLowerCase());
+      case 'equals': return matchAny(v => v === expectedStr);
+      case 'not_equals': return actualStr !== expectedStr && labelStr !== expectedStr;
+      case 'contains': return matchAny(v => v.toLowerCase().includes(expectedStr.toLowerCase()));
+      case 'not_contains':
+        return !actualStr.toLowerCase().includes(expectedStr.toLowerCase()) &&
+               !labelStr.toLowerCase().includes(expectedStr.toLowerCase());
       case 'greater_than': return parseFloat(actualStr) > parseFloat(expectedStr);
       case 'less_than': return parseFloat(actualStr) < parseFloat(expectedStr);
       case 'is_empty': return actualStr === '';
@@ -108,7 +149,7 @@ function evaluateCondition(group: any, answers: Record<string, any>, variables: 
     }
   });
 
-  const groupResults = (group.groups || []).map((g: any) => evaluateCondition(g, answers, variables));
+  const groupResults = (group.groups || []).map((g: any) => evaluateCondition(g, answers, variables, allElements));
   const all = [...ruleResults, ...groupResults];
 
   return logic === 'and' ? all.every(Boolean) : all.some(Boolean);
