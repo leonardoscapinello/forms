@@ -1080,7 +1080,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
           const durationMs = (wtNode.duration || 1) * multiplier;
           // Walk the rest of the workflow from the wait node to find the destination
-          const restResult = await walkWorkflow(target, currentAns, effectiveSkip);
+          const restResult = await walkWorkflow(target, currentAns, skipExternal);
           return {
             ...restResult,
             pendingWait: { durationMs, feedback: wtNode.feedback, remainingNodeId: target },
