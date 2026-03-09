@@ -181,6 +181,21 @@ img.emoji {
   animation: option-blink 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Tactile ring-pulse for selection fields (3 diminishing pulses) */
+@keyframes selection-tactile {
+  0%   { box-shadow: 0 0 0 0px hsl(var(--primary) / 0.5); }
+  12%  { box-shadow: 0 0 0 6px hsl(var(--primary) / 0.25); }
+  24%  { box-shadow: 0 0 0 0px hsl(var(--primary) / 0); }
+  40%  { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.18); }
+  55%  { box-shadow: 0 0 0 0px hsl(var(--primary) / 0); }
+  72%  { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1); }
+  100% { box-shadow: 0 0 0 0px hsl(var(--primary) / 0); }
+}
+
+.animate-selection-tactile {
+  animation: selection-tactile 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Shake animation for required field validation */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

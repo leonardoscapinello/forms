@@ -936,10 +936,12 @@ export default function InteractiveElement({
               return (
                 <motion.button
                   key={i}
-                  onClick={() => onChange(i)}
+                  onClick={() => { onChange(i); triggerSelectionFeedback(`nps-${i}`); }}
                   whileTap={{ scale: 0.9 }}
                   whileHover={{ scale: 1.08 }}
-                  className="flex-1 h-11 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-all"
+                  animate={isSelected ? { scale: [1, 1.08, 0.96, 1.03, 1] } : {}}
+                  transition={{ duration: 0.4 }}
+                  className={`flex-1 h-11 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-all ${blinkingId === `nps-${i}` ? 'animate-selection-tactile' : ''}`}
                   style={{
                     borderColor: isSelected ? color : 'hsl(var(--border))',
                     backgroundColor: isSelected ? color : 'transparent',
