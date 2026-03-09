@@ -223,9 +223,11 @@ async function walkWorkflow(
         const condId = target.replace('c-', '');
         const cond = (formData.conditions || []).find((c: any) => c.id === condId);
         if (cond) {
+          // Collect all elements for option-label resolution
+          const allElements = (formData.pages || []).flatMap((p: any) => p.elements || []);
           let matched = false;
           for (const branch of cond.branches || []) {
-            if (evaluateCondition(branch.conditionGroup, currentAnswers, variables)) {
+            if (evaluateCondition(branch.conditionGroup, currentAnswers, variables, allElements)) {
               const branchEdge = edges.find((e: any) => e.source === target && e.sourceHandle === `branch-${branch.id}`);
               if (branchEdge) {
                 nextNodeId = branchEdge.target;
