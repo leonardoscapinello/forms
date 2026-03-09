@@ -1168,7 +1168,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: ImageGen node — fire-and-forget image composition
       if (target.startsWith('ig-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const igId = target.replace('ig-', '');
           const igNode = f?.imageGenNodes?.find(n => n.id === igId);
           const shouldFire = igNode ? (igNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
