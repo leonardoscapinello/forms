@@ -801,7 +801,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         const condId = currentNodeId.replace('c-', '');
         const condData = f?.conditions?.find(c => c.id === condId);
         if (condData) {
-          const matchedBranchId = resolveConditionBranch(condData, currentAns, f?.variables);
+          // Collect all elements from all pages for option-label resolution
+          const allElements = f?.pages?.flatMap(p => p.elements || []) || [];
+          const matchedBranchId = resolveConditionBranch(condData, currentAns, f?.variables, allElements);
           const handleId = `branch-${matchedBranchId}`;
           const branchEdge = outEdges.find(e => e.sourceHandle === handleId);
           if (branchEdge) nextEdge = branchEdge;
