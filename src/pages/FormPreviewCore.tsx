@@ -1255,6 +1255,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     if (isPageBlocked) return;
     if (!areRequiredFieldsFilled()) return;
     navigatingRef.current = true;
+    setIsFlowProcessing(true);
 
     try {
       // Run async validators for current page
@@ -1558,6 +1559,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         setFinished(true);
       }
     } finally {
+      setIsFlowProcessing(false);
       navigatingRef.current = false;
     }
   }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview]);
