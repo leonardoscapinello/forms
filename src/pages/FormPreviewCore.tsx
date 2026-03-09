@@ -1929,6 +1929,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           answers={answers}
                           fieldError={fieldErrors[el.id]}
                           formStyle={form.style}
+                          onSelectionMade={handleSelectionMade}
                         />
                       );
                     })}
