@@ -716,12 +716,14 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     currentAnswers: Record<string, any>,
     skipSideEffects = false,
   ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any>; pendingWait?: { durationMs: number; feedback?: WaitFeedbackConfig; remainingNodeId: string } }> => {
-    // SAFETY NET: always skip side-effects in preview mode, regardless of caller
-    const effectiveSkip = skipSideEffects || isEditorPreviewRef.current;
+    // Em editor preview, pulamos integrações externas (webhooks/pixels/WhatsApp/email) por segurança,
+    // mas permitimos nós internos (IA/variáveis/condições) para que o fluxo seja testável.
+    const skipExternal = skipSideEffects || isEditorPreviewRef.current;
+    const skipAI = skipSideEffects && !isEditorPreviewRef.current;
     const f = formRef.current;
     const edges = f?.flowEdges || [];
 
-    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| effectiveSkip:', effectiveSkip);
+    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| skipExternal:', skipExternal, '| skipAI:', skipAI);
     if (edges.length > 0) {
       console.info('[walkWorkflow] Edge map:', edges.map(e => `${e.source} → ${e.target}${e.sourceHandle ? ` [${e.sourceHandle}]` : ''}`).join(' | '));
     }
