@@ -1153,15 +1153,15 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.95 }}
-                animate={selected ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ duration: 0.2 }}
+                animate={selected ? { scale: [1, 1.05, 0.97, 1.02, 1] } : {}}
+                transition={{ duration: 0.4 }}
                 className={`relative rounded-xl border-2 overflow-hidden transition-all ${
                   selected
                     ? 'border-primary shadow-sm'
                     : 'border-border hover:border-primary/40'
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
               >
                 {selected && (
                   <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
