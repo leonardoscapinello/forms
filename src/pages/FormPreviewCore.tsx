@@ -69,6 +69,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
+  const [isFlowProcessing, setIsFlowProcessing] = useState(false);
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
