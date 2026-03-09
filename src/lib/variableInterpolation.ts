@@ -162,7 +162,8 @@ export function interpolateTextToHtml(
       return val ? { value: val, type: 'param' } : null;
     }
     if (inner.startsWith('field:')) {
-      const val = String(answers[inner.slice(6)] ?? '');
+      const raw = answers[inner.slice(6)];
+      const val = raw !== undefined && raw !== null ? (typeof raw === 'object' ? stringifyFieldValue(raw) : String(raw)) : '';
       return val ? { value: val, type: 'field' } : null;
     }
 
