@@ -248,7 +248,8 @@ export function interpolateTextToNodes(
       value = String(answers[`__param_${inner.slice(6)}`] ?? '');
     } else if (inner.startsWith('field:')) {
       varType = 'field';
-      value = String(answers[inner.slice(6)] ?? '');
+      const raw = answers[inner.slice(6)];
+      value = raw !== undefined && raw !== null ? (typeof raw === 'object' ? stringifyFieldValue(raw) : String(raw)) : '';
     } else {
       const variable = variables.find(v => v.name === inner);
       if (!variable) {
