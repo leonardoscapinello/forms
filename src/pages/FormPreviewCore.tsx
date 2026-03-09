@@ -1446,14 +1446,22 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       const hasAnyFlowEdges = allFormEdges.length > 0;
       const currentNodeOutEdges = allFormEdges.filter(e => e.source === fromNodeId);
 
+      // Helper: sequential fallback (used only as recovery or when no canvas exists)
+      const findNextNonEmpty = (startIdx: number): number => {
+        for (let i = startIdx; i < pages.length; i++) {
+          if (!isPageEmpty(pages[i])) return i;
+        }
+        return -1;
+      };
+
       if (hasAnyFlowEdges) {
         console.error('[goNext] walkWorkflow returned null. fromNode:', fromNodeId,
           '| outEdges from current:', currentNodeOutEdges.length,
           '| totalEdges:', allFormEdges.length,
           '| edges:', JSON.stringify(allFormEdges.map(e => ({ s: e.source, t: e.target }))));
 
-        // RECOVERY: If the current page HAS outgoing edges but walkWorkflow failed,
-        // try a simple BFS to find the next page directly from the edges
+        // RECOVERY 1: If the current page HAS outgoing edges but walkWorkflow failed,
+        // try a simple BFS to find the next page directly from the edges.
         if (currentNodeOutEdges.length > 0) {
           console.warn('[goNext] Attempting BFS recovery from:', fromNodeId);
           const bfsQueue = currentNodeOutEdges.map(e => e.target);
@@ -1471,26 +1479,32 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 return;
               }
             }
-            if (node === 'end') { setFinished(true); return; }
+            if (node === 'end') {
+              setFinished(true);
+              return;
+            }
             for (const e of allFormEdges) {
               if (e.source === node && !bfsVisited.has(e.target)) bfsQueue.push(e.target);
             }
           }
         }
 
+        // RECOVERY 2: Never finish the form just because routing failed.
+        // If the current node is disconnected/mismatched, fall back to sequential.
+        const startIdx = currentPageIndex === null ? 0 : currentPageIndex + 1;
+        const seqIdx = findNextNonEmpty(startIdx);
+        if (seqIdx !== -1) {
+          console.warn('[goNext] Recovery: falling back to sequential navigation. fromNode:', fromNodeId, '| toIndex:', seqIdx);
+          navigateToPage(seqIdx, updatedAnswers);
+          return;
+        }
+
         setFinished(true);
         return;
       }
 
-      // Fallback: sequential navigation ONLY when NO flow edges are defined at all
-      // (legacy forms or forms without any canvas connections)
-      const findNextNonEmpty = (startIdx: number): number => {
-        for (let i = startIdx; i < pages.length; i++) {
-          if (!isPageEmpty(pages[i])) return i;
-        }
-        return -1;
-      };
-
+      // Legacy fallback: sequential navigation ONLY when NO flow edges are defined at all
+      // (forms without any canvas connections)
       if (currentPageIndex === null) {
         const idx = findNextNonEmpty(0);
         if (idx !== -1) {
