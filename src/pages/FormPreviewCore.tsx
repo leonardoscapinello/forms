@@ -24,8 +24,10 @@ import { validateEmailFormat } from '@/lib/emailValidation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { buildDefaults, resolveUserData, prefetchLazyComponentsForElements } from './FormPreview.utils';
 
-// InteractiveElement is lazy-loaded to reduce initial parse/compile cost
-const InteractiveElement = lazy(() => import('@/components/preview/InteractiveElement'));
+// InteractiveElement is lazy-loaded to reduce initial parse/compile cost.
+// IMPORTANT: we start the import immediately so the *first real page* can mount+animate only when the real UI is ready.
+const interactiveElementModule = import('@/components/preview/InteractiveElement');
+const InteractiveElement = lazy(() => interactiveElementModule);
 
 // Lazy-loaded heavy preview component used only in loading screen overlay
 const loadLoadingPreview = () => import('@/components/preview/LoadingPreview');
