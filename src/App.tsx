@@ -32,31 +32,11 @@ const FormPreview = lazy(() => import("./pages/FormPreview"));
 // ─── Admin app: lazy-loaded with all admin deps (Auth, Store, Toasters…) ────
 const AdminApp = lazy(() => import("./AdminApp"));
 
-/** CSS-only spinner — no lucide / icon library on the critical path */
+/** Public-route fallback: keep it invisible/minimal so the first meaningful paint is the real animated page */
 function FormSkeleton() {
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'hsl(var(--background, 60 20% 99%))',
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: 28,
-          height: 28,
-          border: '3px solid hsl(var(--foreground, 48 32% 13%) / 0.1)',
-          borderTopColor: 'hsl(var(--foreground, 48 32% 13%) / 0.6)',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto',
-        }} />
-      </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
+  return <div className="min-h-screen bg-background" />;
 }
+
 
 const App = () => {
   const isPublicFormPath = typeof window !== "undefined" && /^\/f\//.test(window.location.pathname);
