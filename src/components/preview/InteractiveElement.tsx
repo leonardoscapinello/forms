@@ -1122,15 +1122,15 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.95 }}
-                animate={selected ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ duration: 0.2 }}
+                animate={selected ? { scale: [1, 1.05, 0.97, 1.02, 1] } : {}}
+                transition={{ duration: 0.4 }}
                 className={`relative px-4 py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
                   selected
                     ? 'border-primary bg-transparent shadow-sm'
                     : 'border-border hover:bg-primary/5 hover:border-primary/40'
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
               >
                 {selected && (
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
