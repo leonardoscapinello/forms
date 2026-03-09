@@ -1780,14 +1780,6 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   const isBootstrapping = !isInitialStateReady;
 
-  if (isBootstrapping) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
-      </div>
-    );
-  }
-
   const variants = {
     enter: (d: number) => ({
       opacity: 0,
