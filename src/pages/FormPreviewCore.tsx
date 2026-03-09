@@ -1669,6 +1669,32 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     });
   }, []);
 
+  // Auto-continue: after a single-selection field completes the page, advance automatically
+  const handleSelectionMade = useCallback(() => {
+    // This is called ~500ms after the selection (after tactile animation)
+    if (navigatingRef.current || isFlowProcessing) return;
+    const page = currentPageIndex !== null ? pages[currentPageIndex] : null;
+    if (!page) return;
+
+    // Check all required input fields are filled using latest answers
+    const latestAns = answersRef.current;
+    const allFilled = page.elements.every(el => {
+      if (!el.required || !el.type.startsWith('input_')) return true;
+      const val = latestAns[el.id];
+      if (val === undefined || val === null || val === '' || val === false) return false;
+      if (el.type === 'input_multi_select' && Array.isArray(val) && val.length === 0) return false;
+      return true;
+    });
+
+    // Also check no elements are blocked (e.g. email validation in progress)
+    const anyBlocked = page.elements.some(el => blockedElements[el.id]);
+    if (anyBlocked) return;
+
+    if (allFilled) {
+      goNext();
+    }
+  }, [currentPageIndex, pages, goNext, isFlowProcessing, blockedElements]);
+
   const handleButtonNavigate = useCallback(async (action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => {
     if (action === 'next') {
       goNext();
@@ -1903,6 +1929,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           answers={answers}
                           fieldError={fieldErrors[el.id]}
                           formStyle={form.style}
+                          onSelectionMade={handleSelectionMade}
                         />
                       );
                     })}
@@ -1953,6 +1980,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           answers={answers}
                           fieldError={fieldErrors[el.id]}
                           formStyle={form.style}
+                          onSelectionMade={handleSelectionMade}
                         />
                       );
                     })}
@@ -1997,6 +2025,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                                   answers={answers}
                                   fieldError={fieldErrors[el.id]}
                                   formStyle={form.style}
+                                  onSelectionMade={handleSelectionMade}
                                 />
                               );
                             })}

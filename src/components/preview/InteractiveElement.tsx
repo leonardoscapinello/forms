@@ -69,6 +69,7 @@ export interface InteractiveElementProps {
   answers?: Record<string, any>;
   fieldError?: string;
   formStyle?: FormStyle;
+  onSelectionMade?: () => void;
 }
 
 /** Renders an interactive page element for the preview */
@@ -85,12 +86,30 @@ export default function InteractiveElement({
   answers = {},
   fieldError,
   formStyle,
+  onSelectionMade,
 }: InteractiveElementProps) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
   const tHtml = (text: string | undefined) => text ? interpolateTextToHtml(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+
+  // Tactile blink feedback for selection fields
+  const [blinkingId, setBlinkingId] = useState<string | null>(null);
+  const blinkTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const onSelectionMadeRef = useRef(onSelectionMade);
+  useEffect(() => { onSelectionMadeRef.current = onSelectionMade; });
+
+  const triggerBlink = useCallback((optId: string) => {
+    if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
+    setBlinkingId(optId);
+    blinkTimerRef.current = setTimeout(() => setBlinkingId(null), 650);
+  }, []);
+
+  const triggerSelectionFeedback = useCallback((optId: string) => {
+    triggerBlink(optId);
+    setTimeout(() => onSelectionMadeRef.current?.(), 500);
+  }, [triggerBlink]);
 
   // ── Field style overrides from formStyle ──────────────────────────────
   const fBg = formStyle?.fieldBgColor || undefined;
@@ -189,9 +208,11 @@ export default function InteractiveElement({
           onChange(selected.filter(id => id !== opt.id));
         } else {
           onChange([...selected, opt.id]);
+          triggerBlink(opt.id);
         }
       } else {
         onChange(opt.id);
+        triggerSelectionFeedback(opt.id);
       }
     };
     window.addEventListener('keydown', handler);
@@ -743,16 +764,20 @@ export default function InteractiveElement({
     case 'input_checkbox':
       return withFieldHeader(
         <motion.button
-          onClick={() => onChange(!value)}
-          className="flex items-center gap-3 md:gap-4 text-left group"
+          onClick={() => {
+            const newVal = !value;
+            onChange(newVal);
+            if (newVal) triggerSelectionFeedback('checkbox-on');
+          }}
+          className={`flex items-center gap-3 md:gap-4 text-left group ${blinkingId === 'checkbox-on' ? 'animate-selection-tactile' : ''}`}
           whileTap={{ scale: 0.97 }}
         >
           <motion.div
             className={`h-6 w-6 md:h-7 md:w-7 rounded-lg border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
               value ? 'border-primary bg-primary' : 'border-border group-hover:border-primary/40'
             }`}
-            animate={value ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ duration: 0.25 }}
+            animate={value ? { scale: [1, 1.25, 0.95, 1.1, 1] } : {}}
+            transition={{ duration: 0.4 }}
           >
             {value && <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-foreground" />}
           </motion.div>
@@ -768,15 +793,13 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.97 }}
-                animate={isSelected ? {
-                  scale: [1, 1.02, 1],
-                } : {}}
-                transition={{ duration: 0.35 }}
+                animate={isSelected ? { scale: [1, 1.03, 0.98, 1.01, 1] } : {}}
+                transition={{ duration: 0.45 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
                   isSelected ? 'shadow-sm' : ''
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
                 style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
@@ -784,8 +807,8 @@ export default function InteractiveElement({
                     isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
                   style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
-                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
-                  transition={{ duration: 0.3 }}
+                  animate={isSelected ? { scale: [1, 1.35, 0.9, 1.15, 1], rotate: [0, -10, 8, -4, 0] } : {}}
+                  transition={{ duration: 0.4 }}
                 >
                   {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
@@ -804,15 +827,13 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.97 }}
-                animate={isSelected ? {
-                  scale: [1, 1.02, 1],
-                } : {}}
-                transition={{ duration: 0.35 }}
+                animate={isSelected ? { scale: [1, 1.03, 0.98, 1.01, 1] } : {}}
+                transition={{ duration: 0.45 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
                   isSelected ? 'shadow-sm' : ''
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
                 style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
@@ -820,8 +841,8 @@ export default function InteractiveElement({
                     isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
                   style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
-                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
-                  transition={{ duration: 0.3 }}
+                  animate={isSelected ? { scale: [1, 1.35, 0.9, 1.15, 1], rotate: [0, -10, 8, -4, 0] } : {}}
+                  transition={{ duration: 0.4 }}
                 >
                   {String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
@@ -845,10 +866,10 @@ export default function InteractiveElement({
             {Array.from({ length: max }).map((_, i) => (
               <motion.button
                 key={i}
-                onClick={() => onChange(i + 1)}
+                onClick={() => { onChange(i + 1); triggerSelectionFeedback(`rating-${i + 1}`); }}
                 whileTap={{ scale: 0.9 }}
                 whileHover={{ scale: 1.08 }}
-                className="w-10 h-10 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-colors"
+                className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-colors ${blinkingId === `rating-${i + 1}` ? 'animate-selection-tactile' : ''}`}
                 style={{
                   borderColor: i < current ? activeColor : inactiveColor,
                   backgroundColor: i < current ? activeColor : 'transparent',
@@ -870,11 +891,11 @@ export default function InteractiveElement({
           {Array.from({ length: max }).map((_, i) => (
             <motion.button
               key={i}
-              onClick={() => onChange(i + 1)}
+              onClick={() => { onChange(i + 1); triggerSelectionFeedback(`rating-${i + 1}`); }}
               whileTap={{ scale: 0.85 }}
               whileHover={{ scale: 1.15 }}
-              animate={i < current ? { scale: [1, 1.3, 1] } : {}}
-              transition={{ duration: 0.2, delay: i * 0.03 }}
+              animate={i < current ? { scale: [1, 1.35, 0.9, 1.15, 1] } : {}}
+              transition={{ duration: 0.35, delay: i * 0.03 }}
               className="text-2xl md:text-3xl"
               style={{ opacity: i < current ? 1 : 0.3, filter: i < current ? 'none' : 'grayscale(1)' }}
             >
@@ -915,10 +936,12 @@ export default function InteractiveElement({
               return (
                 <motion.button
                   key={i}
-                  onClick={() => onChange(i)}
+                  onClick={() => { onChange(i); triggerSelectionFeedback(`nps-${i}`); }}
                   whileTap={{ scale: 0.9 }}
                   whileHover={{ scale: 1.08 }}
-                  className="flex-1 h-11 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-all"
+                  animate={isSelected ? { scale: [1, 1.08, 0.96, 1.03, 1] } : {}}
+                  transition={{ duration: 0.4 }}
+                  className={`flex-1 h-11 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-all ${blinkingId === `nps-${i}` ? 'animate-selection-tactile' : ''}`}
                   style={{
                     borderColor: isSelected ? color : 'hsl(var(--border))',
                     backgroundColor: isSelected ? color : 'transparent',
@@ -1022,15 +1045,15 @@ export default function InteractiveElement({
           ].map(opt => (
             <motion.button
               key={opt.key}
-              onClick={() => onChange(opt.key)}
+              onClick={() => { onChange(opt.key); triggerSelectionFeedback(opt.key); }}
               whileTap={{ scale: 0.95 }}
-              animate={value === opt.key ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.2 }}
+              animate={value === opt.key ? { scale: [1, 1.05, 0.97, 1.02, 1] } : {}}
+              transition={{ duration: 0.4 }}
               className={`flex-1 px-5 py-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 text-lg font-medium ${
                 value === opt.key
                   ? 'border-primary bg-transparent text-foreground shadow-sm'
                   : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
-              }`}
+              } ${blinkingId === opt.key ? 'animate-selection-tactile' : ''}`}
             >
               <Twemoji className="text-xl">{opt.emoji}</Twemoji>
               <span>{opt.label}</span>
@@ -1046,6 +1069,7 @@ export default function InteractiveElement({
           onChange(selected.filter(id => id !== optId));
         } else {
           onChange([...selected, optId]);
+          triggerBlink(optId);
         }
       };
       return withFieldHeader(
@@ -1057,13 +1081,11 @@ export default function InteractiveElement({
                 key={opt.id}
                 onClick={() => toggleOption(opt.id)}
                 whileTap={{ scale: 0.97 }}
-                animate={isSelected ? {
-                  scale: [1, 1.02, 1],
-                } : {}}
-                transition={{ duration: 0.35 }}
+                animate={isSelected ? { scale: [1, 1.03, 0.98, 1.01, 1] } : {}}
+                transition={{ duration: 0.45 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
                   isSelected ? 'shadow-sm' : ''
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
                 style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
@@ -1102,15 +1124,15 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.95 }}
-                animate={selected ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ duration: 0.2 }}
+                animate={selected ? { scale: [1, 1.05, 0.97, 1.02, 1] } : {}}
+                transition={{ duration: 0.4 }}
                 className={`relative px-4 py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center ${
                   selected
                     ? 'border-primary bg-transparent shadow-sm'
                     : 'border-border hover:bg-primary/5 hover:border-primary/40'
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
               >
                 {selected && (
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
@@ -1133,15 +1155,15 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.95 }}
-                animate={selected ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ duration: 0.2 }}
+                animate={selected ? { scale: [1, 1.05, 0.97, 1.02, 1] } : {}}
+                transition={{ duration: 0.4 }}
                 className={`relative rounded-xl border-2 overflow-hidden transition-all ${
                   selected
                     ? 'border-primary shadow-sm'
                     : 'border-border hover:border-primary/40'
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
               >
                 {selected && (
                   <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-md">
