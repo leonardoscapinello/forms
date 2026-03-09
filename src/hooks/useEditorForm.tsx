@@ -233,18 +233,28 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
 
   const editorInputElements = useMemo<InputElementGroup[]>(() => {
     return (form?.pages || []).map(page => {
-      const elements: { elementId: string; elementLabel: string }[] = [];
+      const elements: InputElementGroup['elements'] = [];
       for (const el of page.elements || []) {
         if (!el.type.startsWith('input_')) continue;
         const baseLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
         if (subKeys) {
-          elements.push({ elementId: el.id, elementLabel: baseLabel });
+          elements.push({
+            elementId: el.id,
+            elementLabel: baseLabel,
+            elementType: el.type,
+            options: el.options?.map(o => ({ id: o.id, label: o.label })),
+          });
           for (const sk of subKeys) {
             elements.push({ elementId: `${el.id}.${sk.key}`, elementLabel: `${baseLabel} › ${sk.label}` });
           }
         } else {
-          elements.push({ elementId: el.id, elementLabel: baseLabel });
+          elements.push({
+            elementId: el.id,
+            elementLabel: baseLabel,
+            elementType: el.type,
+            options: el.options?.map(o => ({ id: o.id, label: o.label })),
+          });
         }
       }
       return { pageId: page.id, pageTitle: page.title, elements };

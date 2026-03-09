@@ -307,14 +307,56 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
                     ))}
                   </SelectContent>
                 </Select>
-                {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (
-                  <LocalInput
-                    value={rule.value}
-                    onCommit={v => updateRule(rule.id, { value: v })}
-                    placeholder="Valor..."
-                    className="h-7 text-xs flex-1"
-                  />
-                )}
+                {rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (() => {
+                  // Check if selected field has options (radio/select/quiz) — show dropdown instead of free text
+                  const OPTION_TYPES = ['input_select', 'input_radio', 'input_quiz_icon', 'input_quiz_image', 'input_multi_select'];
+                  const selectedElement = subjectType === 'question'
+                    ? allInputElements.flatMap(g => g.elements).find(el => el.elementId === rule.questionId)
+                    : null;
+                  const fieldOptions = selectedElement?.options;
+                  const isOptionField = selectedElement && OPTION_TYPES.includes(selectedElement.elementType || '');
+
+                  if (isOptionField && fieldOptions && fieldOptions.length > 0) {
+                    return (
+                      <Select value={rule.value || ''} onValueChange={v => updateRule(rule.id, { value: v })}>
+                        <SelectTrigger className="h-7 text-xs flex-1">
+                          <SelectValue placeholder="Escolha a opção..." />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          {fieldOptions.map((opt: any) => (
+                            <SelectItem key={opt.id} value={opt.label} className="text-xs">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  }
+
+                  // Yes/No field
+                  if (selectedElement?.elementType === 'input_yes_no') {
+                    return (
+                      <Select value={rule.value || ''} onValueChange={v => updateRule(rule.id, { value: v })}>
+                        <SelectTrigger className="h-7 text-xs flex-1">
+                          <SelectValue placeholder="Valor..." />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                          <SelectItem value="yes" className="text-xs">Sim (yes)</SelectItem>
+                          <SelectItem value="no" className="text-xs">Não (no)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    );
+                  }
+
+                  return (
+                    <LocalInput
+                      value={rule.value}
+                      onCommit={v => updateRule(rule.id, { value: v })}
+                      placeholder="Valor..."
+                      className="h-7 text-xs flex-1"
+                    />
+                  );
+                })()}
               </div>
             </div>
           </div>

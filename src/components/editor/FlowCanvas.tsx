@@ -208,20 +208,30 @@ function FlowCanvasInner({
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
     return pages.map(page => {
-      const elements: { elementId: string; elementLabel: string }[] = [];
+      const elements: { elementId: string; elementLabel: string; elementType?: string; options?: { id: string; label: string }[] }[] = [];
       for (const el of (page.elements || [])) {
         if (!el.type.startsWith('input_')) continue;
         const baseLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
         if (subKeys) {
           // Add the whole compound field first
-          elements.push({ elementId: el.id, elementLabel: `${baseLabel} (completo)` });
+          elements.push({
+            elementId: el.id,
+            elementLabel: `${baseLabel} (completo)`,
+            elementType: el.type,
+            options: el.options?.map(o => ({ id: o.id, label: o.label })),
+          });
           // Then add each sub-key
           for (const sub of subKeys) {
             elements.push({ elementId: `${el.id}.${sub.key}`, elementLabel: `${baseLabel} → ${sub.label}` });
           }
         } else {
-          elements.push({ elementId: el.id, elementLabel: baseLabel });
+          elements.push({
+            elementId: el.id,
+            elementLabel: baseLabel,
+            elementType: el.type,
+            options: el.options?.map(o => ({ id: o.id, label: o.label })),
+          });
         }
       }
       return { pageId: page.id, pageTitle: page.title, elements };
