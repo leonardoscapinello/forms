@@ -992,9 +992,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         currentNodeId = target;
         continue;
       }
-      // Intermediate: WhatsApp node — fire-and-forget via background queue
+      // Intermediate: WhatsApp node — processamento bloqueante
       if (target.startsWith('wa-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const waId = target.replace('wa-', '');
           const waNode = f?.whatsappNodes?.find(n => n.id === waId);
           const shouldFire = waNode ? (waNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -1015,19 +1015,22 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
             }
 
-            enqueueTask(
-              () => supabase.functions.invoke('whatsapp-send', { body }).then(() => {}),
-              `whatsapp:${resolvedNumber}`,
-            );
+            // Tentativa única (a própria função pode fazer retries). Em caso de falha, loga e segue.
+            try {
+              const { error } = await supabase.functions.invoke('whatsapp-send', { body });
+              if (error) console.error('[walkWorkflow] WhatsApp error:', error);
+            } catch (err) {
+              console.error('[walkWorkflow] WhatsApp exception:', err);
+            }
           }
         }
         currentNodeId = target;
         continue;
       }
 
-      // Intermediate: Email node — fire-and-forget via background queue
+      // Intermediate: Email node — processamento bloqueante
       if (target.startsWith('em-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const emId = target.replace('em-', '');
           const emNode = f?.emailNodes?.find(n => n.id === emId);
           const shouldFire = emNode ? (emNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -1051,10 +1054,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               useHtml: emNode.useHtml,
             };
 
-            enqueueTask(
-              () => supabase.functions.invoke('resend-send', { body }).then(() => {}).catch(() => {}),
-              `email:${resolvedTo}`,
-            );
+            try {
+              const { error } = await supabase.functions.invoke('resend-send', { body });
+              if (error) console.error('[walkWorkflow] Email error:', error);
+            } catch (err) {
+              console.error('[walkWorkflow] Email exception:', err);
+            }
           }
         }
         currentNodeId = target;
