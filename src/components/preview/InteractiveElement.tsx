@@ -1043,15 +1043,15 @@ export default function InteractiveElement({
           ].map(opt => (
             <motion.button
               key={opt.key}
-              onClick={() => onChange(opt.key)}
+              onClick={() => { onChange(opt.key); triggerSelectionFeedback(opt.key); }}
               whileTap={{ scale: 0.95 }}
-              animate={value === opt.key ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.2 }}
+              animate={value === opt.key ? { scale: [1, 1.05, 0.97, 1.02, 1] } : {}}
+              transition={{ duration: 0.4 }}
               className={`flex-1 px-5 py-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 text-lg font-medium ${
                 value === opt.key
                   ? 'border-primary bg-transparent text-foreground shadow-sm'
                   : 'border-border hover:bg-primary/5 hover:border-primary/40 text-foreground'
-              }`}
+              } ${blinkingId === opt.key ? 'animate-selection-tactile' : ''}`}
             >
               <Twemoji className="text-xl">{opt.emoji}</Twemoji>
               <span>{opt.label}</span>
