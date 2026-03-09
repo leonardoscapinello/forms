@@ -46,7 +46,9 @@ export function interpolateText(
   // Handle field references: {{field:elementId}}
   result = result.replace(/\{\{field:([^}]+)\}\}/g, (_match, elementId: string) => {
     const val = answers[elementId];
-    return val !== undefined && val !== null ? String(val) : '';
+    if (val === undefined || val === null) return '';
+    if (typeof val === 'object') return stringifyFieldValue(val);
+    return String(val);
   });
 
   // Then handle variable references: {{varName}}
