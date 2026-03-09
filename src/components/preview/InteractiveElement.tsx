@@ -208,9 +208,11 @@ export default function InteractiveElement({
           onChange(selected.filter(id => id !== opt.id));
         } else {
           onChange([...selected, opt.id]);
+          triggerBlink(opt.id);
         }
       } else {
         onChange(opt.id);
+        triggerSelectionFeedback(opt.id);
       }
     };
     window.addEventListener('keydown', handler);
