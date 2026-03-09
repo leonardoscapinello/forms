@@ -67,6 +67,37 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     return () => { cancelled = true; };
   }, []);
 
+  // --- First-load animation gate ---
+  // Ensures the browser paints the initial (opacity:0) state before framer-motion
+  // starts animating to center. Without this, React batches mount + animate in the
+  // same frame, causing the animation to be visually skipped on first load.
+  const isBootstrappingEarly = !isInitialStateReady;
+
+  useEffect(() => {
+    if (isBootstrappingEarly) {
+      prevMountReadyRef.current = false;
+      setAnimationFrameReady(false);
+      return;
+    }
+    // Already transitioned once — skip
+    if (prevMountReadyRef.current) return;
+
+    // Wait 2 rAFs: one for the browser to commit the DOM with initial state,
+    // one more to guarantee a painted frame, then allow animation.
+    let raf1: number;
+    let raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        prevMountReadyRef.current = true;
+        setAnimationFrameReady(true);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isBootstrappingEarly]);
+
   // isEditorPreview ref for stable access in callbacks
   const isEditorPreviewRef = useRef(isEditorPreview);
 
