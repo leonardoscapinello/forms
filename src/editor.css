@@ -5,7 +5,7 @@
 
 /* Editor-only semantic + node category CSS variables */
 :root {
-  --success: 80 83% 23%;
+  --success: 42 23% 41%;
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
@@ -16,8 +16,8 @@
 
   --node-contact: 220 80% 94%;
   --node-contact-accent: 220 70% 55%;
-  --node-text: 160 50% 92%;
-  --node-text-accent: 160 50% 40%;
+  --node-text: 45 24% 94%;
+  --node-text-accent: 48 32% 13%;
   --node-choice: 32 80% 93%;
   --node-choice-accent: 32 70% 50%;
   --node-rating: 270 60% 94%;
@@ -26,18 +26,18 @@
   --node-other-accent: 340 45% 55%;
   --node-condition: 200 70% 93%;
   --node-condition-accent: 200 60% 45%;
-  --node-variable-op: 142 60% 93%;
-  --node-variable-op-accent: 142 55% 40%;
+  --node-variable-op: 45 22% 90%;
+  --node-variable-op-accent: 42 23% 41%;
   --node-ending: 220 10% 93%;
   --node-ending-accent: 220 10% 45%;
-  --node-integration: 145 60% 92%;
-  --node-integration-accent: 145 55% 40%;
-  --node-webhook: 145 60% 92%;
-  --node-webhook-accent: 145 55% 40%;
+  --node-integration: 45 24% 94%;
+  --node-integration-accent: 42 23% 41%;
+  --node-webhook: 45 24% 94%;
+  --node-webhook-accent: 42 23% 41%;
   --node-analytics: 258 60% 94%;
   --node-analytics-accent: 258 55% 55%;
-  --node-whatsapp: 142 70% 92%;
-  --node-whatsapp-accent: 142 65% 38%;
+  --node-whatsapp: 45 22% 90%;
+  --node-whatsapp-accent: 42 23% 41%;
   --node-email: 230 70% 94%;
   --node-email-accent: 230 60% 50%;
   --node-abtest: 25 80% 93%;

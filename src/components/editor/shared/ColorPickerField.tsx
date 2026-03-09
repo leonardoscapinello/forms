@@ -6,18 +6,18 @@ import { X } from 'lucide-react';
 
 /** Brand color palette — TwoBrain */
 const BRAND_PALETTE: { hex: string; name: string; group: string }[] = [
-  // GREEN
-  { hex: '#FBFFE4', name: 'Green 01', group: 'Green' },
-  { hex: '#F4FFC5', name: 'Green 02', group: 'Green' },
-  { hex: '#E8FF92', name: 'Green 03', group: 'Green' },
-  { hex: '#D5FF54', name: 'Green 04', group: 'Green' },
-  { hex: '#C0FA21', name: 'Green 05', group: 'Green' },
-  { hex: '#A1E101', name: 'Green 06', group: 'Green' },
-  { hex: '#7CB400', name: 'Green 07', group: 'Green' },
-  { hex: '#5E8902', name: 'Green 08', group: 'Green' },
-  { hex: '#4B6B09', name: 'Green 09', group: 'Green' },
-  { hex: '#3F5A0D', name: 'Green 10', group: 'Green' },
-  { hex: '#203300', name: 'Green 11', group: 'Green' },
+  // PAPER (replacing green tones)
+  { hex: '#FBFAF6', name: 'Paper 01', group: 'Paper' },
+  { hex: '#F4F3EC', name: 'Paper 02', group: 'Paper' },
+  { hex: '#EEECE2', name: 'Paper 03', group: 'Paper' },
+  { hex: '#E6E3D6', name: 'Paper 04', group: 'Paper' },
+  { hex: '#DEDAC8', name: 'Paper 05', group: 'Paper' },
+  { hex: '#D4CFB8', name: 'Paper 06', group: 'Paper' },
+  { hex: '#C8C2A6', name: 'Paper 07', group: 'Paper' },
+  { hex: '#B3AB86', name: 'Paper 08', group: 'Paper' },
+  { hex: '#9A9266', name: 'Paper 09', group: 'Paper' },
+  { hex: '#6A653F', name: 'Paper 10', group: 'Paper' },
+  { hex: '#2C2A18', name: 'Paper 11', group: 'Paper' },
   // INDIGO
   { hex: '#ECF1FF', name: 'Indigo 01', group: 'Indigo' },
   { hex: '#DDE6FF', name: 'Indigo 02', group: 'Indigo' },
