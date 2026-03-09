@@ -1222,10 +1222,13 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   // Helper: navigate forward to a page index, pushing current to history
   const navigateToPage = useCallback((targetIndex: number, newAnswers: Record<string, any>) => {
+    console.info('[navigateToPage] Moving to page', targetIndex, '| answers keys:', Object.keys(newAnswers).filter(k => k.startsWith('__var_')));
     if (currentPageIndex !== null) {
       pageHistoryRef.current.push(currentPageIndex);
     }
-    setAnswers(applyPageVariableAssignments(pages[targetIndex], newAnswers));
+    const finalAnswers = applyPageVariableAssignments(pages[targetIndex], newAnswers);
+    console.info('[navigateToPage] Final answers after variable assignments:', Object.keys(finalAnswers).filter(k => k.startsWith('__var_')));
+    setAnswers(finalAnswers);
     setCurrentPageIndex(targetIndex);
   }, [currentPageIndex, pages, applyPageVariableAssignments]);
 
