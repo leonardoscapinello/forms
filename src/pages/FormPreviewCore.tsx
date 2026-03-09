@@ -856,7 +856,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: webhook integration node
       if (target.startsWith('int-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const intgId = target.replace('int-', '');
           const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
           const shouldFire = intgNode ? (intgNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
@@ -924,7 +924,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 console.error('Webhook (with mappings) error:', err);
               }
             } else {
-              enqueueTask(() => fireWebhookWithResponse(webhookOpts).then(() => {}), `webhook:${intgNode.webhookUrl}`);
+              // BLOQUEANTE: ainda dispara o webhook (sem mapeamento), mas aguarda conclusão antes de avançar
+              try {
+                await fireWebhookWithResponse(webhookOpts);
+              } catch (err) {
+                console.error('Webhook error:', err);
+              }
             }
           }
         }
