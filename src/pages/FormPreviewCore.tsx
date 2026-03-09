@@ -1449,6 +1449,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             setFinished(true);
             return;
           }
+          console.info('[walkWorkflow] Navigating to resolved page:', pageId, '| targetIndex:', targetIndex, '| updatedAnswers keys:', Object.keys(updatedAnswers).filter(k => k.startsWith('__var_')));
           navigateToPage(targetIndex, updatedAnswers);
           return;
         }
