@@ -51,6 +51,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const navigate = useNavigate();
   const [isInitialStateReady, setIsInitialStateReady] = useState(false);
   const [isInteractiveElementReady, setIsInteractiveElementReady] = useState(false);
+  const [animationFrameReady, setAnimationFrameReady] = useState(false);
+  const prevMountReadyRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
