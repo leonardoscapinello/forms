@@ -86,12 +86,30 @@ export default function InteractiveElement({
   answers = {},
   fieldError,
   formStyle,
+  onSelectionMade,
 }: InteractiveElementProps) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
   const tHtml = (text: string | undefined) => text ? interpolateTextToHtml(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+
+  // Tactile blink feedback for selection fields
+  const [blinkingId, setBlinkingId] = useState<string | null>(null);
+  const blinkTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const onSelectionMadeRef = useRef(onSelectionMade);
+  useEffect(() => { onSelectionMadeRef.current = onSelectionMade; });
+
+  const triggerBlink = useCallback((optId: string) => {
+    if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
+    setBlinkingId(optId);
+    blinkTimerRef.current = setTimeout(() => setBlinkingId(null), 650);
+  }, []);
+
+  const triggerSelectionFeedback = useCallback((optId: string) => {
+    triggerBlink(optId);
+    setTimeout(() => onSelectionMadeRef.current?.(), 500);
+  }, [triggerBlink]);
 
   // ── Field style overrides from formStyle ──────────────────────────────
   const fBg = formStyle?.fieldBgColor || undefined;
