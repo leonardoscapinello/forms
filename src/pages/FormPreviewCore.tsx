@@ -2145,7 +2145,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background"
           >
             <div className="w-full max-w-xs px-6 flex flex-col items-center gap-4">
-              <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}>
+              <Suspense fallback={<div className="h-6 w-6 rounded-full border-2 border-foreground/20 border-t-foreground animate-spin" />}>
                 <LoadingPreview
                   style={waitFeedback.loadingStyle || 'bar'}
                   duration={waitFeedback.durationMs / 1000}
