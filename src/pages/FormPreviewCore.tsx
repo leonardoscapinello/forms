@@ -50,6 +50,20 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isInitialStateReady, setIsInitialStateReady] = useState(false);
+  const [isInteractiveElementReady, setIsInteractiveElementReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    interactiveElementModule
+      .then(() => {
+        if (!cancelled) setIsInteractiveElementReady(true);
+      })
+      // Fail-open: never get stuck behind a chunk error
+      .catch(() => {
+        if (!cancelled) setIsInteractiveElementReady(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   // isEditorPreview ref for stable access in callbacks
   const isEditorPreviewRef = useRef(isEditorPreview);
