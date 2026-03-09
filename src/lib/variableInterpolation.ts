@@ -3,6 +3,27 @@ import { PageElement } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
 import { createElement, Fragment, ReactNode } from 'react';
 
+/** Stringify an object field value into a human-readable string (e.g. phone → ddi+number) */
+function stringifyFieldValue(val: any): string {
+  if (Array.isArray(val)) return val.map(v => typeof v === 'object' ? stringifyFieldValue(v) : String(v)).join(', ');
+  // Phone field: { ddi, number, countryCode }
+  if (val.ddi && val.number) return `${val.ddi}${val.number.replace(/\D/g, '')}`;
+  // Address: { street, number, city, state, zip, ... }
+  if (val.street !== undefined || val.city !== undefined) {
+    return [val.street, val.number, val.complement, val.neighborhood, val.city, val.state, val.zip].filter(Boolean).join(', ');
+  }
+  // Height/Weight: { height, weight }
+  if (val.height !== undefined || val.weight !== undefined) {
+    return [val.height && `${val.height}cm`, val.weight && `${val.weight}kg`].filter(Boolean).join(' / ');
+  }
+  // Full name: { first, last }
+  if (val.first !== undefined || val.last !== undefined) {
+    return [val.first, val.last].filter(Boolean).join(' ');
+  }
+  // Fallback: JSON
+  return JSON.stringify(val);
+}
+
 /** Get a value from an object using dot/bracket path */
 function getNestedValue(obj: any, path: string): any {
   const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
