@@ -793,15 +793,13 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.97 }}
-                animate={isSelected ? {
-                  scale: [1, 1.02, 1],
-                } : {}}
-                transition={{ duration: 0.35 }}
+                animate={isSelected ? { scale: [1, 1.03, 0.98, 1.01, 1] } : {}}
+                transition={{ duration: 0.45 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
                   isSelected ? 'shadow-sm' : ''
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
                 style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
@@ -809,8 +807,8 @@ export default function InteractiveElement({
                     isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
                   style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
-                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
-                  transition={{ duration: 0.3 }}
+                  animate={isSelected ? { scale: [1, 1.35, 0.9, 1.15, 1], rotate: [0, -10, 8, -4, 0] } : {}}
+                  transition={{ duration: 0.4 }}
                 >
                   {isSelected ? <Check className="h-3.5 w-3.5" /> : String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
@@ -829,15 +827,13 @@ export default function InteractiveElement({
             return (
               <motion.button
                 key={opt.id}
-                onClick={() => onChange(opt.id)}
+                onClick={() => { onChange(opt.id); triggerSelectionFeedback(opt.id); }}
                 whileTap={{ scale: 0.97 }}
-                animate={isSelected ? {
-                  scale: [1, 1.02, 1],
-                } : {}}
-                transition={{ duration: 0.35 }}
+                animate={isSelected ? { scale: [1, 1.03, 0.98, 1.01, 1] } : {}}
+                transition={{ duration: 0.45 }}
                 className={`w-full text-left px-3 py-3 md:px-5 md:py-4 rounded-xl border-2 transition-all flex items-center gap-3 md:gap-4 text-foreground ${
                   isSelected ? 'shadow-sm' : ''
-                }`}
+                } ${blinkingId === opt.id ? 'animate-selection-tactile' : ''}`}
                 style={isSelected ? optionSelectedStyle : optionDefaultStyle}
               >
                 <motion.span
@@ -845,8 +841,8 @@ export default function InteractiveElement({
                     isSelected ? 'text-white' : 'border-border text-muted-foreground'
                   }`}
                   style={isSelected ? optionBadgeSelectedStyle : optionBadgeDefaultStyle}
-                  animate={isSelected ? { scale: [1, 1.3, 1], rotate: [0, -8, 8, 0] } : {}}
-                  transition={{ duration: 0.3 }}
+                  animate={isSelected ? { scale: [1, 1.35, 0.9, 1.15, 1], rotate: [0, -10, 8, -4, 0] } : {}}
+                  transition={{ duration: 0.4 }}
                 >
                   {String.fromCharCode(65 + letterOffset + i)}
                 </motion.span>
