@@ -1801,12 +1801,21 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const variants = {
     enter: (d: number) => ({
       opacity: 0,
-      y: d >= 0 ? 60 : -60,
+      y: d >= 0 ? 28 : -28,
+      scale: 0.985,
+      filter: 'blur(2px)',
     }),
-    center: { opacity: 1, y: 0 },
+    center: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: 'blur(0px)',
+    },
     exit: (d: number) => ({
       opacity: 0,
-      y: d >= 0 ? -60 : 60,
+      y: d >= 0 ? -20 : 20,
+      scale: 0.99,
+      filter: 'blur(1px)',
     }),
   };
 
