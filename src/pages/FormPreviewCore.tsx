@@ -545,22 +545,24 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   }, [currentPageIndex, currentPage, form?.flowEdges]);
 
 
-  // Auto-complete when user reaches a true terminal page (no inputs/buttons and no outgoing flow)
+  // Auto-complete ONLY when user reaches a truly empty terminal page
+  // (avoid auto-finishing on informational pages like "Página 2" with text/confetti)
   useEffect(() => {
     if (!form || finished || currentPageIndex === null) return;
 
     const page = pages[currentPageIndex];
     if (!page) return;
 
+    const hasAnyElements = (page.elements?.length ?? 0) > 0;
     const hasInputFields = page.elements?.some(el => el.type.startsWith('input_'));
     const hasActionButtons = page.elements?.some(el => el.type === 'button');
     const hasOutgoingFlow = (form.flowEdges || []).some(edge => edge.source === `p-${page.id}`);
     const isLastPage = isFlowLastPage;
 
-    if (!hasInputFields && !hasActionButtons && !hasOutgoingFlow && isLastPage) {
+    if (!hasAnyElements && !hasInputFields && !hasActionButtons && !hasOutgoingFlow && isLastPage) {
       setFinished(true);
     }
-  }, [form, finished, currentPageIndex, pages]);
+  }, [form, finished, currentPageIndex, pages, isFlowLastPage]);
 
   const totalScore = useMemo(() => {
     if (!form) return 0;
