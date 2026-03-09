@@ -89,7 +89,7 @@ const COLOR_NAME_MAP = new Map<string, string>();
 BRAND_PALETTE.forEach(c => COLOR_NAME_MAP.set(c.hex.toLowerCase(), c.name));
 
 // Group colors for display
-const GROUPS = ['Green', 'Indigo', 'Violet', 'Gr.Scale', 'Blood', 'Paper', 'Base'] as const;
+const GROUPS = ['Paper', 'Indigo', 'Violet', 'Gr.Scale', 'Blood', 'Base'] as const;
 
 interface Props {
   label?: string;
