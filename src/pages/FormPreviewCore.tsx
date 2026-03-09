@@ -971,7 +971,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 f,
               );
 
-              firePixelDual({
+              await firePixelDualBlocking({
                 platform: entry.platform,
                 eventName,
                 eventId,
