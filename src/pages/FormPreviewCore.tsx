@@ -1780,14 +1780,6 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   const isBootstrapping = !isInitialStateReady;
 
-  if (isBootstrapping) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />
-      </div>
-    );
-  }
-
   const variants = {
     enter: (d: number) => ({
       opacity: 0,
@@ -1875,6 +1867,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
+              {!isBootstrapping && (
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
@@ -1886,9 +1879,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
-              <Suspense fallback={
-                <div className="w-full min-h-[160px] rounded-xl bg-muted/30 animate-pulse" />
-              }>
+              <Suspense fallback={null}>
                 {/* Default welcome (no custom elements) */}
                 {showDefaultWelcome && (
                   <div className="text-center space-y-4 md:space-y-5">
@@ -2036,6 +2027,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 )}
               </Suspense>
               </motion.div>
+              )}
             </AnimatePresence>
           </div>
         );
