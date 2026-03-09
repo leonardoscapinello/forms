@@ -891,11 +891,11 @@ export default function InteractiveElement({
           {Array.from({ length: max }).map((_, i) => (
             <motion.button
               key={i}
-              onClick={() => onChange(i + 1)}
+              onClick={() => { onChange(i + 1); triggerSelectionFeedback(`rating-${i + 1}`); }}
               whileTap={{ scale: 0.85 }}
               whileHover={{ scale: 1.15 }}
-              animate={i < current ? { scale: [1, 1.3, 1] } : {}}
-              transition={{ duration: 0.2, delay: i * 0.03 }}
+              animate={i < current ? { scale: [1, 1.35, 0.9, 1.15, 1] } : {}}
+              transition={{ duration: 0.35, delay: i * 0.03 }}
               className="text-2xl md:text-3xl"
               style={{ opacity: i < current ? 1 : 0.3, filter: i < current ? 'none' : 'grayscale(1)' }}
             >
