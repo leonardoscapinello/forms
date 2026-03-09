@@ -24,8 +24,10 @@ import { validateEmailFormat } from '@/lib/emailValidation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { buildDefaults, resolveUserData, prefetchLazyComponentsForElements } from './FormPreview.utils';
 
-// InteractiveElement is lazy-loaded to reduce initial parse/compile cost
-const InteractiveElement = lazy(() => import('@/components/preview/InteractiveElement'));
+// InteractiveElement is lazy-loaded to reduce initial parse/compile cost.
+// IMPORTANT: we start the import immediately so the *first real page* can mount+animate only when the real UI is ready.
+const interactiveElementModule = import('@/components/preview/InteractiveElement');
+const InteractiveElement = lazy(() => interactiveElementModule);
 
 // Lazy-loaded heavy preview component used only in loading screen overlay
 const loadLoadingPreview = () => import('@/components/preview/LoadingPreview');
@@ -33,8 +35,10 @@ const LoadingPreview = lazy(loadLoadingPreview);
 
 // Wrapper to keep Suspense local and avoid route-level blank/loading screens
 function LazyWrap({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/30 animate-pulse" />}>{children}</Suspense>;
+  // Static placeholder only (no skeleton animation) — placeholders must never “consume” entrance motion
+  return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/20" />}>{children}</Suspense>;
 }
+
 
 
 interface FormPreviewCoreProps {
@@ -46,6 +50,20 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isInitialStateReady, setIsInitialStateReady] = useState(false);
+  const [isInteractiveElementReady, setIsInteractiveElementReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    interactiveElementModule
+      .then(() => {
+        if (!cancelled) setIsInteractiveElementReady(true);
+      })
+      // Fail-open: never get stuck behind a chunk error
+      .catch(() => {
+        if (!cancelled) setIsInteractiveElementReady(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   // isEditorPreview ref for stable access in callbacks
   const isEditorPreviewRef = useRef(isEditorPreview);
@@ -1861,13 +1879,23 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           paddingBottom: paddingY,
         };
 
+        const screenUsesInteractiveElements = (
+          (isWelcome && form.showWelcomeScreen && (form.welcomePage?.elements?.length ?? 0) > 0) ||
+          (isThankYou && (form.thankYouPage?.elements?.length ?? 0) > 0) ||
+          (!!currentPage && (currentPage.elements?.length ?? 0) > 0)
+        );
+
+        // Mount the animated screen only when the real UI is ready, so the entrance motion applies to real content.
+        const shouldMountAnimatedScreen = !isBootstrapping && (!screenUsesInteractiveElements || isInteractiveElementReady);
+
         return (
+
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
-              {!isBootstrapping && (
+              {shouldMountAnimatedScreen && (
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
