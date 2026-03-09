@@ -2076,7 +2076,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 ) : isFlowProcessing ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Processando...</span>
+                    <span>Pensando...</span>
                   </>
                 ) : isPageBlocked ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
