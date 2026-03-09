@@ -1890,7 +1890,6 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
         return (
 
-        return (
           <div
             ref={scrollContainerRef}
             className="flex-1 overflow-auto flex flex-col relative"
