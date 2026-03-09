@@ -1067,6 +1067,7 @@ export default function InteractiveElement({
           onChange(selected.filter(id => id !== optId));
         } else {
           onChange([...selected, optId]);
+          triggerBlink(optId);
         }
       };
       return withFieldHeader(
