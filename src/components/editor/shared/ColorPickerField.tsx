@@ -66,18 +66,6 @@ const BRAND_PALETTE: { hex: string; name: string; group: string }[] = [
   { hex: '#8D0C2B', name: 'Blood 09', group: 'Blood' },
   { hex: '#6B0921', name: 'Blood 10', group: 'Blood' },
   { hex: '#4E0819', name: 'Blood 11', group: 'Blood' },
-  // PAPER
-  { hex: '#FBFAF6', name: 'Paper 01', group: 'Paper' },
-  { hex: '#F4F3EC', name: 'Paper 02', group: 'Paper' },
-  { hex: '#EEECE2', name: 'Paper 03', group: 'Paper' },
-  { hex: '#E6E3D6', name: 'Paper 04', group: 'Paper' },
-  { hex: '#DEDAC8', name: 'Paper 05', group: 'Paper' },
-  { hex: '#D4CFB8', name: 'Paper 06', group: 'Paper' },
-  { hex: '#C8C2A6', name: 'Paper 07', group: 'Paper' },
-  { hex: '#B3AB86', name: 'Paper 08', group: 'Paper' },
-  { hex: '#9A9266', name: 'Paper 09', group: 'Paper' },
-  { hex: '#6A653F', name: 'Paper 10', group: 'Paper' },
-  { hex: '#2C2A18', name: 'Paper 11', group: 'Paper' },
   // Extras (black/white)
   { hex: '#FFFFFF', name: 'Branco', group: 'Base' },
   { hex: '#000000', name: 'Preto', group: 'Base' },
