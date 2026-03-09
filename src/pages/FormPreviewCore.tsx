@@ -1094,10 +1094,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       if (target.startsWith('ai-')) {
         const aiId = target.replace('ai-', '');
         const aiNode = f?.aiNodes?.find(n => n.id === aiId);
-        
-        console.info('[walkWorkflow] Processing AI node:', target, '| effectiveSkip:', effectiveSkip, '| hasNode:', !!aiNode);
-        
-        if (!effectiveSkip) {
+
+        console.info('[walkWorkflow] Processing AI node:', target, '| skipAI:', skipAI, '| hasNode:', !!aiNode);
+
+        if (!skipAI) {
           const shouldFire = aiNode ? (aiNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
           if (aiNode && f && shouldFire) {
             firedNodesRef.current.add(target);
@@ -1127,14 +1127,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               temperature: aiNode.temperature ?? 0.7,
             };
 
-            const isSync = (aiNode.executionMode || 'sync') === 'sync';
-
             const doInvoke = async () => {
               try {
                 console.info('[walkWorkflow] AI invoke starting...', body);
                 const { data, error } = await supabase.functions.invoke('ai-process', { body });
                 console.info('[walkWorkflow] AI response:', { success: data?.success, hasResult: !!data?.result, error });
-                
+
                 if (!error && data?.success && data.result && aiNode.outputVariableId) {
                   const outVar = f?.variables?.find(v => v.id === aiNode.outputVariableId);
                   if (outVar) {
@@ -1154,19 +1152,15 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               }
             };
 
-            if (isSync) {
-              console.info('[walkWorkflow] Synchronous AI execution - awaiting result...');
-              currentAns = await doInvoke();
-              console.info('[walkWorkflow] Synchronous AI execution completed. Variables:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
-            } else {
-              console.info('[walkWorkflow] Asynchronous AI execution - enqueueing task');
-              enqueueTask(doInvoke, `ai:${aiId}`);
-            }
+            // BLOQUEANTE: sempre aguarda a IA antes de avançar
+            console.info('[walkWorkflow] Blocking AI execution - awaiting result...');
+            currentAns = await doInvoke();
+            console.info('[walkWorkflow] Blocking AI execution completed. Variables:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
           } else {
             console.info('[walkWorkflow] AI node skipped:', target, '| shouldFire:', shouldFire, '| alreadyFired:', firedNodesRef.current.has(target));
           }
         } else {
-          console.info('[walkWorkflow] AI node skipped (editor preview mode):', target);
+          console.info('[walkWorkflow] AI node skipped (skipAI=true):', target);
         }
         currentNodeId = target;
         continue;
