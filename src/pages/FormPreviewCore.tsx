@@ -16,7 +16,7 @@ import Twemoji from '@/components/Twemoji';
 import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
-import { firePixel, firePixelDual, fireWebhookWithResponse } from '@/lib/firePixel';
+import { firePixelDual, firePixelDualBlocking, fireWebhookWithResponse } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
 import { enqueueTask } from '@/lib/backgroundQueue';
 // consumePrefetchedForm/hasPrefetchedForm moved to shell (FormPreview.tsx)
