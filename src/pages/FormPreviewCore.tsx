@@ -1912,7 +1912,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
