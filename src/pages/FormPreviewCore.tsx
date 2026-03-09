@@ -33,8 +33,10 @@ const LoadingPreview = lazy(loadLoadingPreview);
 
 // Wrapper to keep Suspense local and avoid route-level blank/loading screens
 function LazyWrap({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/30 animate-pulse" />}>{children}</Suspense>;
+  // Static placeholder only (no skeleton animation) — placeholders must never “consume” entrance motion
+  return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/20" />}>{children}</Suspense>;
 }
+
 
 
 interface FormPreviewCoreProps {
