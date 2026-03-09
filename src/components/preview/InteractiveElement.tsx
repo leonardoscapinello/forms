@@ -69,6 +69,7 @@ export interface InteractiveElementProps {
   answers?: Record<string, any>;
   fieldError?: string;
   formStyle?: FormStyle;
+  onSelectionMade?: () => void;
 }
 
 /** Renders an interactive page element for the preview */
