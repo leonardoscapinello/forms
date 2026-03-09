@@ -51,6 +51,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const navigate = useNavigate();
   const [isInitialStateReady, setIsInitialStateReady] = useState(false);
   const [isInteractiveElementReady, setIsInteractiveElementReady] = useState(false);
+  const [animationFrameReady, setAnimationFrameReady] = useState(false);
+  const prevMountReadyRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +66,37 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       });
     return () => { cancelled = true; };
   }, []);
+
+  // --- First-load animation gate ---
+  // Ensures the browser paints the initial (opacity:0) state before framer-motion
+  // starts animating to center. Without this, React batches mount + animate in the
+  // same frame, causing the animation to be visually skipped on first load.
+  const isBootstrappingEarly = !isInitialStateReady;
+
+  useEffect(() => {
+    if (isBootstrappingEarly) {
+      prevMountReadyRef.current = false;
+      setAnimationFrameReady(false);
+      return;
+    }
+    // Already transitioned once — skip
+    if (prevMountReadyRef.current) return;
+
+    // Wait 2 rAFs: one for the browser to commit the DOM with initial state,
+    // one more to guarantee a painted frame, then allow animation.
+    let raf1: number;
+    let raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        prevMountReadyRef.current = true;
+        setAnimationFrameReady(true);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isBootstrappingEarly]);
 
   // isEditorPreview ref for stable access in callbacks
   const isEditorPreviewRef = useRef(isEditorPreview);
@@ -1894,8 +1927,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           (!!currentPage && (currentPage.elements?.length ?? 0) > 0)
         );
 
-        // Mount the animated screen only when the real UI is ready, so the entrance motion applies to real content.
-        const shouldMountAnimatedScreen = !isBootstrapping && (!screenUsesInteractiveElements || isInteractiveElementReady);
+        // Mount the content when data is ready; gate animation start with animationFrameReady
+        // so the browser paints the initial (invisible) state before framer-motion animates.
+        const contentReady = !isBootstrapping && (!screenUsesInteractiveElements || isInteractiveElementReady);
 
         return (
 
@@ -1904,13 +1938,13 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
-              {shouldMountAnimatedScreen && (
+              {contentReady && (
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
                 variants={variants}
                 initial="enter"
-                animate="center"
+                animate={animationFrameReady ? 'center' : 'enter'}
                 exit="exit"
                 transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full mx-auto my-auto"
