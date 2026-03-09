@@ -1127,16 +1127,26 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                   if (outVar) {
                     console.info('[walkWorkflow] AI result saved to variable:', outVar.name, '=', data.result);
                     currentAns = { ...currentAns, [`__var_${outVar.name}`]: data.result };
+                    console.info('[walkWorkflow] Updated answers after AI:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
                   }
+                } else if (error) {
+                  console.error('[walkWorkflow] AI processing error:', error);
+                } else if (!data?.success) {
+                  console.error('[walkWorkflow] AI processing failed:', data?.error);
                 }
+                return currentAns;
               } catch (err) {
-                console.error('AI node error:', err);
+                console.error('[walkWorkflow] AI node exception:', err);
+                return currentAns;
               }
             };
 
             if (isSync) {
-              await doInvoke();
+              console.info('[walkWorkflow] Synchronous AI execution - awaiting result...');
+              currentAns = await doInvoke();
+              console.info('[walkWorkflow] Synchronous AI execution completed. Variables:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
             } else {
+              console.info('[walkWorkflow] Asynchronous AI execution - enqueueing task');
               enqueueTask(doInvoke, `ai:${aiId}`);
             }
           } else {
