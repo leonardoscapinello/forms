@@ -1867,6 +1867,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
+              {!isBootstrapping && (
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
@@ -1878,9 +1879,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
-              <Suspense fallback={
-                <div className="w-full min-h-[160px] rounded-xl bg-muted/30 animate-pulse" />
-              }>
+              <Suspense fallback={null}>
                 {/* Default welcome (no custom elements) */}
                 {showDefaultWelcome && (
                   <div className="text-center space-y-4 md:space-y-5">

@@ -204,7 +204,7 @@ export default function FormPreview() {
 
   // Form ready → lazy-load the heavy Core (framer-motion, lucide, workflow engine)
   return (
-    <Suspense fallback={<LoadingSpinner />}>
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <FormPreviewCore form={form} isEditorPreview={isEditorPreview} />
     </Suspense>
   );
