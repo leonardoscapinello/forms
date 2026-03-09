@@ -37,13 +37,13 @@ function PageLoader() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background px-6">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background px-6">
+      <div className="h-7 w-7 rounded-full border-[3px] border-foreground/10 border-t-foreground/60 animate-spin" />
       {isSlow && (
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="text-sm text-primary underline underline-offset-4"
+          className="text-sm text-primary underline underline-offset-4 mt-2"
         >
           Demorou para carregar — recarregar
         </button>
