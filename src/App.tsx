@@ -40,16 +40,16 @@ function FormSkeleton() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'hsl(60 20% 99%)',
+      background: 'hsl(var(--background, 60 20% 99%))',
     }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{
           width: 28,
           height: 28,
-          border: '3px solid hsl(48 32% 13% / 0.12)',
-          borderTopColor: 'hsl(48 32% 13% / 0.6)',
+          border: '3px solid hsl(var(--foreground, 48 32% 13%) / 0.1)',
+          borderTopColor: 'hsl(var(--foreground, 48 32% 13%) / 0.6)',
           borderRadius: '50%',
-          animation: 'spin 0.7s linear infinite',
+          animation: 'spin 1s linear infinite',
           margin: '0 auto',
         }} />
       </div>
