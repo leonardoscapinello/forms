@@ -1079,12 +1079,16 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: AI node — call ai-process edge function
       if (target.startsWith('ai-')) {
+        const aiId = target.replace('ai-', '');
+        const aiNode = f?.aiNodes?.find(n => n.id === aiId);
+        
+        console.info('[walkWorkflow] Processing AI node:', target, '| effectiveSkip:', effectiveSkip, '| hasNode:', !!aiNode);
+        
         if (!effectiveSkip) {
-          const aiId = target.replace('ai-', '');
-          const aiNode = f?.aiNodes?.find(n => n.id === aiId);
           const shouldFire = aiNode ? (aiNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
           if (aiNode && f && shouldFire) {
             firedNodesRef.current.add(target);
+            console.info('[walkWorkflow] Executing AI node:', target, '| inputs:', aiNode.inputSources?.length || 0, '| prompt:', aiNode.prompt?.slice(0, 50) + '...');
 
             // Gather input data from selected sources
             const inputData: Record<string, any> = {};
@@ -1114,10 +1118,14 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
             const doInvoke = async () => {
               try {
+                console.info('[walkWorkflow] AI invoke starting...', body);
                 const { data, error } = await supabase.functions.invoke('ai-process', { body });
+                console.info('[walkWorkflow] AI response:', { success: data?.success, hasResult: !!data?.result, error });
+                
                 if (!error && data?.success && data.result && aiNode.outputVariableId) {
                   const outVar = f?.variables?.find(v => v.id === aiNode.outputVariableId);
                   if (outVar) {
+                    console.info('[walkWorkflow] AI result saved to variable:', outVar.name, '=', data.result);
                     currentAns = { ...currentAns, [`__var_${outVar.name}`]: data.result };
                   }
                 }
@@ -1131,7 +1139,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             } else {
               enqueueTask(doInvoke, `ai:${aiId}`);
             }
+          } else {
+            console.info('[walkWorkflow] AI node skipped:', target, '| shouldFire:', shouldFire, '| alreadyFired:', firedNodesRef.current.has(target));
           }
+        } else {
+          console.info('[walkWorkflow] AI node skipped (editor preview mode):', target);
         }
         currentNodeId = target;
         continue;
@@ -1210,10 +1222,13 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   // Helper: navigate forward to a page index, pushing current to history
   const navigateToPage = useCallback((targetIndex: number, newAnswers: Record<string, any>) => {
+    console.info('[navigateToPage] Moving to page', targetIndex, '| answers keys:', Object.keys(newAnswers).filter(k => k.startsWith('__var_')));
     if (currentPageIndex !== null) {
       pageHistoryRef.current.push(currentPageIndex);
     }
-    setAnswers(applyPageVariableAssignments(pages[targetIndex], newAnswers));
+    const finalAnswers = applyPageVariableAssignments(pages[targetIndex], newAnswers);
+    console.info('[navigateToPage] Final answers after variable assignments:', Object.keys(finalAnswers).filter(k => k.startsWith('__var_')));
+    setAnswers(finalAnswers);
     setCurrentPageIndex(targetIndex);
   }, [currentPageIndex, pages, applyPageVariableAssignments]);
 
@@ -1437,6 +1452,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             setFinished(true);
             return;
           }
+          console.info('[walkWorkflow] Navigating to resolved page:', pageId, '| targetIndex:', targetIndex, '| updatedAnswers keys:', Object.keys(updatedAnswers).filter(k => k.startsWith('__var_')));
           navigateToPage(targetIndex, updatedAnswers);
           return;
         }
