@@ -939,7 +939,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Intermediate: analytics node — fire server-side with retry (AdBlock-proof)
       if (target.startsWith('an-')) {
-        if (!effectiveSkip) {
+        if (!skipExternal) {
           const anId = target.replace('an-', '');
           const anNode = f?.analyticsNodes?.find(n => n.id === anId);
           const shouldFire = anNode ? (anNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
