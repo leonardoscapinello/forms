@@ -1895,7 +1895,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             className="flex-1 overflow-auto flex flex-col relative"
           >
             <AnimatePresence mode="wait" custom={direction}>
-              {!isBootstrapping && (
+              {shouldMountAnimatedScreen && (
               <motion.div
                 key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
                 custom={direction}
