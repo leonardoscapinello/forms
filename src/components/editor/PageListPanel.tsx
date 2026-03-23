@@ -177,8 +177,8 @@ export default function PageListPanel({
             <div
               className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
                 isWelcomeSelected
-                  ? 'bg-accent text-foreground border border-border'
-                  : 'hover:bg-muted border border-transparent'
+                  ? 'bg-primary text-primary-foreground border border-primary'
+                  : 'hover:bg-[hsl(var(--paper-300))] border border-transparent'
               }`}
               onClick={() => showWelcomeScreen && onSelectWelcome?.()}
             >
