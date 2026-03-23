@@ -22,6 +22,49 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        // TwoBrain Brand Colors
+        tb: {
+          text: {
+            primary: "hsl(var(--tb-text-primary))",
+            secondary: "hsl(var(--tb-text-secondary))",
+            muted: "hsl(var(--tb-text-muted))",
+            light: "hsl(var(--tb-text-light))",
+          },
+          bg: {
+            page: "hsl(var(--tb-bg-page))",
+            sidebar: "hsl(var(--tb-bg-sidebar))",
+            hover: "hsl(var(--tb-bg-hover))",
+            surface: "hsl(var(--tb-bg-surface))",
+          },
+          accent: {
+            DEFAULT: "hsl(var(--tb-accent))",
+            dark: "hsl(var(--tb-accent-dark))",
+            focus: "hsl(var(--tb-accent-focus))",
+          },
+          border: {
+            input: "hsl(var(--tb-input-border))",
+            card: "hsl(var(--tb-card-border))",
+          },
+          icon: {
+            muted: "hsl(var(--tb-icon-muted))",
+          },
+        },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          foreground: "hsl(var(--paper-foreground))",
+          50: "hsl(var(--paper-50))",
+          100: "hsl(var(--paper-100))",
+          200: "hsl(var(--paper-200))",
+          300: "hsl(var(--paper-300))",
+          400: "hsl(var(--paper-400))",
+          500: "hsl(var(--paper-500))",
+          600: "hsl(var(--paper-600))",
+          700: "hsl(var(--paper-700))",
+          800: "hsl(var(--paper-800))",
+          900: "hsl(var(--paper-900))",
+          950: "hsl(var(--paper-950))",
+          1000: "hsl(var(--paper-1000))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -42,6 +85,18 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -59,14 +114,37 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+          muted: "hsl(var(--sidebar-muted))",
+          hover: "hsl(var(--sidebar-hover))",
         },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
+        green: {
+          100: "hsl(var(--green-100))",
+          200: "hsl(var(--green-200))",
+          300: "hsl(var(--green-300))",
+          400: "hsl(var(--green-400))",
+          500: "hsl(var(--green-500))",
+          600: "hsl(var(--green-600))",
+          700: "hsl(var(--green-700))",
+          800: "hsl(var(--green-800))",
+          900: "hsl(var(--green-900))",
+          950: "hsl(var(--green-950))",
+          1000: "hsl(var(--green-1000))",
         },
-        warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
+        gray: {
+          50: "hsl(var(--gray-50))",
+          100: "hsl(var(--gray-100))",
+          200: "hsl(var(--gray-200))",
+          300: "hsl(var(--gray-300))",
+          400: "hsl(var(--gray-400))",
+          500: "hsl(var(--gray-500))",
+          600: "hsl(var(--gray-600))",
+          700: "hsl(var(--gray-700))",
+          800: "hsl(var(--gray-800))",
+          900: "hsl(var(--gray-900))",
+          950: "hsl(var(--gray-950))",
+        },
+        lime: {
+          dark: "hsl(var(--green-1000))",
         },
         node: {
           contact: "hsl(var(--node-contact))",
