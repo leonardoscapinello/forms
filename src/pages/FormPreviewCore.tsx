@@ -2139,12 +2139,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 size="sm"
                 onClick={waitFeedback || isFlowProcessing ? undefined : goNext}
                 disabled={isPageBlocked || !!waitFeedback || isFlowProcessing}
-                className="h-9 gap-1.5 text-xs"
+                className="h-9 gap-2 text-xs"
                 style={{
                   backgroundColor: form.style?.buttonBgColor || form.style?.primaryColor || undefined,
-                  color: form.style?.buttonTextColor || undefined,
+                  color: form.style?.buttonTextColor || (form.style?.buttonBgColor || form.style?.primaryColor ? '#203300' : undefined),
                   borderRadius: form.style?.buttonBorderRadius ?? 9999,
-                  padding: form.style?.buttonSize === 'sm' ? '6px 16px' : form.style?.buttonSize === 'lg' ? '14px 32px' : '10px 24px',
+                  padding: form.style?.buttonSize === 'sm' ? '6px 18px' : form.style?.buttonSize === 'lg' ? '14px 36px' : '10px 28px',
                   fontSize: form.style?.buttonSize === 'sm' ? 13 : form.style?.buttonSize === 'lg' ? 16 : undefined,
                 }}
                 aria-label={isLastPage ? 'Enviar' : 'Avançar'}
