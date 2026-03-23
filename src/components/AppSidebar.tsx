@@ -54,10 +54,9 @@ export function AppSidebar() {
         className={cn(
           'group/item flex h-10 w-full items-center gap-3 rounded-lg px-4 text-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
           'group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0',
-          // no extra margin modifiers
           active
             ? 'text-sidebar-primary-foreground font-semibold shadow-sm'
-            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            : 'text-sidebar-foreground hover:bg-[hsl(var(--paper-300))] hover:text-sidebar-foreground',
         )}
       >
         <item.icon
