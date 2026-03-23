@@ -124,7 +124,7 @@ export function AppSidebar() {
               onClick={() => navigate('/settings')}
               title={collapsed ? 'Admin' : undefined}
               className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-[hsl(var(--paper-300))] hover:text-sidebar-foreground',
                 collapsed && 'w-8 justify-center px-0',
               )}
             >
