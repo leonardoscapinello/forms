@@ -1332,7 +1332,7 @@ function FlowCanvasInner({
           >
             {nodeContextMenu.nodeId.startsWith('p-') && (
               <button
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent text-left transition-colors text-foreground"
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted text-left transition-colors text-foreground"
                 onClick={handleNodeCtxSelect}
               >
                 <FileText className="h-4 w-4 text-muted-foreground" />
@@ -1340,7 +1340,7 @@ function FlowCanvasInner({
               </button>
             )}
             <button
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-accent text-left transition-colors text-foreground"
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted text-left transition-colors text-foreground"
               onClick={handleNodeCtxToggleDisabled}
             >
               <Power className="h-4 w-4 text-muted-foreground" />

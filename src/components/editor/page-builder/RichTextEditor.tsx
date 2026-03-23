@@ -256,7 +256,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
       type="button"
       variant="ghost"
       size="icon"
-      className={cn('h-7 w-7', active && 'bg-accent text-accent-foreground')}
+      className={cn('h-7 w-7', active && 'bg-[hsl(var(--paper-400))] text-foreground')}
       onMouseDown={e => { e.preventDefault(); execCmd(cmd); }}
     >
       <Icon className="h-3.5 w-3.5" />
