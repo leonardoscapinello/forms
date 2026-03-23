@@ -254,7 +254,7 @@ export default function Dashboard() {
           {/* Form list — table style */}
           {filteredForms.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-dashed border-border bg-card">
-              <div className="rounded-full bg-accent p-4 mb-4">
+              <div className="rounded-full bg-[hsl(var(--paper-300))] p-4 mb-4">
                 <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-base font-medium text-foreground mb-1">
