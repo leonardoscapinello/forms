@@ -108,7 +108,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-4 group-data-[collapsible=icon]:p-2">
         <div className="mb-3 flex items-center gap-3 group-data-[collapsible=icon]:mb-2 group-data-[collapsible=icon]:justify-center">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--paper-300))] text-xs font-semibold text-[hsl(var(--paper-950))]">
             {initials}
           </div>
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
