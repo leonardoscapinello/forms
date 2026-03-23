@@ -206,12 +206,12 @@ export default function PageListPanel({
                   key={page.id}
                   className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
                     activeDropPageId === page.id
-                      ? 'bg-accent-foreground/10 border-2 border-accent-foreground/40 ring-2 ring-accent-foreground/15 scale-[1.03] shadow-sm'
+                      ? 'bg-primary/10 border-2 border-primary/40 ring-2 ring-primary/15 scale-[1.03] shadow-sm'
                       : selectedPageId === page.id
-                        ? 'bg-accent text-foreground border border-border'
+                        ? 'bg-primary text-primary-foreground border border-primary'
                         : isDisconnected
-                          ? 'hover:bg-muted border border-destructive/30 bg-destructive/5'
-                          : 'hover:bg-muted border border-transparent'
+                          ? 'hover:bg-[hsl(var(--paper-300))] border border-destructive/30 bg-destructive/5'
+                          : 'hover:bg-[hsl(var(--paper-300))] border border-transparent'
                   }`}
                   data-page-drop-id={page.id}
                   onClick={() => onSelectPage(page.id)}
