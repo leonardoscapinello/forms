@@ -47,7 +47,7 @@ export default function InlineAddMenu({ onAdd, onAddCondition, size = 'sm' }: Pr
       <DropdownMenuContent align="start" side="bottom" className="w-72 max-h-[28rem] overflow-y-auto bg-popover z-[100] p-2">
         {/* Condition */}
         <button
-          className="flex items-center gap-3 w-full px-2 py-2 text-sm hover:bg-accent rounded-lg text-left transition-colors"
+          className="flex items-center gap-3 w-full px-2 py-2 text-sm hover:bg-muted rounded-lg text-left transition-colors"
           onClick={onAddCondition}
         >
           <div className="h-8 w-8 rounded-lg bg-node-condition flex items-center justify-center flex-shrink-0">
@@ -74,7 +74,7 @@ export default function InlineAddMenu({ onAdd, onAddCondition, size = 'sm' }: Pr
                 return (
                   <button
                     key={type}
-                    className="flex items-center gap-3 w-full px-2 py-1.5 text-sm hover:bg-accent rounded-lg text-left transition-colors group"
+                    className="flex items-center gap-3 w-full px-2 py-1.5 text-sm hover:bg-muted rounded-lg text-left transition-colors group"
                     onClick={() => onAdd(createDefaultQuestion(type))}
                   >
                     <div className={`h-7 w-7 rounded-lg ${style.iconBg} flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110`}>

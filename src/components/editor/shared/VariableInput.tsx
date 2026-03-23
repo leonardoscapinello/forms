@@ -249,7 +249,7 @@ export default function VariableInput(props: Props) {
                 key={item.id}
                 className={cn(
                   'flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer transition-colors',
-                  i === acState.selectedIdx ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+                  i === acState.selectedIdx ? 'bg-[hsl(var(--paper-400))] text-foreground' : 'hover:bg-muted'
                 )}
                 onMouseDown={(e) => { e.preventDefault(); handleAcSelect(item); }}
               >

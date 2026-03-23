@@ -125,7 +125,7 @@ function EditorLayoutInner() {
               )}
             </div>
             <button
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-xs font-medium text-foreground"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-xs font-medium text-foreground"
               onClick={() => setShowResponsivePreview(true)}
             >
               <Monitor className="h-3.5 w-3.5" /> Preview
@@ -135,7 +135,7 @@ function EditorLayoutInner() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-sm font-medium">
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm font-medium">
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     form.status === 'published' ? 'bg-emerald-500' :
                     form.status === 'closed' ? 'bg-destructive' :
