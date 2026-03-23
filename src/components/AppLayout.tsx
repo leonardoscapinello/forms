@@ -45,11 +45,11 @@ export default function AppLayout({ children }: Props) {
 
             {/* Right side */}
             <div className="flex items-center gap-3">
-              <button className="relative h-9 w-9 rounded-full flex items-center justify-center hover:bg-accent transition-colors">
+              <button className="relative h-9 w-9 rounded-full flex items-center justify-center hover:bg-[hsl(var(--paper-300))] transition-colors">
                 <Bell className="h-4 w-4 text-muted-foreground" />
               </button>
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-xs font-semibold text-foreground/60">
+                <div className="h-8 w-8 rounded-full bg-[hsl(var(--paper-300))] flex items-center justify-center text-xs font-semibold text-[hsl(var(--paper-950))]">
                   {initials}
                 </div>
                 <span className="text-sm font-medium text-foreground hidden sm:inline">

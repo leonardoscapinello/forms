@@ -219,7 +219,7 @@ export default function Dashboard() {
                 'Formulários'
               )}
             </h1>
-            <span className="text-[11px] text-muted-foreground bg-accent px-2 py-0.5 rounded-full font-medium">
+            <span className="text-[11px] text-muted-foreground bg-[hsl(var(--paper-300))] px-2 py-0.5 rounded-full font-medium">
               {filteredForms.length}
             </span>
             <div className="flex-1" />
@@ -254,7 +254,7 @@ export default function Dashboard() {
           {/* Form list — table style */}
           {filteredForms.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-dashed border-border bg-card">
-              <div className="rounded-full bg-accent p-4 mb-4">
+              <div className="rounded-full bg-[hsl(var(--paper-300))] p-4 mb-4">
                 <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-base font-medium text-foreground mb-1">
@@ -287,11 +287,11 @@ export default function Dashboard() {
                     }}
                     onDragEnd={() => setDraggingFormId(null)}
                     onClick={() => navigate(`/editor/${form.id}`)}
-                    className={`group flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-accent/50 ${draggingFormId === form.id ? 'opacity-50' : ''}`}
+                    className={`group flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-[hsl(var(--paper-300)/0.5)] ${draggingFormId === form.id ? 'opacity-50' : ''}`}
                   >
                     {/* Icon */}
-                    <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div className="h-10 w-10 rounded-xl bg-[hsl(var(--paper-300))] flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-5 w-5 text-[hsl(var(--paper-800))]" />
                     </div>
 
                     {/* Name + meta */}

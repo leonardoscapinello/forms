@@ -54,10 +54,9 @@ export function AppSidebar() {
         className={cn(
           'group/item flex h-10 w-full items-center gap-3 rounded-lg px-4 text-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
           'group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0',
-          // no extra margin modifiers
           active
             ? 'text-sidebar-primary-foreground font-semibold shadow-sm'
-            : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            : 'text-sidebar-foreground hover:bg-[hsl(var(--paper-300))] hover:text-sidebar-foreground',
         )}
       >
         <item.icon
@@ -109,7 +108,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-4 group-data-[collapsible=icon]:p-2">
         <div className="mb-3 flex items-center gap-3 group-data-[collapsible=icon]:mb-2 group-data-[collapsible=icon]:justify-center">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--paper-300))] text-xs font-semibold text-[hsl(var(--paper-950))]">
             {initials}
           </div>
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
@@ -125,7 +124,7 @@ export function AppSidebar() {
               onClick={() => navigate('/settings')}
               title={collapsed ? 'Admin' : undefined}
               className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-[hsl(var(--paper-300))] hover:text-sidebar-foreground',
                 collapsed && 'w-8 justify-center px-0',
               )}
             >
@@ -139,7 +138,7 @@ export function AppSidebar() {
             onClick={signOut}
             title={collapsed ? 'Sair' : undefined}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-sidebar-foreground/70 transition-colors hover:bg-[hsl(var(--paper-300))] hover:text-sidebar-foreground',
               role === 'admin' && !collapsed && 'ml-auto',
               collapsed && 'w-8 justify-center px-0',
             )}
