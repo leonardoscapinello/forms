@@ -126,7 +126,7 @@ export default function ColorPickerField({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-2 w-full h-8 px-2 rounded-md border border-input bg-background hover:bg-accent/50 transition-colors cursor-pointer"
+            className="flex items-center gap-2 w-full h-8 px-2 rounded-md border border-input bg-background hover:bg-muted transition-colors cursor-pointer"
             title={isTransparent ? placeholder : `${value} — ${displayName}`}
           >
             <div
