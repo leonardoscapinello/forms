@@ -287,11 +287,11 @@ export default function Dashboard() {
                     }}
                     onDragEnd={() => setDraggingFormId(null)}
                     onClick={() => navigate(`/editor/${form.id}`)}
-                    className={`group flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-accent/50 ${draggingFormId === form.id ? 'opacity-50' : ''}`}
+                    className={`group flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-[hsl(var(--paper-300)/0.5)] ${draggingFormId === form.id ? 'opacity-50' : ''}`}
                   >
                     {/* Icon */}
-                    <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div className="h-10 w-10 rounded-xl bg-[hsl(var(--paper-300))] flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-5 w-5 text-[hsl(var(--paper-800))]" />
                     </div>
 
                     {/* Name + meta */}
