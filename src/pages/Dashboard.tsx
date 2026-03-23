@@ -219,7 +219,7 @@ export default function Dashboard() {
                 'Formulários'
               )}
             </h1>
-            <span className="text-[11px] text-muted-foreground bg-accent px-2 py-0.5 rounded-full font-medium">
+            <span className="text-[11px] text-muted-foreground bg-[hsl(var(--paper-300))] px-2 py-0.5 rounded-full font-medium">
               {filteredForms.length}
             </span>
             <div className="flex-1" />
