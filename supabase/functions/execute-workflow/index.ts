@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { flattenFormElements, isServiceRequest } from '../_shared/publicFormAuth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -224,7 +226,7 @@ async function walkWorkflow(
         const cond = (formData.conditions || []).find((c: any) => c.id === condId);
         if (cond) {
           // Collect all elements for option-label resolution
-          const allElements = (formData.pages || []).flatMap((p: any) => p.elements || []);
+          const allElements = (formData.pages || []).flatMap((p: any) => flattenFormElements(p.elements || []));
           let matched = false;
           for (const branch of cond.branches || []) {
             if (evaluateCondition(branch.conditionGroup, currentAnswers, variables, allElements)) {
@@ -512,6 +514,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // The public respondent flow executes authorized nodes individually. This
+    // legacy bulk orchestrator is reserved for trusted server-side jobs so it
+    // cannot be abused to replay email, WhatsApp, AI or webhook side effects.
+    if (!isServiceRequest(req)) {
+      return new Response(JSON.stringify({ success: false, error: 'unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const rawBody = await req.text();
     if (rawBody.length > 500_000) {
       return new Response(JSON.stringify({ success: false, error: 'payload_too_large' }), {
@@ -547,6 +559,10 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const admin = createClient(supabaseUrl, serviceKey);
+    const limited = await enforceRateLimit(
+      admin, req, 'execute-workflow', 10, 60, formId, serviceKey, corsHeaders,
+    );
+    if (limited) return limited;
 
     // Load full form data from DB
     const { data: formRow, error: formError } = await admin

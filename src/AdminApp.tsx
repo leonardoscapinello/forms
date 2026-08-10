@@ -59,6 +59,14 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { user, role, loading, isAdmin } = useAuth();
+  if (loading || (user && role === null)) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function AuthRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
@@ -94,7 +102,7 @@ export default function AdminApp() {
                 <Route path="/dashboard" element={<ProtectedRoute><AppLayout><AnalyticsDashboard /></AppLayout></ProtectedRoute>} />
                 <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
                 <Route path="/gallery" element={<ProtectedRoute><AppLayout><Gallery /></AppLayout></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+                <Route path="/settings" element={<AdminRoute><AppLayout><Settings /></AppLayout></AdminRoute>} />
 
                 {/* Editor with nested routes */}
                 <Route path="/editor/:id" element={<ProtectedRoute><EditorLayout /></ProtectedRoute>}>

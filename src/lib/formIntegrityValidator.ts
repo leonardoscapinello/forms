@@ -7,6 +7,7 @@ import type {
   FormData, FormVariable, ConditionNodeData, VariableOpNodeData,
   IntegrationNodeData, AnalyticsNodeData, AINodeData,
 } from '@/types/form';
+import { flattenPageElements } from '@/lib/pageElementTree';
 
 export interface IntegrityIssue {
   /** The workflow node that has the broken reference */
@@ -220,7 +221,7 @@ export function validateFormIntegrity(form: FormData): IntegrityIssue[] {
     for (const param of allParams) {
       if (!param.value) continue;
       for (const page of form.pages || []) {
-        for (const el of page.elements || []) {
+        for (const el of flattenPageElements(page.elements || [])) {
           if (param.value.includes(el.id)) {
             checkElement(flowNodeId, integLabel, el.id, 'webhook',
               `Campo {element} precisa estar antes deste webhook no workflow`);

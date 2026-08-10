@@ -1,11 +1,101 @@
 import { PageElement } from '@/types/pageElements';
 import { FormData as AppFormData, UserDataMapping } from '@/types/form';
+import { flattenPageElements } from '@/lib/pageElementTree';
+
+export { flattenPageElements } from '@/lib/pageElementTree';
+
+function digits(value: unknown): string {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function hasRequiredValue(element: PageElement, value: unknown): boolean {
+  if (value === undefined || value === null || value === '' || value === false) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value !== 'object') return true;
+  const compound = value as Record<string, unknown>;
+  switch (element.type) {
+    case 'input_phone':
+      return digits(compound.number).length >= 7;
+    case 'input_document':
+      return String(compound.value || '').trim().length > 0;
+    case 'input_company':
+      return digits(compound.cnpj).length === 14;
+    case 'input_address':
+      return String(compound.street || '').trim().length > 0
+        && String(compound.number || '').trim().length > 0
+        && String(compound.city || '').trim().length > 0
+        && String(compound.state || '').trim().length > 0
+        && (compound.country !== 'BR' || digits(compound.cep).length === 8);
+    case 'input_height':
+    case 'input_weight':
+      return typeof compound.value === 'number' && Number.isFinite(compound.value);
+    default:
+      return Object.values(compound).some((part) => typeof part === 'number'
+        || typeof part === 'boolean' && part
+        || typeof part === 'string' && part.trim().length > 0);
+  }
+}
+
+function isValidCpf(value: unknown): boolean {
+  const cpf = digits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const check = (length: number) => {
+    let sum = 0;
+    for (let index = 0; index < length; index++) sum += Number(cpf[index]) * (length + 1 - index);
+    const result = 11 - sum % 11;
+    return result >= 10 ? 0 : result;
+  };
+  return check(9) === Number(cpf[9]) && check(10) === Number(cpf[10]);
+}
+
+function isValidCnpj(value: unknown): boolean {
+  const cnpj = digits(value);
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const calculate = (length: number) => {
+    const weights = length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = weights.reduce((total, weight, index) => total + Number(cnpj[index]) * weight, 0);
+    return sum % 11 < 2 ? 0 : 11 - sum % 11;
+  };
+  return calculate(12) === Number(cnpj[12]) && calculate(13) === Number(cnpj[13]);
+}
+
+export function getRequiredFieldErrors(
+  elements: PageElement[],
+  answers: Record<string, unknown>,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const element of flattenPageElements(elements)) {
+    if (!element.required || !element.type.startsWith('input_')) continue;
+    const value = answers[element.id];
+    if (!hasRequiredValue(element, value)) {
+      errors[element.id] = element.requiredMessage
+        || (element.type === 'input_multi_select' ? 'Selecione ao menos uma opção' : 'Preencha este campo');
+      continue;
+    }
+    if (element.type === 'input_document' && typeof value === 'object' && value) {
+      const document = value as Record<string, unknown>;
+      const valid = document.documentType === 'cpf'
+        ? isValidCpf(document.value)
+        : document.documentType === 'cnpj'
+          ? isValidCnpj(document.value)
+          : String(document.value || '').trim().length >= 5;
+      if (!valid) errors[element.id] = element.validationMessage || 'Documento inválido';
+    }
+    if (element.type === 'input_number') {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) errors[element.id] = element.validationMessage || 'Número inválido';
+      if (element.min !== undefined && numericValue < element.min) errors[element.id] = element.validationMessage || `Valor mínimo: ${element.min}`;
+      if (element.max !== undefined && numericValue > element.max) errors[element.id] = element.validationMessage || `Valor máximo: ${element.max}`;
+    }
+  }
+  return errors;
+}
 
 export function buildDefaults(form: AppFormData | null) {
   if (!form) return {};
   const defaults: Record<string, any> = {};
   for (const page of form.pages || []) {
-    for (const el of page.elements || []) {
+    for (const el of flattenPageElements(page.elements || [])) {
       if (el.defaultValue !== undefined && el.defaultValue !== '') {
         defaults[el.id] = el.defaultValue;
       }
@@ -29,7 +119,7 @@ export function resolveUserData(
 
   const findFirstElement = (type: string): string | undefined => {
     for (const page of form.pages || []) {
-      for (const el of page.elements || []) {
+      for (const el of flattenPageElements(page.elements || [])) {
         if (el.type === type) return el.id;
       }
     }

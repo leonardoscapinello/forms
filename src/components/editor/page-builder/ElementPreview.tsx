@@ -13,6 +13,7 @@ import CircularProgressPreview from '@/components/preview/CircularProgressPrevie
 import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { normalizeFontFamily } from '@/lib/fontUtils';
+import { sanitizeRichTextHtml } from '@/lib/sanitize';
 import { VariableHighlightOverlay, type ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    return html.replace(/\{\{(.*?)\}\}/g, (_match, inner: string) => {
+    const withReadableTokens = html.replace(/\{\{(.*?)\}\}/g, (_match, inner: string) => {
       let label = inner;
       let cssClass = 'var-highlight var-highlight-variable';
 
@@ -85,6 +86,8 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
 
       return `<mark class="${cssClass} var-highlight-readable">${escapeHtml(`{{${label}}}`)}</mark>`;
     });
+
+    return sanitizeRichTextHtml(withReadableTokens);
   };
 
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Renders dropdown in a portal, positioned relative to trigger, flipping up if near bottom */
@@ -88,9 +88,11 @@ interface Props {
 
 export default function PhoneFieldPreview({ value, onChange, defaultCountryCode = 'BR' }: Props) {
   const defaultCountry = COUNTRIES.find(c => c.code === defaultCountryCode) || COUNTRIES[0];
-  const phoneValue: PhoneValue = typeof value === 'object' && value !== null && 'countryCode' in value
-    ? value as PhoneValue
-    : { countryCode: defaultCountry.code, ddi: defaultCountry.ddi, number: typeof value === 'string' ? value : '' };
+  const phoneValue: PhoneValue = useMemo(() => (
+    typeof value === 'object' && value !== null && 'countryCode' in value
+      ? value as PhoneValue
+      : { countryCode: defaultCountry.code, ddi: defaultCountry.ddi, number: typeof value === 'string' ? value : '' }
+  ), [value, defaultCountry.code, defaultCountry.ddi]);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');

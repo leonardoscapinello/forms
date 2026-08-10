@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { flattenPageElements } from '@/lib/pageElementTree';
 import {
   Check, Copy, ExternalLink, Globe, Loader2, CheckCircle2,
   Unplug, Sheet, Webhook, ChevronDown, Link2, X,
@@ -45,7 +46,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
 function extractFieldHeaders(form: FormData): string[] {
   const headers: string[] = [];
   for (const page of form.pages || []) {
-    for (const el of (page.elements || []) as PageElement[]) {
+    for (const el of flattenPageElements((page.elements || []) as PageElement[])) {
       if (el.type.startsWith('input_')) {
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
         if (subKeys && subKeys.length > 0) {

@@ -43,7 +43,7 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
   // Sync from parent when dialog opens
   useEffect(() => {
     if (open) setLocalSources(nodeData.inputSources || []);
-  }, [open]);
+  }, [open, nodeData.inputSources]);
 
   const toggleSource = useCallback((elementId: string) => {
     setLocalSources(prev => {

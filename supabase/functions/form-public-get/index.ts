@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { createSignedState } from '../_shared/signedState.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +9,7 @@ const corsHeaders = {
   'Cache-Control': 'no-store, max-age=0, must-revalidate',
   'Vary': 'Accept-Encoding',
 };
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Lightweight public form delivery endpoint.
@@ -22,6 +25,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const rateLimited = await enforceRateLimit(
+      supabase, req, 'form-public-get', 60, 60, '', serviceKey, corsHeaders,
+    );
+    if (rateLimited) return rateLimited;
+
     let formId: string | null = null;
 
     if (req.method === 'GET') {
@@ -32,17 +43,12 @@ Deno.serve(async (req) => {
       formId = body?.id;
     }
 
-    if (!formId) {
-      return new Response(JSON.stringify({ error: 'Missing form ID' }), {
+    if (!formId || !UUID_PATTERN.test(formId)) {
+      return new Response(JSON.stringify({ error: 'Invalid form ID' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
 
     // First try published/closed
     const { data, error } = await supabase
@@ -88,6 +94,7 @@ Deno.serve(async (req) => {
       'createdAt',
       'updatedAt',
       'folderId',
+      'completionWebhookUrl',
     ]);
 
     const cleaned: Record<string, unknown> = {};
@@ -95,6 +102,35 @@ Deno.serve(async (req) => {
       if (ADMIN_ONLY_KEYS.has(key)) continue;
       cleaned[key] = d[key];
     }
+    // Webhook destinations, headers and test payloads stay server-side. The
+    // public runtime only needs node identity and response mappings; pixel-event
+    // resolves the authoritative configuration from the database.
+    if (Array.isArray(d.integrationNodes)) {
+      cleaned.integrationNodes = d.integrationNodes.map((node: any) => ({
+        id: node.id,
+        platform: node.platform,
+        responseMappings: node.responseMappings,
+        fireOnce: node.fireOnce,
+      }));
+    }
+    if (Array.isArray(d.whatsappNodes)) {
+      cleaned.whatsappNodes = d.whatsappNodes.map((node: any) => ({ id: node.id, fireOnce: node.fireOnce }));
+    }
+    if (Array.isArray(d.emailNodes)) {
+      cleaned.emailNodes = d.emailNodes.map((node: any) => ({ id: node.id, fireOnce: node.fireOnce }));
+    }
+    if (Array.isArray(d.aiNodes)) {
+      cleaned.aiNodes = d.aiNodes.map((node: any) => ({
+        id: node.id,
+        outputVariableId: node.outputVariableId,
+        executionMode: node.executionMode,
+        fireOnce: node.fireOnce,
+      }));
+    }
+    cleaned.submissionToken = await createSignedState({
+      kind: 'form-submission',
+      formId: data.id,
+    }, 24 * 60 * 60);
 
     const result = {
       id: data.id,

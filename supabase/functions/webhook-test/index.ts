@@ -12,7 +12,12 @@ const MAX_PAYLOAD_SIZE = 50_000; // ~50KB
 function isValidHttpUrl(str: string): boolean {
   try {
     const url = new URL(str);
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.local') || host === '::1' || host === '[::1]') return false;
+    if (/^127\./.test(host) || /^10\./.test(host) || /^169\.254\./.test(host) || /^192\.168\./.test(host)) return false;
+    const match172 = host.match(/^172\.(\d{1,3})\./);
+    return !(match172 && Number(match172[1]) >= 16 && Number(match172[1]) <= 31);
   } catch {
     return false;
   }

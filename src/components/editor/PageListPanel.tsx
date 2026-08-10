@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { PageElement } from '@/types/pageElements';
 import { isValidVariableName } from '@/lib/variableInterpolation';
 import { toast } from 'sonner';
+import { flattenPageElements } from '@/lib/pageElementTree';
 
 interface Props {
   pages: FunnelPage[];
@@ -114,7 +115,7 @@ export default function PageListPanel({
 
   const allFields: { pageId: string; pageTitle: string; element: PageElement }[] = [];
   for (const page of pages) {
-    for (const el of page.elements || []) {
+    for (const el of flattenPageElements(page.elements || [])) {
       if (el.type.startsWith('input_')) {
         allFields.push({ pageId: page.id, pageTitle: page.title, element: el });
       }

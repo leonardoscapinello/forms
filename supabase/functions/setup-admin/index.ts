@@ -12,6 +12,12 @@ serve(async (req) => {
   }
 
   try {
+    if (Deno.env.get('SETUP_ENABLED') !== 'true') {
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const expectedSetupToken = Deno.env.get('SETUP_TOKEN');
     const suppliedSetupToken = req.headers.get('x-setup-token');
     if (!expectedSetupToken || suppliedSetupToken !== expectedSetupToken) {
@@ -33,8 +39,26 @@ serve(async (req) => {
     }
 
     const { email, password, displayName } = await req.json();
-    if (!email || !password) {
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
       return new Response(JSON.stringify({ error: 'Email and password required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      return new Response(JSON.stringify({ error: 'Invalid email' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (password.length < 12 || password.length > 128) {
+      return new Response(JSON.stringify({ error: 'Password must be between 12 and 128 characters' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (displayName !== undefined && (typeof displayName !== 'string' || displayName.length > 100)) {
+      return new Response(JSON.stringify({ error: 'Invalid display name' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

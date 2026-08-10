@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireFormAccess } from '../_shared/auth.ts';
+import { flattenFormElements } from '../_shared/publicFormAuth.ts';
 
 // ── AES-256-GCM decryption for encrypted form data ──
 async function _deriveKey(secret: string): Promise<CryptoKey> {
@@ -93,7 +95,7 @@ async function getAccessToken(supabase: any): Promise<string> {
 function extractFieldHeaders(formData: any): string[] {
   const headers: string[] = [];
   for (const page of formData.pages || []) {
-    for (const el of page.elements || []) {
+    for (const el of flattenFormElements(page.elements || [])) {
       if (el.type?.startsWith("input_")) {
         headers.push(
           el.label ||
@@ -155,6 +157,15 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { action, formId, formTitle, headers, spreadsheetId } = body;
+
+    if (!formId || typeof formId !== 'string') {
+      return new Response(JSON.stringify({ error: 'formId is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const caller = await requireFormAccess(req, formId);
+    if (!caller.ok) return caller.response;
 
     const accessToken = await getAccessToken(supabase);
 
@@ -228,7 +239,7 @@ Deno.serve(async (req) => {
       const formData = formRow?.data as any;
       const inputElements: { id: string; label: string }[] = [];
       for (const page of formData?.pages || []) {
-        for (const el of page.elements || []) {
+        for (const el of flattenFormElements(page.elements || [])) {
           if (el.type?.startsWith("input_")) {
             inputElements.push({
               id: el.id,

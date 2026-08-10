@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin } from '../_shared/auth.ts';
+import { createSignedState } from '../_shared/signedState.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +14,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const caller = await requireAdmin(req);
+    if (!caller.ok) return caller.response;
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -40,6 +45,16 @@ Deno.serve(async (req) => {
     }
 
     const { returnUrl } = await req.json().catch(() => ({ returnUrl: "" }));
+    if (returnUrl) {
+      const parsedReturnUrl = new URL(returnUrl);
+      const isLocal = parsedReturnUrl.hostname === 'localhost' || parsedReturnUrl.hostname === '127.0.0.1';
+      if (returnUrl.length > 2048 || (parsedReturnUrl.protocol !== 'https:' && !(isLocal && parsedReturnUrl.protocol === 'http:'))) {
+        return new Response(JSON.stringify({ error: 'URL de retorno inválida.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
 
@@ -48,8 +63,8 @@ Deno.serve(async (req) => {
       "https://www.googleapis.com/auth/drive.file",
     ].join(" ");
 
-    // Generate a state token with the return URL
-    const state = btoa(JSON.stringify({ returnUrl: returnUrl || "" }));
+    // Signed, expiring state prevents OAuth callback forgery and open redirects.
+    const state = await createSignedState({ returnUrl: returnUrl || "" });
 
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     authUrl.searchParams.set("client_id", cfg.clientId);

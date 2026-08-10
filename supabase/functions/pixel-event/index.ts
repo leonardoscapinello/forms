@@ -1,10 +1,47 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { verifySignedState } from '../_shared/signedState.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function interpolate(value: string, answers: Record<string, any>, variables: any[]): string {
+  return String(value || '')
+    .replace(/\{\{field:([^}]+)\}\}/g, (_match, id) => String(answers[id] ?? ''))
+    .replace(/\{\{([^}]+)\}\}/g, (_match, rawKey) => {
+      const key = String(rawKey).trim();
+      const variable = variables.find((item: any) => item.id === key || item.name === key);
+      if (variable) return String(answers[`__var_${variable.name}`] ?? variable.defaultValue ?? '');
+      return String(answers[key] ?? '');
+    });
+}
+
+function isAllowedWebhookUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.local') || host === '::1' || host === '[::1]') return false;
+    if (/^127\./.test(host) || /^10\./.test(host) || /^169\.254\./.test(host) || /^192\.168\./.test(host)) return false;
+    const match172 = host.match(/^172\.(\d{1,3})\./);
+    if (match172 && Number(match172[1]) >= 16 && Number(match172[1]) <= 31) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function jsonError(status: number, error: string): Response {
+  return new Response(JSON.stringify({ success: false, error }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
 // SHA-256 hash helper (for PII hashing required by Conversions APIs)
 async function sha256(value: string): Promise<string> {
@@ -58,9 +95,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const {
+    let {
       platform,
       eventName,
+      customParams,
+    } = body;
+    const {
       eventId,
       formId,
       triggerType = 'flow_node', // 'load_event' | 'flow_node'
@@ -72,8 +112,55 @@ serve(async (req) => {
       userData,
       sourceUrl,
       userAgent,
-      customParams,
     } = body;
+
+    const isInternal = req.headers.get('authorization') === `Bearer ${supabaseServiceKey}`;
+    if (!UUID_PATTERN.test(String(formId || ''))) return jsonError(400, 'invalid_form_id');
+    if (!isInternal) {
+      const tokenData = typeof body.submissionToken === 'string'
+        ? await verifySignedState(body.submissionToken)
+        : null;
+      if (tokenData?.kind !== 'form-submission' || tokenData.formId !== formId) {
+        return jsonError(401, 'invalid_or_expired_token');
+      }
+    }
+
+    const limited = await enforceRateLimit(
+      supabaseAdmin, req, 'pixel-event', 30, 60, String(formId), supabaseServiceKey, corsHeaders,
+    );
+    if (limited) return limited;
+
+    const { data: formRow } = await supabaseAdmin
+      .from('forms')
+      .select('status, data')
+      .eq('id', formId)
+      .maybeSingle();
+    if (!formRow || (!isInternal && formRow.status !== 'published')) return jsonError(404, 'form_not_available');
+    const formData = formRow.data as any;
+    let verifiedWebhookNode: any = null;
+
+    if (!isInternal && platform === 'webhook') {
+      verifiedWebhookNode = (formData.integrationNodes || []).find((node: any) => node.id === body.nodeId);
+      if (!verifiedWebhookNode?.webhookUrl) return jsonError(403, 'webhook_node_not_allowed');
+      eventName = 'webhook_fired';
+    } else if (!isInternal) {
+      if (triggerType === 'load_event') {
+        const loadEvent = (formData.pixelLoadEvents || []).find((event: any) => event.id === body.nodeId);
+        if (!loadEvent || loadEvent.platform !== platform) return jsonError(403, 'pixel_event_not_allowed');
+        eventName = loadEvent.eventType === 'custom' ? (loadEvent.customEventName || 'CustomEvent') : loadEvent.eventType;
+        customParams = {};
+      } else {
+        const analyticsNode = (formData.analyticsNodes || []).find((node: any) => node.id === body.nodeId);
+        const entry = analyticsNode?.platforms?.find((item: any) => item.id === body.entryId && item.enabled);
+        if (!entry || entry.platform !== platform) return jsonError(403, 'pixel_event_not_allowed');
+        eventName = entry.eventType === 'custom' ? (entry.customEventName || 'CustomEvent') : entry.eventType;
+        customParams = Object.fromEntries((entry.customParams || []).filter((item: any) => item.key).map((item: any) => [item.key, item.value]));
+      }
+    }
+
+    if (!['webhook', 'meta_pixel', 'google_analytics', 'tiktok_pixel', 'linkedin_pixel'].includes(platform)) {
+      return jsonError(400, 'invalid_platform');
+    }
 
     // Fetch pixel config from DB (not from env secrets)
     const pixelConfig = await fetchPixelConfig(supabaseAdmin);
@@ -281,32 +368,40 @@ serve(async (req) => {
 
     // ── Webhook ───────────────────────────────────────────────────────────────
     if (platform === 'webhook') {
-      let url = body.webhookUrl;
-      const method = body.webhookMethod || 'POST';
+      const webhookNode = verifiedWebhookNode || body;
+      const interpolationAnswers = (answers || webhookPayload?.answers || {}) as Record<string, any>;
+      const formVariables = formData.variables || [];
+      let url = interpolate(webhookNode.webhookUrl, interpolationAnswers, formVariables);
+      const method = webhookNode.webhookMethod || 'POST';
 
       if (!url) {
         results.webhook = { skipped: true, reason: 'No URL configured on the node' };
+      } else if (!isAllowedWebhookUrl(url)) {
+        return jsonError(400, 'webhook_url_not_allowed');
       } else {
         // Append query params
-        const queryParams = body.webhookQueryParams || [];
+        const queryParams = webhookNode.webhookQueryParams || [];
         if (Array.isArray(queryParams) && queryParams.length > 0) {
           const sep = url.includes('?') ? '&' : '?';
-          url += sep + queryParams.filter((p: any) => p.key).map((p: any) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+          url += sep + queryParams.filter((p: any) => p.key).map((p: any) => `${encodeURIComponent(p.key)}=${encodeURIComponent(interpolate(p.value, interpolationAnswers, formVariables))}`).join('&');
         }
 
         // Build headers
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        const customHeaders = body.webhookHeaders || [];
+        const customHeaders = webhookNode.webhookHeaders || [];
         if (Array.isArray(customHeaders)) {
           for (const h of customHeaders) {
-            if (h.key) headers[h.key] = h.value || '';
+            const headerName = String(h.key || '').trim();
+            if (headerName && !['host', 'content-length'].includes(headerName.toLowerCase())) {
+              headers[headerName] = interpolate(h.value, interpolationAnswers, formVariables);
+            }
           }
         }
 
         // Build body with extra params
-        const bodyParams = body.webhookBodyParams || [];
+        const bodyParams = webhookNode.webhookBodyParams || [];
         const extraBody = Array.isArray(bodyParams)
-          ? Object.fromEntries(bodyParams.filter((p: any) => p.key).map((p: any) => [p.key, p.value]))
+          ? Object.fromEntries(bodyParams.filter((p: any) => p.key).map((p: any) => [p.key, interpolate(p.value, interpolationAnswers, formVariables)]))
           : {};
 
         const outPayload = webhookPayload || {

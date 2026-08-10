@@ -28,12 +28,12 @@ export default function EditorDesign() {
     if (!editingPageId && !editingWelcome && !editingThankYou && form?.pages?.length) {
       setEditingPageId(form.pages[0].id);
     }
-  }, [editingPageId, editingWelcome, editingThankYou, form?.pages]);
+  }, [editingPageId, editingWelcome, editingThankYou, form?.pages, setEditingPageId]);
 
   const currentPage = editingWelcome ? welcomePage : editingThankYou ? thankYouPage : editingPage;
   const currentPageId = editingWelcome ? 'welcome' : editingThankYou ? 'thank-you' : editingPage?.id;
 
-  const handleElementsChange = (elements: PageElement[]) => {
+  const handleElementsChange = useCallback((elements: PageElement[]) => {
     if (editingWelcome) {
       updateFormData({ welcomePage: { ...welcomePage, elements } });
     } else if (editingThankYou) {
@@ -41,7 +41,7 @@ export default function EditorDesign() {
     } else if (editingPage) {
       handlePageChange(editingPage.id, { elements });
     }
-  };
+  }, [editingWelcome, editingThankYou, editingPage, updateFormData, welcomePage, thankYouPage, handlePageChange]);
 
   // Find selected element across elements and columns
   const findElement = useCallback((id: string | null): PageElement | null => {

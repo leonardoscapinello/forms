@@ -1,4 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifySignedState } from '../_shared/signedState.ts';
+
+function addResultParams(returnUrl: string, result: 'success' | 'error', reason?: string): string {
+  const target = new URL(returnUrl);
+  target.searchParams.set('google_oauth', result);
+  if (reason) target.searchParams.set('reason', reason);
+  return target.toString();
+}
 
 Deno.serve(async (req) => {
   try {
@@ -7,17 +15,14 @@ Deno.serve(async (req) => {
     const stateParam = url.searchParams.get("state");
     const errorParam = url.searchParams.get("error");
 
-    let returnUrl = "";
-    try {
-      const stateObj = JSON.parse(atob(stateParam || ""));
-      returnUrl = stateObj.returnUrl || "";
-    } catch { /* ignore */ }
+    const stateObj = stateParam ? await verifySignedState(stateParam) : null;
+    const returnUrl = typeof stateObj?.returnUrl === 'string' ? stateObj.returnUrl : '';
+    if (!returnUrl) return new Response('Invalid or expired OAuth state', { status: 400 });
 
     if (errorParam || !code) {
-      const redirectTo = returnUrl || "/settings";
       return new Response(null, {
         status: 302,
-        headers: { Location: `${redirectTo}?google_oauth=error&reason=${errorParam || "no_code"}` },
+        headers: { Location: addResultParams(returnUrl, 'error', errorParam || 'no_code') },
       });
     }
 
@@ -33,10 +38,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!settings) {
-      const redirectTo = returnUrl || "/settings";
       return new Response(null, {
         status: 302,
-        headers: { Location: `${redirectTo}?google_oauth=error&reason=not_configured` },
+        headers: { Location: addResultParams(returnUrl, 'error', 'not_configured') },
       });
     }
 
@@ -60,10 +64,9 @@ Deno.serve(async (req) => {
 
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error("Token exchange failed:", tokenData);
-      const redirectTo = returnUrl || "/settings";
       return new Response(null, {
         status: 302,
-        headers: { Location: `${redirectTo}?google_oauth=error&reason=token_exchange_failed` },
+        headers: { Location: addResultParams(returnUrl, 'error', 'token_exchange_failed') },
       });
     }
 
@@ -94,10 +97,9 @@ Deno.serve(async (req) => {
       .update({ config: updatedConfig })
       .eq("id", settings.id);
 
-    const redirectTo = returnUrl || "/settings";
     return new Response(null, {
       status: 302,
-      headers: { Location: `${redirectTo}?google_oauth=success` },
+      headers: { Location: addResultParams(returnUrl, 'success') },
     });
   } catch (err: any) {
     console.error("google-oauth-callback error:", err);

@@ -11,7 +11,7 @@ import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare,
 import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, FormStyle, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeEdge } from '@/lib/edgeClient';
 import Twemoji from '@/components/Twemoji';
 import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
@@ -22,7 +22,13 @@ import { enqueueTask } from '@/lib/backgroundQueue';
 // consumePrefetchedForm/hasPrefetchedForm moved to shell (FormPreview.tsx)
 import { validateEmailFormat } from '@/lib/emailValidation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
-import { buildDefaults, resolveUserData, prefetchLazyComponentsForElements } from './FormPreview.utils';
+import {
+  buildDefaults,
+  flattenPageElements,
+  getRequiredFieldErrors,
+  resolveUserData,
+  prefetchLazyComponentsForElements,
+} from './FormPreview.utils';
 
 // InteractiveElement is lazy-loaded to reduce initial parse/compile cost.
 // IMPORTANT: we start the import immediately so the *first real page* can mount+animate only when the real UI is ready.
@@ -150,14 +156,14 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   // PRIMARY save method — uses edge function with service role key (bypasses RLS)
   const saveViaBackend = useCallback(async (args: {
-    kind: 'response' | 'session';
+    kind: 'response' | 'session' | 'event';
     action: 'insert' | 'upsert' | 'update';
     payload: Record<string, any>;
     onConflict?: string;
     match?: Record<string, any>;
   }) => {
     try {
-      const res = await supabase.functions.invoke('form-public-save', { body: args });
+      const res = await invokeEdge('form-public-save', { ...args, token: form.submissionToken });
       if (res.error) {
         console.error('[form-public-save] invoke error:', res.error);
       } else if (res.data && !(res.data as any).success) {
@@ -166,7 +172,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     } catch (e) {
       console.error('[form-public-save] network error:', e);
     }
-  }, []);
+  }, [form.submissionToken]);
 
   // Initialise answers, page index, and session context once form is loaded
   // Phase 1 (sync): defaults + page index for instant first paint
@@ -315,6 +321,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       const { responseId } = sessionMetaRef.current;
       const sessionId = sessionDbIdRef.current;
       const edgeBody = JSON.stringify({
+        token: form.submissionToken,
         kind: 'response',
         action: 'upsert',
         onConflict: 'form_id,response_id',
@@ -349,7 +356,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [form?.id, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form?.id, form?.submissionToken, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Insert session record on form load — DEFERRED to avoid blocking first paint
   useEffect(() => {
@@ -378,11 +385,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       });
 
       // Insert form_start page event
-      ;(supabase as any).from('form_page_events').insert({
-        form_id: form.id,
-        response_id: responseId,
-        event_type: 'form_start',
-      }).then(() => {});
+      saveViaBackend({
+        kind: 'event',
+        action: 'insert',
+        payload: { form_id: form.id, response_id: responseId, event_type: 'form_start' },
+      });
     });
   }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -409,6 +416,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         const userData = resolveUserData(evt.userDataMapping, answersRef.current, form);
 
         firePixelDual({
+          submissionToken: form.submissionToken,
+          nodeId: evt.id,
           platform: evt.platform,
           eventName,
           eventId,
@@ -449,13 +458,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           },
         });
       }
-      ;(supabase as any).from('form_page_events').insert({
-        session_id: sessionId,
-        form_id: form.id,
-        response_id: responseId,
-        event_type: 'form_complete',
-        time_on_page_ms: timeOnPage > 0 ? timeOnPage : null,
-      }).then(() => {});
+      saveViaBackend({
+        kind: 'event',
+        action: 'insert',
+        payload: {
+          session_id: sessionId,
+          form_id: form.id,
+          response_id: responseId,
+          event_type: 'form_complete',
+          time_on_page_ms: timeOnPage > 0 ? timeOnPage : null,
+        },
+      });
 
       // Save/update form responses as complete
       const latestAnswers = answersRef.current;
@@ -489,30 +502,6 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         }
       }
 
-      // Fire completion webhook
-      if (form.completionWebhookUrl) {
-        const { payload } = buildWebhookPayload({
-          form,
-          answers: latestAnswers,
-          responseId,
-          responseHash: sessionMetaRef.current.responseHash,
-          landedAt: sessionMetaRef.current.landedAt,
-          submittedAt: now,
-          queryParams: sessionMetaRef.current.queryParams as Record<string, string>,
-          sourceUrl: window.location.href,
-          referrer: sessionMetaRef.current.referrer,
-          respondent: {
-            user_agent: sessionMetaRef.current.userAgent,
-          },
-          pixelEvents: pixelEventsRef.current,
-        });
-        fetch(form.completionWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => {}); // fire-and-forget
-      }
-
       return;
     }
 
@@ -532,16 +521,20 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           match: { id: sessionId },
         });
       }
-      ;(supabase as any).from('form_page_events').insert({
-        session_id: sessionId,
-        form_id: form.id,
-        response_id: responseId,
-        page_id: page?.id,
-        page_index: currentPageIndex,
-        page_title: page?.title,
-        event_type: 'page_view',
-        time_on_page_ms: currentPageIndex > 0 ? timeOnPage : null,
-      }).then(() => {});
+      saveViaBackend({
+        kind: 'event',
+        action: 'insert',
+        payload: {
+          session_id: sessionId,
+          form_id: form.id,
+          response_id: responseId,
+          page_id: page?.id,
+          page_index: currentPageIndex,
+          page_title: page?.title,
+          event_type: 'page_view',
+          time_on_page_ms: currentPageIndex > 0 ? timeOnPage : null,
+        },
+      });
     }
   }, [currentPageIndex, finished, form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -555,7 +548,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   }, [currentPageIndex, finished]);
 
 
-  const pages = form?.pages || [];
+  const pages = useMemo(() => form?.pages || [], [form?.pages]);
   const currentPage = currentPageIndex !== null ? pages[currentPageIndex] : null;
 
   // Self-healing: if restored page index is invalid, recover to a safe starting point
@@ -606,8 +599,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     if (!page) return;
 
     const hasAnyElements = (page.elements?.length ?? 0) > 0;
-    const hasInputFields = page.elements?.some(el => el.type.startsWith('input_'));
-    const hasActionButtons = page.elements?.some(el => el.type === 'button');
+    const flattenedElements = flattenPageElements(page.elements || []);
+    const hasInputFields = flattenedElements.some(el => el.type.startsWith('input_'));
+    const hasActionButtons = flattenedElements.some(el => el.type === 'button');
     const hasOutgoingFlow = (form.flowEdges || []).some(edge => edge.source === `p-${page.id}`);
     const isLastPage = isFlowLastPage;
 
@@ -620,7 +614,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     if (!form) return 0;
     let score = 0;
     for (const page of form.pages || []) {
-      for (const el of page.elements || []) {
+      for (const el of flattenPageElements(page.elements || [])) {
         const val = answers[el.id];
         if (val === undefined || val === null) continue;
 
@@ -694,7 +688,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   const isPageBlocked = useMemo(() => {
     if (!currentPage) return false;
-    return currentPage.elements.some(el => blockedElements[el.id]);
+    return flattenPageElements(currentPage.elements).some(el => blockedElements[el.id]);
   }, [currentPage, blockedElements]);
 
   const setElementBlocked = useCallback((elementId: string, blocked: boolean) => {
@@ -712,19 +706,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   /** Check that all required fields on the current page have a non-empty value */
   const areRequiredFieldsFilled = useCallback(() => {
     if (!currentPage) return true;
-    const errors: Record<string, string> = {};
-    for (const el of currentPage.elements) {
-      if (el.required && el.type.startsWith('input_')) {
-        const val = answers[el.id];
-        if (val === undefined || val === null || val === '' || val === false) {
-          errors[el.id] = el.requiredMessage || 'Preencha este campo';
-        }
-        // multi_select: require at least one selection
-        if (el.type === 'input_multi_select' && Array.isArray(val) && val.length === 0) {
-          errors[el.id] = el.requiredMessage || 'Selecione ao menos uma opção';
-        }
-      }
-    }
+    const errors = getRequiredFieldErrors(currentPage.elements, answers);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return false;
@@ -853,7 +835,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         const condData = f?.conditions?.find(c => c.id === condId);
         if (condData) {
           // Collect all elements from all pages for option-label resolution
-          const allElements = f?.pages?.flatMap(p => p.elements || []) || [];
+          const allElements = f?.pages?.flatMap(p => flattenPageElements(p.elements || [])) || [];
           const matchedBranchId = resolveConditionBranch(condData, currentAns, f?.variables, allElements);
           const handleId = `branch-${matchedBranchId}`;
           const branchEdge = outEdges.find(e => e.sourceHandle === handleId);
@@ -935,6 +917,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             });
 
             const webhookOpts = {
+              submissionToken: f.submissionToken,
+              nodeId: intgId,
               platform: 'webhook' as const,
               eventName: 'webhook_fired',
               eventId,
@@ -1025,6 +1009,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               );
 
               await firePixelDualBlocking({
+                submissionToken: f.submissionToken,
+                nodeId: anId,
+                entryId: entry.id,
                 platform: entry.platform,
                 eventName,
                 eventId,
@@ -1051,26 +1038,18 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           const waId = target.replace('wa-', '');
           const waNode = f?.whatsappNodes?.find(n => n.id === waId);
           const shouldFire = waNode ? (waNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
-          if (waNode && f && waNode.instanceId && waNode.recipientNumber && shouldFire) {
+          if (waNode && f && shouldFire) {
             firedNodesRef.current.add(target);
-            const resolvedNumber = interpolateText(waNode.recipientNumber || '', f.variables || [], currentAns);
-            const resolvedMessage = interpolateText(waNode.messageText || '', f.variables || [], currentAns);
-            const resolvedMediaUrl = waNode.mediaUrl ? interpolateText(waNode.mediaUrl, f.variables || [], currentAns) : undefined;
-
             const body: Record<string, any> = {
-              instanceId: waNode.instanceId,
-              recipientNumber: resolvedNumber,
-              messageText: resolvedMessage,
+              submissionToken: f.submissionToken,
+              formId: f.id,
+              nodeId: waId,
+              answers: currentAns,
             };
-            if (waNode.sendMedia && resolvedMediaUrl) {
-              body.mediaUrl = resolvedMediaUrl;
-              body.mediaType = waNode.mediaType || 'image';
-              if (waNode.mediaFileName) body.mediaFileName = waNode.mediaFileName;
-            }
 
             // Tentativa única (a própria função pode fazer retries). Em caso de falha, loga e segue.
             try {
-              const { error } = await supabase.functions.invoke('whatsapp-send', { body });
+              const { error } = await invokeEdge('whatsapp-send', body);
               if (error) console.error('[walkWorkflow] WhatsApp error:', error);
             } catch (err) {
               console.error('[walkWorkflow] WhatsApp exception:', err);
@@ -1087,28 +1066,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           const emId = target.replace('em-', '');
           const emNode = f?.emailNodes?.find(n => n.id === emId);
           const shouldFire = emNode ? (emNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
-          if (emNode && f && emNode.instanceId && emNode.toEmail && shouldFire) {
+          if (emNode && f && shouldFire) {
             firedNodesRef.current.add(target);
-            const resolvedTo = interpolateText(emNode.toEmail || '', f.variables || [], currentAns);
-            const resolvedFrom = emNode.fromEmail ? interpolateText(emNode.fromEmail, f.variables || [], currentAns) : undefined;
-            const resolvedFromName = emNode.fromName ? interpolateText(emNode.fromName, f.variables || [], currentAns) : undefined;
-            const resolvedSubject = interpolateText(emNode.subject || '', f.variables || [], currentAns);
-            const resolvedBody = interpolateText(emNode.bodyText || '', f.variables || [], currentAns);
-            const resolvedHtml = emNode.bodyHtml ? interpolateText(emNode.bodyHtml, f.variables || [], currentAns) : undefined;
-
             const body: Record<string, any> = {
-              instanceId: emNode.instanceId,
-              toEmail: resolvedTo,
-              fromEmail: resolvedFrom,
-              fromName: resolvedFromName,
-              subject: resolvedSubject,
-              bodyText: resolvedBody,
-              bodyHtml: resolvedHtml,
-              useHtml: emNode.useHtml,
+              submissionToken: f.submissionToken,
+              formId: f.id,
+              nodeId: emId,
+              answers: currentAns,
             };
 
             try {
-              const { error } = await supabase.functions.invoke('resend-send', { body });
+              const { error } = await invokeEdge('resend-send', body);
               if (error) console.error('[walkWorkflow] Email error:', error);
             } catch (err) {
               console.error('[walkWorkflow] Email exception:', err);
@@ -1154,40 +1122,19 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           const shouldFire = aiNode ? (aiNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
           if (aiNode && f && shouldFire) {
             firedNodesRef.current.add(target);
-            console.info('[walkWorkflow] Executing AI node:', target, '| inputs:', aiNode.inputSources?.length || 0, '| prompt:', aiNode.prompt?.slice(0, 50) + '...');
-
-            // Gather input data from selected sources (serialize objects to readable strings)
-            const inputData: Record<string, any> = {};
-            for (const sourceId of aiNode.inputSources || []) {
-              const val = currentAns[sourceId];
-              if (val !== undefined && val !== null) {
-                const element = f.pages?.flatMap(p => p.elements || []).find(el => el.id === sourceId);
-                const label = element?.label || element?.placeholder || sourceId;
-                // Serialize objects to readable strings to avoid [object Object]
-                if (typeof val === 'object') {
-                  inputData[label] = JSON.stringify(val, null, 2);
-                } else {
-                  inputData[label] = String(val);
-                }
-              }
-            }
-
-            const resolvedPrompt = interpolateText(aiNode.prompt || '', f.variables || [], currentAns);
+            console.info('[walkWorkflow] Executing AI node:', target);
 
             const body = {
-              objective: aiNode.objective || 'custom',
-              prompt: resolvedPrompt,
-              systemPrompt: aiNode.systemPrompt || '',
-              inputData,
-              model: aiNode.model,
-              maxTokens: aiNode.maxTokens || 500,
-              temperature: aiNode.temperature ?? 0.7,
+              submissionToken: f.submissionToken,
+              formId: f.id,
+              nodeId: aiId,
+              answers: currentAns,
             };
 
             const doInvoke = async () => {
               try {
                 console.info('[walkWorkflow] AI invoke starting...', body);
-                const { data, error } = await supabase.functions.invoke('ai-process', { body });
+                const { data, error } = await invokeEdge('ai-process', body);
                 console.info('[walkWorkflow] AI response:', { success: data?.success, hasResult: !!data?.result, error });
 
                 if (!error && data?.success && data.result && aiNode.outputVariableId) {
@@ -1317,7 +1264,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     try {
       // Run async validators for current page
       if (currentPage) {
-        const validators = currentPage.elements
+        const validators = flattenPageElements(currentPage.elements)
           .map(el => validatorsRef.current[el.id])
           .filter(Boolean);
         if (validators.length > 0) {
@@ -1619,7 +1566,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       setIsFlowProcessing(false);
       navigatingRef.current = false;
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview]);
+  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview, id]);
 
   // ── Apply SEO meta tags — deferred to avoid blocking first paint ──
   useEffect(() => {
@@ -1672,7 +1619,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         }
       }
     });
-  }, [form?.seo, form?.title, isEditorPreview]);
+  }, [form, isEditorPreview]);
 
   const goBack = useCallback(() => {
     setDirection(-1);
@@ -1729,16 +1676,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
     // Check all required input fields are filled using latest answers
     const latestAns = answersRef.current;
-    const allFilled = page.elements.every(el => {
-      if (!el.required || !el.type.startsWith('input_')) return true;
-      const val = latestAns[el.id];
-      if (val === undefined || val === null || val === '' || val === false) return false;
-      if (el.type === 'input_multi_select' && Array.isArray(val) && val.length === 0) return false;
-      return true;
-    });
+    const allFilled = Object.keys(getRequiredFieldErrors(page.elements, latestAns)).length === 0;
 
     // Also check no elements are blocked (e.g. email validation in progress)
-    const anyBlocked = page.elements.some(el => blockedElements[el.id]);
+    const anyBlocked = flattenPageElements(page.elements).some(el => blockedElements[el.id]);
     if (anyBlocked) return;
 
     if (allFilled) {
@@ -1827,7 +1768,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     }
 
     return s;
-  }, [form?.globalPageStyle, form?.style]);
+  }, [form]);
 
   const isBootstrapping = !isInitialStateReady;
 
@@ -1991,6 +1932,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           fieldError={fieldErrors[el.id]}
                           formStyle={form.style}
                           onSelectionMade={handleSelectionMade}
+                          onElementChange={setAnswer}
+                          onElementBlockedChange={setElementBlocked}
+                          registerElementValidator={registerValidator}
+                          fieldErrors={fieldErrors}
                         />
                       );
                     })}
@@ -2042,6 +1987,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           fieldError={fieldErrors[el.id]}
                           formStyle={form.style}
                           onSelectionMade={handleSelectionMade}
+                          onElementChange={setAnswer}
+                          onElementBlockedChange={setElementBlocked}
+                          registerElementValidator={registerValidator}
+                          fieldErrors={fieldErrors}
                         />
                       );
                     })}
@@ -2087,6 +2036,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                                   fieldError={fieldErrors[el.id]}
                                   formStyle={form.style}
                                   onSelectionMade={handleSelectionMade}
+                                  onElementChange={setAnswer}
+                                  onElementBlockedChange={setElementBlocked}
+                                  registerElementValidator={registerValidator}
+                                  fieldErrors={fieldErrors}
                                 />
                               );
                             })}

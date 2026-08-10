@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { flattenPageElements } from '@/lib/pageElementTree';
 import {
   Table,
   TableBody,
@@ -44,7 +45,7 @@ type StatusFilter = 'all' | 'complete' | 'partial';
 function extractInputFields(form: FormData): { id: string; label: string; type: string; subKey?: string }[] {
   const fields: { id: string; label: string; type: string; subKey?: string }[] = [];
   for (const page of form.pages || []) {
-    for (const el of page.elements || []) {
+    for (const el of flattenPageElements(page.elements || [])) {
       if (el.type.startsWith('input_')) {
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
         if (subKeys && subKeys.length > 0) {
@@ -269,7 +270,7 @@ export default function FormResponses({ form }: Props) {
     a.download = `respostas-${form.title || form.id}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filtered, fields, form]);
+  }, [filtered, fields, form, variableColumns, paramColumns]);
 
   if (loading) {
     return (

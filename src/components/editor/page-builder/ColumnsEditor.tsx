@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PageElement, ColumnData, createDefaultPageElement, PageElementType, PAGE_ELEMENT_LABELS, ELEMENT_CATEGORIES, ElementCategory } from '@/types/pageElements';
 import type { FormVariable } from '@/types/form';
@@ -68,7 +68,7 @@ interface Props {
 
 export default function ColumnsEditor({ element, onChange, onRemoveFromMain, onMoveToMain, selectedId, onSelectElement, designMode, elementLookup, variables }: Props) {
   const columnCount = element.columnCount || 2;
-  const columns = element.columnData || [];
+  const columns = useMemo(() => element.columnData || [], [element.columnData]);
   const [dragState, setDragState] = useState<{ colIdx: number; elIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ colIdx: number; elIdx: number } | null>(null);
   // Track which element is being dragged via grip handle

@@ -232,7 +232,7 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
   const pixelSuccessRate = pixelTotal > 0 ? (pixelSuccess / pixelTotal) * 100 : 0;
 
   // Sessions over last 30 days
-  const days = eachDayOfInterval({ start: subDays(new Date(), 29), end: new Date() });
+  const days = useMemo(() => eachDayOfInterval({ start: subDays(new Date(), 29), end: new Date() }), []);
   const sessionsByDay = useMemo(() => {
     return days.map(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
@@ -240,7 +240,7 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
       const done = sessions.filter(s => s.created_at.startsWith(dayStr) && s.status === 'completed').length;
       return { date: format(day, 'dd/MM', { locale: ptBR }), sessions: count, completed: done };
     });
-  }, [sessions, days]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessions, days]);
 
   // Pixel platform breakdown
   const byPlatform = useMemo(() => {

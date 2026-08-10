@@ -274,7 +274,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onChange(arrayMove(elements, oldIndex, newIndex));
       }
     }
-  }, [elements, onChange, selectedId, onMoveElementToPage, pageId]);
+  }, [elements, onChange, selectedId, onMoveElementToPage, pageId, pages]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);

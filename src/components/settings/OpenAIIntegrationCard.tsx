@@ -165,12 +165,6 @@ export default function OpenAIIntegrationCard() {
       });
   }, []);
 
-  useEffect(() => {
-    if (config.apiKey && config.apiKey.startsWith('sk-')) {
-      fetchModels(config.apiKey);
-    }
-  }, [config.apiKey]);
-
   const fetchModels = useCallback(async (apiKey: string) => {
     setLoadingModels(true);
     try {
@@ -194,6 +188,12 @@ export default function OpenAIIntegrationCard() {
     }
     setLoadingModels(false);
   }, []);
+
+  useEffect(() => {
+    if (config.apiKey && config.apiKey.startsWith('sk-')) {
+      fetchModels(config.apiKey);
+    }
+  }, [config.apiKey, fetchModels]);
 
   const updateConfig = useCallback((patch: Partial<OpenAIConfig>) => {
     setConfig(prev => ({ ...prev, ...patch }));

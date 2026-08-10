@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdmin, requireFormAccess } from '../_shared/auth.ts';
 
 // ── AES-256-GCM decryption for encrypted form data ──
 async function _deriveKey(secret: string): Promise<CryptoKey> {
@@ -36,6 +37,21 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+
+    if (body.test) {
+      const caller = await requireAdmin(req);
+      if (!caller.ok) return caller.response;
+    } else {
+      if (!body.form_id || typeof body.form_id !== 'string') {
+        return new Response(JSON.stringify({ error: 'form_id is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const caller = await requireFormAccess(req, body.form_id);
+      if (!caller.ok) return caller.response;
+    }
+
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -48,7 +64,7 @@ serve(async (req) => {
       .maybeSingle();
 
     const config = (settings?.config as any) || {};
-    const openaiKey = config.apiKey;
+    const openaiKey = settings?.is_active ? config.apiKey : '';
     const model = config.model || 'gpt-4.1-mini';
     const systemPrompt = config.systemPrompt || DEFAULT_SYSTEM_PROMPT;
     const provider = config.provider === 'openai' ? 'openai' : 'lovable';

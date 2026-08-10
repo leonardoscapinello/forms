@@ -26,7 +26,7 @@ import { toast } from 'sonner';
     if (!editingPageId && !editingWelcome && !editingThankYou && flowOrderedPages.length) {
       setEditingPageId(flowOrderedPages[0].id);
     }
-  }, [editingPageId, editingWelcome, editingThankYou, flowOrderedPages]);
+  }, [editingPageId, editingWelcome, editingThankYou, flowOrderedPages, setEditingPageId]);
 
   // Move element from the current page to another page (single atomic update)
   const handleMoveElementToPage = useCallback((element: PageElement, targetPageId: string) => {

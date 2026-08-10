@@ -146,7 +146,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user]);
 
   // Realtime sync: only current user's forms (avoids cross-tenant noise)
   useEffect(() => {
@@ -188,7 +188,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => { channel.unsubscribe(); };
-  }, [user?.id]);
+  }, [user]);
 
   // Save form data to sessionStorage for offline resilience
   const saveToOfflineQueue = useCallback((id: string) => {

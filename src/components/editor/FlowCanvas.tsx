@@ -192,7 +192,7 @@ function FlowCanvasInner({
   const handleAutoLayoutRef = useRef<() => void>(() => {});
   const handleAutoLayout = useCallback(() => handleAutoLayoutRef.current(), []);
 
-  const pages = form.pages || [];
+  const pages = useMemo(() => form.pages || [], [form.pages]);
   const variables = form.variables || [];
   const variableOpNodes = form.variableOpNodes || [];
   const integrationNodes = form.integrationNodes || [];
@@ -609,7 +609,7 @@ function FlowCanvasInner({
     });
 
     return n;
-  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, imageGenNodes, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete, onImageGenChange, onImageGenDelete]);
+  }, [form, pages, variables, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, imageGenNodes, reachableNodeIds, infiniteLoopNodeIds, onFormUpdate, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete, onImageGenChange, onImageGenDelete, onCreateVariable]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -880,7 +880,7 @@ function FlowCanvasInner({
 
     onNodesChangeBase(nodeIds.map(id => ({ type: 'remove' as const, id })));
     setDeleteConfirm(null);
-  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, onIntegrationDelete, onWhatsAppDelete, onEmailDelete, onABTestDelete, onWaitDelete, onJumpDelete, setEdges, saveEdges, onNodesChangeBase]);
+  }, [deleteConfirm, onPageDelete, onConditionDelete, onVariableOpDelete, onIntegrationDelete, onAnalyticsDelete, onWhatsAppDelete, onEmailDelete, onABTestDelete, onWaitDelete, onJumpDelete, onAIDelete, onImageGenDelete, setEdges, saveEdges, onNodesChangeBase]);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes: EdgeChange[]) => {
     onEdgesChangeBase(changes);

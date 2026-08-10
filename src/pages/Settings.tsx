@@ -475,6 +475,7 @@ function MinioForm() {
   const [settingsId, setSettingsId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [config, setConfig] = useState<MinioConfig>(EMPTY_MINIO);
+  const isComplete = Boolean(config.endpoint && config.accessKey && config.secretKey && config.bucket);
 
   useEffect(() => {
     supabase.from('integration_settings').select('*').eq('integration_type', 'minio_s3').maybeSingle()
@@ -500,6 +501,14 @@ function MinioForm() {
   }, []);
 
   const handleSave = useCallback(async () => {
+    if (isActive && !isComplete) {
+      toast({
+        title: 'Configuração incompleta',
+        description: 'Preencha endpoint, access key, secret key e bucket antes de ativar o MinIO.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSaving(true);
     const payload = { integration_type: 'minio_s3', label: 'MinIO S3', config: config as any, is_active: isActive };
     if (settingsId) {
@@ -510,7 +519,7 @@ function MinioForm() {
     }
     toast({ title: 'Salvo', description: 'Configuração do MinIO salva.' });
     setSaving(false);
-  }, [config, isActive, settingsId, toast]);
+  }, [config, isActive, isComplete, settingsId, toast]);
 
   const handleTest = useCallback(async () => {
     setTesting(true); setTestResult(null);
@@ -531,7 +540,20 @@ function MinioForm() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Switch checked={isActive} onCheckedChange={setIsActive} />
+        <Switch
+          checked={isActive}
+          onCheckedChange={(active) => {
+            if (active && !isComplete) {
+              toast({
+                title: 'Configuração incompleta',
+                description: 'Preencha os campos obrigatórios antes de ativar.',
+                variant: 'destructive',
+              });
+              return;
+            }
+            setIsActive(active);
+          }}
+        />
         <Label className="text-sm">Ativo</Label>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -572,7 +594,7 @@ function MinioForm() {
         <Label htmlFor="ssl" className="text-xs text-muted-foreground cursor-pointer">Usar SSL (HTTPS)</Label>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-border">
-        <Button variant="outline" size="sm" onClick={handleTest} disabled={testing || !config.endpoint}>
+        <Button variant="outline" size="sm" onClick={handleTest} disabled={testing || !isComplete}>
           {testing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <TestTube className="mr-2 h-3.5 w-3.5" />}
           Testar
           {testResult === 'success' && <CheckCircle2 className="ml-2 h-3.5 w-3.5 text-success" />}

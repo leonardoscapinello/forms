@@ -837,7 +837,7 @@ export default function EmailBuilderDialog({ open, onClose, value, onChange, var
 
   // Track initial value to detect unsaved changes
   const initialValueRef = useRef(value);
-  useEffect(() => { if (open) initialValueRef.current = value; }, [open]);
+  useEffect(() => { if (open) initialValueRef.current = value; }, [open, value]);
 
   const handleAttemptClose = useCallback(() => {
     const currentFull = embedBlocksInHtml(blocksToHtml(blocks as EmailBlock[], emailBg, contentBg, 600, contentPadding), blocks as EmailBlock[], emailBg, contentBg, contentPadding);

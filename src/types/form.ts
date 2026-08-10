@@ -706,6 +706,8 @@ export interface FormVariable {
 
 export interface FormData {
   id: string;
+  /** Short-lived token issued by form-public-get for anonymous persistence. */
+  submissionToken?: string;
   title: string;
   description?: string;
   welcomeTitle?: string;

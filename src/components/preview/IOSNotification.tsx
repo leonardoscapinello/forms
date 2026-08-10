@@ -44,7 +44,7 @@ export default function IOSNotification({ items, mode, duration, interval, posit
     }, duration * 1000);
 
     return () => clearTimeout(hideTimer);
-  }, [visible, duration, currentIndex]);
+  }, [visible, duration, currentIndex, items.length]);
 
   useEffect(() => {
     if (items.length === 0 || visible) return;

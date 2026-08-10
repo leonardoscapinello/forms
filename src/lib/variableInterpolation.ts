@@ -2,6 +2,7 @@ import { FormVariable } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { FunnelPage } from '@/types/form';
 import { createElement, Fragment, ReactNode } from 'react';
+import { sanitizeRichTextHtml } from '@/lib/sanitize';
 
 /** Stringify an object field value into a human-readable string (e.g. phone → ddi+number) */
 function stringifyFieldValue(val: any): string {
@@ -181,7 +182,7 @@ export function interpolateTextToHtml(
     return val ? { value: val, type: 'variable' } : null;
   };
 
-  return text.replace(/\{\{(?:webhook:[^}]+|ctx\.\w+|param\.[^}]+|field:[^}]+|\w+)\}\}/g, (token) => {
+  return sanitizeRichTextHtml(text).replace(/\{\{(?:webhook:[^}]+|ctx\.\w+|param\.[^}]+|field:[^}]+|\w+)\}\}/g, (token) => {
     const resolved = resolve(token);
     if (!resolved) return '';
     return esc(resolved.value);

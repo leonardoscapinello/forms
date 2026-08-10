@@ -68,12 +68,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
-        setLoading(false);
 
         // Only re-fetch on SIGNED_IN if we haven't already fetched via getSession
         if (event === 'SIGNED_IN' && nextSession?.user) {
-          if (initialFetchDone) return; // Already fetched, skip duplicate
+          if (initialFetchDone) {
+            setLoading(false);
+            return;
+          }
           initialFetchDone = true;
+          setLoading(true);
           setTimeout(async () => {
             if (!mounted) return;
             const authorized = await fetchUserData(nextSession.user.id);
@@ -85,18 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setRole(null);
               sessionStorage.setItem('auth_unauthorized', '1');
             }
+            if (mounted) setLoading(false);
           }, 0);
         } else if (event === 'SIGNED_OUT') {
           initialFetchDone = false;
           setProfile(null);
           setRole(null);
+          setLoading(false);
+        } else {
+          setLoading(false);
         }
       }
     );
 
     // Then get the persisted session
     supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         if (!mounted) return;
 
         setSession(session);
@@ -104,8 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           initialFetchDone = true;
-          setLoading(false);
-          fetchUserData(session.user.id);
+          const authorized = await fetchUserData(session.user.id);
+          if (!authorized && mounted) {
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
+            sessionStorage.setItem('auth_unauthorized', '1');
+          }
+          if (mounted) setLoading(false);
         } else {
           setLoading(false);
         }

@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { flattenPageElements } from '@/lib/pageElementTree';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ function extractInputElements(form?: AppFormData): { id: string; label: string; 
   if (!form) return [];
   const els: { id: string; label: string; type: string }[] = [];
   for (const page of form.pages || []) {
-    for (const el of page.elements || []) {
+    for (const el of flattenPageElements(page.elements || [])) {
       if (el.type?.startsWith('input_')) {
         els.push({
           id: el.id,

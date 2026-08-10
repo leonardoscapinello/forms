@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireFormAccess } from '../_shared/auth.ts';
 
 // ── AES-256-GCM decryption for encrypted form data ──
 async function _deriveKey(secret: string): Promise<CryptoKey> {
@@ -30,23 +31,33 @@ serve(async (req) => {
     const { form_id } = await req.json();
     if (!form_id) throw new Error('form_id is required');
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const caller = await requireFormAccess(req, form_id);
+    if (!caller.ok) return caller.response;
+
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Check if user has custom OpenAI config with systemPrompt
     const { data: aiSettings } = await supabase
       .from('integration_settings')
-      .select('config')
+      .select('config, is_active')
       .eq('integration_type', 'openai')
       .maybeSingle();
 
     const aiConfig = (aiSettings?.config as any) || {};
     const customSystemPrompt = aiConfig.systemPrompt || '';
+    const openaiKey = aiSettings?.is_active && typeof aiConfig.apiKey === 'string' ? aiConfig.apiKey : '';
+    const lovableKey = Deno.env.get('LOVABLE_API_KEY') || '';
+    const useOpenAI = aiConfig.provider === 'openai' && !!openaiKey;
+    const apiKey = useOpenAI ? openaiKey : lovableKey;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'no_ai_configured', message: 'Nenhum provedor de IA está ativo.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Fetch last 100 responses for this form
     const { data: responses, error } = await supabase
@@ -121,21 +132,24 @@ Provide a comprehensive aggregate analysis as JSON with:
 
 Return ONLY valid JSON.`;
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResponse = await fetch(
+      useOpenAI ? 'https://api.openai.com/v1/chat/completions' : 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: useOpenAI ? (aiConfig.model || 'gpt-4.1-mini') : 'google/gemini-3-flash-preview',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
         temperature: 0.3,
       }),
-    });
+      },
+    );
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {

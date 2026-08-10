@@ -44,7 +44,7 @@ export default function ChartDesigner({ question, onChange, onClose }: Props) {
     if (question.graphicVariant !== 'chart') {
       onChange({ graphicVariant: 'chart' });
     }
-  }, []);
+  }, [question.graphicVariant, onChange]);
 
   const setChartType = useCallback((type: ChartType) => {
     onChange({ graphicChartType: type, graphicVariant: 'chart' });

@@ -2,8 +2,8 @@ import { useParams } from 'react-router-dom';
 import { useFormStoreSafe } from '@/hooks/useFormStore';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { FormData as AppFormData } from '@/types/form';
-import { supabase } from '@/integrations/supabase/client';
 import { consumePrefetchedForm } from '@/lib/formPrefetch';
+import { invokeEdge } from '@/lib/edgeClient';
 
 // Start loading Core chunk IMMEDIATELY — runs in parallel with data fetch
 const coreModule = import('./FormPreviewCore');
@@ -86,34 +86,17 @@ export default function FormPreview() {
 
     // Source 2: edge function
     const fromEdge = withTimeout(
-      supabase.functions.invoke('form-public-get', { body: { id } }).then(({ data, error }) => {
+      invokeEdge('form-public-get', { id }).then(({ data, error }) => {
         if (error || !data) throw new Error('edge_failed');
         return data;
       }),
       5000, 'edge'
     );
 
-    // Source 3: direct query (delayed 300ms to give edge/prefetch a head start)
-    const fromDirectQuery = withTimeout(new Promise<any>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        supabase
-          .from('forms')
-          .select('id, title, status, data')
-          .eq('id', id)
-          .single()
-          .then(({ data, error }) => {
-            if (error || !data) reject(new Error('direct_query_failed'));
-            else resolve(data);
-          });
-      }, 300);
-      fromPrefetch.then(() => clearTimeout(timer)).catch(() => {});
-      fromEdge.then(() => clearTimeout(timer)).catch(() => {});
-    }), 7000, 'direct');
-
     let bestTimestamp = -1;
     let succeeded = false;
     let failures = 0;
-    const totalSources = 3;
+    const totalSources = 2;
     const loadingFailSafeTimer = window.setTimeout(() => {
       if (!cancelled && !succeeded) setPublicLoading(false);
     }, 10000);
@@ -143,7 +126,6 @@ export default function FormPreview() {
 
     Promise.resolve(fromPrefetch).then(handleSourceSuccess).catch(handleFailure);
     Promise.resolve(fromEdge).then(handleSourceSuccess).catch(handleFailure);
-    Promise.resolve(fromDirectQuery).then(handleSourceSuccess).catch(handleFailure);
 
     return () => {
       cancelled = true;

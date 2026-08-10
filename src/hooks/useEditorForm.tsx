@@ -11,6 +11,7 @@ import {
 } from '@/types/form';
 import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
+import { flattenPageElements } from '@/lib/pageElementTree';
 
 // ─── Context type ────────────────────────────────────────────────────
 
@@ -234,7 +235,7 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
   const editorInputElements = useMemo<InputElementGroup[]>(() => {
     return (form?.pages || []).map(page => {
       const elements: InputElementGroup['elements'] = [];
-      for (const el of page.elements || []) {
+      for (const el of flattenPageElements(page.elements || [])) {
         if (!el.type.startsWith('input_')) continue;
         const baseLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
@@ -263,15 +264,15 @@ export function EditorFormProvider({ children }: { children: React.ReactNode }) 
 
   const editorIntegrationNodes = useMemo(() => form?.integrationNodes || [], [form?.integrationNodes]);
 
-  const welcomePage = form?.welcomePage || {
+  const welcomePage = useMemo(() => form?.welcomePage || ({
     id: 'welcome', title: 'Tela de início', elements: [],
     pageStyle: form?.globalPageStyle,
-  };
+  }), [form?.welcomePage, form?.globalPageStyle]);
 
-  const thankYouPage = form?.thankYouPage || {
+  const thankYouPage = useMemo(() => form?.thankYouPage || ({
     id: 'thank-you', title: 'Tela de obrigado', elements: [],
     pageStyle: form?.globalPageStyle,
-  };
+  }), [form?.thankYouPage, form?.globalPageStyle]);
 
   const editingPage = (editingWelcome || editingThankYou) ? null : (form?.pages?.find(p => p.id === editingPageId) || null);
 

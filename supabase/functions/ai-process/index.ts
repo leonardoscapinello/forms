@@ -1,4 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { requireAdmin } from '../_shared/auth.ts';
+import { flattenFormElements, getPublicFormContext, interpolateFormText, isServiceRequest } from '../_shared/publicFormAuth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,30 +23,94 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+
+    const contentLength = Number(req.headers.get('content-length') || 0);
+    if (contentLength > 64_000) {
       return new Response(
-        JSON.stringify({ success: false, error: 'LOVABLE_API_KEY is not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ success: false, error: 'Request body is too large' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     const body = await req.json();
-    const {
-      objective = 'custom',
-      prompt = '',
-      systemPrompt = '',
-      inputData = {},
-      model,
-      maxTokens = 500,
-      temperature = 0.7,
-      test = false,
-    } = body;
+    const test = body.test === true;
+    if (test) {
+      const caller = await requireAdmin(req);
+      if (!caller.ok) return caller.response;
+    }
+
+    let objective = typeof body.objective === 'string' && body.objective in OBJECTIVE_PROMPTS
+      ? body.objective
+      : 'custom';
+    let prompt = typeof body.prompt === 'string' ? body.prompt.slice(0, 20_000) : '';
+    let systemPrompt = typeof body.systemPrompt === 'string' ? body.systemPrompt.slice(0, 20_000) : '';
+    let inputData = body.inputData && typeof body.inputData === 'object' && !Array.isArray(body.inputData)
+      ? body.inputData as Record<string, unknown>
+      : {};
+    let requestedModel = typeof body.model === 'string' ? body.model.slice(0, 100) : '';
+    let maxTokens = typeof body.maxTokens === 'number' ? body.maxTokens : 500;
+    let temperature = typeof body.temperature === 'number' ? body.temperature : 0.7;
+
+    if (!test && !isServiceRequest(req)) {
+      const context = await getPublicFormContext(req, body.formId, body.submissionToken);
+      if (!context.ok) return context.response;
+      const node = (context.formData.aiNodes || []).find((item: any) => item.id === body.nodeId);
+      if (!node) {
+        return new Response(JSON.stringify({ success: false, error: 'ai_node_not_allowed' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const answers = body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers) ? body.answers : {};
+      const variables = context.formData.variables || [];
+      const elements = (context.formData.pages || []).flatMap((page: any) => flattenFormElements(page.elements || []));
+      objective = node.objective in OBJECTIVE_PROMPTS ? node.objective : 'custom';
+      prompt = interpolateFormText(node.prompt, answers, variables).slice(0, 20_000);
+      systemPrompt = String(node.systemPrompt || '').slice(0, 20_000);
+      inputData = {};
+      for (const sourceId of node.inputSources || []) {
+        if (answers[sourceId] === undefined || answers[sourceId] === null) continue;
+        const element = elements.find((item: any) => item.id === sourceId);
+        const label = element?.label || element?.placeholder || sourceId;
+        inputData[label] = typeof answers[sourceId] === 'object'
+          ? JSON.stringify(answers[sourceId])
+          : String(answers[sourceId]);
+      }
+      requestedModel = typeof node.model === 'string' ? node.model.slice(0, 100) : '';
+      maxTokens = typeof node.maxTokens === 'number' ? node.maxTokens : 500;
+      temperature = typeof node.temperature === 'number' ? node.temperature : 0.7;
+    }
+
+    const limited = await enforceRateLimit(
+      admin, req, 'ai-process', 10, 60, String(body.formId || ''), serviceRoleKey, corsHeaders,
+    );
+    if (limited) return limited;
 
     // Validate
     if (!prompt && !Object.keys(inputData).length && !test) {
       return new Response(
         JSON.stringify({ success: false, error: 'Prompt or input data is required.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const { data: settings } = await admin
+      .from('integration_settings')
+      .select('config, is_active')
+      .eq('integration_type', 'openai')
+      .maybeSingle();
+
+    const config = (settings?.config as Record<string, unknown> | null) || {};
+    const openaiKey = settings?.is_active && typeof config.apiKey === 'string' ? config.apiKey : '';
+    const lovableKey = Deno.env.get('LOVABLE_API_KEY') ?? '';
+    const useOpenAI = config.provider === 'openai' && !!openaiKey;
+    const apiKey = useOpenAI ? openaiKey : lovableKey;
+
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No AI provider is configured' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -67,14 +135,20 @@ serve(async (req) => {
       userMessage = 'This is a test message. Please respond with "AI node is working correctly!" in the same language as the system prompt.';
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch(
+      useOpenAI
+        ? 'https://api.openai.com/v1/chat/completions'
+        : 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: model || 'google/gemini-3-flash-preview',
+        model: requestedModel
+          || (useOpenAI && typeof config.model === 'string' ? config.model : '')
+          || (useOpenAI ? 'gpt-4.1-mini' : 'google/gemini-3-flash-preview'),
         messages: [
           { role: 'system', content: fullSystem },
           { role: 'user', content: userMessage },

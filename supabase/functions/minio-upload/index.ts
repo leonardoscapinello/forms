@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getAuthorizedCaller } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,6 +36,9 @@ serve(async (req) => {
   }
 
   try {
+    const caller = await getAuthorizedCaller(req);
+    if (!caller.ok) return caller.response;
+
     // Get MinIO config from integration_settings
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -63,9 +67,9 @@ serve(async (req) => {
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get('file') as globalThis.File | null;
-    const filePath = formData.get('path') as string | null;
+    const requestedPath = formData.get('path') as string | null;
 
-    if (!file || !filePath) {
+    if (!file || !requestedPath) {
       return new Response(
         JSON.stringify({ success: false, message: 'Arquivo e path são obrigatórios.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,12 +95,17 @@ serve(async (req) => {
     }
 
     // Sanitize file path: no directory traversal, max 500 chars
-    if (filePath.length > 500 || /\.\./.test(filePath) || /[<>:"|?*\x00-\x1f]/.test(filePath)) {
+    if (requestedPath.length > 400 || /\.\./.test(requestedPath) || /[<>:"|?*\x00-\x1f\\]/.test(requestedPath)) {
       return new Response(
         JSON.stringify({ success: false, message: 'Invalid file path.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Namespace every new object by the authenticated user. This prevents a
+    // guessed path from overwriting another account's object.
+    const filePath = `users/${caller.userId}/${requestedPath.replace(/^\/+/, '')}`;
+    const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
 
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     const payloadHash = await sha256(fileBytes);
@@ -107,7 +116,7 @@ serve(async (req) => {
     const dateStamp = amzDate.slice(0, 8);
     const service = 's3';
     const method = 'PUT';
-    const canonicalUri = `/${bucket}/${filePath}`;
+    const canonicalUri = `/${encodeURIComponent(bucket)}/${encodedPath}`;
 
     const canonicalHeaders = `content-type:${file.type}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
     const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
@@ -138,7 +147,7 @@ serve(async (req) => {
     });
 
     if (response.ok) {
-      const publicUrl = `${protocol}://${host}/${bucket}/${filePath}`;
+      const publicUrl = `${protocol}://${host}/${encodeURIComponent(bucket)}/${encodedPath}`;
       return new Response(
         JSON.stringify({ success: true, url: publicUrl, path: filePath }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

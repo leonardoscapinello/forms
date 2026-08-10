@@ -1,4 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
+import { verifySignedState } from '../_shared/signedState.ts';
+import { flattenFormElements } from '../_shared/publicFormAuth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,7 +37,8 @@ async function encryptValue(plaintext: string, secret: string): Promise<string> 
 }
 
 type SaveBody = {
-  kind: 'response' | 'session';
+  token: string;
+  kind: 'response' | 'session' | 'event';
   action: 'insert' | 'upsert' | 'update';
   payload: Record<string, unknown>;
   onConflict?: string;
@@ -102,6 +106,54 @@ function formatDuration(ms: number | null): string {
   return `${Math.floor(secs / 60)}m ${secs % 60}s`;
 }
 
+function isAllowedWebhookUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.local') || host === '::1' || host === '[::1]') return false;
+    if (/^127\./.test(host) || /^10\./.test(host) || /^169\.254\./.test(host) || /^192\.168\./.test(host)) return false;
+    const match172 = host.match(/^172\.(\d{1,3})\./);
+    return !(match172 && Number(match172[1]) >= 16 && Number(match172[1]) <= 31);
+  } catch {
+    return false;
+  }
+}
+
+async function fireCompletionWebhook(form: any, payload: Record<string, unknown>): Promise<void> {
+  const url = form?.data?.completionWebhookUrl;
+  if (typeof url !== 'string' || !url) return;
+  if (!isAllowedWebhookUrl(url)) {
+    console.error('completion_webhook_url_not_allowed');
+    return;
+  }
+  const answers = payload.answers as Record<string, unknown> || {};
+  const metadata = payload.metadata as Record<string, unknown> || {};
+  const variables = Object.fromEntries(
+    Object.entries(answers)
+      .filter(([key]) => key.startsWith('__var_'))
+      .map(([key, value]) => [key.slice('__var_'.length), value]),
+  );
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event: {
+        type: 'form_completed',
+        form_id: form.id,
+        form_title: form.title,
+        response_id: payload.response_id,
+        submitted_at: metadata.submitted_at || new Date().toISOString(),
+      },
+      answers,
+      variables,
+      metadata,
+    }),
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) console.error('completion_webhook_failed', response.status);
+}
+
 /** Append a single response row to Google Sheets (uses PLAINTEXT answers before encryption) */
 async function appendToSheet(supabase: any, formId: string, payload: Record<string, unknown>) {
   try {
@@ -116,7 +168,7 @@ async function appendToSheet(supabase: any, formId: string, payload: Record<stri
 
     const inputElements: { id: string; label: string }[] = [];
     for (const page of formData?.pages || []) {
-      for (const el of page.elements || []) {
+      for (const el of flattenFormElements(page.elements || [])) {
         if (el.type?.startsWith('input_')) {
           inputElements.push({ id: el.id, label: el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' ') });
         }
@@ -160,7 +212,7 @@ async function appendToSheet(supabase: any, formId: string, payload: Record<stri
   }
 }
 
-const VALID_KINDS = ['response', 'session'] as const;
+const VALID_KINDS = ['response', 'session', 'event'] as const;
 const VALID_ACTIONS = ['insert', 'upsert', 'update'] as const;
 const MAX_BODY_SIZE = 500_000; // 500KB
 
@@ -172,6 +224,19 @@ function isValidAction(v: unknown): v is SaveBody['action'] {
 }
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function pick(payload: Record<string, unknown>, allowed: readonly string[]): Record<string, unknown> {
+  return Object.fromEntries(allowed.filter((key) => payload[key] !== undefined).map((key) => [key, payload[key]]));
+}
+
+function errorResponse(status: number, error: string): Response {
+  return new Response(JSON.stringify({ success: false, error }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
 
 Deno.serve(async (req) => {
@@ -189,69 +254,116 @@ Deno.serve(async (req) => {
     }
 
     const body = JSON.parse(rawBody) as SaveBody;
+    if (typeof body?.token !== 'string') return errorResponse(401, 'invalid_or_expired_token');
     if (!isValidKind(body?.kind) || !isValidAction(body?.action) || !isPlainObject(body?.payload)) {
-      return new Response(JSON.stringify({ success: false, error: 'invalid_payload' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'invalid_payload');
     }
 
-    // Validate match is a plain object if provided
-    if (body.match !== undefined && !isPlainObject(body.match)) {
-      return new Response(JSON.stringify({ success: false, error: 'invalid_match' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const tokenData = await verifySignedState(body.token);
+    const formId = typeof tokenData?.formId === 'string' ? tokenData.formId : '';
+    if (tokenData?.kind !== 'form-submission' || !UUID_PATTERN.test(formId)) {
+      return errorResponse(401, 'invalid_or_expired_token');
     }
-
-    // Validate onConflict is a short string if provided
-    if (body.onConflict !== undefined && (typeof body.onConflict !== 'string' || body.onConflict.length > 200)) {
-      return new Response(JSON.stringify({ success: false, error: 'invalid_onConflict' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (body.payload.form_id !== undefined && body.payload.form_id !== formId) {
+      return errorResponse(403, 'form_mismatch');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const encryptionSecret = Deno.env.get('ENCRYPTION_SECRET') ?? '';
+    if (!encryptionSecret) return errorResponse(503, 'encryption_unavailable');
     const admin = createClient(supabaseUrl, serviceKey);
+    const rateLimited = await enforceRateLimit(
+      admin, req, 'form-public-save', 180, 60, formId, serviceKey, corsHeaders,
+    );
+    if (rateLimited) return rateLimited;
 
-    // ── Encrypt sensitive fields for form_responses ──
-    // Google Sheets gets plaintext (before encryption), DB gets ciphertext
-    const originalPayload = { ...body.payload };
+    const { data: formRow } = await admin
+      .from('forms')
+      .select('id, title, data')
+      .eq('id', formId)
+      .eq('status', 'published')
+      .maybeSingle();
+    if (!formRow) return errorResponse(404, 'form_not_available');
 
-    if (body.kind === 'response' && encryptionSecret) {
-      // Encrypt answers (JSONB → encrypted string)
-      if (body.payload.answers !== undefined && body.payload.answers !== null) {
-        const plainAnswers = JSON.stringify(body.payload.answers);
-        body.payload.answers = await encryptValue(plainAnswers, encryptionSecret);
+    let safePayload: Record<string, unknown>;
+    if (body.kind === 'response') {
+      if (body.action !== 'upsert') return errorResponse(400, 'invalid_action');
+      safePayload = pick(body.payload, [
+        'response_id', 'session_id', 'answers', 'metadata', 'total_time_ms', 'pages_visited',
+      ]);
+      safePayload.form_id = formId;
+      if (typeof safePayload.response_id !== 'string' || !UUID_PATTERN.test(safePayload.response_id)) {
+        return errorResponse(400, 'invalid_response_id');
       }
-      // Encrypt metadata (JSONB → encrypted string)
-      if (body.payload.metadata !== undefined && body.payload.metadata !== null) {
-        const plainMeta = JSON.stringify(body.payload.metadata);
-        body.payload.metadata = await encryptValue(plainMeta, encryptionSecret);
+      if (safePayload.session_id !== null && safePayload.session_id !== undefined
+        && (typeof safePayload.session_id !== 'string' || !UUID_PATTERN.test(safePayload.session_id))) {
+        return errorResponse(400, 'invalid_session_id');
+      }
+      if (!isPlainObject(safePayload.answers) || !isPlainObject(safePayload.metadata)) {
+        return errorResponse(400, 'invalid_response_data');
+      }
+    } else if (body.kind === 'session') {
+      if (body.action !== 'insert' && body.action !== 'update') return errorResponse(400, 'invalid_action');
+      safePayload = pick(body.payload, [
+        'id', 'response_id', 'status', 'completed_at', 'last_seen_at', 'current_page_index',
+        'pages_visited', 'total_pages', 'source_url', 'referrer', 'user_agent', 'query_params',
+      ]);
+      safePayload.form_id = formId;
+      const sessionId = body.action === 'insert' ? safePayload.id : body.match?.id;
+      if (typeof sessionId !== 'string' || !UUID_PATTERN.test(sessionId)) return errorResponse(400, 'invalid_session_id');
+      if (body.action === 'insert'
+        && (typeof safePayload.response_id !== 'string' || !UUID_PATTERN.test(safePayload.response_id))) {
+        return errorResponse(400, 'invalid_response_id');
+      }
+      if (safePayload.status !== undefined && !['active', 'completed', 'dropped'].includes(String(safePayload.status))) {
+        return errorResponse(400, 'invalid_session_status');
+      }
+    } else {
+      if (body.action !== 'insert') return errorResponse(400, 'invalid_action');
+      safePayload = pick(body.payload, [
+        'session_id', 'response_id', 'page_id', 'page_index', 'page_title', 'event_type',
+        'time_on_page_ms', 'hesitation_ms', 'interaction_count', 'answer_char_count',
+      ]);
+      safePayload.form_id = formId;
+      if (typeof safePayload.response_id !== 'string' || !UUID_PATTERN.test(safePayload.response_id)) {
+        return errorResponse(400, 'invalid_response_id');
+      }
+      if (safePayload.session_id !== null && safePayload.session_id !== undefined
+        && (typeof safePayload.session_id !== 'string' || !UUID_PATTERN.test(safePayload.session_id))) {
+        return errorResponse(400, 'invalid_session_id');
+      }
+      if (!['form_start', 'page_view', 'form_complete', 'form_drop'].includes(String(safePayload.event_type))) {
+        return errorResponse(400, 'invalid_event_type');
       }
     }
 
-    const table = body.kind === 'session' ? 'form_sessions' : 'form_responses';
+    // ── Encrypt sensitive fields for form_responses ──
+    // Google Sheets gets plaintext (before encryption), DB gets ciphertext
+    const originalPayload = { ...safePayload };
+
+    if (body.kind === 'response' && encryptionSecret) {
+      // Encrypt answers (JSONB → encrypted string)
+      if (safePayload.answers !== undefined && safePayload.answers !== null) {
+        const plainAnswers = JSON.stringify(safePayload.answers);
+        safePayload.answers = await encryptValue(plainAnswers, encryptionSecret);
+      }
+      // Encrypt metadata (JSONB → encrypted string)
+      if (safePayload.metadata !== undefined && safePayload.metadata !== null) {
+        const plainMeta = JSON.stringify(safePayload.metadata);
+        safePayload.metadata = await encryptValue(plainMeta, encryptionSecret);
+      }
+    }
+
+    const table = body.kind === 'session' ? 'form_sessions' : body.kind === 'event' ? 'form_page_events' : 'form_responses';
     let query: any = admin.from(table);
 
     if (body.action === 'insert') {
-      query = query.insert(body.payload);
+      query = query.insert(safePayload);
     } else if (body.action === 'upsert') {
-      query = query.upsert(body.payload, body.onConflict ? { onConflict: body.onConflict } : undefined);
+      query = query.upsert(safePayload, { onConflict: 'form_id,response_id' });
     } else if (body.action === 'update') {
-      query = query.update(body.payload);
-      if (!body.match || Object.keys(body.match).length === 0) {
-        return new Response(JSON.stringify({ success: false, error: 'missing_match_for_update' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      for (const [key, value] of Object.entries(body.match)) {
-        query = query.eq(key, value as any);
-      }
+      query = query.update(safePayload).eq('id', body.match!.id).eq('form_id', formId);
     }
 
     const { error } = await query;
@@ -269,6 +381,11 @@ Deno.serve(async (req) => {
       const isComplete = metadata?.status === 'complete' || !!metadata?.submitted_at;
       if (isComplete) {
         appendToSheet(admin, originalPayload.form_id as string, originalPayload).catch(() => {});
+        try {
+          await fireCompletionWebhook(formRow, originalPayload);
+        } catch (error) {
+          console.error('completion_webhook_error', error instanceof Error ? error.message : 'unknown');
+        }
       }
     }
 

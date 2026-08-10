@@ -155,7 +155,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
     } finally {
       setTesting(false);
     }
-  }, [nodeData.webhookUrl, nodeData.webhookMethod, nodeData.webhookParams, nodeData.webhookHeaders, nodeData.webhookQueryParams, nodeData.webhookBodyParams]);
+  }, [nodeData.webhookUrl, nodeData.webhookMethod, nodeData.webhookParams, nodeData.webhookHeaders, nodeData.webhookQueryParams, nodeData.webhookBodyParams, onChange]);
 
   return (
     <TooltipProvider>

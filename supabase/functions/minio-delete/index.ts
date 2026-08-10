@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getAuthorizedCaller } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,12 +31,22 @@ serve(async (req) => {
   }
 
   try {
+    const caller = await getAuthorizedCaller(req);
+    if (!caller.ok) return caller.response;
+
     const { path } = await req.json();
-    if (!path) {
+    if (!path || typeof path !== 'string' || path.length > 500 || /\.\./.test(path) || /[<>:"|?*\x00-\x1f\\]/.test(path)) {
       return new Response(
         JSON.stringify({ success: false, message: 'Path é obrigatório.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (!caller.isAdmin && !path.startsWith(`users/${caller.userId}/`)) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -44,11 +55,11 @@ serve(async (req) => {
 
     const { data: settings } = await supabase
       .from('integration_settings')
-      .select('config')
+      .select('config, is_active')
       .eq('integration_type', 'minio_s3')
       .maybeSingle();
 
-    if (!settings) {
+    if (!settings || !settings.is_active) {
       return new Response(
         JSON.stringify({ success: false, message: 'MinIO não configurado.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -64,7 +75,8 @@ serve(async (req) => {
     const now = new Date();
     const amzDate = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const dateStamp = amzDate.slice(0, 8);
-    const canonicalUri = `/${cfg.bucket}/${path}`;
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    const canonicalUri = `/${encodeURIComponent(cfg.bucket)}/${encodedPath}`;
     const payloadHash = await sha256Str('');
 
     const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;

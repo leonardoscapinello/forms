@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
 import { PageElement } from '@/types/pageElements';
 import { FormVariable, FormStyle } from '@/types/form';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeEdge } from '@/lib/edgeClient';
 import Twemoji from '@/components/Twemoji';
 import { interpolateText, interpolateTextToNodes, interpolateTextToHtml } from '@/lib/variableInterpolation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
@@ -55,6 +55,7 @@ const PricingPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.
 const CarouselPreview = lazy(() => loadSectionPreviews().then(m => ({ default: m.CarouselPreview })));
 const loadWhatsAppInvite = () => import('@/components/preview/WhatsAppInvitePreview');
 const WhatsAppInvitePreview = lazy(() => loadWhatsAppInvite().then(m => ({ default: m.default })));
+const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
 
 export interface InteractiveElementProps {
   element: PageElement;
@@ -70,6 +71,10 @@ export interface InteractiveElementProps {
   fieldError?: string;
   formStyle?: FormStyle;
   onSelectionMade?: () => void;
+  onElementChange?: (elementId: string, value: any) => void;
+  onElementBlockedChange?: (elementId: string, blocked: boolean) => void;
+  registerElementValidator?: (elementId: string, validator: (() => Promise<boolean>) | null) => void;
+  fieldErrors?: Record<string, string>;
 }
 
 /** Renders an interactive page element for the preview */
@@ -87,6 +92,10 @@ export default function InteractiveElement({
   fieldError,
   formStyle,
   onSelectionMade,
+  onElementChange,
+  onElementBlockedChange,
+  registerElementValidator,
+  fieldErrors = {},
 }: InteractiveElementProps) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
@@ -185,7 +194,6 @@ export default function InteractiveElement({
   const hasWrapperStyle = Object.keys(containerStyle).length > 0 || Object.keys(boxStyle).length > 0;
 
   // Keyboard shortcut: press letter key to select option
-  const SELECTION_TYPES = ['input_select', 'input_radio', 'input_multi_select', 'input_quiz_icon', 'input_quiz_image'];
   useEffect(() => {
     if (!SELECTION_TYPES.includes(type)) return;
     const opts = element.options || [];
@@ -217,7 +225,7 @@ export default function InteractiveElement({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [type, element.options, letterOffset, value, onChange]);
+  }, [type, element.options, letterOffset, value, onChange, triggerBlink, triggerSelectionFeedback]);
 
   // Email validation state
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -265,7 +273,7 @@ export default function InteractiveElement({
         if (element.smartValidation) {
           setEmailChecking(true);
           try {
-            const res = await supabase.functions.invoke('verify-email', { body: { email: val } });
+            const res = await invokeEdge('verify-email', { email: val });
             const data = res.data as any;
             if (data?.is_safe_to_send === false) {
               setEmailError(data?.is_disposable ? 'E-mail descartável' : 'Este e-mail não é válido para receber mensagens');
@@ -349,12 +357,12 @@ export default function InteractiveElement({
           </>
         )}
         <div>
-          <h2 className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={titleInline}>
+          <h2 id={`field-label-${element.id}`} className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={titleInline}>
             {tNodes(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <p className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2" style={descInline}>{tNodes(element.description)}</p>
+            <p id={`field-description-${element.id}`} className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2" style={descInline}>{tNodes(element.description)}</p>
           )}
         </div>
       </div>
@@ -362,6 +370,7 @@ export default function InteractiveElement({
         {content}
         {fieldError && (
           <motion.p
+            id={`field-error-${element.id}`}
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-sm text-destructive mt-2 flex items-center gap-1.5"
@@ -542,16 +551,26 @@ export default function InteractiveElement({
           <style>{`@media (max-width: 640px) { .mobile-stack-cols { grid-template-columns: 1fr !important; } }`}</style>
           {cols.slice(0, colCount).map(col => (
             <div key={col.id} className="space-y-4">
-              {col.elements.map((childEl) => (
+              {col.elements.map((childEl, childIndex) => (
                 <InteractiveElement
                   key={childEl.id}
                   element={childEl}
-                  value={undefined}
-                  onChange={() => {}}
-                  stepNumber={0}
-                  onBlockedChange={() => {}}
-                  registerValidator={() => {}}
+                  value={answers[childEl.id]}
+                  onChange={(childValue) => onElementChange?.(childEl.id, childValue)}
+                  stepNumber={stepNumber + childIndex}
+                  letterOffset={letterOffset}
+                  onBlockedChange={(blocked) => onElementBlockedChange?.(childEl.id, blocked)}
+                  registerValidator={(validator) => registerElementValidator?.(childEl.id, validator)}
                   onNavigate={onNavigate}
+                  variables={variables}
+                  answers={answers}
+                  fieldError={fieldErrors[childEl.id]}
+                  formStyle={formStyle}
+                  onSelectionMade={onSelectionMade}
+                  onElementChange={onElementChange}
+                  onElementBlockedChange={onElementBlockedChange}
+                  registerElementValidator={registerElementValidator}
+                  fieldErrors={fieldErrors}
                 />
               ))}
             </div>
@@ -568,15 +587,18 @@ export default function InteractiveElement({
             {placeholderCss && <style>{placeholderCss.replace(new RegExp(placeholderCssId, 'g'), `${placeholderCssId}-email`)}</style>}
             <input
               id={`${placeholderCssId}-email`}
-              type="text"
+              type="email"
               inputMode="email"
               value={t(value) || ''}
               onChange={e => handleEmailChange(e.target.value)}
               placeholder={t(element.placeholder) || 'seu@email.com'}
-              autoComplete="off"
+              autoComplete="email"
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              aria-labelledby={`field-label-${element.id}`}
+              aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${emailError || fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
+              aria-invalid={!!emailError || !!fieldError}
               onBlur={handleEmailBlur}
               data-1p-ignore
               data-lpignore="true"
@@ -652,6 +674,9 @@ export default function InteractiveElement({
             placeholder={t(element.placeholder) || 'Digite aqui...'}
             className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors"
             style={fieldInputStyle}
+            aria-labelledby={`field-label-${element.id}`}
+            aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
+            aria-invalid={!!fieldError}
             autoFocus
           />
         </>
@@ -708,6 +733,9 @@ export default function InteractiveElement({
             max={element.max}
             className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             style={fieldInputStyle}
+            aria-labelledby={`field-label-${element.id}`}
+            aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
+            aria-invalid={!!fieldError}
             autoFocus
           />
         </>
@@ -725,6 +753,9 @@ export default function InteractiveElement({
             rows={3}
             className="w-full bg-transparent border-0 border-b-2 border-border focus:border-primary outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors resize-none"
             style={fieldInputStyle}
+            aria-labelledby={`field-label-${element.id}`}
+            aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
+            aria-invalid={!!fieldError}
             autoFocus
           />
         </>
@@ -992,6 +1023,7 @@ export default function InteractiveElement({
                 max={max}
                 value={current >= 0 ? current : Math.round(max / 2)}
                 onChange={e => onChange(Number(e.target.value))}
+                aria-labelledby={`field-label-${element.id}`}
                 className="nps-mobile-slider relative w-full h-8 appearance-none cursor-pointer bg-transparent z-10"
                 style={{
                   WebkitAppearance: 'none',

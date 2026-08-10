@@ -166,7 +166,7 @@ export function useVariableAutocomplete({
       setFilter('');
       setTriggerPos(null);
     }
-  }, [allItems.length]);
+  }, [allItems.length, updateDropdownPos]);
 
   const handleChange = useCallback((newValue: string) => {
     setLocalValue(newValue);
@@ -237,7 +237,7 @@ export function useVariableAutocomplete({
       setShowReplace(false);
       setReplaceRange(null);
     }
-  }, [showDropdown, inputRef, localValue, allItems.length]);
+  }, [showDropdown, inputRef, localValue, allItems.length, updateDropdownPos]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Delete entire variable token on Backspace/Delete

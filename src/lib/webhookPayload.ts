@@ -15,6 +15,7 @@
 
 import { PageElement } from '@/types/pageElements';
 import { FormData as AppFormData } from '@/types/form';
+import { flattenPageElements } from '@/lib/pageElementTree';
 
 export interface WebhookRespondentInfo {
   ip?: string;
@@ -206,13 +207,13 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
   // Build element lookup
   const elementMap: Record<string, PageElement> = {};
   for (const page of form.pages || []) {
-    for (const el of page.elements || []) elementMap[el.id] = el;
+    for (const el of flattenPageElements(page.elements || [])) elementMap[el.id] = el;
   }
   if (form.welcomePage) {
-    for (const el of form.welcomePage.elements || []) elementMap[el.id] = el;
+    for (const el of flattenPageElements(form.welcomePage.elements || [])) elementMap[el.id] = el;
   }
   if (form.thankYouPage) {
-    for (const el of form.thankYouPage.elements || []) elementMap[el.id] = el;
+    for (const el of flattenPageElements(form.thankYouPage.elements || [])) elementMap[el.id] = el;
   }
 
   // Typed answers keyed by fieldName

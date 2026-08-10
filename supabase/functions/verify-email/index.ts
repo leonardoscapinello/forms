@@ -1,11 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function hashEmail(email: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.toLowerCase().trim()));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -32,12 +38,18 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const normalizedEmail = email.toLowerCase().trim();
+    const emailHash = await hashEmail(normalizedEmail);
+    const limited = await enforceRateLimit(
+      supabase, req, 'verify-email', 20, 60, emailHash, supabaseKey, corsHeaders,
+    );
+    if (limited) return limited;
 
     // Check cache first
     const { data: cached } = await supabase
       .from("email_validations")
       .select("*")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", emailHash)
       .maybeSingle();
 
     if (cached) {
@@ -91,7 +103,7 @@ serve(async (req) => {
 
     // Store in cache
     const record = {
-      email: email.toLowerCase().trim(),
+      email: emailHash,
       status: reoonData.status || "unknown",
       overall_score: reoonData.overall_score ?? 0,
       is_safe_to_send: reoonData.is_safe_to_send ?? false,
@@ -108,11 +120,17 @@ serve(async (req) => {
       mx_accepts_mail: reoonData.mx_accepts_mail ?? false,
       mx_records: reoonData.mx_records ?? [],
       domain: reoonData.domain ?? null,
-      username: reoonData.username ?? null,
+      username: null,
       verification_mode: mode,
-      raw_response: reoonData,
+      raw_response: null,
       updated_at: new Date().toISOString(),
     };
+
+    // Cache retention: validation metadata is disposable and must not grow forever.
+    await supabase.from('email_validations').delete().lt(
+      'updated_at',
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    );
 
     if (cached) {
       await supabase.from("email_validations").update(record).eq("id", cached.id);

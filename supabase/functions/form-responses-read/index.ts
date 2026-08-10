@@ -86,19 +86,60 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use service role to read responses (bypasses RLS for admin access)
+    const requestedFormIds = [...new Set(
+      (form_id ? [form_id] : form_ids)
+        .filter((id: unknown): id is string => typeof id === 'string'),
+    )];
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (requestedFormIds.length === 0
+      || requestedFormIds.length > 100
+      || requestedFormIds.some((id) => !uuidPattern.test(id))) {
+      return new Response(JSON.stringify({ error: 'Invalid form IDs' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const selectFields = fields || 'id, response_id, answers, metadata, total_time_ms, pages_visited, created_at';
+    const callerId = claimsData.claims.sub;
+    const { data: adminRole } = await admin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', callerId)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (!adminRole) {
+      const { data: ownedForms } = await admin
+        .from('forms')
+        .select('id')
+        .eq('user_id', callerId)
+        .in('id', requestedFormIds);
+
+      if ((ownedForms?.length ?? 0) !== requestedFormIds.length) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    const allowedFields = new Set([
+      'id', 'form_id', 'response_id', 'answers', 'metadata',
+      'total_time_ms', 'pages_visited', 'created_at',
+    ]);
+    const requestedFields = typeof fields === 'string'
+      ? fields.split(',').map((field: string) => field.trim()).filter(Boolean)
+      : [];
+    const selectFields = requestedFields.length > 0 && requestedFields.every((field: string) => allowedFields.has(field))
+      ? requestedFields.join(',')
+      : 'id, response_id, answers, metadata, total_time_ms, pages_visited, created_at';
     let query = admin
       .from('form_responses')
       .select(selectFields);
 
-    if (form_id) {
-      query = query.eq('form_id', form_id);
-    } else if (form_ids) {
-      query = query.in('form_id', form_ids);
-    }
+    query = requestedFormIds.length === 1
+      ? query.eq('form_id', requestedFormIds[0])
+      : query.in('form_id', requestedFormIds);
 
     if (since) {
       query = query.gte('created_at', since);
@@ -106,7 +147,7 @@ Deno.serve(async (req) => {
 
     const { data: rows, error } = await query
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(Math.max(1, Math.min(Number(limit) || 500, 1000)));
 
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {

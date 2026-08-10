@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Question, GraphicVariant, ChartType, GraphicDataItem } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,7 +44,7 @@ interface Props {
 export default function GraphicSidePanelSection({ question, onChange }: Props) {
   const variant = question.graphicVariant || 'kpis';
   const chartType = question.graphicChartType || 'bar';
-  const items = question.graphicData || [];
+  const items = useMemo(() => question.graphicData || [], [question.graphicData]);
 
   const addItem = useCallback(() => {
     const newItem: GraphicDataItem = {

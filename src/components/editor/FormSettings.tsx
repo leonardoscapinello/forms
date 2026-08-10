@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain, Lock, AlertCircle } from 'lucide-react';
+import { flattenPageElements } from '@/lib/pageElementTree';
 
 
 interface Props {
@@ -78,7 +79,7 @@ export default function FormSettings({ form, onUpdate }: Props) {
   const formElements = useMemo(() => {
     const els: { id: string; label: string; type: string }[] = [];
     for (const page of form.pages || []) {
-      for (const el of page.elements || []) {
+      for (const el of flattenPageElements(page.elements || [])) {
         if (el.type?.startsWith('input_')) {
           els.push({
             id: el.id,

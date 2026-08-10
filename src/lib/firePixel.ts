@@ -11,14 +11,23 @@ import type { PixelEventRecord } from '@/lib/webhookPayload';
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pixel-event`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-/** Pixels only fire on the published domain — never on preview/localhost/test */
-const PUBLISHED_HOSTS = ['nodecraft-forms.lovable.app'];
+/** Pixels never fire on localhost. Production can optionally be restricted to
+ * a comma-separated host allowlist through VITE_PIXEL_ALLOWED_HOSTS. */
+const PUBLISHED_HOSTS = String(import.meta.env.VITE_PIXEL_ALLOWED_HOSTS || '')
+  .split(',')
+  .map((host) => host.trim().toLowerCase())
+  .filter(Boolean);
 function isProductionEnvironment(): boolean {
   if (typeof window === 'undefined') return false;
-  return PUBLISHED_HOSTS.includes(window.location.hostname);
+  const host = window.location.hostname.toLowerCase();
+  if (host === 'localhost' || host === '127.0.0.1' || window.location.protocol !== 'https:') return false;
+  return PUBLISHED_HOSTS.length === 0 || PUBLISHED_HOSTS.includes(host);
 }
 
 interface FirePixelOptions {
+  submissionToken?: string;
+  nodeId?: string;
+  entryId?: string;
   platform: string;
   eventName: string;
   eventId: string;

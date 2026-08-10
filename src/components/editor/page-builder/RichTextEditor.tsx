@@ -15,6 +15,7 @@ import type { FormVariable, IntegrationNodeData, TrackedParam } from '@/types/fo
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
 import { CONTEXT_KEYS } from '@/lib/sessionContext';
 import { DEFAULT_TRACKED_PARAMS } from '@/types/form';
+import { sanitizeRichTextHtml } from '@/lib/sanitize';
 
 interface Props {
   value: string;
@@ -99,7 +100,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     if (!editorRef.current) return;
 
     const temp = document.createElement('div');
-    temp.innerHTML = rawHtml || '';
+    temp.innerHTML = sanitizeRichTextHtml(rawHtml || '');
 
     const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT);
     const textNodes: Text[] = [];
@@ -149,7 +150,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
       token.replaceWith(document.createTextNode(raw));
     });
 
-    return clone.innerHTML;
+    return sanitizeRichTextHtml(clone.innerHTML);
   }, []);
 
   // Sync external value → DOM only when NOT focused (prevents cursor jump)
@@ -179,13 +180,6 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     onChange(serializeRawHtml());
   }, [onChange, serializeRawHtml]);
 
-  const execCmd = useCallback((cmd: string, val?: string) => {
-    editorRef.current?.focus();
-    document.execCommand(cmd, false, val);
-    emitChange();
-    updateActiveFormats();
-  }, [emitChange]);
-
   const updateActiveFormats = useCallback(() => {
     const formats = new Set<string>();
     if (document.queryCommandState('bold')) formats.add('bold');
@@ -194,6 +188,13 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     if (document.queryCommandState('strikeThrough')) formats.add('strikeThrough');
     setActiveFormats(formats);
   }, []);
+
+  const execCmd = useCallback((cmd: string, val?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false, val);
+    emitChange();
+    updateActiveFormats();
+  }, [emitChange, updateActiveFormats]);
 
   const handleInput = useCallback(() => {
     emitChange();

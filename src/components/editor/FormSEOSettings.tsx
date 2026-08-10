@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import type { FormData, FormSEO } from '@/types/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,15 +62,15 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 export default function FormSEOSettings({ form, onUpdate }: Props) {
-  const seo: FormSEO = form.seo || {};
+  const seo: FormSEO = useMemo(() => form.seo || {}, [form.seo]);
   const ogInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const [uploadingOg, setUploadingOg] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
-  const update = (patch: Partial<FormSEO>) => {
+  const update = useCallback((patch: Partial<FormSEO>) => {
     onUpdate({ seo: { ...seo, ...patch } });
-  };
+  }, [onUpdate, seo]);
 
   const handleOgUpload = useCallback(async (file: File) => {
     setUploadingOg(true);
@@ -92,7 +92,7 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
     } finally {
       setUploadingOg(false);
     }
-  }, [seo, onUpdate]);
+  }, [update]);
 
   const handleFaviconUpload = useCallback(async (file: File) => {
     setUploadingFavicon(true);
@@ -114,7 +114,7 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
     } finally {
       setUploadingFavicon(false);
     }
-  }, [seo, onUpdate]);
+  }, [update]);
 
   const titleLen = (seo.title || '').length;
   const descLen = (seo.description || '').length;

@@ -102,7 +102,9 @@ export function AppSidebar() {
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
             Sistema
           </p>
-          <nav className="flex flex-col gap-1">{systemItems.map((item) => renderNavItem(item, 'system'))}</nav>
+          {role === 'admin' && (
+            <nav className="flex flex-col gap-1">{systemItems.map((item) => renderNavItem(item, 'system'))}</nav>
+          )}
         </section>
       </SidebarContent>
 
@@ -151,6 +153,5 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-
 
 
