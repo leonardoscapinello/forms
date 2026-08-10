@@ -59,7 +59,9 @@ export default function RulerSlider({
     if (!dragging.current) return;
     dragging.current = false;
     if (pointerIdRef.current !== null) {
-      try { containerRef.current?.releasePointerCapture(pointerIdRef.current); } catch {}
+      try { containerRef.current?.releasePointerCapture(pointerIdRef.current); } catch {
+        // Capture may already have been released by the browser.
+      }
       pointerIdRef.current = null;
     }
   }, []);

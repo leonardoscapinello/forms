@@ -1,4 +1,4 @@
-project_id = "mbryndcvumhfjgmogifs"
+project_id = "gxotayvavefhlcvbuczq"
 
 [functions.minio-test]
 verify_jwt = false

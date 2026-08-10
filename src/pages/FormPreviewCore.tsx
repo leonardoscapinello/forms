@@ -84,17 +84,15 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
     // Wait 2 rAFs: one for the browser to commit the DOM with initial state,
     // one more to guarantee a painted frame, then allow animation.
-    let raf1: number;
-    let raf2: number;
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
+    const frameIds: number[] = [];
+    frameIds.push(requestAnimationFrame(() => {
+      frameIds.push(requestAnimationFrame(() => {
         prevMountReadyRef.current = true;
         setAnimationFrameReady(true);
-      });
-    });
+      }));
+    }));
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      frameIds.forEach(cancelAnimationFrame);
     };
   }, [isBootstrappingEarly]);
 
@@ -486,7 +484,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       // Clear resume data
       if (form.allowResume) {
-        try { localStorage.removeItem(`form_resume_${form.id}`); } catch {}
+        try { localStorage.removeItem(`form_resume_${form.id}`); } catch {
+          // localStorage may be unavailable.
+        }
       }
 
       // Fire completion webhook
@@ -1360,7 +1360,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               // Already completed in this session — skip wait entirely
               sessionStorage.removeItem(waitStorageKey);
               // fall through to navigation below (no wait needed)
-              goto_after_wait: {
+              {
                 if (nextNodeId === 'end') {
                   setAnswers(updatedAnswers); answersRef.current = updatedAnswers; setFinished(true); return;
                 }
@@ -2291,4 +2291,3 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     </LazyMotion>
   );
 }
-

@@ -5,6 +5,36 @@
 -- We need PERMISSIVE policies for proper access control
 -- =====================================================
 
+-- This table existed in the original hosted project but was missing from the
+-- migration history. Define it here so clean projects are reproducible.
+CREATE TABLE IF NOT EXISTS public.email_validations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE,
+  status text NOT NULL,
+  overall_score numeric NOT NULL DEFAULT 0,
+  is_safe_to_send boolean,
+  is_deliverable boolean,
+  is_disabled boolean,
+  is_disposable boolean,
+  is_free_email boolean,
+  is_role_account boolean,
+  is_catch_all boolean,
+  is_spamtrap boolean,
+  is_valid_syntax boolean,
+  can_connect_smtp boolean,
+  has_inbox_full boolean,
+  mx_accepts_mail boolean,
+  mx_records jsonb,
+  domain text,
+  username text,
+  verification_mode text,
+  raw_response jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.email_validations ENABLE ROW LEVEL SECURITY;
+
 -- profiles: drop all existing and recreate as PERMISSIVE
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;

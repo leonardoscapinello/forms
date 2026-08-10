@@ -2047,7 +2047,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                       key={n}
                       onClick={() => {
                         const current = element.columnData || [];
-                        let updated = [...current];
+                        const updated = [...current];
                         while (updated.length < n) {
                           updated.push({ id: crypto.randomUUID(), elements: [] });
                         }

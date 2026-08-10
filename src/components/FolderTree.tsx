@@ -73,7 +73,9 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
             try {
               const { type, id } = JSON.parse(data);
               if (type === 'form' || type === 'folder') onDrop(id, node.id);
-            } catch {}
+            } catch {
+              // Ignore malformed drag payloads from outside the app.
+            }
           }
         }}
       >
@@ -224,7 +226,9 @@ export default function FolderTree({ selectedFolderId, onSelectFolder, useFolder
               try {
                 const { type, id } = JSON.parse(data);
                 if (type === 'form') handleDrop(id, null);
-              } catch {}
+              } catch {
+                // Ignore malformed drag payloads from outside the app.
+              }
             }
           }}
         >

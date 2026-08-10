@@ -25,7 +25,7 @@ export default function Twemoji({ children, className, tag: Tag = 'span' }: Twem
   });
 
   return (
-    // @ts-ignore - dynamic tag
+    // @ts-expect-error - dynamic tag
     <Tag ref={ref} className={className}>
       {children}
     </Tag>

@@ -208,7 +208,9 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
       delete queue[id];
       sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
-    } catch {}
+    } catch {
+      // sessionStorage may be unavailable.
+    }
   }, []);
 
   // Flush pending update to DB
@@ -279,7 +281,9 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
         }
         sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
       })();
-    } catch {}
+    } catch {
+      // sessionStorage may be unavailable.
+    }
   }, [online, user]);
 
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {

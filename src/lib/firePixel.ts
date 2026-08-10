@@ -181,7 +181,9 @@ export function firePixelDual(
         (window as any).lintrk('track', { conversion_id: eventId });
         firedClient = true;
       }
-    } catch (_) {}
+    } catch (_) {
+      // Third-party pixels must never interrupt form submission.
+    }
   }
 
   // Record the event for webhook tracking
@@ -249,7 +251,9 @@ export async function firePixelDualBlocking(
         (window as any).lintrk('track', { conversion_id: eventId });
         firedClient = true;
       }
-    } catch (_) {}
+    } catch (_) {
+      // Third-party pixels must never interrupt form submission.
+    }
   }
 
   // Record the event for webhook tracking

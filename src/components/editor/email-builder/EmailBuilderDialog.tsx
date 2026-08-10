@@ -463,7 +463,9 @@ function ColumnZone({
         const { structureId: sid, colIdx: sc, elementId } = JSON.parse(moveData);
         if (sid === structureId && sc === colIdx) return;
         onMoveToColumn(sid, sc, colIdx, elementId);
-      } catch {}
+      } catch {
+        // Ignore malformed drag payloads from outside the editor.
+      }
     }
   };
 
