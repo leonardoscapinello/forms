@@ -201,7 +201,7 @@ export default function ElementDesignStyleEditor({ element, onChange, onDeselect
           label="Cor"
           value={s.color || ''}
           onChange={v => updateStyle({ color: v })}
-          defaultColor="#203300"
+          defaultColor="#0A0A0A"
           allowTransparent
         />
         <div className="grid grid-cols-2 gap-2">

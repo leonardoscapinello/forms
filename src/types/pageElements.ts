@@ -598,7 +598,7 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
         { id: crypto.randomUUID(), text: 'Segundo item da lista' },
         { id: crypto.randomUUID(), text: 'Terceiro item da lista' },
       ];
-      base.listIconColor = '#22c55e';
+      base.listIconColor = '#050505';
       base.listTextColor = '#1a1a1a';
       base.listGap = 8;
       base.style = { fontSize: 'base' };
@@ -732,7 +732,7 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.circularProgressValue = 72;
       base.circularProgressLabelBefore = 'Seu progresso';
       base.circularProgressLabelAfter = 'concluído';
-      base.circularProgressColor = '#22c55e';
+      base.circularProgressColor = '#050505';
       base.circularProgressTrackColor = '#e5e7eb';
       base.circularProgressTextColor = '#1a1a1a';
       base.circularProgressLabelColor = '#6b7280';

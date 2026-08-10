@@ -350,7 +350,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
       pages: [createDefaultFunnelPage('Página 1')],
       globalPageStyle: {
         backgroundColor: '',
-        fontFamily: 'Borna',
+        fontFamily: 'FH Duo Display',
         gap: 32,
         paddingX: 24,
         paddingY: 32,

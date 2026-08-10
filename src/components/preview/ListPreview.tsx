@@ -14,7 +14,7 @@ interface Props {
 export default function ListPreview({
   items,
   listStyle = 'bullet',
-  iconColor = '#22c55e',
+  iconColor = '#050505',
   textColor = '#1a1a1a',
   gap = 8,
   fontSize,

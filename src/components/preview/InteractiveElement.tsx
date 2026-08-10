@@ -102,6 +102,16 @@ export default function InteractiveElement({
   const tNodes = (text: string | undefined) => text ? interpolateTextToNodes(text, variables, answers) : text;
   const tHtml = (text: string | undefined) => text ? interpolateTextToHtml(text, variables, answers) : text;
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+  const headingFontFamily = style?.fontFamily
+    ? normalizeFontFamily(style.fontFamily)
+    : formStyle?.headingFontFamily
+      ? normalizeFontFamily(formStyle.headingFontFamily)
+      : undefined;
+  const bodyFontFamily = style?.fontFamily
+    ? normalizeFontFamily(style.fontFamily)
+    : formStyle?.bodyFontFamily
+      ? normalizeFontFamily(formStyle.bodyFontFamily)
+      : undefined;
 
   // Tactile blink feedback for selection fields
   const [blinkingId, setBlinkingId] = useState<string | null>(null);
@@ -333,18 +343,21 @@ export default function InteractiveElement({
     color: formStyle?.questionNumberColor || 'inherit',
     fontSize: formStyle?.questionNumberSize || undefined,
     fontWeight: (formStyle?.questionNumberWeight as any) || undefined,
+    fontFamily: headingFontFamily,
   } : {};
 
   const titleInline: React.CSSProperties = {
     color: formStyle?.questionTitleColor || 'inherit',
     fontSize: formStyle?.questionTitleSize || undefined,
     fontWeight: (formStyle?.questionTitleWeight as any) || undefined,
+    fontFamily: headingFontFamily,
   };
 
   const descInline: React.CSSProperties = {
     color: formStyle?.questionDescColor || undefined,
     fontSize: formStyle?.questionDescSize || undefined,
     fontWeight: (formStyle?.questionDescWeight as any) || undefined,
+    fontFamily: bodyFontFamily,
   };
 
   const withFieldHeader = (content: React.ReactNode) => (
@@ -366,7 +379,7 @@ export default function InteractiveElement({
           )}
         </div>
       </div>
-      <div className={numHidden ? '' : 'pl-7 md:pl-12 lg:pl-14'}>
+      <div className={numHidden ? '' : 'pl-7 md:pl-12 lg:pl-14'} style={{ fontFamily: bodyFontFamily }}>
         {content}
         {fieldError && (
           <motion.p
@@ -393,7 +406,7 @@ export default function InteractiveElement({
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return wrapWithStyle(
         <div className={alignClass}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ color: style?.color, fontFamily: headingFontFamily, fontWeight: style?.fontWeight }}>
             {tNodes(element.content) || 'Título'}
           </div>
         </div>
@@ -403,7 +416,7 @@ export default function InteractiveElement({
     case 'text':
       return wrapWithStyle(
         <div className={alignClass}>
-          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
+          <p className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ color: style?.color, fontFamily: bodyFontFamily, fontWeight: style?.fontWeight }}>
             {tNodes(element.content) || ''}
           </p>
         </div>
@@ -413,7 +426,7 @@ export default function InteractiveElement({
       return wrapWithStyle(
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
-          style={{ fontFamily: normalizeFontFamily(style?.fontFamily) }}
+          style={{ color: style?.color, fontFamily: bodyFontFamily, fontWeight: style?.fontWeight }}
           dangerouslySetInnerHTML={{ __html: tHtml(element.content) || '' }}
         />
       );
@@ -462,7 +475,7 @@ export default function InteractiveElement({
                 ? `${style.padding}px ${style.padding * 1.5}px`
                 : (formStyle?.buttonSize === 'sm' ? '6px 16px' : formStyle?.buttonSize === 'lg' ? '14px 32px' : '10px 24px'),
               color: style?.color || formStyle?.buttonTextColor,
-              fontFamily: normalizeFontFamily(style?.fontFamily || formStyle?.bodyFontFamily || formStyle?.fontFamily),
+              fontFamily: bodyFontFamily,
               fontWeight: style?.fontWeight,
               fontSize: formStyle?.buttonSize === 'sm' ? 13 : formStyle?.buttonSize === 'lg' ? 16 : undefined,
             }}

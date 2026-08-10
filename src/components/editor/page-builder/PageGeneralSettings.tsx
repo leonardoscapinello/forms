@@ -6,14 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Palette, AlignVerticalSpaceAround, Move } from 'lucide-react';
 import { TypographySelector } from '@/components/editor/shared';
-import { FONT_OPTIONS } from '@/components/editor/shared/TypographySelector';
+import { DEFAULT_FONT_FAMILY } from '@/lib/fontUtils';
 
 interface Props {
   pageStyle: FunnelPageStyle;
   onChange: (patch: Partial<FunnelPageStyle>) => void;
 }
-
-// FONT_OPTIONS now imported from shared TypographySelector
 
 const BG_PRESETS = [
   { value: '', label: 'Padrão' },
@@ -82,8 +80,8 @@ export default function PageGeneralSettings({ pageStyle, onChange }: Props) {
           <div className="space-y-3">
             <TypographySelector
               label="Tipografia"
-              fontFamily={pageStyle.fontFamily || 'Borna'}
-              onFontFamilyChange={v => onChange({ fontFamily: v || 'Borna' })}
+              fontFamily={pageStyle.fontFamily || DEFAULT_FONT_FAMILY}
+              onFontFamilyChange={v => onChange({ fontFamily: v || DEFAULT_FONT_FAMILY })}
               fontWeight={undefined}
               onFontWeightChange={() => {}}
             />

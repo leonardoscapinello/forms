@@ -3,35 +3,99 @@
 }
 
 @font-face {
-  font-family: 'Borna';
-  src: url('/fonts/borna/Borna-Regular.woff2') format('woff2');
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-LightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Borna';
-  src: url('/fonts/borna/Borna-Medium.woff2') format('woff2');
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-RegularItalic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
-  font-display: optional;
+  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Borna';
-  src: url('/fonts/borna/Borna-SemiBold.woff2') format('woff2');
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-MediumItalic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
-  font-display: optional;
+  font-display: swap;
 }
 
 @font-face {
-  font-family: 'Borna';
-  src: url('/fonts/borna/Borna-Bold.woff2') format('woff2');
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-SemiBoldItalic.woff2') format('woff2');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
-  font-display: optional;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FH Duo Display';
+  src: url('/fonts/fh-duo-display/FHDuoDisplay-BlackItalic.woff2') format('woff2');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
 }
 
 @tailwind base;
@@ -47,37 +111,23 @@ img.emoji {
   vertical-align: -0.1em;
 }
 
-/* TwoBrain Design System v3 — from Pulse */
-/* Philosophy: PAPER tones for backgrounds, GREEN for accents */
+/* Forms design system — neutral surfaces with a black primary identity. */
 
 @layer base {
   :root {
-    /* PAPER PALETTE */
+    /* NEUTRAL SURFACES */
     --paper-50: 0 0% 100%;
-    --paper-100: 60 14% 98%;
-    --paper-200: 60 20% 99%;
-    --paper-300: 50 20% 91%;
-    --paper-400: 50 19% 87%;
-    --paper-500: 51 18% 83%;
-    --paper-600: 50 20% 77%;
-    --paper-700: 49 22% 72%;
-    --paper-800: 49 22% 61%;
-    --paper-900: 50 21% 50%;
-    --paper-950: 51 26% 33%;
-    --paper-1000: 54 37% 14%;
-
-    /* GREEN PALETTE */
-    --green-100: 72 100% 95%;
-    --green-200: 72 100% 89%;
-    --green-300: 72 100% 77%;
-    --green-400: 72 100% 65%;
-    --green-500: 72 94% 55%;
-    --green-600: 72 98% 44%;
-    --green-700: 72 100% 36%;
-    --green-800: 75 100% 28%;
-    --green-900: 77 100% 21%;
-    --green-950: 78 87% 14%;
-    --green-1000: 78 100% 10%;
+    --paper-100: 0 0% 98%;
+    --paper-200: 0 0% 97%;
+    --paper-300: 0 0% 93%;
+    --paper-400: 0 0% 88%;
+    --paper-500: 0 0% 82%;
+    --paper-600: 0 0% 74%;
+    --paper-700: 0 0% 64%;
+    --paper-800: 0 0% 48%;
+    --paper-900: 0 0% 32%;
+    --paper-950: 0 0% 18%;
+    --paper-1000: 0 0% 4%;
 
     /* GR.SCALE */
     --slate-400: 215 20% 65%;
@@ -85,25 +135,25 @@ img.emoji {
     --slate-600: 215 19% 35%;
 
     /* SEMANTIC TOKENS */
-    --background: 60 20% 99%;
-    --foreground: 78 100% 10%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 78 100% 10%;
+    --card-foreground: 0 0% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 78 100% 10%;
+    --popover-foreground: 0 0% 4%;
 
-    --primary: 78 100% 10%;
+    --primary: 0 0% 4%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 48 21% 94%;
-    --secondary-foreground: 78 100% 10%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 4%;
 
-    --muted: 50 20% 91%;
+    --muted: 0 0% 92%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 78 100% 10%;
+    --accent: 0 0% 4%;
     --accent-foreground: 0 0% 100%;
 
     --success: 142 71% 45%;
@@ -118,116 +168,134 @@ img.emoji {
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 50 20% 91%;
-    --input: 50 20% 88%;
+    --border: 0 0% 89%;
+    --input: 0 0% 86%;
     --input-background: 0 0% 100%;
-    --ring: 72 98% 44%;
+    --ring: 0 0% 4%;
 
     --radius: 0.5rem;
 
-    /* TwoBrain specific tokens */
-    --tb-text-primary: 78 100% 10%;
-    --tb-text-secondary: 78 100% 10%;
+    /* Compatibility aliases used by existing components */
+    --tb-text-primary: 0 0% 4%;
+    --tb-text-secondary: 0 0% 4%;
     --tb-text-muted: 215 16% 47%;
-    --tb-text-light: 49 22% 61%;
-    --tb-bg-page: 45 29% 97%;
-    --tb-bg-sidebar: 45 29% 97%;
-    --tb-bg-hover: 50 20% 91%;
+    --tb-text-light: 0 0% 62%;
+    --tb-bg-page: 0 0% 98%;
+    --tb-bg-sidebar: 0 0% 98%;
+    --tb-bg-hover: 0 0% 92%;
     --tb-bg-surface: 0 0% 100%;
-    --tb-accent: 72 98% 44%;
-    --tb-accent-dark: 78 100% 10%;
-    --tb-accent-focus: 72 100% 36%;
-    --tb-input-border: 50 20% 91%;
-    --tb-card-border: 50 20% 91%;
-    --tb-icon-muted: 49 22% 61%;
+    --tb-accent: 0 0% 4%;
+    --tb-accent-dark: 0 0% 4%;
+    --tb-accent-focus: 0 0% 18%;
+    --tb-input-border: 0 0% 89%;
+    --tb-card-border: 0 0% 89%;
+    --tb-icon-muted: 0 0% 62%;
 
     /* Icon container */
-    --icon-container-bg: 50 20% 91%;
-    --icon-container-fg: 78 100% 10%;
+    --icon-container-bg: 0 0% 92%;
+    --icon-container-fg: 0 0% 4%;
 
     /* Sidebar */
-    --sidebar-background: 45 29% 97%;
-    --sidebar-foreground: 54 37% 14%;
-    --sidebar-icon: 49 22% 61%;
-    --sidebar-primary: 78 100% 10%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 4%;
+    --sidebar-icon: 0 0% 62%;
+    --sidebar-primary: 0 0% 4%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 78 100% 10%;
+    --sidebar-accent: 0 0% 4%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 50 20% 91%;
-    --sidebar-ring: 72 98% 44%;
+    --sidebar-border: 0 0% 89%;
+    --sidebar-ring: 0 0% 4%;
     --sidebar-muted: 215 16% 47%;
-    --sidebar-hover: 50 20% 91%;
+    --sidebar-hover: 0 0% 92%;
 
     /* Charts */
-    --chart-1: 72 98% 44%;
-    --chart-2: 78 100% 10%;
-    --chart-3: 50 20% 77%;
+    --chart-1: 0 0% 4%;
+    --chart-2: 0 0% 32%;
+    --chart-3: 0 0% 70%;
     --chart-4: 38 92% 50%;
     --chart-5: 0 72% 51%;
     --chart-6: 210 60% 50%;
 
     /* Paper semantic */
-    --paper: 45 29% 97%;
-    --paper-foreground: 54 37% 14%;
+    --paper: 0 0% 98%;
+    --paper-foreground: 0 0% 4%;
 
     /* Gray (PAPER-based) */
-    --gray-50: 48 21% 97%;
-    --gray-100: 48 21% 94%;
-    --gray-200: 50 20% 91%;
-    --gray-300: 50 19% 85%;
-    --gray-400: 50 15% 70%;
-    --gray-500: 50 12% 55%;
-    --gray-600: 50 10% 45%;
-    --gray-700: 50 10% 35%;
-    --gray-800: 50 12% 25%;
-    --gray-900: 52 15% 15%;
-    --gray-950: 54 18% 10%;
+    --gray-50: 0 0% 98%;
+    --gray-100: 0 0% 96%;
+    --gray-200: 0 0% 91%;
+    --gray-300: 0 0% 83%;
+    --gray-400: 0 0% 64%;
+    --gray-500: 0 0% 45%;
+    --gray-600: 0 0% 32%;
+    --gray-700: 0 0% 25%;
+    --gray-800: 0 0% 15%;
+    --gray-900: 0 0% 9%;
+    --gray-950: 0 0% 4%;
   }
 
   .dark {
-    --paper: 222 47% 11%;
-    --paper-foreground: 214 32% 91%;
+    --paper: 0 0% 6%;
+    --paper-foreground: 0 0% 94%;
 
-    --background: 222 84% 5%;
-    --foreground: 214 32% 91%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 94%;
 
-    --card: 217 33% 17%;
-    --card-foreground: 214 32% 91%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 94%;
 
-    --popover: 217 33% 17%;
-    --popover-foreground: 214 32% 91%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 94%;
 
-    --primary: 72 98% 44%;
-    --primary-foreground: 78 100% 10%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 214 32% 91%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 94%;
 
-    --muted: 215 19% 35%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 64%;
 
-    --accent: 217 33% 25%;
-    --accent-foreground: 214 32% 91%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 4%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --input-background: 217 33% 17%;
-    --ring: 72 100% 36%;
+    --border: 0 0% 18%;
+    --input: 0 0% 22%;
+    --input-background: 0 0% 9%;
+    --ring: 0 0% 96%;
 
-    --sidebar-background: 222 84% 5%;
-    --sidebar-foreground: 214 32% 91%;
-    --sidebar-icon: 215 20% 65%;
-    --sidebar-primary: 72 98% 44%;
-    --sidebar-primary-foreground: 78 100% 10%;
-    --sidebar-accent: 217 33% 25%;
-    --sidebar-accent-foreground: 214 32% 91%;
-    --sidebar-hover: 217 33% 17%;
-    --sidebar-border: 217 33% 20%;
-    --sidebar-ring: 72 100% 36%;
+    --tb-text-primary: 0 0% 94%;
+    --tb-text-secondary: 0 0% 94%;
+    --tb-text-muted: 0 0% 64%;
+    --tb-text-light: 0 0% 52%;
+    --tb-bg-page: 0 0% 4%;
+    --tb-bg-sidebar: 0 0% 4%;
+    --tb-bg-hover: 0 0% 13%;
+    --tb-bg-surface: 0 0% 9%;
+    --tb-accent: 0 0% 96%;
+    --tb-accent-dark: 0 0% 96%;
+    --tb-accent-focus: 0 0% 78%;
+    --tb-input-border: 0 0% 18%;
+    --tb-card-border: 0 0% 18%;
+    --tb-icon-muted: 0 0% 64%;
 
-    --chart-1: 72 100% 50%;
-    --chart-2: 78 100% 30%;
-    --chart-3: 215 20% 50%;
+    --icon-container-bg: 0 0% 18%;
+    --icon-container-fg: 0 0% 94%;
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 94%;
+    --sidebar-icon: 0 0% 64%;
+    --sidebar-primary: 0 0% 96%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 4%;
+    --sidebar-hover: 0 0% 13%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 0 0% 96%;
+
+    --chart-1: 0 0% 96%;
+    --chart-2: 0 0% 70%;
+    --chart-3: 0 0% 45%;
     --chart-4: 38 92% 60%;
     --chart-5: 0 72% 60%;
   }
@@ -244,7 +312,8 @@ img.emoji {
   textarea,
   select {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Borna', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'FH Duo Display', ui-sans-serif, system-ui, sans-serif;
+    font-synthesis: none;
   }
 }
 

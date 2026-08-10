@@ -14,7 +14,7 @@ export default {
       },
     },
     fontFamily: {
-      sans: ["'Borna'", "ui-sans-serif", "system-ui", "sans-serif"],
+      sans: ["'FH Duo Display'", "ui-sans-serif", "system-ui", "sans-serif"],
     },
     extend: {
       colors: {
@@ -23,7 +23,7 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        // TwoBrain Brand Colors
+        // Compatibility aliases for existing components
         tb: {
           text: {
             primary: "hsl(var(--tb-text-primary))",
@@ -118,19 +118,6 @@ export default {
           muted: "hsl(var(--sidebar-muted))",
           hover: "hsl(var(--sidebar-hover))",
         },
-        green: {
-          100: "hsl(var(--green-100))",
-          200: "hsl(var(--green-200))",
-          300: "hsl(var(--green-300))",
-          400: "hsl(var(--green-400))",
-          500: "hsl(var(--green-500))",
-          600: "hsl(var(--green-600))",
-          700: "hsl(var(--green-700))",
-          800: "hsl(var(--green-800))",
-          900: "hsl(var(--green-900))",
-          950: "hsl(var(--green-950))",
-          1000: "hsl(var(--green-1000))",
-        },
         gray: {
           50: "hsl(var(--gray-50))",
           100: "hsl(var(--gray-100))",
@@ -145,7 +132,7 @@ export default {
           950: "hsl(var(--gray-950))",
         },
         lime: {
-          dark: "hsl(var(--green-1000))",
+          dark: "hsl(var(--foreground))",
         },
         node: {
           contact: "hsl(var(--node-contact))",

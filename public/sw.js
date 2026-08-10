@@ -1,4 +1,4 @@
-const CACHE_NAME = 'formflow-v4';
+const CACHE_NAME = 'forms-v5';
 
 // ONLY cache assets for public form routes (/f/:id)
 // Admin/dashboard routes must NEVER be cached

@@ -27,7 +27,7 @@ export default function AppLayout({ children }: Props) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header matching twobrain style */}
+          {/* Product header */}
           <header className="h-14 flex items-center border-b border-border px-4 bg-background gap-4">
             <SidebarTrigger className="mr-1" />
 

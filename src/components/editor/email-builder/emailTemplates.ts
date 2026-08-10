@@ -2,34 +2,34 @@ import { type ColumnsBlock, type EmailBlock, createStructure, uid } from './emai
 import { Mail, PartyPopper, Gift, Bell, ShieldCheck, Megaphone, Leaf, Sparkles, Heart, Zap } from 'lucide-react';
 
 // ─── Brand palette ──────────────────────────────────────────────────
-// GREEN scale: #FBFFE4 → #203300
-// PAPER scale: #FBFAF6 → #2C2A18
+// Neutral ink scale for the Forms visual identity
+// Neutral surface scale for legacy templates
 const BRAND = {
-  green: {
-    50: '#FBFFE4',
-    100: '#F4FFC5',
-    200: '#E8FF92',
-    300: '#D5FF54',
-    400: '#C0FA21',
-    500: '#A1E101',
-    600: '#7CB400',
-    700: '#5E8902',
-    800: '#4B6B09',
-    900: '#3F5A0D',
-    950: '#203300',
+  ink: {
+    50: '#FAFAFA',
+    100: '#F5F5F5',
+    200: '#E5E5E5',
+    300: '#D4D4D4',
+    400: '#A3A3A3',
+    500: '#737373',
+    600: '#525252',
+    700: '#404040',
+    800: '#262626',
+    900: '#171717',
+    950: '#050505',
   },
   paper: {
-    50: '#FBFAF6',
-    100: '#F4F3EC',
-    200: '#EEECE2',
-    300: '#E6E3D6',
-    400: '#DEDAC8',
-    500: '#D4CFB8',
-    600: '#C8C2A6',
-    700: '#B3AB86',
-    800: '#9A9266',
-    900: '#6A653F',
-    950: '#2C2A18',
+    50: '#FAFAFA',
+    100: '#F4F4F5',
+    200: '#E4E4E7',
+    300: '#D4D4D8',
+    400: '#A1A1AA',
+    500: '#71717A',
+    600: '#52525B',
+    700: '#3F3F46',
+    800: '#27272A',
+    900: '#18181B',
+    950: '#09090B',
   },
 } as const;
 
@@ -60,7 +60,7 @@ function button(label: string, href = '#', opts: Partial<EmailBlock & { type: 'b
   return {
     id: uid(), type: 'button',
     padding: { top: 16, right: 24, bottom: 16, left: 24 },
-    text: label, href, linkMode: 'custom', bgColor: BRAND.green[600], textColor: '#FFFFFF',
+    text: label, href, linkMode: 'custom', bgColor: BRAND.ink[600], textColor: '#FFFFFF',
     borderRadius: 6, align: 'center', fontSize: 16, paddingX: 32, paddingY: 12,
     ...opts,
   } as EmailBlock;
@@ -129,21 +129,21 @@ const welcomeTemplate: EmailTemplate = {
 const confirmationTemplate: EmailTemplate = {
   id: 'confirmation',
   label: 'Confirmação',
-  description: 'Confirmação com destaque em verde',
+  description: 'Confirmação com destaque neutro',
   icon: ShieldCheck,
-  emailBg: BRAND.green[50],
+  emailBg: BRAND.ink[50],
   contentBg: '#FFFFFF',
   blocks: [
     row([spacer(16)]),
-    row([heading('Recebemos sua resposta ✅', { color: BRAND.green[900] })]),
+    row([heading('Recebemos sua resposta ✅', { color: BRAND.ink[900] })]),
     row([text('Sua resposta foi registrada com sucesso. Veja um resumo abaixo:', { align: 'center', color: BRAND.paper[800] })]),
     row([spacer(8)]),
-    row([divider(BRAND.green[200])]),
-    row([text('📋 Detalhes da submissão', { fontWeight: 'bold', fontSize: 18, color: BRAND.green[800] })]),
+    row([divider(BRAND.ink[200])]),
+    row([text('📋 Detalhes da submissão', { fontWeight: 'bold', fontSize: 18, color: BRAND.ink[800] })]),
     row([text('• Nome: {{nome}}\n• E-mail: {{email}}\n• Data: {{data}}', { fontSize: 14, color: BRAND.paper[950] })]),
-    row([divider(BRAND.green[200])]),
+    row([divider(BRAND.ink[200])]),
     row([spacer(8)]),
-    row([button('Ver detalhes', '#', { bgColor: BRAND.green[700] })]),
+    row([button('Ver detalhes', '#', { bgColor: BRAND.ink[700] })]),
     row([spacer(16)]),
   ],
 };
@@ -158,10 +158,10 @@ const promotionTemplate: EmailTemplate = {
   blocks: [
     row([spacer(16)]),
     row([image('', { padding: { top: 0, right: 0, bottom: 0, left: 0 } })]),
-    row([heading('Oferta Especial 🔥', { color: BRAND.green[800] })]),
+    row([heading('Oferta Especial 🔥', { color: BRAND.ink[800] })]),
     row([text('Por tempo limitado, aproveite condições exclusivas preparadas especialmente para você.', { align: 'center', color: BRAND.paper[800] })]),
     row([spacer(8)]),
-    row([button('Aproveitar agora', '#', { bgColor: BRAND.green[500] })]),
+    row([button('Aproveitar agora', '#', { bgColor: BRAND.ink[700] })]),
     row([spacer(8)]),
     row([divider()]),
     row([text('⏰ Oferta válida até 00/00/0000', { fontSize: 13, align: 'center', color: BRAND.paper[700] })]),
@@ -233,11 +233,11 @@ const onboardingTemplate: EmailTemplate = {
   label: 'Onboarding',
   description: 'Sequência de boas-vindas com passos',
   icon: Sparkles,
-  emailBg: BRAND.green[50],
+  emailBg: BRAND.ink[50],
   contentBg: '#FFFFFF',
   blocks: [
     row([spacer(20)]),
-    row([heading('Vamos começar! 🚀', { color: BRAND.green[800] })]),
+    row([heading('Vamos começar! 🚀', { color: BRAND.ink[800] })]),
     row([text('Siga esses 3 passos simples para aproveitar ao máximo:', { align: 'center', color: BRAND.paper[800] })]),
     row([spacer(12)]),
     (() => {
@@ -261,9 +261,9 @@ const onboardingTemplate: EmailTemplate = {
       return s;
     })(),
     row([spacer(8)]),
-    row([button('Começar agora', '#', { bgColor: BRAND.green[600] })]),
+    row([button('Começar agora', '#', { bgColor: BRAND.ink[700] })]),
     row([spacer(8)]),
-    row([divider(BRAND.green[200])]),
+    row([divider(BRAND.ink[200])]),
     row([text('Precisa de ajuda? Responda este e-mail.', { fontSize: 13, align: 'center', color: BRAND.paper[700] })]),
     row([spacer(16)]),
   ],
@@ -278,15 +278,15 @@ const thankYouTemplate: EmailTemplate = {
   contentBg: BRAND.paper[50],
   blocks: [
     row([spacer(24)]),
-    row([heading('Obrigado! 💚', { color: BRAND.green[800] })]),
+    row([heading('Obrigado! 🖤', { color: BRAND.ink[800] })]),
     row([text('Agradecemos por dedicar seu tempo. Sua participação faz toda a diferença para nós.', { align: 'center', color: BRAND.paper[900], fontSize: 17 })]),
     row([spacer(12)]),
     row([divider(BRAND.paper[400])]),
     row([spacer(8)]),
-    row([text('O que acontece agora?', { fontWeight: 'bold', fontSize: 18, color: BRAND.green[800], align: 'center' })]),
+    row([text('O que acontece agora?', { fontWeight: 'bold', fontSize: 18, color: BRAND.ink[800], align: 'center' })]),
     row([text('Nossa equipe vai analisar suas informações e em breve você receberá um retorno com os próximos passos.', { align: 'center', fontSize: 14, color: BRAND.paper[800] })]),
     row([spacer(12)]),
-    row([button('Acompanhar status', '#', { bgColor: BRAND.green[700] })]),
+    row([button('Acompanhar status', '#', { bgColor: BRAND.ink[700] })]),
     row([spacer(24)]),
   ],
 };
@@ -300,9 +300,9 @@ const updateTemplate: EmailTemplate = {
   contentBg: '#FFFFFF',
   blocks: [
     row([spacer(16)]),
-    row([text('📢 NOVIDADE', { align: 'center', fontSize: 11, fontWeight: 'bold', color: BRAND.green[600], padding: { top: 16, right: 24, bottom: 0, left: 24 } })]),
+    row([text('📢 NOVIDADE', { align: 'center', fontSize: 11, fontWeight: 'bold', color: BRAND.ink[700], padding: { top: 16, right: 24, bottom: 0, left: 24 } })]),
     row([heading('Temos algo novo para você')]),
-    row([divider(BRAND.green[200])]),
+    row([divider(BRAND.ink[200])]),
     row([spacer(4)]),
     row([image('')]),
     row([text('Acabamos de lançar uma funcionalidade que vai transformar a forma como você trabalha. Confira todos os detalhes.', { color: BRAND.paper[900], fontSize: 15 })]),
@@ -320,34 +320,34 @@ const naturalTemplate: EmailTemplate = {
   label: 'Natural',
   description: 'Design orgânico com tons da natureza',
   icon: Leaf,
-  emailBg: BRAND.green[100],
-  contentBg: BRAND.green[50],
+  emailBg: BRAND.ink[100],
+  contentBg: BRAND.ink[50],
   blocks: [
     row([spacer(24)]),
     row([heading('🌿', { fontSize: 36, padding: { top: 0, right: 24, bottom: 4, left: 24 } })]),
-    row([heading('Sustentabilidade em ação', { color: BRAND.green[900], fontSize: 22 })]),
-    row([text('Acreditamos que cada ação conta. Confira como estamos contribuindo para um futuro mais verde.', { align: 'center', color: BRAND.green[800], fontSize: 15 })]),
+    row([heading('Sustentabilidade em ação', { color: BRAND.ink[900], fontSize: 22 })]),
+    row([text('Acreditamos que cada ação conta. Confira como estamos contribuindo para um futuro mais verde.', { align: 'center', color: BRAND.ink[800], fontSize: 15 })]),
     row([spacer(12)]),
     (() => {
       const s = createStructure(2);
       s.columns[0] = [
         text('🌱', { align: 'center', fontSize: 24, padding: { top: 12, right: 8, bottom: 4, left: 8 } }),
-        text('100% reciclável', { align: 'center', fontWeight: 'bold', fontSize: 14, color: BRAND.green[800], padding: { top: 0, right: 8, bottom: 4, left: 8 } }),
-        text('Nossos materiais são 100% recicláveis e sustentáveis.', { align: 'center', fontSize: 12, color: BRAND.green[700], padding: { top: 0, right: 8, bottom: 12, left: 8 } }),
+        text('100% reciclável', { align: 'center', fontWeight: 'bold', fontSize: 14, color: BRAND.ink[800], padding: { top: 0, right: 8, bottom: 4, left: 8 } }),
+        text('Nossos materiais são 100% recicláveis e sustentáveis.', { align: 'center', fontSize: 12, color: BRAND.ink[700], padding: { top: 0, right: 8, bottom: 12, left: 8 } }),
       ];
       s.columns[1] = [
         text('💧', { align: 'center', fontSize: 24, padding: { top: 12, right: 8, bottom: 4, left: 8 } }),
-        text('Economia de água', { align: 'center', fontWeight: 'bold', fontSize: 14, color: BRAND.green[800], padding: { top: 0, right: 8, bottom: 4, left: 8 } }),
-        text('Processos que reduzem em 40% o consumo de água.', { align: 'center', fontSize: 12, color: BRAND.green[700], padding: { top: 0, right: 8, bottom: 12, left: 8 } }),
+        text('Economia de água', { align: 'center', fontWeight: 'bold', fontSize: 14, color: BRAND.ink[800], padding: { top: 0, right: 8, bottom: 4, left: 8 } }),
+        text('Processos que reduzem em 40% o consumo de água.', { align: 'center', fontSize: 12, color: BRAND.ink[700], padding: { top: 0, right: 8, bottom: 12, left: 8 } }),
       ];
       s.padding = { top: 8, right: 8, bottom: 8, left: 8 };
       return s;
     })(),
     row([spacer(8)]),
-    row([button('Conhecer projeto', '#', { bgColor: BRAND.green[800] })]),
+    row([button('Conhecer projeto', '#', { bgColor: BRAND.ink[800] })]),
     row([spacer(8)]),
-    row([divider(BRAND.green[300])]),
-    row([text('Juntos por um planeta melhor.', { fontSize: 13, align: 'center', color: BRAND.green[700], fontWeight: 'bold' })]),
+    row([divider(BRAND.ink[300])]),
+    row([text('Juntos por um planeta melhor.', { fontSize: 13, align: 'center', color: BRAND.ink[700], fontWeight: 'bold' })]),
     row([spacer(20)]),
   ],
 };

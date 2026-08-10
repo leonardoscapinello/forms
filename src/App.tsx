@@ -1,5 +1,6 @@
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { DEFAULT_FONT_STACK } from '@/lib/fontUtils';
 
 /** Catches render errors so the user sees a message instead of a blank screen */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -11,7 +12,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', padding: 24 }}>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: DEFAULT_FONT_STACK, padding: 24 }}>
           <div style={{ textAlign: 'center', maxWidth: 420 }}>
             <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Algo deu errado</p>
             <p style={{ fontSize: 14, color: '#888', marginBottom: 16 }}>{this.state.error.message}</p>

@@ -1754,7 +1754,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       s.backgroundPosition = 'center';
       s.backgroundRepeat = 'no-repeat';
     } else {
-      const rawBg = bgColor || formStyle?.backgroundColor || '#FAFAF6';
+      const rawBg = bgColor || formStyle?.backgroundColor || '#FAFAFA';
       s.backgroundColor = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
     }
 
@@ -1845,6 +1845,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       {/* Content */}
       {(() => {
         const pageStyle = form.globalPageStyle || {};
+        const headingFontFamily = normalizeFontFamily(form.style?.headingFontFamily || pageStyle.fontFamily || form.style?.fontFamily);
+        const bodyFontFamily = normalizeFontFamily(form.style?.bodyFontFamily || pageStyle.fontFamily || form.style?.fontFamily);
         const paddingX = pageStyle.paddingX ?? 24;
         const mobilePaddingX = Math.min(paddingX, 16);
         const paddingY = pageStyle.paddingY ?? 32;
@@ -1895,10 +1897,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 {/* Default welcome (no custom elements) */}
                 {showDefaultWelcome && (
                   <div className="text-center space-y-4 md:space-y-5">
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground" style={{ fontFamily: headingFontFamily }}>
                       {form.welcomeTitle || form.title}
                     </h1>
-                    <p className="text-base md:text-lg text-muted-foreground">
+                    <p className="text-base md:text-lg text-muted-foreground" style={{ fontFamily: bodyFontFamily }}>
                       {form.welcomeDescription || form.description || 'Clique em começar para iniciar.'}
                     </p>
                     <Button size="lg" onClick={goNext} className="mt-6 md:mt-8 text-base px-6 md:px-8 py-3 h-auto">
@@ -1948,10 +1950,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                     <div className="mx-auto w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 md:mb-6">
                       <Check className="h-8 w-8 md:h-10 md:w-10 text-primary" />
                     </div>
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground" style={{ fontFamily: headingFontFamily }}>
                       {form.thankYouTitle || 'Obrigado!'}
                     </h1>
-                    <p className="text-base md:text-lg text-muted-foreground">
+                    <p className="text-base md:text-lg text-muted-foreground" style={{ fontFamily: bodyFontFamily }}>
                       {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
                     </p>
                     {totalScore > 0 && (
@@ -2095,7 +2097,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 className="h-9 gap-2 text-xs"
                 style={{
                   backgroundColor: form.style?.buttonBgColor || form.style?.primaryColor || undefined,
-                  color: form.style?.buttonTextColor || (form.style?.buttonBgColor || form.style?.primaryColor ? '#203300' : undefined),
+                  color: form.style?.buttonTextColor || (form.style?.buttonBgColor || form.style?.primaryColor ? '#FFFFFF' : undefined),
                   borderRadius: form.style?.buttonBorderRadius ?? 9999,
                   padding: form.style?.buttonSize === 'sm' ? '6px 18px' : form.style?.buttonSize === 'lg' ? '14px 36px' : '10px 28px',
                   fontSize: form.style?.buttonSize === 'sm' ? 13 : form.style?.buttonSize === 'lg' ? 16 : undefined,

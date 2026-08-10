@@ -50,7 +50,7 @@ export default function CircularProgressPreview({
   value = 0,
   labelBefore,
   labelAfter,
-  color = '#22c55e',
+  color = '#050505',
   trackColor = '#e5e7eb',
   textColor = '#1a1a1a',
   labelColor = '#6b7280',

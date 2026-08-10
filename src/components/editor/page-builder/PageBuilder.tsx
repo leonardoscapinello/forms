@@ -190,7 +190,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
 
   const effectiveStyle: FunnelPageStyle = {
     backgroundColor: '',
-    fontFamily: 'Borna',
+    fontFamily: 'FH Duo Display',
     gap: 32,
     paddingX: 24,
     paddingY: 32,
@@ -511,10 +511,10 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         onDragLeave={readOnly || designMode ? undefined : handleCanvasDragLeave}
         onDrop={readOnly || designMode ? undefined : handleCanvasDrop}
         style={{
-          ['--primary' as any]: '48 24% 62%',
+          ['--primary' as any]: '0 0% 4%',
           ...(() => {
             const bgType = formStyle?.backgroundType || 'solid';
-            const rawBg = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAF6';
+            const rawBg = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAFA';
             const bg = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
             const result: React.CSSProperties = {
               fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),

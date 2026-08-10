@@ -112,7 +112,7 @@ export default function ResendApiCard() {
           instanceId: inst.id,
           toEmail: inst.defaultFrom || 'delivered@resend.dev',
           fromEmail: inst.defaultFrom || 'onboarding@resend.dev',
-          subject: 'Teste de conexão — twobrain',
+          subject: 'Teste de conexão — Forms',
           bodyText: 'Este é um e-mail de teste enviado pela plataforma.',
           testMode: true,
         },

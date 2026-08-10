@@ -91,6 +91,16 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
   };
 
   const alignClass = style?.textAlign === 'center' ? 'text-center' : style?.textAlign === 'right' ? 'text-right' : 'text-left';
+  const headingFontFamily = style?.fontFamily
+    ? normalizeFontFamily(style.fontFamily)
+    : formStyle?.headingFontFamily
+      ? normalizeFontFamily(formStyle.headingFontFamily)
+      : undefined;
+  const bodyFontFamily = style?.fontFamily
+    ? normalizeFontFamily(style.fontFamily)
+    : formStyle?.bodyFontFamily
+      ? normalizeFontFamily(formStyle.bodyFontFamily)
+      : undefined;
 
   // Outer wrapper styles (margin)
   const containerStyle: React.CSSProperties = {};
@@ -152,19 +162,19 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
   const withFieldHeader = (content: React.ReactNode) => (
     <div className="space-y-3 md:space-y-6">
       <div className="flex items-start gap-1.5 md:gap-3">
-        <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit' }}>{stepNumber ?? '?'}</span>
-        <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit' }}>→</span>
+        <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit', fontFamily: headingFontFamily }}>{stepNumber ?? '?'}</span>
+        <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit', fontFamily: headingFontFamily }}>→</span>
         <div>
-          <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug">
+          <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug" style={{ fontFamily: headingFontFamily }}>
             {renderVarContent(element.label, 'Sem título')}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <div className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2">{renderVarContent(element.description, '')}</div>
+            <div className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2" style={{ fontFamily: bodyFontFamily }}>{renderVarContent(element.description, '')}</div>
           )}
         </div>
       </div>
-      <div className="pl-7 md:pl-12 lg:pl-14">
+      <div className="pl-7 md:pl-12 lg:pl-14" style={{ fontFamily: bodyFontFamily }}>
         {content}
       </div>
     </div>
@@ -177,7 +187,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       const sizeMap: Record<number, string> = { 1: 'text-4xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg' };
       return (
         <div className={alignClass}>
-          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
+          <div className={`${sizeMap[element.level || 2]} font-bold text-foreground`} style={{ ...elementStyle, color: style?.color, fontFamily: headingFontFamily, fontWeight: style?.fontWeight }}>
             {renderVarContent(element.content, 'Título')}
           </div>
         </div>
@@ -187,7 +197,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
     case 'text':
       return (
         <div className={alignClass}>
-          <div className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: normalizeFontFamily(style?.fontFamily), fontWeight: style?.fontWeight }}>
+          <div className="text-base text-foreground/80 whitespace-pre-wrap leading-relaxed" style={{ ...elementStyle, color: style?.color, fontFamily: bodyFontFamily, fontWeight: style?.fontWeight }}>
             {renderVarContent(element.content, '')}
           </div>
         </div>
@@ -197,7 +207,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       return (
         <div
           className={`text-foreground/80 leading-relaxed ${alignClass} [&_b]:font-bold [&_i]:italic [&_u]:underline [&_strike]:line-through`}
-          style={{ ...elementStyle, fontFamily: normalizeFontFamily(style?.fontFamily) }}
+          style={{ ...elementStyle, fontFamily: bodyFontFamily }}
           dangerouslySetInnerHTML={{ __html: renderRichTextWithReadableTokens(element.content) }}
         />
       );
@@ -241,7 +251,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
               width: style?.width || 'auto',
               padding: style?.padding !== undefined ? `${style.padding}px ${style.padding * 1.5}px` : undefined,
               color: style?.color,
-              fontFamily: normalizeFontFamily(style?.fontFamily),
+              fontFamily: bodyFontFamily,
               fontWeight: style?.fontWeight,
               fontSize: style?.fontSize ? (style.fontSize === 'base' ? '1rem' : style.fontSize === 'lg' ? '1.125rem' : style.fontSize === 'xl' ? '1.25rem' : style.fontSize === '2xl' ? '1.5rem' : undefined) : undefined,
             }}
@@ -767,7 +777,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
               ) : (
                 col.elements.map(el => (
                   <div key={el.id} className="text-sm [&_*]:!text-sm [&_h2]:!text-base">
-                    <ElementPreview element={el} elementLookup={elementLookup} variables={variables} />
+                    <ElementPreview element={el} formStyle={formStyle} elementLookup={elementLookup} variables={variables} />
                   </div>
                 ))
               )}

@@ -11,25 +11,19 @@ import { toast } from 'sonner';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 import GradientEditor from '@/components/editor/shared/GradientEditor';
 import QuestionFieldStyleEditor from '@/components/editor/QuestionFieldStyleEditor';
+import { FONT_OPTIONS } from '@/components/editor/shared/TypographySelector';
+import { normalizeFontFamily, normalizeFontFamilyName } from '@/lib/fontUtils';
 
 interface Props {
   form: FormData;
   onUpdate: (patch: Partial<FormData>) => void;
 }
 
-const FONT_OPTIONS = [
-  { value: 'Borna', label: 'Borna' },
-  { value: 'Georgia', label: 'Georgia' },
-  { value: 'Arial', label: 'Arial' },
-  { value: 'Verdana', label: 'Verdana' },
-  { value: 'Times New Roman', label: 'Times New Roman' },
-  { value: 'Courier New', label: 'Courier New' },
-  { value: 'Trebuchet MS', label: 'Trebuchet MS' },
-];
-
-
 export default function FormDesignSettings({ form, onUpdate }: Props) {
   const style = form.style;
+  const generalFontFamily = normalizeFontFamilyName(style.fontFamily);
+  const headingFontFamily = normalizeFontFamilyName(style.headingFontFamily || generalFontFamily);
+  const bodyFontFamily = normalizeFontFamilyName(style.bodyFontFamily || generalFontFamily);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -122,11 +116,11 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
           {bgType === 'solid' && (
             <ColorPickerField
               label="Cor de fundo"
-              value={resolveHex(style.backgroundColor, '#FAFAF6')}
-              onChange={v => updateStyle({ backgroundColor: v || '#FAFAF6' })}
-              placeholder="#FAFAF6"
+              value={resolveHex(style.backgroundColor, '#FAFAFA')}
+              onChange={v => updateStyle({ backgroundColor: v || '#FAFAFA' })}
+              placeholder="#FAFAFA"
               allowTransparent={false}
-              defaultColor="#FAFAF6"
+              defaultColor="#FAFAFA"
             />
           )}
 
@@ -206,11 +200,11 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
 
         <div className="rounded-xl border border-border bg-card p-4">
           <ColorPickerField
-            value={style.textColor || '#203300'}
+            value={style.textColor || '#0A0A0A'}
             onChange={v => updateStyle({ textColor: v })}
-            placeholder="#203300 (padrão)"
+            placeholder="#0A0A0A (padrão)"
             allowTransparent
-            defaultColor="#203300"
+            defaultColor="#0A0A0A"
           />
         </div>
       </div>
@@ -225,13 +219,13 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
         <div className="rounded-xl border border-border bg-card p-4 space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground uppercase tracking-wider">Fonte geral</Label>
-            <Select value={style.fontFamily || 'Borna'} onValueChange={v => updateStyle({ fontFamily: v })}>
-              <SelectTrigger className="h-8 text-xs" style={{ fontFamily: style.fontFamily || 'Borna' }}>
+            <Select value={generalFontFamily} onValueChange={v => updateStyle({ fontFamily: v })}>
+              <SelectTrigger className="h-8 text-xs" style={{ fontFamily: normalizeFontFamily(generalFontFamily) }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FONT_OPTIONS.map(f => (
-                  <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: f.value }}>
+                  <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: normalizeFontFamily(f.value) }}>
                     {f.label}
                   </SelectItem>
                 ))}
@@ -241,13 +235,13 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
 
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground uppercase tracking-wider">Fonte dos títulos</Label>
-            <Select value={style.headingFontFamily || style.fontFamily || 'Borna'} onValueChange={v => updateStyle({ headingFontFamily: v })}>
-              <SelectTrigger className="h-8 text-xs" style={{ fontFamily: style.headingFontFamily || style.fontFamily || 'Borna' }}>
+            <Select value={headingFontFamily} onValueChange={v => updateStyle({ headingFontFamily: v })}>
+              <SelectTrigger className="h-8 text-xs" style={{ fontFamily: normalizeFontFamily(headingFontFamily) }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FONT_OPTIONS.map(f => (
-                  <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: f.value }}>
+                  <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: normalizeFontFamily(f.value) }}>
                     {f.label}
                   </SelectItem>
                 ))}
@@ -257,13 +251,13 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
 
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground uppercase tracking-wider">Fonte do corpo</Label>
-            <Select value={style.bodyFontFamily || style.fontFamily || 'Borna'} onValueChange={v => updateStyle({ bodyFontFamily: v })}>
-              <SelectTrigger className="h-8 text-xs" style={{ fontFamily: style.bodyFontFamily || style.fontFamily || 'Borna' }}>
+            <Select value={bodyFontFamily} onValueChange={v => updateStyle({ bodyFontFamily: v })}>
+              <SelectTrigger className="h-8 text-xs" style={{ fontFamily: normalizeFontFamily(bodyFontFamily) }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FONT_OPTIONS.map(f => (
-                  <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: f.value }}>
+                  <SelectItem key={f.value} value={f.value} className="text-xs" style={{ fontFamily: normalizeFontFamily(f.value) }}>
                     {f.label}
                   </SelectItem>
                 ))}
@@ -274,10 +268,10 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
           {/* Font preview */}
           <div className="mt-2 p-3 rounded-lg bg-muted/30 border border-border space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Preview</p>
-            <p className="text-lg font-semibold" style={{ fontFamily: style.headingFontFamily || style.fontFamily || 'Borna', color: style.textColor || undefined }}>
+            <p className="text-lg font-semibold" style={{ fontFamily: normalizeFontFamily(headingFontFamily), color: style.textColor || undefined }}>
               Título de exemplo
             </p>
-            <p className="text-sm" style={{ fontFamily: style.bodyFontFamily || style.fontFamily || 'Borna', color: style.textColor || undefined }}>
+            <p className="text-sm" style={{ fontFamily: normalizeFontFamily(bodyFontFamily), color: style.textColor || undefined }}>
               Este é um texto de corpo para visualizar como ficará no formulário publicado.
             </p>
           </div>

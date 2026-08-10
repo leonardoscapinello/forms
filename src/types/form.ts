@@ -682,7 +682,7 @@ export function createDefaultFunnelPage(title?: string): FunnelPage {
     elements: [],
     pageStyle: {
       backgroundColor: '',
-      fontFamily: 'Borna',
+      fontFamily: 'FH Duo Display',
       gap: 32,
       paddingX: 24,
       paddingY: 32,
@@ -879,13 +879,13 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 export const DEFAULT_FORM_STYLE: FormStyle = {
-  primaryColor: '220 18% 20%',
-  backgroundColor: '#FAFAF6',
-  fontFamily: 'Borna',
+  primaryColor: '0 0% 4%',
+  backgroundColor: '#FAFAFA',
+  fontFamily: 'FH Duo Display',
   backgroundType: 'solid',
-  textColor: '#203300',
-  headingFontFamily: 'Borna',
-  bodyFontFamily: 'Borna',
+  textColor: '#0A0A0A',
+  headingFontFamily: 'FH Duo Display',
+  bodyFontFamily: 'FH Duo Display',
 };
 
 export function createDefaultConditionGroup(firstQuestionId: string): ConditionGroup {

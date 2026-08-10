@@ -1,8 +1,9 @@
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DEFAULT_FONT_FAMILY, normalizeFontFamilyName } from '@/lib/fontUtils';
 
 const FONT_OPTIONS = [
-  { value: 'Borna', label: 'Borna' },
+  { value: DEFAULT_FONT_FAMILY, label: DEFAULT_FONT_FAMILY },
   { value: 'DM Sans', label: 'DM Sans' },
   { value: 'Poppins', label: 'Poppins' },
   { value: 'Roboto', label: 'Roboto' },
@@ -18,14 +19,17 @@ const FONT_OPTIONS = [
   { value: 'Times New Roman', label: 'Times New Roman' },
   { value: 'Courier New', label: 'Courier New' },
   { value: 'Verdana', label: 'Verdana' },
+  { value: 'Trebuchet MS', label: 'Trebuchet MS' },
 ];
 
 const WEIGHT_OPTIONS = [
+  { value: '300', label: 'Light' },
   { value: 'normal', label: 'Normal' },
   { value: '500', label: 'Médio' },
   { value: '600', label: 'Semibold' },
   { value: 'bold', label: 'Bold' },
   { value: '800', label: 'Extra Bold' },
+  { value: '900', label: 'Black' },
 ];
 
 interface Props {
@@ -37,13 +41,15 @@ interface Props {
 }
 
 export default function TypographySelector({ fontFamily, fontWeight, onFontFamilyChange, onFontWeightChange, label = 'Tipografia' }: Props) {
+  const selectedFontFamily = normalizeFontFamilyName(fontFamily);
+
   return (
     <div className="space-y-2">
       <Label className="text-xs">{label}</Label>
       <div className="grid grid-cols-2 gap-2">
         <Select
-          value={fontFamily || 'Borna'}
-          onValueChange={v => onFontFamilyChange(v || 'Borna')}
+          value={selectedFontFamily}
+          onValueChange={v => onFontFamilyChange(v || DEFAULT_FONT_FAMILY)}
         >
           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Fonte" /></SelectTrigger>
           <SelectContent>

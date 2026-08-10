@@ -295,12 +295,12 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
           <AreaChart data={sessionsByDay} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="gradSessions" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#B3AB86" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#B3AB86" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradCompleted" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6B8A2A" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#6B8A2A" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -310,8 +310,8 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
               contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
               labelStyle={{ color: 'hsl(var(--foreground))' }}
             />
-            <Area type="monotone" dataKey="sessions" stroke="#B3AB86" fill="url(#gradSessions)" strokeWidth={2} name="Sessões" dot={false} />
-            <Area type="monotone" dataKey="completed" stroke="#6B8A2A" fill="url(#gradCompleted)" strokeWidth={2} name="Concluídos" dot={false} />
+            <Area type="monotone" dataKey="sessions" stroke="hsl(var(--chart-2))" fill="url(#gradSessions)" strokeWidth={2} name="Sessões" dot={false} />
+            <Area type="monotone" dataKey="completed" stroke="hsl(var(--chart-1))" fill="url(#gradCompleted)" strokeWidth={2} name="Concluídos" dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -454,9 +454,9 @@ function FunnelRow({
   isLast?: boolean;
 }) {
   return (
-    <div className={`rounded-lg p-3 ${isLast ? 'bg-[#B3AB86]/8 border border-[#B3AB86]/20' : 'bg-muted/30'}`}>
+    <div className={`rounded-lg p-3 ${isLast ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'}`}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className={`text-xs font-medium ${isLast ? 'text-[#6B5D2F]' : 'text-foreground'}`}>{label}</span>
+        <span className={`text-xs font-medium ${isLast ? 'text-primary' : 'text-foreground'}`}>{label}</span>
         <div className="flex items-center gap-3">
           {!isFirst && dropoff > 0 && (
             <span className="text-[10px] text-destructive font-medium flex items-center gap-0.5">
@@ -469,7 +469,7 @@ function FunnelRow({
       </div>
       <div className="h-2 rounded-full bg-background overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all ${isLast ? 'bg-[#6B5D2F]' : 'bg-[#8A7D4A]'}`}
+          className={`h-full rounded-full transition-all ${isLast ? 'bg-primary' : 'bg-foreground/60'}`}
           style={{ width: `${Math.max(pct, 1)}%` }}
         />
       </div>
@@ -509,7 +509,7 @@ function SessionsTab({ sessions }: { sessions: SessionRow[] }) {
                 {/* Status */}
                 <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                   session.status === 'completed'
-                    ? 'bg-[#B3AB86]/10 text-[#6B5D2F] border-[#B3AB86]/20'
+                    ? 'bg-success/10 text-success border-success/20'
                     : session.status === 'dropped'
                     ? 'bg-destructive/10 text-destructive border-destructive/20'
                     : 'bg-muted text-muted-foreground border-border'

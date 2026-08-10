@@ -54,9 +54,9 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
             <>
               <ColorPickerField
                 label="Cor"
-                value={style.questionNumberColor || style.textColor || '#203300'}
+                value={style.questionNumberColor || style.textColor || '#0A0A0A'}
                 onChange={v => onChange({ questionNumberColor: v })}
-                defaultColor={style.textColor || '#203300'}
+                defaultColor={style.textColor || '#0A0A0A'}
                 allowTransparent
               />
               <SliderRow
@@ -92,9 +92,9 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <ColorPickerField
             label="Cor"
-            value={style.questionTitleColor || style.textColor || '#203300'}
+            value={style.questionTitleColor || style.textColor || '#0A0A0A'}
             onChange={v => onChange({ questionTitleColor: v })}
-            defaultColor={style.textColor || '#203300'}
+            defaultColor={style.textColor || '#0A0A0A'}
             allowTransparent
           />
           <SliderRow
@@ -171,9 +171,9 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
           />
           <ColorPickerField
             label="Cor do texto"
-            value={style.fieldTextColor || '#203300'}
+            value={style.fieldTextColor || '#0A0A0A'}
             onChange={v => onChange({ fieldTextColor: v })}
-            defaultColor="#203300"
+            defaultColor="#0A0A0A"
           />
           <ColorPickerField
             label="Cor do placeholder"
@@ -189,9 +189,9 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
           />
           <ColorPickerField
             label="Borda ao focar"
-            value={style.fieldFocusBorderColor || style.primaryColor || '#B3AB86'}
+            value={style.fieldFocusBorderColor || style.primaryColor || '#0A0A0A'}
             onChange={v => onChange({ fieldFocusBorderColor: v })}
-            defaultColor={style.primaryColor || '#B3AB86'}
+            defaultColor={style.primaryColor || '#0A0A0A'}
           />
           <SliderRow
             label="Espessura da borda"
@@ -227,9 +227,9 @@ export default function QuestionFieldStyleEditor({ style, onChange }: Props) {
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <ColorPickerField
             label="Cor de fundo"
-            value={style.buttonBgColor || style.primaryColor || '#B3AB86'}
+            value={style.buttonBgColor || style.primaryColor || '#0A0A0A'}
             onChange={v => onChange({ buttonBgColor: v })}
-            defaultColor={style.primaryColor || '#B3AB86'}
+            defaultColor={style.primaryColor || '#0A0A0A'}
           />
           <ColorPickerField
             label="Cor do texto"

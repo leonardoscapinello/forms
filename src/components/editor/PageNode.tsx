@@ -56,7 +56,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
     <div
       className={`w-72 rounded-xl border bg-card shadow-sm transition-all cursor-pointer hover:shadow-md ${
         isNodeDisabled ? 'opacity-50 grayscale'
-        : selected ? 'border-[#B3AB86] shadow-md ring-2 ring-[#B3AB86]/10'
+        : selected ? 'border-primary shadow-md ring-2 ring-primary/10'
         : isDisconnected ? 'border-destructive/50 opacity-60'
         : isEmpty ? 'border-warning/50 bg-warning/5'
         : 'border-border'
@@ -68,9 +68,9 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
 
       {/* Header */}
       <div className={`flex items-center gap-2 px-3 py-2 border-b rounded-t-xl ${
-        isEmpty ? 'border-warning/30 bg-warning/10' : 'border-[#B3AB86]/20 bg-[#B3AB86]/8'
+        isEmpty ? 'border-warning/30 bg-warning/10' : 'border-primary/20 bg-primary/5'
       }`}>
-        <div className={`flex items-center gap-1.5 ${isEmpty ? 'text-warning' : 'text-[#8A7D4A]'}`}>
+        <div className={`flex items-center gap-1.5 ${isEmpty ? 'text-warning' : 'text-primary'}`}>
           {isEmpty ? <AlertTriangle className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
           <span className="text-[11px] font-medium uppercase tracking-wide">Página</span>
         </div>
@@ -89,12 +89,12 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
             onChange={e => setEditValue(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') { setEditValue(page.title); setEditing(false); } }}
-            className="text-sm font-medium text-foreground w-full bg-transparent border-0 border-b border-[#B3AB86] outline-none px-0 py-0.5"
+            className="text-sm font-medium text-foreground w-full bg-transparent border-0 border-b border-primary outline-none px-0 py-0.5"
             placeholder="Título da página"
           />
         ) : (
           <p
-            className="text-sm font-medium text-foreground truncate hover:text-[#8A7D4A] cursor-text"
+            className="text-sm font-medium text-foreground truncate hover:text-primary cursor-text"
             onClick={startEditing}
           >
             {page.title || 'Sem título'}
@@ -147,7 +147,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
               <button
                 className={`flex items-center gap-1.5 text-[10px] w-full rounded px-1.5 py-1 transition-colors ${
                   assignmentCount > 0
-                    ? 'text-[#8A7D4A] bg-[#B3AB86]/10 hover:bg-[#B3AB86]/20'
+                    ? 'text-primary bg-primary/10 hover:bg-primary/15'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
@@ -164,7 +164,7 @@ function PageNode({ data, selected }: NodeProps & { data: PageNodeData }) {
               className="w-80 p-0"
             >
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-                <Variable className="h-4 w-4 text-[#8A7D4A]" />
+                <Variable className="h-4 w-4 text-primary" />
                 <div>
                   <p className="text-xs font-semibold text-foreground">Atribuição de variáveis</p>
                   <p className="text-[10px] text-muted-foreground">Executado ao entrar nesta página</p>

@@ -6,6 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const DEFAULT_FONT_FAMILY = 'FH Duo Display';
+
+function normalizeFontFamilyName(fontFamily?: unknown): string {
+  if (typeof fontFamily !== 'string') return DEFAULT_FONT_FAMILY;
+  const raw = fontFamily.trim();
+  if (!raw) return DEFAULT_FONT_FAMILY;
+
+  const firstFamily = raw.replace(/["']/g, '').split(',')[0]?.trim().toLowerCase() || '';
+  return firstFamily === 'borna' || firstFamily === 'inter' ? DEFAULT_FONT_FAMILY : raw;
+}
+
 // ── Element → HTML converter ──
 
 function escapeHtml(text: string): string {
@@ -27,8 +38,14 @@ function inlineStyle(obj: Record<string, string | number | undefined>): string {
     .join(';');
 }
 
-function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
+function elementToHtml(el: any, formStyle: any, globalPageStyle: any, stepNumber: number): string {
   const style = el.style || {};
+  const headingFontFamily = normalizeFontFamilyName(
+    style.fontFamily || formStyle?.headingFontFamily || globalPageStyle?.fontFamily || formStyle?.fontFamily,
+  );
+  const bodyFontFamily = normalizeFontFamilyName(
+    style.fontFamily || formStyle?.bodyFontFamily || globalPageStyle?.fontFamily || formStyle?.fontFamily,
+  );
 
   switch (el.type) {
     case 'heading': {
@@ -36,7 +53,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
       const tag = `h${level}`;
       const css = inlineStyle({
         color: style.color || formStyle?.questionTitleColor || formStyle?.textColor,
-        fontFamily: style.fontFamily || formStyle?.headingFontFamily || formStyle?.fontFamily || 'Borna',
+        fontFamily: headingFontFamily,
         fontWeight: style.fontWeight || formStyle?.questionTitleWeight || 'bold',
         fontSize: style.fontSize || (level === 1 ? '28px' : level === 2 ? '22px' : '18px'),
         textAlign: style.textAlign || 'left',
@@ -48,7 +65,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
     case 'text': {
       const css = inlineStyle({
         color: style.color || formStyle?.textColor,
-        fontFamily: style.fontFamily || formStyle?.bodyFontFamily || formStyle?.fontFamily || 'Borna',
+        fontFamily: bodyFontFamily,
         fontWeight: style.fontWeight,
         fontSize: style.fontSize || '16px',
         lineHeight: '1.6',
@@ -79,7 +96,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
         padding: '10px 24px',
         border: 'none',
         cursor: 'pointer',
-        fontFamily: style.fontFamily || formStyle?.bodyFontFamily || formStyle?.fontFamily || 'Borna',
+        fontFamily: bodyFontFamily,
         fontWeight: style.fontWeight || '600',
         fontSize: '15px',
         display: 'inline-flex',
@@ -117,7 +134,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
       const inputType = el.type === 'input_email' ? 'email' : el.type === 'input_number' ? 'number' : 'text';
 
       const headerHtml = `
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;font-family:${headingFontFamily}">
           <span style="font-weight:700;color:${numColor};font-size:${formStyle?.questionNumberSize || 15}px">${stepNumber} →</span>
           <span style="font-weight:${formStyle?.questionTitleWeight || '600'};color:${titleColor};font-size:${formStyle?.questionTitleSize || 18}px">${escapeHtml(label)}</span>
           ${el.required ? '<span style="color:#ef4444">*</span>' : ''}
@@ -140,7 +157,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
       const isMulti = el.type === 'input_multi_select';
 
       const headerHtml = `
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;font-family:${headingFontFamily}">
           <span style="font-weight:700;color:${numColor};font-size:${formStyle?.questionNumberSize || 15}px">${stepNumber} →</span>
           <span style="font-weight:${formStyle?.questionTitleWeight || '600'};color:${titleColor};font-size:${formStyle?.questionTitleSize || 18}px">${escapeHtml(label)}</span>
           ${el.required ? '<span style="color:#ef4444">*</span>' : ''}
@@ -163,7 +180,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
       const titleColor = formStyle?.questionTitleColor || formStyle?.textColor || '#333';
 
       const headerHtml = `
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;font-family:${headingFontFamily}">
           <span style="font-weight:700;color:${numColor};font-size:${formStyle?.questionNumberSize || 15}px">${stepNumber} →</span>
           <span style="font-weight:${formStyle?.questionTitleWeight || '600'};color:${titleColor};font-size:${formStyle?.questionTitleSize || 18}px">${escapeHtml(label)}</span>
         </div>`;
@@ -182,7 +199,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
       const activeColor = el.ratingActiveColor || '#f59e0b';
 
       const headerHtml = `
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;font-family:${headingFontFamily}">
           <span style="font-weight:700;color:${numColor};font-size:${formStyle?.questionNumberSize || 15}px">${stepNumber} →</span>
           <span style="font-weight:${formStyle?.questionTitleWeight || '600'};color:${titleColor};font-size:${formStyle?.questionTitleSize || 18}px">${escapeHtml(label)}</span>
         </div>`;
@@ -202,7 +219,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
       const titleColor = formStyle?.questionTitleColor || formStyle?.textColor || '#333';
 
       const headerHtml = `
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;font-family:${headingFontFamily}">
           <span style="font-weight:700;color:${numColor};font-size:${formStyle?.questionNumberSize || 15}px">${stepNumber} →</span>
           <span style="font-weight:${formStyle?.questionTitleWeight || '600'};color:${titleColor};font-size:${formStyle?.questionTitleSize || 18}px">${escapeHtml(label)}</span>
         </div>`;
@@ -224,7 +241,7 @@ function elementToHtml(el: any, formStyle: any, stepNumber: number): string {
   }
 }
 
-function generatePageHtml(page: any, formStyle: any): string {
+function generatePageHtml(page: any, formStyle: any, globalPageStyle: any): string {
   if (!page?.elements?.length) return '';
   const pageStyle = page.pageStyle || {};
   const gap = pageStyle.gap ?? 32;
@@ -233,25 +250,36 @@ function generatePageHtml(page: any, formStyle: any): string {
   const elementsHtml = page.elements.map((el: any) => {
     const isField = el.type.startsWith('input_');
     if (isField) fieldIndex++;
-    return elementToHtml(el, formStyle, isField ? fieldIndex : 0);
+    return elementToHtml(el, formStyle, globalPageStyle, isField ? fieldIndex : 0);
   }).filter(Boolean).join(`\n`);
 
-  return `<div style="display:flex;flex-direction:column;gap:${gap}px">${elementsHtml}</div>`;
+  const bodyFontFamily = normalizeFontFamilyName(
+    formStyle?.bodyFontFamily || globalPageStyle?.fontFamily || formStyle?.fontFamily,
+  );
+  return `<div style="display:flex;flex-direction:column;gap:${gap}px;font-family:${bodyFontFamily}">${elementsHtml}</div>`;
 }
 
 function generateFormCss(formStyle: any, globalPageStyle: any): string {
-  const primaryColor = formStyle?.primaryColor || '220 18% 20%';
-  const bgColor = formStyle?.backgroundColor || '#FAFAF6';
-  const textColor = formStyle?.textColor || '#203300';
-  const fontFamily = formStyle?.fontFamily || 'Borna';
+  const primaryColor = formStyle?.primaryColor || '0 0% 4%';
+  const bgColor = formStyle?.backgroundColor || '#FAFAFA';
+  const textColor = formStyle?.textColor || '#0A0A0A';
+  const fontFamily = normalizeFontFamilyName(globalPageStyle?.fontFamily || formStyle?.fontFamily);
 
   return `
-@font-face{font-family:'Borna';src:url('/fonts/borna/Borna-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Borna';src:url('/fonts/borna/Borna-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
-@font-face{font-family:'Borna';src:url('/fonts/borna/Borna-SemiBold.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
-@font-face{font-family:'Borna';src:url('/fonts/borna/Borna-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-Light.woff2') format('woff2');font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-LightItalic.woff2') format('woff2');font-weight:300;font-style:italic;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-RegularItalic.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-MediumItalic.woff2') format('woff2');font-weight:500;font-style:italic;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-SemiBold.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-SemiBoldItalic.woff2') format('woff2');font-weight:600;font-style:italic;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-BoldItalic.woff2') format('woff2');font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-Black.woff2') format('woff2');font-weight:900;font-style:normal;font-display:swap}
+@font-face{font-family:'FH Duo Display';src:url('/fonts/fh-duo-display/FHDuoDisplay-BlackItalic.woff2') format('woff2');font-weight:900;font-style:italic;font-display:swap}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{min-height:100%;font-family:'${fontFamily}',ui-sans-serif,system-ui,sans-serif}
+html,body{min-height:100%;font-family:'${fontFamily}',ui-sans-serif,system-ui,sans-serif;font-synthesis:none}
 body{background:${bgColor};color:${textColor}}
 #root{min-height:100vh}
 .ssr-form-container{min-height:100vh;display:flex;flex-direction:column;align-items:center}
@@ -395,6 +423,12 @@ Deno.serve(async (req) => {
     const formStyle = (formData as any).style || {};
     const globalPageStyle = (formData as any).globalPageStyle || {};
     const pages = (formData as any).pages || [];
+    const headingFontFamily = normalizeFontFamilyName(
+      formStyle.headingFontFamily || globalPageStyle.fontFamily || formStyle.fontFamily,
+    );
+    const bodyFontFamily = normalizeFontFamilyName(
+      formStyle.bodyFontFamily || globalPageStyle.fontFamily || formStyle.fontFamily,
+    );
 
     // Determine first visible page
     const showWelcome = (formData as any).showWelcomeScreen;
@@ -403,7 +437,7 @@ Deno.serve(async (req) => {
     if (showWelcome) {
       const welcomePage = (formData as any).welcomePage;
       if (welcomePage?.elements?.length) {
-        firstPageHtml = generatePageHtml(welcomePage, formStyle);
+        firstPageHtml = generatePageHtml(welcomePage, formStyle, globalPageStyle);
       } else {
         // Default welcome screen
         const title = (formData as any).welcomeTitle || formData.title || '';
@@ -412,8 +446,8 @@ Deno.serve(async (req) => {
         const btnColor = formStyle.buttonTextColor || '#fff';
         firstPageHtml = `
           <div style="text-align:center;display:flex;flex-direction:column;gap:16px;align-items:center">
-            <h1 style="font-size:28px;font-weight:700;color:${formStyle.textColor || '#333'}">${escapeHtml(title)}</h1>
-            <p style="font-size:18px;color:rgba(0,0,0,0.6)">${escapeHtml(desc || 'Clique em começar para iniciar.')}</p>
+            <h1 style="font-size:28px;font-weight:700;color:${formStyle.textColor || '#333'};font-family:${headingFontFamily}">${escapeHtml(title)}</h1>
+            <p style="font-size:18px;color:rgba(0,0,0,0.6);font-family:${bodyFontFamily}">${escapeHtml(desc || 'Clique em começar para iniciar.')}</p>
             <button type="button" class="ssr-nav-btn ssr-nav-next" style="margin-top:16px;background:${btnBg};color:${btnColor}" data-action="start">Começar →</button>
           </div>`;
       }
@@ -421,7 +455,7 @@ Deno.serve(async (req) => {
       // First non-empty page
       for (const page of pages) {
         if (page.elements?.length > 0) {
-          firstPageHtml = generatePageHtml(page, formStyle);
+          firstPageHtml = generatePageHtml(page, formStyle, globalPageStyle);
           break;
         }
       }
@@ -446,7 +480,7 @@ Deno.serve(async (req) => {
     const topBarHtml = hasTopBar ? `<div style="padding:16px 16px 0;display:flex;align-items:center;gap:16px;width:100%;max-width:${672 + (globalPageStyle.paddingX || 24) * 2}px;margin:0 auto">${logoHtml}${progressHtml ? `<div style="flex:1">${progressHtml}</div>` : ''}</div>` : '';
 
     // Background styles
-    let bgStyle = `background:${formStyle.backgroundColor || '#FAFAF6'}`;
+    let bgStyle = `background:${formStyle.backgroundColor || '#FAFAFA'}`;
     if (formStyle.backgroundType === 'gradient' && formStyle.backgroundGradient) {
       bgStyle = `background:${formStyle.backgroundGradient}`;
     } else if (formStyle.backgroundType === 'image' && formStyle.backgroundImage) {

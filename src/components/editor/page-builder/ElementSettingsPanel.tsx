@@ -2508,8 +2508,8 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   <div className="grid grid-cols-2 gap-2">
                     <ColorPickerField
                       label="Ícone / Marcador"
-                      value={element.listIconColor || '#22c55e'}
-                      onChange={v => onChange({ listIconColor: v || '#22c55e' })}
+                      value={element.listIconColor || '#050505'}
+                      onChange={v => onChange({ listIconColor: v || '#050505' })}
                       allowTransparent={false}
                     />
                     <ColorPickerField
@@ -2529,8 +2529,8 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   <div className="grid grid-cols-2 gap-2">
                     <ColorPickerField
                       label="Progresso"
-                      value={element.circularProgressColor || '#22c55e'}
-                      onChange={v => onChange({ circularProgressColor: v || '#22c55e' })}
+                      value={element.circularProgressColor || '#050505'}
+                      onChange={v => onChange({ circularProgressColor: v || '#050505' })}
                       allowTransparent={false}
                     />
                     <ColorPickerField

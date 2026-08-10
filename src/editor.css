@@ -5,7 +5,7 @@
 
 /* Editor-only semantic + node category CSS variables */
 :root {
-  --success: 42 23% 41%;
+  --success: 142 71% 45%;
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
@@ -53,7 +53,7 @@
 }
 
 .dark {
-  --success: 42 23% 41%;
+  --success: 142 71% 45%;
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;

@@ -152,15 +152,15 @@ export default function Login() {
       <div className="w-full max-w-[380px]">
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8">
-          <div className="h-9 w-9 rounded-lg bg-foreground flex items-center justify-center">
+          <div className="h-9 w-9 rounded-lg bg-black flex items-center justify-center">
             <img
-              src="/images/twobrain-icon.svg"
-              alt="twobrain"
-              className="h-4.5 w-4.5 brightness-0 invert"
+              src="/images/brand-icon.svg"
+              alt=""
+              className="h-5 w-5"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           </div>
-          <span className="text-base font-semibold text-foreground tracking-tight">twobrain</span>
+          <span className="text-base font-semibold text-foreground tracking-tight">Forms</span>
         </div>
 
         {/* Header */}
@@ -279,7 +279,7 @@ export default function Login() {
         </form>
 
         <p className="text-[11px] text-muted-foreground/40 text-center mt-8">
-          © {new Date().getFullYear()} twobrain
+          © {new Date().getFullYear()} Forms
         </p>
       </div>
     </div>
