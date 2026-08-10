@@ -1,7 +1,7 @@
 # Plano completo de auditoria, migração, performance e segurança
 
-> Projeto auditado: `twobrain-forms`  
-> Data do diagnóstico: 10/08/2026  
+> Projeto auditado: `twobrain-forms`<br>
+> Data do diagnóstico: 10/08/2026<br>
 > Escopo: preservar 100% das funcionalidades, manter a cópia original da Twobrain, criar uma edição independente com nova identidade, migrar GitHub e Supabase com segurança e elevar qualidade, velocidade e observabilidade.
 
 ## 1. Resumo executivo
