@@ -193,17 +193,17 @@ function FlowCanvasInner({
   const handleAutoLayout = useCallback(() => handleAutoLayoutRef.current(), []);
 
   const pages = useMemo(() => form.pages || [], [form.pages]);
-  const variables = form.variables || [];
-  const variableOpNodes = form.variableOpNodes || [];
-  const integrationNodes = form.integrationNodes || [];
-  const analyticsNodes = form.analyticsNodes || [];
-  const whatsappNodes = form.whatsappNodes || [];
-  const emailNodes = form.emailNodes || [];
-  const abTestNodes = form.abTestNodes || [];
-  const waitNodes = form.waitNodes || [];
-  const jumpNodes = form.jumpNodes || [];
-  const aiNodes = form.aiNodes || [];
-  const imageGenNodes = form.imageGenNodes || [];
+  const variables = useMemo(() => form.variables || [], [form.variables]);
+  const variableOpNodes = useMemo(() => form.variableOpNodes || [], [form.variableOpNodes]);
+  const integrationNodes = useMemo(() => form.integrationNodes || [], [form.integrationNodes]);
+  const analyticsNodes = useMemo(() => form.analyticsNodes || [], [form.analyticsNodes]);
+  const whatsappNodes = useMemo(() => form.whatsappNodes || [], [form.whatsappNodes]);
+  const emailNodes = useMemo(() => form.emailNodes || [], [form.emailNodes]);
+  const abTestNodes = useMemo(() => form.abTestNodes || [], [form.abTestNodes]);
+  const waitNodes = useMemo(() => form.waitNodes || [], [form.waitNodes]);
+  const jumpNodes = useMemo(() => form.jumpNodes || [], [form.jumpNodes]);
+  const aiNodes = useMemo(() => form.aiNodes || [], [form.aiNodes]);
+  const imageGenNodes = useMemo(() => form.imageGenNodes || [], [form.imageGenNodes]);
 
   // Build a grouped structure of input elements per page, expanding compound fields into sub-entries
   const inputElementsByPage = useMemo(() => {
