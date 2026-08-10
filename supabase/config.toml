@@ -1,16 +1,16 @@
 project_id = "gxotayvavefhlcvbuczq"
 
 [functions.minio-test]
-verify_jwt = false
+verify_jwt = true
 
 [functions.minio-upload]
-verify_jwt = false
+verify_jwt = true
 
 [functions.minio-delete]
-verify_jwt = false
+verify_jwt = true
 
 [functions.admin-create-user]
-verify_jwt = false
+verify_jwt = true
 
 [functions.setup-admin]
 verify_jwt = false
@@ -25,16 +25,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.google-oauth-start]
-verify_jwt = false
+verify_jwt = true
 
 [functions.google-oauth-callback]
 verify_jwt = false
 
 [functions.google-sheets-sync]
-verify_jwt = false
+verify_jwt = true
 
 [functions.webhook-test]
-verify_jwt = false
+verify_jwt = true
 
 [functions.whatsapp-send]
 verify_jwt = false
@@ -43,19 +43,19 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.analyze-sentiment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analyze-form-responses]
-verify_jwt = false
+verify_jwt = true
 
 [functions.form-public-get]
 verify_jwt = false
 
 [functions.form-responses-read]
-verify_jwt = false
+verify_jwt = true
 
 [functions.form-ssr-generate]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-process]
 verify_jwt = false

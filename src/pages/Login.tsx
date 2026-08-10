@@ -52,7 +52,7 @@ export default function Login() {
           setSetupMode(false);
         } else if ((res as any).error) {
           const ctx = ((res as any).error as any)?.context;
-          if (ctx?.status === 403) {
+          if (ctx?.status === 401 || ctx?.status === 403) {
             setSetupMode(false);
           } else {
             setSetupMode(true);
