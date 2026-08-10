@@ -12,13 +12,37 @@ serve(async (req) => {
   }
 
   try {
-    if (Deno.env.get('SETUP_ENABLED') !== 'true') {
+    const payload = await req.json().catch(() => ({}));
+    const setupEnabled = Deno.env.get('SETUP_ENABLED') === 'true';
+    const expectedSetupToken = Deno.env.get('SETUP_TOKEN');
+
+    if (payload?.action === 'status') {
+      if (!setupEnabled || !expectedSetupToken) {
+        return new Response(JSON.stringify({ setupRequired: false }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const statusClient = createClient(supabaseUrl, serviceRoleKey);
+      const { count, error: countError } = await statusClient
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) throw countError;
+
+      return new Response(JSON.stringify({ setupRequired: count === 0 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!setupEnabled) {
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const expectedSetupToken = Deno.env.get('SETUP_TOKEN');
     const suppliedSetupToken = req.headers.get('x-setup-token');
     if (!expectedSetupToken || suppliedSetupToken !== expectedSetupToken) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -38,7 +62,7 @@ serve(async (req) => {
       });
     }
 
-    const { email, password, displayName } = await req.json();
+    const { email, password, displayName } = payload;
     if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
       return new Response(JSON.stringify({ error: 'Email and password required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

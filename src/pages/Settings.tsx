@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useTags } from '@/hooks/useTags';
+import { getFunctionErrorMessage } from '@/lib/functionError';
 
 // ─── Tab navigation ───
 const TABS = [
@@ -157,17 +158,27 @@ function UsersTab() {
 
   const handleCreate = useCallback(async () => {
     if (!newEmail || !newPassword) return;
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      toast({
+        title: 'Senha inválida',
+        description: 'A senha deve ter entre 8 e 128 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setCreating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('admin-create-user', {
-        body: { email: newEmail, password: newPassword, displayName: newName, role: newRole },
+        body: {
+          email: newEmail.trim(),
+          password: newPassword,
+          displayName: newName.trim(),
+          role: newRole,
+        },
       });
-      if (res.error) throw new Error(res.error.message);
-      const result = res.data as any;
-      if (result?.error) throw new Error(result.error);
+      if (res.error) throw new Error(await getFunctionErrorMessage(res.error));
 
-      toast({ title: 'Usuário criado', description: `${newEmail} foi adicionado.` });
+      toast({ title: 'Usuário criado', description: `${newEmail.trim()} foi adicionado.` });
       setNewEmail(''); setNewPassword(''); setNewName(''); setNewRole('user');
       setShowCreate(false);
       fetchUsers();
@@ -196,17 +207,23 @@ function UsersTab() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3 animate-fade-in">
+        <form
+          className="rounded-xl border border-border bg-card p-5 space-y-3 animate-fade-in"
+          onSubmit={e => {
+            e.preventDefault();
+            void handleCreate();
+          }}
+        >
           <h3 className="text-sm font-semibold text-foreground">Criar novo usuário</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Nome</Label>
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nome completo" className="text-sm" />
+              <Label htmlFor="new-user-name" className="text-xs text-muted-foreground">Nome</Label>
+              <Input id="new-user-name" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nome completo" maxLength={100} className="text-sm" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Papel</Label>
+              <Label htmlFor="new-user-role" className="text-xs text-muted-foreground">Papel</Label>
               <Select value={newRole} onValueChange={v => setNewRole(v as 'user' | 'admin')}>
-                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="new-user-role" className="text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-popover z-50">
                   <SelectItem value="user">Usuário</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
@@ -215,21 +232,21 @@ function UsersTab() {
             </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Email</Label>
-            <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@exemplo.com" className="text-sm" />
+            <Label htmlFor="new-user-email" className="text-xs text-muted-foreground">Email</Label>
+            <Input id="new-user-email" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@exemplo.com" required maxLength={254} className="text-sm" />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Senha</Label>
-            <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className="text-sm" />
+            <Label htmlFor="new-user-password" className="text-xs text-muted-foreground">Senha</Label>
+            <Input id="new-user-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="8 a 128 caracteres" required minLength={8} maxLength={128} className="text-sm" />
           </div>
           <div className="flex gap-2 pt-1">
-            <Button size="sm" onClick={handleCreate} disabled={creating || !newEmail || !newPassword}>
+            <Button type="submit" size="sm" disabled={creating || !newEmail || !newPassword}>
               {creating && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
               Criar
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
           </div>
-        </div>
+        </form>
       )}
 
       {/* User list */}

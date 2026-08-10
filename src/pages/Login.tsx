@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, UserPlus, Lock, Mail, User } from 'lucide-react';
+import { getFunctionErrorMessage } from '@/lib/functionError';
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -28,38 +29,22 @@ export default function Login() {
   const [setupMode, setSetupMode] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
   const [setupName, setSetupName] = useState('');
+  const [setupToken, setSetupToken] = useState('');
 
   useEffect(() => {
     let cancelled = false;
 
     async function check() {
       try {
-        const res = await Promise.race([
-          supabase.functions.invoke('setup-admin', {
-            body: { email: '', password: '' },
-          }),
-          new Promise<never>((_, reject) =>
-            window.setTimeout(() => reject(new Error('setup_check_timeout')), 5000)
-          ),
-        ]);
+        const res = await supabase.functions.invoke('setup-admin', {
+          body: { action: 'status' },
+          timeout: 5000,
+        });
 
         if (cancelled) return;
 
-        const data = (res as any).data as any;
-        const dataError = typeof data?.error === 'string' ? data.error : '';
-
-        if (dataError.includes('Setup already completed') || dataError.includes('Users exist')) {
-          setSetupMode(false);
-        } else if ((res as any).error) {
-          const ctx = ((res as any).error as any)?.context;
-          if (ctx?.status === 401 || ctx?.status === 403) {
-            setSetupMode(false);
-          } else {
-            setSetupMode(true);
-          }
-        } else {
-          setSetupMode(true);
-        }
+        const data = res.data as { setupRequired?: boolean } | null;
+        setSetupMode(!res.error && data?.setupRequired === true);
       } catch {
         if (!cancelled) setSetupMode(false);
       } finally {
@@ -98,11 +83,10 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await supabase.functions.invoke('setup-admin', {
+        headers: { 'x-setup-token': setupToken },
         body: { email, password, displayName: setupName },
       });
-      const data = res.data as any;
-      if (data?.error) throw new Error(data.error);
-      if (res.error) throw new Error(res.error.message);
+      if (res.error) throw new Error(await getFunctionErrorMessage(res.error));
 
       const { error: loginErr } = await signIn(email, password);
       if (loginErr) setError(loginErr);
@@ -221,10 +205,11 @@ export default function Login() {
         <form onSubmit={setupMode ? handleSetup : handleLogin} className="space-y-4">
           {setupMode && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Nome</Label>
+              <Label htmlFor="setup-name" className="text-xs font-medium text-muted-foreground">Nome</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
                 <Input
+                  id="setup-name"
                   value={setupName}
                   onChange={e => setSetupName(e.target.value)}
                   placeholder="Seu nome"
@@ -235,11 +220,31 @@ export default function Login() {
             </div>
           )}
 
+          {setupMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="setup-token" className="text-xs font-medium text-muted-foreground">Token de configuração</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
+                <Input
+                  id="setup-token"
+                  type="password"
+                  value={setupToken}
+                  onChange={e => setSetupToken(e.target.value)}
+                  placeholder="Token temporário do ambiente"
+                  required
+                  className="pl-10 h-10"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+            <Label htmlFor="login-email" className="text-xs font-medium text-muted-foreground">Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
               <Input
+                id="login-email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -252,15 +257,18 @@ export default function Login() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Senha</Label>
+            <Label htmlFor="login-password" className="text-xs font-medium text-muted-foreground">Senha</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
               <Input
+                id="login-password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                minLength={setupMode ? 12 : undefined}
+                maxLength={128}
                 className="pl-10 h-10"
               />
             </div>
