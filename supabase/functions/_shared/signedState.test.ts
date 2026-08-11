@@ -41,8 +41,13 @@ Deno.test('opaque signed state rejects a wrong key and tampering', async () => {
     'a different key must not decrypt the state',
   );
 
-  const last = token.at(-1) === 'A' ? 'B' : 'A';
-  const tampered = `${token.slice(0, -1)}${last}`;
+  // Do not alter the final base64url character: when the envelope is not a
+  // multiple of three bytes, unused padding bits can produce a different text
+  // representation of the exact same bytes. Mutating a full interior sextet
+  // guarantees the decoded AES-GCM envelope itself changes.
+  const tamperIndex = 8;
+  const replacement = token[tamperIndex] === 'A' ? 'B' : 'A';
+  const tampered = `${token.slice(0, tamperIndex)}${replacement}${token.slice(tamperIndex + 1)}`;
   assert(
     await verifySignedStateWithSecret(tampered, secret) === null,
     'AES-GCM authentication must reject a modified envelope',
