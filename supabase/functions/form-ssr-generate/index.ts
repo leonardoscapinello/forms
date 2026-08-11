@@ -1,5 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireFormAccess } from '../_shared/auth.ts';
+import { normalizeTrustedVideoEmbedUrl } from '../_shared/outboundHttp.ts';
+import { readLimitedJsonObject } from '../_shared/limitedJsonBody.ts';
+import { isExplicitlyEnabled } from '../_shared/legacyFeatureGate.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +10,7 @@ const corsHeaders = {
 };
 
 const DEFAULT_FONT_FAMILY = 'FH Duo Display';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function normalizeFontFamilyName(fontFamily?: unknown): string {
   if (typeof fontFamily !== 'string') return DEFAULT_FONT_FAMILY;
@@ -106,9 +110,11 @@ function elementToHtml(el: any, formStyle: any, globalPageStyle: any, stepNumber
       return `<button type="button" style="${css}" data-action="${el.buttonAction || 'next'}" data-target="${el.buttonTargetPageId || ''}">${escapeHtml(el.content || 'Botão')}</button>`;
     }
 
-    case 'video':
-      if (!el.src) return '';
-      return `<div style="aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#f0f0f0"><iframe src="${escapeHtml(el.src)}" style="width:100%;height:100%;border:0" allowfullscreen title="Video"></iframe></div>`;
+    case 'video': {
+      const embedUrl = normalizeTrustedVideoEmbedUrl(el.src);
+      if (!embedUrl) return '';
+      return `<div style="aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#f0f0f0"><iframe src="${escapeHtml(embedUrl)}" style="width:100%;height:100%;border:0" allowfullscreen title="Video"></iframe></div>`;
+    }
 
     case 'alert': {
       const v = el.alertVariant || 'info';
@@ -373,10 +379,31 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', Allow: 'POST, OPTIONS' },
+    });
+  }
+
+  // The published runtime is rendered by Vercel's /api/form-page hybrid
+  // shell. This older storage-backed renderer has no active consumer and must
+  // not create a second, independently cached HTML surface by accident.
+  if (!isExplicitlyEnabled(Deno.env.get('ENABLE_LEGACY_FORM_SSR_GENERATE'))) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'legacy_form_ssr_generator_disabled',
+    }), {
+      status: 410,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
-    const { formId } = await req.json();
-    if (!formId) {
+    const parsedBody = await readLimitedJsonObject(req, 4 * 1024, corsHeaders);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { formId } = parsedBody.value;
+    if (typeof formId !== 'string' || !UUID_PATTERN.test(formId)) {
       return new Response(JSON.stringify({ error: 'missing_form_id' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

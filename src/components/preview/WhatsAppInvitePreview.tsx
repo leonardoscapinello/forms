@@ -1,4 +1,5 @@
 import { PageElement } from '@/types/pageElements';
+import { normalizeWhatsAppGroupUrl } from '@/lib/safeUrl';
 
 interface Props {
   element: PageElement;
@@ -21,6 +22,7 @@ export default function WhatsAppInvitePreview({ element }: Props) {
     .join('');
 
   const hasLink = waGroupLink && waGroupLink !== 'https://chat.whatsapp.com/';
+  const safeGroupLink = normalizeWhatsAppGroupUrl(waGroupLink);
 
   return (
     <div className="flex flex-col items-center w-full py-2">
@@ -140,10 +142,10 @@ export default function WhatsAppInvitePreview({ element }: Props) {
 
           {/* CTA button */}
           <a
-            href={hasLink ? waGroupLink : '#'}
+            href={hasLink && safeGroupLink ? safeGroupLink : '#'}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={e => { if (!hasLink) e.preventDefault(); }}
+            onClick={e => { if (!hasLink || !safeGroupLink) e.preventDefault(); }}
             className="flex items-center justify-center gap-2 w-full transition-transform active:scale-[0.98]"
             style={{
               marginTop: 16,

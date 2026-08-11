@@ -17,7 +17,7 @@ import { flattenPageElements } from '@/lib/pageElementTree';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
-export const ANALYTICS_PLATFORMS: {
+const ANALYTICS_PLATFORMS: {
   value: AnalyticsPlatform;
   label: string;
   description: string;

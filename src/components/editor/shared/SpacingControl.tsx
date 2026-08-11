@@ -26,7 +26,9 @@ interface Props {
 }
 
 export default function SpacingControl({ property, label, value, sides, onChange, max = 80, step = 2 }: Props) {
-  const [linked, setLinked] = useState(true);
+  const hasIndividualSides = Object.values(sides || {}).some(side => side !== undefined);
+  const [linkedOverride, setLinkedOverride] = useState<boolean | null>(null);
+  const linked = linkedOverride ?? !hasIndividualSides;
 
   const prefix = property;
   const topKey = `${prefix}Top`;
@@ -37,30 +39,44 @@ export default function SpacingControl({ property, label, value, sides, onChange
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="text-xs">{label}</Label>
+        <div>
+          <Label className="text-xs">{label}</Label>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {property === 'padding'
+              ? 'Espaço entre o conteúdo e a borda do bloco.'
+              : 'Espaço entre este bloco e os elementos ao redor.'}
+          </p>
+        </div>
         <button
           type="button"
-          onClick={() => setLinked(!linked)}
-          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setLinkedOverride(!linked)}
+          className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           title={linked ? 'Editar lados individualmente' : 'Editar todos juntos'}
+          aria-label={linked ? 'Separar os quatro lados' : 'Vincular os quatro lados'}
         >
           {linked ? <Link className="h-3.5 w-3.5" /> : <Unlink className="h-3.5 w-3.5" />}
         </button>
       </div>
       {linked ? (
-        <Slider
-          value={[value ?? 0]}
-          onValueChange={([v]) => onChange({
-            [prefix]: v,
-            [topKey]: undefined,
-            [rightKey]: undefined,
-            [bottomKey]: undefined,
-            [leftKey]: undefined,
-          })}
-          min={0}
-          max={max}
-          step={step}
-        />
+        <div className="grid grid-cols-[1fr_58px] items-center gap-3">
+          <Slider
+            value={[value ?? 0]}
+            onValueChange={([v]) => onChange({
+              [prefix]: v,
+              [topKey]: undefined,
+              [rightKey]: undefined,
+              [bottomKey]: undefined,
+              [leftKey]: undefined,
+            })}
+            min={0}
+            max={max}
+            step={step}
+            aria-label={`${label} em todos os lados`}
+          />
+          <div className="flex h-8 items-center justify-center rounded-md border border-input bg-background text-xs tabular-nums text-foreground">
+            {value ?? 0}px
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {SIDES.map(({ key, label: sideLabel }) => {
@@ -76,6 +92,7 @@ export default function SpacingControl({ property, label, value, sides, onChange
                   className="h-8 text-xs"
                   min={0}
                   max={max}
+                  aria-label={`${label}: ${sideLabel.toLowerCase()}`}
                 />
               </div>
             );

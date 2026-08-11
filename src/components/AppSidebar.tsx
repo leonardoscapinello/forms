@@ -1,8 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/authContext';
 import { Settings, LogOut, LayoutDashboard, Image, FileText, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Sidebar, SidebarContent, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
+import { useBrand } from '@/hooks/brandContext';
+import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebarContext';
 
 const mainItems = [
   { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
@@ -18,6 +20,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut, role } = useAuth();
+  const { brand } = useBrand();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
 
@@ -76,11 +79,12 @@ export function AppSidebar() {
         <div className="h-14 flex items-center px-5 border-b border-sidebar-border shrink-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black">
-              <img src="/images/brand-icon.svg" alt="" className="h-5 w-5" />
+              <img src={brand.logoUrl} alt="" className="h-5 w-5" />
             </div>
-            <span className={cn('truncate text-base font-semibold tracking-tight text-sidebar-foreground', collapsed && 'hidden')}>
-              Forms
-            </span>
+            <div className={cn('min-w-0', collapsed && 'hidden')}>
+              <p className="truncate text-base font-semibold tracking-tight text-sidebar-foreground">{brand.productName}</p>
+              <p className="truncate text-[10px] leading-none text-sidebar-foreground/55">{brand.ownerName}</p>
+            </div>
           </div>
         </div>
 
@@ -143,4 +147,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

@@ -4,13 +4,13 @@ import { getFunctionErrorMessage } from './functionError';
 
 describe('getFunctionErrorMessage', () => {
   it('returns the JSON error sent by an Edge Function', async () => {
-    const response = new Response(JSON.stringify({ error: 'Password must be at least 8 characters' }), {
+    const response = new Response(JSON.stringify({ error: 'Password must be between 12 and 128 characters' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
 
     await expect(getFunctionErrorMessage(new FunctionsHttpError(response)))
-      .resolves.toBe('Password must be at least 8 characters');
+      .resolves.toBe('Password must be between 12 and 128 characters');
   });
 
   it('falls back to regular and unknown errors', async () => {

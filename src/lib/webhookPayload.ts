@@ -16,6 +16,8 @@
 import { PageElement } from '@/types/pageElements';
 import { FormData as AppFormData } from '@/types/form';
 import { flattenPageElements } from '@/lib/pageElementTree';
+import { formatInternationalPhone } from '@/lib/phoneValue';
+import { resolveVariablePayloadValues } from '@/lib/variableInterpolation';
 
 export interface WebhookRespondentInfo {
   ip?: string;
@@ -29,19 +31,39 @@ export interface WebhookRespondentInfo {
   };
 }
 
-/** Build a map: elementId → fieldName (falling back to elementId) */
-export function buildFieldNameMap(form: AppFormData): Record<string, string> {
-  const map: Record<string, string> = {};
+function collectFormElements(form: AppFormData): PageElement[] {
   const allElements: PageElement[] = [];
 
   for (const page of form.pages || []) {
-    allElements.push(...(page.elements || []));
+    allElements.push(...flattenPageElements(page.elements || []));
   }
-  if (form.welcomePage) allElements.push(...(form.welcomePage.elements || []));
-  if (form.thankYouPage) allElements.push(...(form.thankYouPage.elements || []));
+  if (form.welcomePage) allElements.push(...flattenPageElements(form.welcomePage.elements || []));
+  if (form.thankYouPage) allElements.push(...flattenPageElements(form.thankYouPage.elements || []));
 
-  for (const el of allElements) {
-    map[el.id] = el.fieldName || el.id;
+  return allElements;
+}
+
+/**
+ * Build a stable map: elementId → unique fieldName (falling back to elementId).
+ * Duplicate semantic names receive a deterministic numeric suffix instead of
+ * silently overwriting an earlier answer in the webhook payload.
+ */
+export function buildFieldNameMap(form: AppFormData): Record<string, string> {
+  const map: Record<string, string> = {};
+  const used = new Set<string>();
+  const nextSuffix = new Map<string, number>();
+
+  for (const el of collectFormElements(form)) {
+    const baseName = el.fieldName?.trim() || el.id;
+    let resolvedName = baseName;
+    let suffix = nextSuffix.get(baseName) || 2;
+    while (used.has(resolvedName)) {
+      resolvedName = `${baseName}_${suffix}`;
+      suffix += 1;
+    }
+    nextSuffix.set(baseName, suffix);
+    used.add(resolvedName);
+    map[el.id] = resolvedName;
   }
   return map;
 }
@@ -87,9 +109,7 @@ function resolveTypedAnswer(
           country_code: rawValue.countryCode ?? null,
           ddi: rawValue.ddi ?? null,
           number: rawValue.number ?? null,
-          full_number: rawValue.ddi && rawValue.number
-            ? `+${rawValue.ddi}${rawValue.number.replace(/\D/g, '')}`
-            : rawValue.number ?? null,
+          full_number: formatInternationalPhone(rawValue) ?? null,
         };
       }
       return rawValue;
@@ -206,15 +226,8 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
 
   // Build element lookup
   const elementMap: Record<string, PageElement> = {};
-  for (const page of form.pages || []) {
-    for (const el of flattenPageElements(page.elements || [])) elementMap[el.id] = el;
-  }
-  if (form.welcomePage) {
-    for (const el of flattenPageElements(form.welcomePage.elements || [])) elementMap[el.id] = el;
-  }
-  if (form.thankYouPage) {
-    for (const el of flattenPageElements(form.thankYouPage.elements || [])) elementMap[el.id] = el;
-  }
+  for (const el of collectFormElements(form)) elementMap[el.id] = el;
+  const fieldNameMap = buildFieldNameMap(form);
 
   // Typed answers keyed by fieldName
   const typedAnswers: Record<string, any> = {};
@@ -234,7 +247,7 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
     if (!element) continue;
     if (!element.type.startsWith('input_')) continue;
 
-    const key = element.fieldName || elementId;
+    const key = fieldNameMap[elementId] || elementId;
     const typed = resolveTypedAnswer(element, rawValue);
 
     typedAnswers[key] = typed;
@@ -257,21 +270,14 @@ export function buildWebhookPayload(opts: BuildWebhookPayloadOptions) {
       userData.email = rawValue;
     }
     if (element.type === 'input_phone') {
-      if (typeof rawValue === 'object' && rawValue?.number) {
-        userData.phone = rawValue.full_number ?? String(rawValue.number);
-      } else if (typeof rawValue === 'string') {
-        userData.phone = rawValue;
-      }
+      userData.phone = formatInternationalPhone(rawValue);
     }
   }
 
-  // Variables (exclude internal __var_ prefix)
-  const variables: Record<string, any> = {};
-  for (const [k, v] of Object.entries(answers)) {
-    if (k.startsWith('__var_')) {
-      variables[k.replace('__var_', '')] = v;
-    }
-  }
+  // Informative variable snapshot: derive every configured variable through
+  // the same canonical resolver used by interpolation. Arbitrary `__var_*`
+  // keys are intentionally ignored because they are not form-allowlisted.
+  const variables = resolveVariablePayloadValues(form.variables || [], answers);
 
   const now = new Date().toISOString();
   const landedAtTs = landedAt || now;

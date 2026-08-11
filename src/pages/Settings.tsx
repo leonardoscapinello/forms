@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/authContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +25,13 @@ import {
 } from '@/components/ui/select';
 import { useTags } from '@/hooks/useTags';
 import { getFunctionErrorMessage } from '@/lib/functionError';
+import { useBrand } from '@/hooks/brandContext';
+import {
+  listIntegrationSettings,
+  MASKED_INTEGRATION_SECRET,
+  saveIntegrationSetting,
+  withIntegrationTimeout,
+} from '@/lib/integrationSettings';
 
 // ─── Tab navigation ───
 const TABS = [
@@ -53,11 +61,13 @@ export default function Settings() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                 tab === t.id
-                  ? 'bg-accent text-primary-foreground'
+                  ? 'bg-accent text-accent-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
+              aria-pressed={tab === t.id}
+              aria-label={t.label}
             >
-              <t.icon className={`h-4 w-4 ${tab === t.id ? 'text-primary-foreground' : ''}`} />
+              <t.icon className={`h-4 w-4 ${tab === t.id ? 'text-accent-foreground' : ''}`} />
               <span className="hidden md:inline">{t.label}</span>
             </button>
           ))}
@@ -97,22 +107,93 @@ export default function Settings() {
 
 // ─── General Tab ───
 function GeneralTab() {
+  const { brand, saveBrand } = useBrand();
+  const { toast } = useToast();
+  const [draft, setDraft] = useState(brand);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setDraft(brand); }, [brand]);
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(brand);
+  const canSave = Boolean(
+    draft.productName.trim()
+    && draft.ownerName.trim()
+    && draft.description.trim()
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!canSave) {
+      toast({
+        title: 'Preencha todos os campos',
+        description: 'Nome, proprietário e descrição não podem ficar vazios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await saveBrand(draft);
+      setDraft(saved);
+      toast({ title: 'Identidade atualizada', description: 'O nome do sistema já foi aplicado.' });
+    } catch (error) {
+      toast({
+        title: 'Não foi possível salvar',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [canSave, draft, saveBrand, toast]);
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <h2 className="text-base font-semibold text-foreground">Informações do sistema</h2>
+        <p className="text-xs text-muted-foreground">
+          Essa identidade aparece no login, no cabeçalho e nos metadados gerais da aplicação.
+        </p>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Nome do sistema</Label>
-          <Input defaultValue="Forms" className="text-sm max-w-sm" />
+          <Input
+            value={draft.productName}
+            onChange={(event) => setDraft((current) => ({ ...current, productName: event.target.value }))}
+            maxLength={80}
+            disabled={saving}
+            className="text-sm max-w-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Proprietário</Label>
+          <Input
+            value={draft.ownerName}
+            onChange={(event) => setDraft((current) => ({ ...current, ownerName: event.target.value }))}
+            maxLength={120}
+            disabled={saving}
+            className="text-sm max-w-sm"
+          />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Descrição</Label>
-          <Input defaultValue="Sistema de formulários e quizzes" className="text-sm max-w-md" />
+          <Textarea
+            value={draft.description}
+            onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+            maxLength={320}
+            disabled={saving}
+            className="min-h-20 text-sm max-w-md resize-y"
+          />
         </div>
-        <Button size="sm" disabled>
-          <Save className="mr-2 h-3.5 w-3.5" />
-          Salvar
-        </Button>
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <Button onClick={handleSave} disabled={saving || !dirty || !canSave}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Salvar identidade
+          </Button>
+          {dirty && (
+            <Button variant="ghost" onClick={() => setDraft(brand)} disabled={saving}>
+              Descartar
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -125,7 +206,7 @@ interface UserRow {
   email: string;
   is_active: boolean;
   created_at: string;
-  role?: string;
+  role: 'admin' | 'user';
 }
 
 function UsersTab() {
@@ -141,27 +222,66 @@ function UsersTab() {
   const [newRole, setNewRole] = useState<'user' | 'admin'>('user');
 
   const fetchUsers = useCallback(async () => {
-    const { data: profiles } = await supabase.from('profiles').select('*');
-    const { data: roles } = await supabase.from('user_roles').select('user_id, role');
+    if (!isAdmin) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
 
-    const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
-    const merged = (profiles || []).map(p => ({
-      ...p,
-      role: roleMap.get(p.user_id) || 'user',
-    }));
+    setLoading(true);
+    try {
+      const collected: UserRow[] = [];
+      let afterCreatedAt: string | undefined;
+      let afterUserId: string | undefined;
+      const pageSize = 200;
 
-    setUsers(merged);
-    setLoading(false);
-  }, []);
+      for (let page = 0; page < 500; page += 1) {
+        const { data, error } = await supabase.rpc('get_admin_users', {
+          p_after_created_at: afterCreatedAt,
+          p_after_user_id: afterUserId,
+          p_limit: pageSize,
+        });
+        if (error) throw error;
+
+        const rows = data || [];
+        for (const row of rows) {
+          if (row.role !== 'admin' && row.role !== 'user') {
+            throw new Error('Um usuário retornou sem papel confirmado.');
+          }
+          collected.push({ ...row, role: row.role });
+        }
+        if (rows.length < pageSize) break;
+
+        const last = rows[rows.length - 1];
+        if (!last || (last.created_at === afterCreatedAt && last.user_id === afterUserId)) {
+          throw new Error('A paginação de usuários não avançou.');
+        }
+        afterCreatedAt = last.created_at;
+        afterUserId = last.user_id;
+
+        if (page === 499) throw new Error('O diretório excedeu o limite operacional de paginação.');
+      }
+
+      setUsers(collected);
+    } catch (error: unknown) {
+      setUsers([]);
+      toast({
+        title: 'Não foi possível carregar os usuários',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin, toast]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const handleCreate = useCallback(async () => {
-    if (!newEmail || !newPassword) return;
-    if (newPassword.length < 8 || newPassword.length > 128) {
+    if (!newEmail || newPassword.length < 12 || newPassword.length > 128) {
       toast({
-        title: 'Senha inválida',
-        description: 'A senha deve ter entre 8 e 128 caracteres.',
+        title: 'Revise os dados',
+        description: 'Informe um e-mail e uma senha entre 12 e 128 caracteres.',
         variant: 'destructive',
       });
       return;
@@ -177,13 +297,21 @@ function UsersTab() {
         },
       });
       if (res.error) throw new Error(await getFunctionErrorMessage(res.error));
+      const result = res.data as { error?: string; success?: boolean } | null;
+      if (result?.error || result?.success !== true) {
+        throw new Error(result?.error || 'A criação do usuário não foi confirmada.');
+      }
 
       toast({ title: 'Usuário criado', description: `${newEmail.trim()} foi adicionado.` });
       setNewEmail(''); setNewPassword(''); setNewName(''); setNewRole('user');
       setShowCreate(false);
       fetchUsers();
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Não foi possível criar o usuário.',
+        variant: 'destructive',
+      });
     } finally {
       setCreating(false);
     }
@@ -191,6 +319,15 @@ function UsersTab() {
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-6">
+        <p className="text-sm font-medium text-foreground">Acesso restrito</p>
+        <p className="mt-1 text-xs text-muted-foreground">Somente administradores podem consultar e gerenciar usuários.</p>
+      </div>
+    );
   }
 
   return (
@@ -237,10 +374,10 @@ function UsersTab() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="new-user-password" className="text-xs text-muted-foreground">Senha</Label>
-            <Input id="new-user-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="8 a 128 caracteres" required minLength={8} maxLength={128} className="text-sm" />
+            <Input id="new-user-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Entre 12 e 128 caracteres" required minLength={12} maxLength={128} className="text-sm" />
           </div>
           <div className="flex gap-2 pt-1">
-            <Button type="submit" size="sm" disabled={creating || !newEmail || !newPassword}>
+            <Button type="submit" size="sm" disabled={creating || !newEmail || newPassword.length < 12 || newPassword.length > 128}>
               {creating && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
               Criar
             </Button>
@@ -276,7 +413,7 @@ function UsersTab() {
                 </td>
                 <td className="px-4 py-3">
                   <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
-                    u.role === 'admin' ? 'bg-accent text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    u.role === 'admin' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
                   }`}>
                     {u.role === 'admin' ? 'Admin' : 'Usuário'}
                   </span>
@@ -493,10 +630,12 @@ function MinioForm() {
   const [isActive, setIsActive] = useState(false);
   const [config, setConfig] = useState<MinioConfig>(EMPTY_MINIO);
   const isComplete = Boolean(config.endpoint && config.accessKey && config.secretKey && config.bucket);
+  const operationInProgress = saving || testing;
 
   useEffect(() => {
-    supabase.from('integration_settings').select('*').eq('integration_type', 'minio_s3').maybeSingle()
-      .then(({ data }) => {
+    listIntegrationSettings('minio_s3')
+      .then((rows) => {
+        const data = rows[0];
         if (data) {
           setSettingsId(data.id);
           setIsActive(data.is_active);
@@ -504,13 +643,20 @@ function MinioForm() {
           setConfig({
             endpoint: cfg.endpoint || '', port: cfg.port || '9000',
             accessKey: cfg.accessKey || '', secretKey: cfg.secretKey || '',
-            bucket: cfg.bucket || '', useSSL: cfg.useSSL ?? true,
+            bucket: cfg.bucket || '', useSSL: true,
             region: cfg.region || 'us-east-1',
           });
         }
-        setLoading(false);
-      });
-  }, []);
+      })
+      .catch((error: Error) => {
+        toast({
+          title: 'Erro ao carregar MinIO',
+          description: error.message || 'Não foi possível carregar a configuração.',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => setLoading(false));
+  }, [toast]);
 
   const updateConfig = useCallback((patch: Partial<MinioConfig>) => {
     setConfig(prev => ({ ...prev, ...patch }));
@@ -527,30 +673,56 @@ function MinioForm() {
       return;
     }
     setSaving(true);
-    const payload = { integration_type: 'minio_s3', label: 'MinIO S3', config: config as any, is_active: isActive };
-    if (settingsId) {
-      await supabase.from('integration_settings').update(payload).eq('id', settingsId);
-    } else {
-      const { data } = await supabase.from('integration_settings').insert(payload).select().single();
-      if (data) setSettingsId(data.id);
+    try {
+      const row = await saveIntegrationSetting({
+        id: settingsId,
+        integrationType: 'minio_s3',
+        label: 'MinIO S3',
+        config: { ...config, useSSL: true },
+        isActive,
+      });
+      setSettingsId(row.id);
+      setConfig(prev => ({ ...prev, ...row.config } as MinioConfig));
+      toast({
+        title: isActive ? 'Salvo e validado' : 'Salvo desativado',
+        description: 'Configuração do MinIO salva.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao salvar MinIO',
+        description: error?.message || 'Não foi possível salvar a configuração.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
-    toast({ title: 'Salvo', description: 'Configuração do MinIO salva.' });
-    setSaving(false);
   }, [config, isActive, isComplete, settingsId, toast]);
 
   const handleTest = useCallback(async () => {
     setTesting(true); setTestResult(null);
     try {
-      const res = await supabase.functions.invoke('minio-test', { body: { config } });
+      const credentials = {
+        ...config,
+        useSSL: true,
+        accessKey: config.accessKey === MASKED_INTEGRATION_SECRET ? undefined : config.accessKey,
+        secretKey: config.secretKey === MASKED_INTEGRATION_SECRET ? undefined : config.secretKey,
+      };
+      const res = await withIntegrationTimeout(
+        supabase.functions.invoke('minio-test', {
+          body: { settingsId, config: credentials },
+        }),
+      );
       const data = res.data as any;
+      if (res.error) throw res.error;
       setTestResult(data?.success ? 'success' : 'error');
       toast({ title: data?.success ? 'Conexão OK' : 'Falha', description: data?.message, variant: data?.success ? 'default' : 'destructive' });
-    } catch {
+    } catch (error: any) {
       setTestResult('error');
-      toast({ title: 'Erro', description: 'Falha ao testar.', variant: 'destructive' });
+      toast({ title: 'Erro', description: error?.message || 'Falha ao testar.', variant: 'destructive' });
+    } finally {
+      setTesting(false);
     }
-    setTesting(false);
-  }, [config, toast]);
+  }, [config, settingsId, toast]);
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
@@ -559,6 +731,7 @@ function MinioForm() {
       <div className="flex items-center gap-2">
         <Switch
           checked={isActive}
+          disabled={operationInProgress}
           onCheckedChange={(active) => {
             if (active && !isComplete) {
               toast({
@@ -576,22 +749,22 @@ function MinioForm() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Endpoint</Label>
-          <Input value={config.endpoint} onChange={e => updateConfig({ endpoint: e.target.value })} placeholder="minio.exemplo.com" className="text-sm" />
+          <Input value={config.endpoint} onChange={e => updateConfig({ endpoint: e.target.value })} placeholder="minio.exemplo.com" className="text-sm" disabled={operationInProgress} />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Porta</Label>
-          <Input value={config.port} onChange={e => updateConfig({ port: e.target.value })} placeholder="9000" className="text-sm" />
+          <Input value={config.port} onChange={e => updateConfig({ port: e.target.value })} placeholder="9000" className="text-sm" disabled={operationInProgress} />
         </div>
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Access Key</Label>
-        <Input value={config.accessKey} onChange={e => updateConfig({ accessKey: e.target.value })} placeholder="minioadmin" className="text-sm font-mono" />
+        <Input value={config.accessKey} onChange={e => updateConfig({ accessKey: e.target.value })} placeholder="minioadmin" className="text-sm font-mono" disabled={operationInProgress} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Secret Key</Label>
         <div className="relative">
-          <Input type={showSecret ? 'text' : 'password'} value={config.secretKey} onChange={e => updateConfig({ secretKey: e.target.value })} placeholder="••••••••" className="text-sm font-mono pr-10" />
-          <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <Input type={showSecret ? 'text' : 'password'} value={config.secretKey} onChange={e => updateConfig({ secretKey: e.target.value })} placeholder="••••••••" className="text-sm font-mono pr-10" disabled={operationInProgress} />
+          <button type="button" onClick={() => setShowSecret(!showSecret)} disabled={operationInProgress} aria-label={showSecret ? 'Ocultar secret key' : 'Mostrar secret key'} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50">
             {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
@@ -599,25 +772,25 @@ function MinioForm() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Bucket</Label>
-          <Input value={config.bucket} onChange={e => updateConfig({ bucket: e.target.value })} placeholder="form-uploads" className="text-sm" />
+          <Input value={config.bucket} onChange={e => updateConfig({ bucket: e.target.value })} placeholder="form-uploads" className="text-sm" disabled={operationInProgress} />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Região</Label>
-          <Input value={config.region} onChange={e => updateConfig({ region: e.target.value })} placeholder="us-east-1" className="text-sm" />
+          <Input value={config.region} onChange={e => updateConfig({ region: e.target.value })} placeholder="us-east-1" className="text-sm" disabled={operationInProgress} />
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Switch checked={config.useSSL} onCheckedChange={v => updateConfig({ useSSL: v })} id="ssl" />
-        <Label htmlFor="ssl" className="text-xs text-muted-foreground cursor-pointer">Usar SSL (HTTPS)</Label>
+        <Switch checked disabled id="ssl" />
+        <Label htmlFor="ssl" className="text-xs text-muted-foreground">HTTPS obrigatório em produção</Label>
       </div>
       <div className="flex items-center gap-2 pt-2 border-t border-border">
-        <Button variant="outline" size="sm" onClick={handleTest} disabled={testing || !isComplete}>
+        <Button variant="outline" size="sm" onClick={handleTest} disabled={operationInProgress || !isComplete}>
           {testing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <TestTube className="mr-2 h-3.5 w-3.5" />}
           Testar
           {testResult === 'success' && <CheckCircle2 className="ml-2 h-3.5 w-3.5 text-success" />}
           {testResult === 'error' && <XCircle className="ml-2 h-3.5 w-3.5 text-destructive" />}
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+        <Button size="sm" onClick={handleSave} disabled={operationInProgress}>
           {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
           Salvar
         </Button>
@@ -781,45 +954,39 @@ function TagsTab() {
 
 // ─── Security Tab ───
 function SecurityTab() {
+  const policies = [
+    ['Cadastro público', 'Desativado; novas contas passam pelo administrador.'],
+    ['Senha', 'Entre 12 e 128 caracteres.'],
+    ['Confirmação de e-mail', 'Obrigatória antes do primeiro acesso.'],
+    ['Alteração de senha', 'Exige uma sessão segura recente.'],
+    ['Código por e-mail', '8 dígitos, com validade de 60 minutos.'],
+    ['MFA', 'TOTP disponível para cadastro e verificação.'],
+  ] as const;
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <h2 className="text-base font-semibold text-foreground">Política de senhas</h2>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground">Mínimo de 8 caracteres</p>
-              <p className="text-xs text-muted-foreground">Exigir senhas com pelo menos 8 caracteres</p>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Políticas aplicadas</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Estado efetivo desta release no Supabase. Esta tela é somente leitura.</p>
+        </div>
+        <div className="divide-y divide-border rounded-lg border border-border">
+          {policies.map(([title, description]) => (
+            <div key={title} className="flex items-start gap-3 px-4 py-3">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-medium text-foreground">{title}</p>
+                <p className="text-xs text-muted-foreground">{description}</p>
+              </div>
             </div>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground">Exigir caractere especial</p>
-              <p className="text-xs text-muted-foreground">Pelo menos um caractere especial (!@#$...)</p>
-            </div>
-            <Switch />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground">Exigir número</p>
-              <p className="text-xs text-muted-foreground">Pelo menos um número na senha</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
+          ))}
         </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <h2 className="text-base font-semibold text-foreground">Sessões</h2>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Tempo de expiração da sessão (horas)</Label>
-          <Input type="number" defaultValue={24} className="text-sm w-28" />
-        </div>
-        <Button size="sm" disabled>
-          <Save className="mr-2 h-3.5 w-3.5" />
-          Salvar
-        </Button>
+        <p className="text-sm text-foreground">Gerenciadas pelo Supabase Auth</p>
+        <p className="text-xs text-muted-foreground">Expiração e revogação são políticas do ambiente e não podem ser simuladas por um controle local.</p>
       </div>
     </div>
   );

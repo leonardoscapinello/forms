@@ -245,7 +245,7 @@ function isLightColor(hex: string): boolean {
 }
 
 /** Map hex colors to friendly brand names */
-export function getColorName(hex: string): string {
+function getColorName(hex: string): string {
   if (!hex) return 'Sem cor';
   return COLOR_NAME_MAP.get(hex.toLowerCase()) || hex;
 }

@@ -1,6 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireAdmin } from '../_shared/auth.ts';
-import { createSignedState } from '../_shared/signedState.ts';
+import { requireAdmin } from "../_shared/auth.ts";
+import { createSignedState } from "../_shared/signedState.ts";
+import {
+  normalizeOAuthReturnUrl,
+  safeIntegrationErrorCode,
+} from "../_shared/integrationReliability.ts";
+import { openIntegrationConfig } from "../_shared/integrationSettingsCrypto.ts";
+import { readLimitedJsonObject } from "../_shared/limitedJsonBody.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,14 +17,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const caller = await requireAdmin(req);
     if (!caller.ok) return caller.response;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!supabaseUrl) throw new Error("oauth_configuration_missing");
+    const supabase = caller.admin;
 
     // Get Google OAuth config from integration_settings
     const { data: settings, error } = await supabase
@@ -29,31 +40,52 @@ Deno.serve(async (req) => {
       .eq("is_active", true)
       .maybeSingle();
 
-    if (error || !settings) {
+    if (error) {
+      throw new Error("google_oauth_lookup_failed");
+    }
+    if (!settings) {
       return new Response(
         JSON.stringify({ error: "Google OAuth não configurado ou inativo." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    const cfg = settings.config as any;
-    if (!cfg.clientId || !cfg.clientSecret) {
+    const cfg = (await openIntegrationConfig(
+      "google_oauth",
+      settings.config,
+      Deno.env.get("ENCRYPTION_SECRET") ?? "",
+    )).config;
+    if (
+      typeof cfg?.clientId !== "string" || !cfg.clientId.trim() ||
+      typeof cfg?.clientSecret !== "string" || !cfg.clientSecret.trim()
+    ) {
       return new Response(
         JSON.stringify({ error: "Client ID ou Secret não configurados." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
-    const { returnUrl } = await req.json().catch(() => ({ returnUrl: "" }));
-    if (returnUrl) {
-      const parsedReturnUrl = new URL(returnUrl);
-      const isLocal = parsedReturnUrl.hostname === 'localhost' || parsedReturnUrl.hostname === '127.0.0.1';
-      if (returnUrl.length > 2048 || (parsedReturnUrl.protocol !== 'https:' && !(isLocal && parsedReturnUrl.protocol === 'http:'))) {
-        return new Response(JSON.stringify({ error: 'URL de retorno inválida.' }), {
+    const parsedBody = await readLimitedJsonObject(req, 10_000, corsHeaders);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { returnUrl: requestedReturnUrl } = parsedBody.value;
+    const returnUrl = normalizeOAuthReturnUrl(requestedReturnUrl, [
+      req.headers.get("origin") || "",
+      Deno.env.get("PUBLIC_APP_URL") || "",
+    ]);
+    if (!returnUrl) {
+      return new Response(
+        JSON.stringify({ error: "URL de retorno inválida." }),
+        {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
@@ -61,13 +93,18 @@ Deno.serve(async (req) => {
     const scopes = [
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/drive.file",
+      "openid",
+      "email",
     ].join(" ");
 
     // Signed, expiring state prevents OAuth callback forgery and open redirects.
-    const state = await createSignedState({ returnUrl: returnUrl || "" });
+    const state = await createSignedState({
+      returnUrl,
+      returnOrigin: new URL(returnUrl).origin,
+    });
 
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    authUrl.searchParams.set("client_id", cfg.clientId);
+    authUrl.searchParams.set("client_id", cfg.clientId.trim());
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("scope", scopes);
@@ -77,13 +114,23 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ authUrl: authUrl.toString(), redirectUri }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
-  } catch (err: any) {
-    console.error("google-oauth-start error:", err);
+  } catch (err: unknown) {
+    const errorCode = safeIntegrationErrorCode(
+      err,
+      "google_oauth_start_failed",
+    );
+    console.error("google_oauth_start_error", errorCode);
     return new Response(
-      JSON.stringify({ error: err.message || "Erro interno" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: errorCode }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });

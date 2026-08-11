@@ -16,11 +16,11 @@ import WhatsAppPreviewCard from './whatsapp/WhatsAppPreviewCard';
 import { LocalInput } from './shared/LocalInput';
 import { toast } from 'sonner';
 import type { InputElementGroup } from './VariableAssignPanel';
+import { listIntegrationCatalog, withIntegrationTimeout } from '@/lib/integrationSettings';
 
 interface EvolutionInstance {
   id: string;
   label: string;
-  config: { apiUrl: string; apiKey: string; instanceName: string };
   is_active: boolean;
 }
 
@@ -44,16 +44,13 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
   const GalleryPicker = useMemo(() => lazy(() => import('./GalleryPicker')), []);
 
   useEffect(() => {
-    supabase.from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'evolution_api')
-      .then(({ data: rows }) => {
-        if (rows) {
-          setInstances(rows.map(r => ({
-            id: r.id, label: r.label,
-            config: r.config as any, is_active: r.is_active,
-          })));
-        }
+    listIntegrationCatalog('evolution_api')
+      .then((rows) => {
+        setInstances(rows.map(r => ({ id: r.id, label: r.label, is_active: r.is_active })));
+      })
+      .catch((error: Error) => {
+        setInstances([]);
+        toast.error(error.message || 'Não foi possível carregar as instâncias Evolution.');
       });
   }, []);
 
@@ -79,7 +76,10 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
       const formData = new FormData();
       formData.append('file', file);
       formData.append('path', path);
-      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
+      const { data: res, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('minio-upload', { body: formData }),
+        30_000,
+      );
       if (error || !res?.success) { toast.error(res?.message || 'Falha no upload'); return; }
       onChange({ mediaUrl: res.url, mediaFileName: file.name });
       toast.success('Arquivo enviado');
@@ -91,16 +91,23 @@ function WhatsAppNode({ data, selected }: NodeProps & { data: WhatsAppNodeProps 
     if (!nodeData.instanceId || !nodeData.recipientNumber) return;
     setTesting(true); setTestResult(null);
     try {
-      const { data: res } = await supabase.functions.invoke('whatsapp-send', {
-        body: {
-          instanceId: nodeData.instanceId, recipientNumber: nodeData.recipientNumber,
-          messageText: nodeData.messageText || 'Teste de conexão',
-          mediaUrl: nodeData.mediaUrl, mediaType: nodeData.mediaType, testMode: true,
-        },
-      });
+      const { data: res, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('whatsapp-send', {
+          body: {
+            instanceId: nodeData.instanceId, recipientNumber: nodeData.recipientNumber,
+            messageText: nodeData.messageText || 'Teste de conexão',
+            mediaUrl: nodeData.mediaUrl, mediaType: nodeData.mediaType, testMode: true,
+          },
+        }),
+      );
+      if (error) throw error;
       setTestResult(res?.success ? 'success' : 'error');
-    } catch { setTestResult('error'); }
-    setTesting(false);
+    } catch (error: any) {
+      setTestResult('error');
+      toast.error(error?.message || 'Erro ao testar o envio pelo WhatsApp');
+    } finally {
+      setTesting(false);
+    }
   }, [nodeData]);
 
   const hasMedia = nodeData.sendMedia && nodeData.mediaUrl;

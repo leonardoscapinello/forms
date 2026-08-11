@@ -1,7 +1,3 @@
-#lovable-badge {
-  display: none !important;
-}
-
 @font-face {
   font-family: 'FH Duo Display';
   src: url('/fonts/fh-duo-display/FHDuoDisplay-Light.woff2') format('woff2');
@@ -386,6 +382,24 @@ img.emoji {
 
 .animate-shake {
   animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* Validation must remain unmistakable even when the form theme defines local
+   colors. The wrapper is removed as soon as the respondent edits the value. */
+.form-field-invalid [data-form-question-number],
+.form-field-invalid [data-form-field-label] {
+  color: hsl(var(--destructive)) !important;
+}
+
+.form-field-invalid :is(input, textarea, select, button, [role="radio"], [role="checkbox"], [role="combobox"]) {
+  border-color: hsl(var(--destructive)) !important;
+}
+
+.form-field-invalid :is(input, textarea, select, button, [role="radio"], [role="checkbox"], [role="combobox"]):focus,
+.form-field-invalid :is(input, textarea, select, button, [role="radio"], [role="checkbox"], [role="combobox"]):focus-visible {
+  border-color: hsl(var(--destructive)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.22) !important;
+  outline: none;
 }
 
 /* Editor-only styles (React Flow, variable highlights, WhatsApp preview)

@@ -5,12 +5,34 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+const memoryAuthStorage = (() => {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+})();
+
+const authStorage = (() => {
+  try {
+    const probe = '__forms_storage_probe__';
+    localStorage.setItem(probe, probe);
+    localStorage.removeItem(probe);
+    return localStorage;
+  } catch {
+    // Sandboxed editor previews intentionally have an opaque origin. A volatile
+    // store lets the renderer boot without inheriting the admin session.
+    return memoryAuthStorage;
+  }
+})();
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: authStorage,
     persistSession: true,
     autoRefreshToken: true,
   }

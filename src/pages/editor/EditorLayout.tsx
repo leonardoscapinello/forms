@@ -1,7 +1,8 @@
 import '@/editor.css';
 import { Suspense, lazy, useMemo, useState as useReactState } from 'react';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useEditorForm, EditorFormProvider } from '@/hooks/useEditorForm';
+import { EditorFormProvider } from '@/hooks/useEditorForm';
+import { useEditorForm } from '@/hooks/editorFormContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
@@ -120,8 +121,12 @@ function EditorLayoutInner() {
                 <><Loader2 className="h-3 w-3 animate-spin" /><span>Salvando...</span></>
               ) : saveStatus === 'saved' ? (
                 <><Cloud className="h-3 w-3 text-primary" /><span>Salvo {lastSavedAt && formatDistanceToNow(new Date(lastSavedAt), { addSuffix: true, locale: ptBR })}</span></>
+              ) : saveStatus === 'error' ? (
+                <><AlertTriangle className="h-3 w-3 text-destructive" /><span className="text-destructive">Não salvo</span></>
+              ) : saveStatus === 'conflict' ? (
+                <><AlertTriangle className="h-3 w-3 text-destructive" /><span className="text-destructive">Conflito de edição</span></>
               ) : (
-                <><Cloud className="h-3 w-3" /><span>Salvo</span></>
+                <><Cloud className="h-3 w-3" /><span>Alterações pendentes</span></>
               )}
             </div>
             <button
@@ -235,7 +240,7 @@ function EditorLayoutInner() {
       <AnimatePresence>
         {showResponsivePreview && (
           <Suspense fallback={null}>
-            <ResponsivePreview formId={form.id} onClose={() => setShowResponsivePreview(false)} />
+            <ResponsivePreview form={form} onClose={() => setShowResponsivePreview(false)} />
           </Suspense>
         )}
       </AnimatePresence>

@@ -561,6 +561,10 @@ function FlowCanvasInner({
         data: {
           nodeData: j,
           pages,
+          variables,
+          integrationNodes,
+          allInputElements: inputElementsByPage,
+          trackedParams: form.trackedParams,
           ...disabledProps(nodeId),
           onChange: (patch: Partial<JumpNodeData>) => onJumpChange(j.id, patch),
           onDelete: () => onJumpDelete(j.id),
@@ -608,8 +612,25 @@ function FlowCanvasInner({
       });
     });
 
+    n.push({
+      id: 'end',
+      type: 'endNode',
+      position: getStoredPosition(form, 'end', (pages.length + 12) * NODE_SPACING, 0),
+      data: {
+        form: {
+          completionAction: form.completionAction,
+          completionRedirectUrl: form.completionRedirectUrl,
+        },
+        variables,
+        integrationNodes,
+        allInputElements: inputElementsByPage,
+        trackedParams: form.trackedParams,
+        onFormUpdate,
+      },
+    });
+
     return n;
-  }, [form, pages, variables, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, imageGenNodes, reachableNodeIds, infiniteLoopNodeIds, onFormUpdate, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete, onImageGenChange, onImageGenDelete, onCreateVariable]);
+  }, [form, pages, variables, inputElementsByPage, getPreviousPageElements, variableOpNodes, integrationNodes, analyticsNodes, whatsappNodes, emailNodes, abTestNodes, waitNodes, jumpNodes, aiNodes, imageGenNodes, reachableNodeIds, infiniteLoopNodeIds, onFormUpdate, onPageChange, onPageDelete, onPageSelect, onConditionChange, onConditionDelete, onVariableOpChange, onVariableOpDelete, onIntegrationChange, onIntegrationDelete, onAnalyticsChange, onAnalyticsDelete, onWhatsAppChange, onWhatsAppDelete, onEmailChange, onEmailDelete, onABTestChange, onABTestDelete, onWaitChange, onWaitDelete, onJumpChange, onJumpDelete, onAIChange, onAIDelete, onImageGenChange, onImageGenDelete, onCreateVariable]);
 
   // Ref-based stable handler to avoid declaration-order issues
   const handleEdgeDeleteRef = useRef<(edgeId: string) => void>(() => {});
@@ -633,6 +654,8 @@ function FlowCanvasInner({
       const prevId = i === 0 ? 'start' : `p-${pages[i - 1].id}`;
       e.push({ id: `e-${prevId}-${nodeId}`, source: prevId, target: nodeId, ...defaultEdgeOptions, data: edgeData });
     });
+    const finalSource = pages.length > 0 ? `p-${pages[pages.length - 1].id}` : 'start';
+    e.push({ id: `e-${finalSource}-end`, source: finalSource, target: 'end', ...defaultEdgeOptions, data: edgeData });
     return e;
   }, [form.flowEdges, pages]);
 
@@ -657,10 +680,13 @@ function FlowCanvasInner({
     const waitChanged = prev.waitNodes !== form.waitNodes;
     const jumpChanged = prev.jumpNodes !== form.jumpNodes;
     const imageGenChanged = prev.imageGenNodes !== form.imageGenNodes;
+    const aiChanged = prev.aiNodes !== form.aiNodes;
     const varsChanged = prev.variables !== form.variables;
     const edgesChanged = prev.flowEdges !== form.flowEdges;
+    const completionChanged = prev.completionAction !== form.completionAction
+      || prev.completionRedirectUrl !== form.completionRedirectUrl;
 
-    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || imageGenChanged || varsChanged || edgesChanged) {
+    if (pagesChanged || conditionsChanged || varOpsChanged || analyticsChanged || intgChanged || whatsappChanged || emailChanged || abTestChanged || waitChanged || jumpChanged || aiChanged || imageGenChanged || varsChanged || edgesChanged || completionChanged) {
       setNodes(currentNodes => {
         const newNodes = buildNodes();
         return newNodes.map(nn => {

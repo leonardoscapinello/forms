@@ -18,5 +18,41 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run verify
+      - name: Instalar dependências reproduzíveis
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verificar código, testes, build e orçamento de bundle
+        run: npm run verify
+      - name: Auditar dependências de produção
+        run: npm audit --omit=dev
+
+  edge-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Verificar tipos de todas as Edge Functions
+        run: deno check --frozen supabase/functions/*/index.ts
+      - name: Executar regressões unitárias das Edge Functions
+        run: deno test --frozen $(find supabase/functions -name '*.test.ts' -print)
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.113.0
+          github-token: ${{ github.token }}
+      - name: Aplicar todas as migrations em um PostgreSQL limpo
+        run: supabase db start
+      - name: Auditar o schema local
+        run: supabase db lint --local --schema public --level warning --fail-on error
+      - name: Executar regressões pgTAP de schema, RLS, grants e concorrência
+        run: supabase test db
+      - name: Encerrar banco efêmero
+        if: always()
+        run: supabase stop --no-backup

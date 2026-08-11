@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap, Globe, Save, RotateCcw, MapPin, Link2, Mail, Phone, User, ChevronDown, ChevronUp, Brain, Lock, AlertCircle } from 'lucide-react';
 import { flattenPageElements } from '@/lib/pageElementTree';
@@ -395,17 +396,38 @@ export default function FormSettings({ form, onUpdate }: Props) {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm">Salvar respostas parciais</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Grava respostas mesmo que o respondente não finalize o formulário.
-                </p>
-              </div>
-              <Switch
-                checked={form.savePartialResponses ?? true}
-                onCheckedChange={v => onUpdate({ savePartialResponses: v })}
-              />
+            <div className="space-y-2.5">
+              <Label className="text-sm">Quais envios devem ser salvos?</Label>
+              <RadioGroup
+                value={(form.savePartialResponses ?? true) ? 'complete_and_partial' : 'complete_only'}
+                onValueChange={value => onUpdate({ savePartialResponses: value === 'complete_and_partial' })}
+                className="gap-2"
+              >
+                <Label
+                  htmlFor="response-mode-complete-only"
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <RadioGroupItem id="response-mode-complete-only" value="complete_only" className="mt-0.5" />
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-medium text-foreground">Somente envios completos</span>
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Salva a resposta apenas quando o formulário chega ao final.
+                    </span>
+                  </span>
+                </Label>
+                <Label
+                  htmlFor="response-mode-complete-and-partial"
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <RadioGroupItem id="response-mode-complete-and-partial" value="complete_and_partial" className="mt-0.5" />
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-medium text-foreground">Envios completos e parciais</span>
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      Também salva o progresso de quem abandona antes de concluir.
+                    </span>
+                  </span>
+                </Label>
+              </RadioGroup>
             </div>
 
             <div className="border-t border-border" />

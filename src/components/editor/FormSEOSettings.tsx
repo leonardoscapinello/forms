@@ -10,8 +10,10 @@ import {
   Code2, Palette, Link2, Tag, Eye, ChevronDown, ChevronUp, Upload, Loader2, X, Trash2,
 } from 'lucide-react';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { resolveFormSeo, truncateSeoText } from '@/lib/formSeo';
+import { useBrand } from '@/hooks/brandContext';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 interface Props {
   form: FormData;
@@ -61,60 +63,94 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+function AutomaticSocialPreview({ form, title, description, productName, ownerName }: {
+  form: FormData;
+  title: string;
+  description: string;
+  productName: string;
+  ownerName: string;
+}) {
+  const page = form.showWelcomeScreen && form.welcomePage?.elements?.length
+    ? form.welcomePage
+    : form.pages?.find((candidate) => candidate.elements?.length) || form.pages?.[0];
+  const fields = (page?.elements || [])
+    .filter((element) => element.type.startsWith('input_'))
+    .map((element) => element.label || element.placeholder || 'Sua resposta')
+    .slice(0, 3);
+  if (!fields.length) fields.push('Sua resposta');
+  const primary = /^#[0-9a-f]{6}$/i.test(form.style?.buttonBgColor || '')
+    ? form.style.buttonBgColor
+    : '#635BFF';
+
+  return (
+    <div className="aspect-[1200/630] overflow-hidden rounded-[10px] border border-border bg-[#0b1024] p-4 text-white">
+      <div className="grid h-full grid-cols-[1.25fr_.75fr] gap-4">
+        <div className="flex min-w-0 flex-col justify-between py-1">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[8px]" style={{ backgroundColor: primary }}>
+              <img src="/images/brand-icon.svg" alt="" className="h-6 w-6" />
+            </span>
+            <span className="truncate text-[11px] font-semibold">{productName} · {ownerName}</span>
+          </div>
+          <div className="min-w-0 space-y-2">
+            <span className="block h-1 w-10 rounded-full" style={{ backgroundColor: primary }} />
+            <p className="line-clamp-2 text-lg font-bold leading-tight">{truncateSeoText(title, 72)}</p>
+            <p className="line-clamp-2 text-[10px] leading-relaxed text-white/70">{truncateSeoText(description, 120)}</p>
+          </div>
+          <p className="text-[9px] text-white/55">● Formulário online</p>
+        </div>
+        <div className="my-1 flex rotate-[1deg] flex-col rounded-[10px] bg-[#f8fafc] p-3 text-[#111827] shadow-xl">
+          <div className="mb-2 flex gap-1"><i className="h-1.5 w-1.5 rounded-full bg-red-400" /><i className="h-1.5 w-1.5 rounded-full bg-amber-300" /><i className="h-1.5 w-1.5 rounded-full bg-emerald-400" /></div>
+          <p className="mb-2 truncate text-[9px] font-semibold">{page?.title || form.title}</p>
+          <div className="space-y-1.5">
+            {fields.map((field, index) => <div key={`${field}-${index}`} className="truncate rounded border bg-white px-2 py-1.5 text-[7px] text-slate-400">{field}</div>)}
+          </div>
+          <div className="mt-auto rounded py-1.5 text-center text-[7px] font-semibold text-white" style={{ backgroundColor: primary }}>Continuar →</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FormSEOSettings({ form, onUpdate }: Props) {
+  const { brand } = useBrand();
   const seo: FormSEO = useMemo(() => form.seo || {}, [form.seo]);
   const ogInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingOg, setUploadingOg] = useState(false);
-  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const resolvedSeo = useMemo(() => resolveFormSeo({
+    id: form.id,
+    title: form.title,
+    description: form.description,
+    status: form.status,
+    updatedAt: form.updatedAt,
+    brand,
+    seo,
+    preview: { primaryColor: form.style?.buttonBgColor || form.style?.primaryColor },
+  }, { origin: window.location.origin }), [brand, form, seo]);
 
   const update = useCallback((patch: Partial<FormSEO>) => {
     onUpdate({ seo: { ...seo, ...patch } });
   }, [onUpdate, seo]);
 
-  const handleOgUpload = useCallback(async (file: File) => {
-    setUploadingOg(true);
-    try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `og-images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', path);
-      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-      if (error || !res?.success) {
-        toast.error(res?.message || 'Falha no upload');
-        return;
-      }
-      update({ ogImage: res.url });
+  const { upload: handleOgUpload, uploading: uploadingOg } = useImageUpload({
+    pathPrefix: 'og-images',
+    maxSizeMB: 2,
+    onSuccess: (url) => {
+      update({ ogImage: url });
       toast.success('Imagem enviada');
-    } catch {
-      toast.error('Erro ao enviar imagem');
-    } finally {
-      setUploadingOg(false);
-    }
-  }, [update]);
+    },
+    onError: () => toast.error('Erro ao enviar imagem'),
+  });
 
-  const handleFaviconUpload = useCallback(async (file: File) => {
-    setUploadingFavicon(true);
-    try {
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `favicons/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('path', path);
-      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: fd });
-      if (error || !res?.success) {
-        toast.error(res?.message || 'Falha no upload');
-        return;
-      }
-      update({ favicon: res.url });
+  const { upload: handleFaviconUpload, uploading: uploadingFavicon } = useImageUpload({
+    pathPrefix: 'favicons',
+    maxSizeMB: 0.5,
+    onSuccess: (url) => {
+      update({ favicon: url });
       toast.success('Favicon enviado');
-    } catch {
-      toast.error('Erro ao enviar favicon');
-    } finally {
-      setUploadingFavicon(false);
-    }
-  }, [update]);
+    },
+    onError: () => toast.error('Erro ao enviar favicon'),
+  });
 
   const titleLen = (seo.title || '').length;
   const descLen = (seo.description || '').length;
@@ -138,13 +174,13 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Prévia no Google</p>
           <div className="space-y-0.5">
             <p className="text-[#1a0dab] text-base font-medium truncate">
-              {seo.title || form.title || 'Título do formulário'}
+              {resolvedSeo.title}
             </p>
             <p className="text-[#006621] text-xs truncate">
-              {seo.canonicalUrl || `${window.location.origin}/f/${form.id}`}
+              {resolvedSeo.canonicalUrl}
             </p>
             <p className="text-xs text-muted-foreground line-clamp-2">
-              {seo.description || 'Adicione uma descrição para melhorar a visibilidade nos mecanismos de busca.'}
+              {resolvedSeo.description}
             </p>
           </div>
         </div>
@@ -165,7 +201,7 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
             <Textarea
               value={seo.description || ''}
               onChange={e => update({ description: e.target.value })}
-              placeholder="Uma descrição concisa do formulário para mecanismos de busca..."
+              placeholder={resolvedSeo.description}
               className="text-xs min-h-[80px] resize-none"
               maxLength={320}
             />
@@ -175,7 +211,7 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
             <Input
               value={seo.keywords || ''}
               onChange={e => update({ keywords: e.target.value })}
-              placeholder="formulário, pesquisa, feedback"
+              placeholder={resolvedSeo.keywords}
               className="text-xs h-9"
             />
           </Field>
@@ -183,7 +219,7 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
 
         {/* Open Graph / Social */}
         <Section icon={Image} title="Open Graph (Redes sociais)" description="Como o link aparece quando compartilhado no Facebook, WhatsApp, LinkedIn, etc." defaultOpen={false}>
-          <Field label="Imagem de capa (og:image)" hint="Recomendado: 1200×630px.">
+          <Field label="Imagem de capa (og:image)" hint="A capa automática em 1200×630px nunca fica vazia. Envie uma imagem para substituí-la.">
             <input
               ref={ogInputRef}
               type="file"
@@ -226,14 +262,28 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
               </div>
             ) : (
               <div className="space-y-2">
+                <AutomaticSocialPreview
+                  form={form}
+                  title={resolvedSeo.title}
+                  description={resolvedSeo.description}
+                  productName={resolvedSeo.productName}
+                  ownerName={resolvedSeo.ownerName}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Capa automática ativa</p>
+                    <p className="text-[10px] text-muted-foreground">Título, descrição, logotipo e prévia do formulário são atualizados sozinhos.</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">1200 × 630</span>
+                </div>
                 <Button
                   variant="outline"
-                  className="w-full h-20 text-xs border-dashed gap-2"
+                  className="w-full h-10 text-xs border-dashed gap-2"
                   disabled={uploadingOg}
                   onClick={() => ogInputRef.current?.click()}
                 >
                   {uploadingOg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  {uploadingOg ? 'Enviando...' : 'Enviar imagem de capa'}
+                  {uploadingOg ? 'Enviando...' : 'Substituir por uma imagem personalizada'}
                 </Button>
                 <Input
                   value={seo.ogImage || ''}
@@ -280,7 +330,7 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
             <Input
               value={seo.canonicalUrl || ''}
               onChange={e => update({ canonicalUrl: e.target.value })}
-              placeholder={`${window.location.origin}/f/${form.id}`}
+              placeholder={resolvedSeo.canonicalUrl}
               className="text-xs font-mono h-9"
             />
           </Field>
@@ -386,25 +436,15 @@ export default function FormSEOSettings({ form, onUpdate }: Props) {
                 size="sm"
                 className="text-xs gap-1.5"
                 onClick={() => {
-                  const formUrl = `${window.location.origin}/f/${form.id}`;
-                  const jsonLd: Record<string, unknown> = {
-                    '@context': 'https://schema.org',
-                    '@type': seo.ogType === 'article' ? 'Article' : 'WebPage',
-                    'name': seo.title || form.title || '',
-                    'description': seo.description || '',
-                    'url': seo.canonicalUrl || formUrl,
-                  };
-                  if (seo.ogImage) jsonLd.image = seo.ogImage;
-                  if (seo.keywords) {
-                    jsonLd.keywords = seo.keywords;
-                  }
-                  jsonLd.publisher = {
-                    '@type': 'Organization',
-                    'name': window.location.hostname,
-                    ...(seo.favicon ? { logo: seo.favicon } : {}),
-                  };
-                  jsonLd.dateModified = new Date().toISOString().split('T')[0];
-                  update({ structuredData: JSON.stringify(jsonLd, null, 2) });
+                  const generated = resolveFormSeo({
+                    id: form.id,
+                    title: form.title,
+                    description: form.description,
+                    status: form.status,
+                    updatedAt: form.updatedAt,
+                    seo: { ...seo, structuredData: undefined },
+                  }, { origin: window.location.origin });
+                  update({ structuredData: JSON.stringify(generated.jsonLd, null, 2) });
                   toast.success('JSON-LD gerado com base nas informações do formulário');
                 }}
               >

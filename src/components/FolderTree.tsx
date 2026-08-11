@@ -58,8 +58,8 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
       <div
         className={cn(
           'group flex items-center gap-1 rounded-lg cursor-pointer transition-colors select-none',
-          isSelected ? 'bg-accent text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-          dragOver && 'bg-accent ring-1 ring-primary-foreground/40',
+          isSelected ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          dragOver && 'bg-accent text-accent-foreground ring-1 ring-accent-foreground/40',
         )}
         style={{ paddingLeft: `${8 + depth * 16}px`, paddingRight: '4px', paddingTop: '5px', paddingBottom: '5px' }}
         onClick={() => !editing && onSelectFolder(node.id)}
@@ -81,7 +81,7 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
       >
         {/* Expand toggle */}
         <button
-          className="flex-shrink-0 p-0.5 rounded hover:bg-muted/60"
+          className="flex-shrink-0 p-0.5 rounded hover:bg-muted hover:text-foreground"
           onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
         >
           {hasChildren
@@ -105,8 +105,20 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
               autoFocus
               onKeyDown={e => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') setEditing(false); }}
             />
-            <button onClick={confirmRename} className="text-primary-foreground flex-shrink-0"><Check className="h-3 w-3" /></button>
-            <button onClick={() => setEditing(false)} className="text-muted-foreground flex-shrink-0"><X className="h-3 w-3" /></button>
+            <button
+              onClick={confirmRename}
+              className="rounded bg-background p-0.5 text-foreground hover:bg-muted flex-shrink-0"
+              aria-label="Salvar nome da pasta"
+            >
+              <Check className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="rounded bg-background p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground flex-shrink-0"
+              aria-label="Cancelar edição da pasta"
+            >
+              <X className="h-3 w-3" />
+            </button>
           </div>
         ) : (
           <span className="flex-1 min-w-0 text-xs font-medium truncate">{node.name}</span>
@@ -115,7 +127,7 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
         {!editing && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-              <button className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted">
+              <button className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted hover:text-foreground">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
@@ -129,7 +141,11 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={e => { e.stopPropagation(); deleteFolder(node.id); if (selectedFolderId === node.id) onSelectFolder(null); }}
+                onClick={async e => {
+                  e.stopPropagation();
+                  const deleted = await deleteFolder(node.id);
+                  if (deleted && selectedFolderId === node.id) onSelectFolder(null);
+                }}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir pasta
               </DropdownMenuItem>
@@ -165,7 +181,7 @@ function FolderTreeNode({ node, depth, selectedFolderId, onSelectFolder, useFold
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') confirmChild(); if (e.key === 'Escape') { setCreatingChild(false); setChildName(''); } }}
               />
-              <button onClick={confirmChild} className="text-primary-foreground flex-shrink-0"><Check className="h-3 w-3" /></button>
+              <button onClick={confirmChild} className="text-primary hover:text-primary/80 flex-shrink-0"><Check className="h-3 w-3" /></button>
               <button onClick={() => { setCreatingChild(false); setChildName(''); }} className="text-muted-foreground flex-shrink-0"><X className="h-3 w-3" /></button>
             </div>
           )}
@@ -214,7 +230,7 @@ export default function FolderTree({ selectedFolderId, onSelectFolder, useFolder
           className={cn(
             'flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors text-xs font-medium',
             selectedFolderId === null
-              ? 'bg-accent text-primary-foreground'
+              ? 'bg-accent text-accent-foreground'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
           onClick={() => onSelectFolder(null)}
@@ -261,7 +277,7 @@ export default function FolderTree({ selectedFolderId, onSelectFolder, useFolder
               autoFocus
               onKeyDown={e => { if (e.key === 'Enter') confirmRoot(); if (e.key === 'Escape') { setCreatingRoot(false); setRootName(''); } }}
             />
-            <button onClick={confirmRoot} className="text-primary-foreground flex-shrink-0"><Check className="h-3 w-3" /></button>
+            <button onClick={confirmRoot} className="text-primary hover:text-primary/80 flex-shrink-0"><Check className="h-3 w-3" /></button>
             <button onClick={() => { setCreatingRoot(false); setRootName(''); }} className="text-muted-foreground flex-shrink-0"><X className="h-3 w-3" /></button>
           </div>
         )}
@@ -272,7 +288,7 @@ export default function FolderTree({ selectedFolderId, onSelectFolder, useFolder
             <p className="text-[11px] text-muted-foreground">Nenhuma pasta ainda</p>
             <button
               onClick={() => setCreatingRoot(true)}
-              className="text-[11px] text-primary-foreground hover:underline mt-1"
+              className="text-[11px] text-primary hover:text-primary/80 hover:underline mt-1"
             >
               + Criar pasta
             </button>

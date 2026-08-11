@@ -87,7 +87,7 @@ function buildUpstreamPageMap(form: FormData): Map<string, Set<string>> {
 function findElementPage(form: FormData, elementId: string): string | null {
   const baseId = elementId.split('.')[0];
   for (const page of form.pages || []) {
-    if ((page.elements || []).some(el => el.id === baseId)) return page.id;
+    if (flattenPageElements(page.elements || []).some(el => el.id === baseId)) return page.id;
   }
   return null;
 }
@@ -98,7 +98,7 @@ function findElementPage(form: FormData, elementId: string): string | null {
 function getElementLabel(form: FormData, elementId: string): string {
   const baseId = elementId.split('.')[0];
   for (const page of form.pages || []) {
-    const el = (page.elements || []).find(e => e.id === baseId);
+    const el = flattenPageElements(page.elements || []).find(e => e.id === baseId);
     if (el) return el.label || el.type.replace('input_', '').replace(/_/g, ' ');
   }
   return elementId;

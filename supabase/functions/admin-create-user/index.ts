@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin } from '../_shared/auth.ts';
+import {
+  promoteCreatedUserToAdmin,
+  rollbackCreatedAuthUser,
+} from '../_shared/adminUserCreation.ts';
+import { readLimitedJsonObject } from '../_shared/limitedJsonBody.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,51 +15,21 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', Allow: 'POST, OPTIONS' },
+    });
+  }
 
   try {
-    // Verify the caller is an admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const caller = await requireAdmin(req);
+    if (!caller.ok) return caller.response;
+    const adminClient = caller.admin;
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    // Check caller's role
-    const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claimsData, error: claimsError } = await callerClient.auth.getClaims(
-      authHeader.replace('Bearer ', '')
-    );
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const callerId = claimsData.claims.sub;
-
-    // Use service role to check admin
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleData } = await adminClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', callerId)
-      .eq('role', 'admin')
-      .maybeSingle();
-
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { email, password, displayName, role } = await req.json();
+    const parsedBody = await readLimitedJsonObject(req, 4 * 1024, corsHeaders);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { email, password, displayName, role } = parsedBody.value;
 
     // ── Input validation ──
     if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
@@ -70,8 +45,8 @@ serve(async (req) => {
       });
     }
 
-    if (password.length < 8 || password.length > 128) {
-      return new Response(JSON.stringify({ error: 'Password must be between 8 and 128 characters' }), {
+    if (password.length < 12 || password.length > 128) {
+      return new Response(JSON.stringify({ error: 'Password must be between 12 and 128 characters' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -101,16 +76,34 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // If a specific role was requested and user was created
-    if (role === 'admin' && newUser.user) {
-      // The trigger already creates a 'user' role, upgrade to admin
-      await adminClient.from('user_roles')
-        .update({ role: 'admin' })
-        .eq('user_id', newUser.user.id);
+    const createdUserId = newUser.user?.id;
+    if (!createdUserId) {
+      return new Response(JSON.stringify({ error: 'User creation was not acknowledged' }), {
+        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ success: true, user: { id: newUser.user?.id, email } }), {
+    if (role === 'admin') {
+      // The signup trigger creates one `user` role. Treat the second operation
+      // as committed only after exact row-count and returned-row ACK.
+      const promotion = await promoteCreatedUserToAdmin(adminClient, createdUserId);
+      if (!promotion.ok) {
+        const rolledBack = await rollbackCreatedAuthUser(adminClient, createdUserId);
+        console.error('admin-create-user role promotion failed', {
+          reason: promotion.reason,
+          rollback: rolledBack ? 'confirmed' : 'unconfirmed',
+        });
+        return new Response(JSON.stringify({
+          error: rolledBack
+            ? 'User creation was rolled back because the requested role was not confirmed'
+            : 'User role was not confirmed; manual review is required',
+        }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, user: { id: createdUserId, email } }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {

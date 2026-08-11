@@ -99,7 +99,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<Partial<Session
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=pt-BR`,
-      { headers: { 'User-Agent': 'LovableFormApp/1.0' } }
+      { headers: { 'User-Agent': 'Forms-Leonardo-Scapinello/1.0' } }
     );
     const data = await res.json();
     const addr = data.address || {};

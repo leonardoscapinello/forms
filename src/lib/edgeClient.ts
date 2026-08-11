@@ -4,6 +4,7 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 export async function invokeEdge<T = any>(
   functionName: string,
   body: unknown,
+  options: { signal?: AbortSignal } = {},
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
     const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
@@ -15,6 +16,7 @@ export async function invokeEdge<T = any>(
         ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
       },
       body: isFormData ? body : JSON.stringify(body),
+      signal: options.signal,
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {

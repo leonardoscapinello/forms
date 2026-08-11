@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Monitor, Tablet, Smartphone, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Monitor, Tablet, Smartphone, X, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { FormData as AppFormData } from '@/types/form';
 
 interface Props {
-  formId: string;
+  form: AppFormData;
   onClose: () => void;
 }
 
@@ -17,9 +18,54 @@ const DEVICES = [
 
 type DeviceId = typeof DEVICES[number]['id'];
 
-export default function ResponsivePreview({ formId, onClose }: Props) {
+export default function ResponsivePreview({ form, onClose }: Props) {
   const [device, setDevice] = useState<DeviceId>('desktop');
+  const [previewMounted, setPreviewMounted] = useState(false);
+  const [previewTimedOut, setPreviewTimedOut] = useState(false);
+  const [iframeEpoch, setIframeEpoch] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewSessionRef = useRef(crypto.randomUUID());
   const active = DEVICES.find(d => d.id === device)!;
+
+  const sendPreviewData = useCallback(() => {
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'forms-editor-preview-data',
+      formId: form.id,
+      previewSession: previewSessionRef.current,
+      form,
+    }, '*');
+  }, [form]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.formId !== form.id || event.data?.previewSession !== previewSessionRef.current) return;
+      if (event.data?.type === 'forms-editor-preview-ready') {
+        sendPreviewData();
+      } else if (event.data?.type === 'forms-editor-preview-mounted') {
+        setPreviewMounted(true);
+        setPreviewTimedOut(false);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [form.id, sendPreviewData]);
+
+  useEffect(() => {
+    sendPreviewData();
+  }, [sendPreviewData]);
+
+  useEffect(() => {
+    setPreviewMounted(false);
+    setPreviewTimedOut(false);
+    const timeout = window.setTimeout(() => setPreviewTimedOut(true), 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [device, iframeEpoch]);
+
+  const retryPreview = () => {
+    previewSessionRef.current = crypto.randomUUID();
+    setIframeEpoch(previous => previous + 1);
+  };
 
   return (
     <motion.div
@@ -43,9 +89,10 @@ export default function ResponsivePreview({ formId, onClose }: Props) {
                   'h-8 px-3 gap-1.5 text-xs font-medium rounded-md transition-all',
                   isActive
                     ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground active:bg-muted/80 active:text-foreground'
                 )}
                 onClick={() => setDevice(d.id)}
+                aria-pressed={isActive}
               >
                 <Icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{d.label}</span>
@@ -61,8 +108,9 @@ export default function ResponsivePreview({ formId, onClose }: Props) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 ml-auto text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 ml-auto text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground active:bg-muted/80 active:text-foreground"
           onClick={onClose}
+          aria-label="Fechar preview"
         >
           <X className="h-4 w-4" />
         </Button>
@@ -88,10 +136,42 @@ export default function ResponsivePreview({ formId, onClose }: Props) {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-background rounded-b-2xl z-10 border-b border-x border-border" />
           )}
           <iframe
-            src={`/f/${formId}?editorPreview=1`}
+            ref={iframeRef}
+            src={`/f/${form.id}?editorPreview=1&previewSession=${encodeURIComponent(previewSessionRef.current)}&previewEpoch=${iframeEpoch}`}
             className="w-full h-full border-0"
             title={`Preview ${active.label}`}
+            sandbox="allow-scripts allow-forms allow-modals allow-popups"
+            referrerPolicy="no-referrer"
+            onLoad={sendPreviewData}
           />
+          <AnimatePresence>
+            {!previewMounted && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-20 flex items-center justify-center bg-background/95 px-6 text-center"
+                role="status"
+                aria-live="polite"
+              >
+                {previewTimedOut ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-foreground">O preview demorou para carregar</p>
+                    <p className="text-xs text-muted-foreground">O rascunho continua salvo. Tente recarregar somente esta visualização.</p>
+                    <Button type="button" size="sm" variant="outline" className="gap-2" onClick={retryPreview}>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Recarregar preview
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Preparando preview…
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </motion.div>

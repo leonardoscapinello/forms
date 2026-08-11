@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useAuth } from './authContext';
 import { toast } from 'sonner';
+import { hasSingleIdAck } from '@/lib/databaseAck';
 
 export interface Tag {
   id: string;
@@ -21,12 +22,14 @@ export function useTags() {
       .from('tags')
       .select('*')
       .order('name');
-    if (!error && data) setTags(data as Tag[]);
+    if (error) toast.error('Não foi possível carregar as etiquetas.');
+    else if (data) setTags(data as Tag[]);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (user?.id) fetchTags();
+    if (user?.id) void fetchTags();
+    else setTags([]);
   }, [user?.id, fetchTags]);
 
   const createTag = useCallback(async (name: string, color: string) => {
@@ -57,8 +60,8 @@ export function useTags() {
   }, []);
 
   const deleteTag = useCallback(async (id: string) => {
-    const { error } = await supabase.from('tags').delete().eq('id', id);
-    if (error) { toast.error('Erro ao excluir tag'); return; }
+    const { data, error } = await supabase.from('tags').delete().eq('id', id).select('id').maybeSingle();
+    if (error || !hasSingleIdAck(data, id)) { toast.error('Erro ao excluir tag'); return; }
     setTags(prev => prev.filter(t => t.id !== id));
   }, []);
 
@@ -69,32 +72,42 @@ export function useFormTags(formId: string | null) {
   const [formTagIds, setFormTagIds] = useState<string[]>([]);
 
   const fetchFormTags = useCallback(async () => {
-    if (!formId) return;
-    const { data } = await supabase
+    if (!formId) {
+      setFormTagIds([]);
+      return;
+    }
+    const { data, error } = await supabase
       .from('form_tags')
       .select('tag_id')
       .eq('form_id', formId);
-    if (data) setFormTagIds(data.map((r: { tag_id: string }) => r.tag_id));
+    if (error) toast.error('Não foi possível carregar as etiquetas deste formulário.');
+    else if (data) setFormTagIds(data.map((r: { tag_id: string }) => r.tag_id));
   }, [formId]);
 
   useEffect(() => { fetchFormTags(); }, [fetchFormTags]);
 
   const addTagToForm = useCallback(async (tagId: string) => {
     if (!formId) return;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('form_tags')
-      .insert({ form_id: formId, tag_id: tagId });
-    if (!error) setFormTagIds(prev => [...prev, tagId]);
+      .insert({ form_id: formId, tag_id: tagId })
+      .select('form_id, tag_id')
+      .maybeSingle();
+    if (error || data?.form_id !== formId || data?.tag_id !== tagId) toast.error('Não foi possível adicionar a etiqueta.');
+    else setFormTagIds(prev => prev.includes(tagId) ? prev : [...prev, tagId]);
   }, [formId]);
 
   const removeTagFromForm = useCallback(async (tagId: string) => {
     if (!formId) return;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('form_tags')
       .delete()
       .eq('form_id', formId)
-      .eq('tag_id', tagId);
-    if (!error) setFormTagIds(prev => prev.filter(id => id !== tagId));
+      .eq('tag_id', tagId)
+      .select('form_id, tag_id')
+      .maybeSingle();
+    if (error || data?.form_id !== formId || data?.tag_id !== tagId) toast.error('Não foi possível remover a etiqueta.');
+    else setFormTagIds(prev => prev.filter(id => id !== tagId));
   }, [formId]);
 
   return { formTagIds, addTagToForm, removeTagFromForm, refetch: fetchFormTags };
@@ -106,13 +119,22 @@ export function useAllFormTags(formIds: string[]) {
   const key = useMemo(() => formIds.slice().sort().join(','), [formIds]);
 
   useEffect(() => {
-    if (!key) return;
+    if (!key) {
+      setMap({});
+      return;
+    }
+    let cancelled = false;
     const ids = key.split(',');
     supabase
       .from('form_tags')
       .select('form_id, tag_id')
       .in('form_id', ids)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          toast.error('Não foi possível carregar as etiquetas dos formulários.');
+          return;
+        }
         if (!data) return;
         const result: Record<string, string[]> = {};
         for (const r of data as { form_id: string; tag_id: string }[]) {
@@ -121,6 +143,7 @@ export function useAllFormTags(formIds: string[]) {
         }
         setMap(result);
       });
+    return () => { cancelled = true; };
   }, [key]);
 
   return map;

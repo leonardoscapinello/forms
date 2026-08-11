@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useAuth } from './authContext';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface CollaboratorPresence {

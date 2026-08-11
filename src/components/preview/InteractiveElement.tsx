@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom';
 import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle } from 'lucide-react';
+import { Check, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Star, Heart, ThumbsUp } from 'lucide-react';
 import { PageElement } from '@/types/pageElements';
 import { FormVariable, FormStyle } from '@/types/form';
 import { invokeEdge } from '@/lib/edgeClient';
@@ -10,6 +10,10 @@ import Twemoji from '@/components/Twemoji';
 import { interpolateText, interpolateTextToNodes, interpolateTextToHtml } from '@/lib/variableInterpolation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { validateEmailFormat } from '@/lib/emailValidation';
+import { normalizeVideoEmbedUrl } from '@/lib/embedUrl';
+import { ratingGlow, resolveRatingActiveColor } from '@/lib/ratingStyle';
+import { resolveRedirectDestination } from '@/lib/redirectDestination';
+import { validatePhoneValue, type NormalizedPhoneValue } from '@/lib/phoneValue';
 
 // Lazy-loaded heavy preview components
 const loadPhoneFieldPreview = () => import('@/components/preview/PhoneFieldPreview');
@@ -70,11 +74,17 @@ export interface InteractiveElementProps {
   answers?: Record<string, any>;
   fieldError?: string;
   formStyle?: FormStyle;
-  onSelectionMade?: () => void;
+  onSelectionMade?: (elementType: PageElement['type']) => void;
   onElementChange?: (elementId: string, value: any) => void;
   onElementBlockedChange?: (elementId: string, blocked: boolean) => void;
   registerElementValidator?: (elementId: string, validator: (() => Promise<boolean>) | null) => void;
   fieldErrors?: Record<string, string>;
+  /** Present only for a real signed respondent; omitted in editor/device previews. */
+  publicValidationContext?: {
+    formId: string;
+    submissionToken?: string;
+    responseId?: string;
+  };
 }
 
 /** Renders an interactive page element for the preview */
@@ -96,6 +106,7 @@ export default function InteractiveElement({
   onElementBlockedChange,
   registerElementValidator,
   fieldErrors = {},
+  publicValidationContext,
 }: InteractiveElementProps) {
   const { type, style } = element;
   const t = (text: string | undefined) => text ? interpolateText(text, variables, answers) : text;
@@ -116,8 +127,14 @@ export default function InteractiveElement({
   // Tactile blink feedback for selection fields
   const [blinkingId, setBlinkingId] = useState<string | null>(null);
   const blinkTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const selectionTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const onSelectionMadeRef = useRef(onSelectionMade);
   useEffect(() => { onSelectionMadeRef.current = onSelectionMade; });
+
+  useEffect(() => () => {
+    if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
+    if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+  }, []);
 
   const triggerBlink = useCallback((optId: string) => {
     if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
@@ -127,8 +144,15 @@ export default function InteractiveElement({
 
   const triggerSelectionFeedback = useCallback((optId: string) => {
     triggerBlink(optId);
-    setTimeout(() => onSelectionMadeRef.current?.(), 500);
-  }, [triggerBlink]);
+    // Only the latest choice may request auto-advance. Clearing this timer on
+    // unmount prevents a choice from the previous page skipping the next page
+    // after the respondent already navigated manually.
+    if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+    selectionTimerRef.current = setTimeout(() => {
+      selectionTimerRef.current = undefined;
+      onSelectionMadeRef.current?.(type);
+    }, 500);
+  }, [triggerBlink, type]);
 
   // ── Field style overrides from formStyle ──────────────────────────────
   const fBg = formStyle?.fieldBgColor || undefined;
@@ -187,6 +211,10 @@ export default function InteractiveElement({
 
   const boxStyle: React.CSSProperties = {};
   if (style?.backgroundColor) boxStyle.backgroundColor = style.backgroundColor;
+  if (style?.color) boxStyle.color = style.color;
+  if (style?.textAlign) boxStyle.textAlign = style.textAlign;
+  if (style?.fontFamily) boxStyle.fontFamily = normalizeFontFamily(style.fontFamily);
+  if (style?.fontWeight) boxStyle.fontWeight = style.fontWeight;
   if (style?.borderRadius !== undefined) boxStyle.borderRadius = style.borderRadius;
   if (style?.borderWidth) {
     boxStyle.borderWidth = style.borderWidth;
@@ -241,6 +269,8 @@ export default function InteractiveElement({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const validationError = fieldError || emailError || phoneError;
   const valueRef = useRef(value);
   useEffect(() => { valueRef.current = value; }, [value]);
   const emailFormatResult = element.type === 'input_email' && value
@@ -280,23 +310,36 @@ export default function InteractiveElement({
           return false;
         }
 
-        if (element.smartValidation) {
+        if (element.smartValidation && publicValidationContext) {
           setEmailChecking(true);
           try {
-            const res = await invokeEdge('verify-email', { email: val });
+            const res = await invokeEdge('verify-email', {
+              email: val,
+              elementId: element.id,
+              formId: publicValidationContext.formId,
+              submissionToken: publicValidationContext.submissionToken,
+              responseId: publicValidationContext.responseId,
+            });
             const data = res.data as any;
+            if (res.error || typeof data?.is_safe_to_send !== 'boolean') {
+              setEmailError('Não foi possível validar este e-mail agora. Tente novamente.');
+              setEmailValid(false);
+              return false;
+            }
             if (data?.is_safe_to_send === false) {
               setEmailError(data?.is_disposable ? 'E-mail descartável' : 'Este e-mail não é válido para receber mensagens');
               setEmailValid(false);
               return false;
-            } else if (data?.is_safe_to_send === true) {
+            }
+            if (data?.is_safe_to_send === true) {
               setEmailValid(true);
               setEmailError(null);
               return true;
             }
-            return true;
           } catch {
-            return true;
+            setEmailError('Não foi possível validar este e-mail agora. Tente novamente.');
+            setEmailValid(false);
+            return false;
           } finally {
             setEmailChecking(false);
           }
@@ -305,17 +348,31 @@ export default function InteractiveElement({
         setEmailValid(true);
         return true;
       });
+    } else if (element.type === 'input_phone') {
+      registerValidator(async () => {
+        const result = validatePhoneValue(valueRef.current, {
+          required: element.required,
+          defaultCountryCode: element.defaultCountryCode,
+        });
+        setPhoneError(result.valid ? null : (result.error || 'Telefone inválido'));
+        return result.valid;
+      });
     } else {
       registerValidator(null);
     }
     return () => registerValidator(null);
-  }, [element.type, element.smartValidation, element.required, element.requiredMessage, registerValidator]);
+  }, [element.id, element.type, element.smartValidation, element.required, element.requiredMessage, element.defaultCountryCode, publicValidationContext, registerValidator]);
 
   const handleEmailChange = useCallback((val: string) => {
     onChange(val);
     setEmailValid(null);
-    setEmailError(null);
-  }, [onChange]);
+    setEmailError(currentError => {
+      if (!currentError) return null;
+      if (!val) return element.required ? (element.requiredMessage || 'E-mail obrigatório') : null;
+      const result = validateEmailFormat(val);
+      return result.valid ? null : (result.error || 'E-mail inválido');
+    });
+  }, [element.required, element.requiredMessage, onChange]);
 
   const handleEmailBlur = useCallback(() => {
     const val = (value || '') as string;
@@ -329,6 +386,18 @@ export default function InteractiveElement({
     }
   }, [value]);
 
+  const handlePhoneChange = useCallback((nextValue: NormalizedPhoneValue) => {
+    setPhoneError(currentError => {
+      if (!currentError) return null;
+      const result = validatePhoneValue(nextValue, {
+        required: element.required,
+        defaultCountryCode: element.defaultCountryCode,
+      });
+      return result.valid ? null : (result.error || 'Telefone inválido');
+    });
+    onChange(nextValue);
+  }, [element.defaultCountryCode, element.required, onChange]);
+
   const numStyle = formStyle?.questionNumberStyle || 'decimal';
   const numHidden = numStyle === 'none';
   const formatNum = (n: number) => {
@@ -339,7 +408,7 @@ export default function InteractiveElement({
     return `${n}`;
   };
 
-  const numInline: React.CSSProperties = !fieldError ? {
+  const numInline: React.CSSProperties = !validationError ? {
     color: formStyle?.questionNumberColor || 'inherit',
     fontSize: formStyle?.questionNumberSize || undefined,
     fontWeight: (formStyle?.questionNumberWeight as any) || undefined,
@@ -347,30 +416,40 @@ export default function InteractiveElement({
   } : {};
 
   const titleInline: React.CSSProperties = {
-    color: formStyle?.questionTitleColor || 'inherit',
+    color: style?.color || formStyle?.questionTitleColor || 'inherit',
     fontSize: formStyle?.questionTitleSize || undefined,
-    fontWeight: (formStyle?.questionTitleWeight as any) || undefined,
+    fontWeight: style?.fontWeight || (formStyle?.questionTitleWeight as any) || undefined,
     fontFamily: headingFontFamily,
+    textAlign: style?.textAlign || undefined,
   };
 
   const descInline: React.CSSProperties = {
-    color: formStyle?.questionDescColor || undefined,
+    color: style?.color || formStyle?.questionDescColor || undefined,
     fontSize: formStyle?.questionDescSize || undefined,
-    fontWeight: (formStyle?.questionDescWeight as any) || undefined,
+    fontWeight: style?.fontWeight || (formStyle?.questionDescWeight as any) || undefined,
     fontFamily: bodyFontFamily,
+    textAlign: style?.textAlign || undefined,
   };
 
   const withFieldHeader = (content: React.ReactNode) => (
-    <div className={`space-y-3 md:space-y-6 ${fieldError ? 'animate-shake' : ''}`}>
+    <div
+      className={`space-y-3 md:space-y-6 ${validationError ? 'form-field-invalid' : ''}`}
+      data-form-field-id={element.id}
+      data-form-field-invalid={validationError ? 'true' : undefined}
+      role="group"
+      aria-labelledby={`field-label-${element.id}`}
+      aria-describedby={validationError ? `field-error-${element.id}` : undefined}
+      aria-invalid={validationError ? 'true' : undefined}
+    >
       <div className="flex items-start gap-1.5 md:gap-3">
         {!numHidden && (
           <>
-            <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={numInline}>{formatNum(stepNumber)}</span>
-            <span className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${fieldError ? 'text-destructive' : ''}`} style={numInline}>→</span>
+            <span data-form-question-number className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${validationError ? 'text-destructive' : ''}`} style={numInline}>{formatNum(stepNumber)}</span>
+            <span data-form-question-number className={`text-base md:text-xl lg:text-2xl font-semibold mt-0.5 ${validationError ? 'text-destructive' : ''}`} style={numInline}>→</span>
           </>
         )}
-        <div>
-          <h2 id={`field-label-${element.id}`} className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={titleInline}>
+        <div className="min-w-0 flex-1">
+          <h2 data-form-field-label id={`field-label-${element.id}`} className="text-base md:text-xl lg:text-2xl font-semibold leading-snug" style={titleInline}>
             {tNodes(element.label) || 'Sem título'}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
@@ -381,7 +460,7 @@ export default function InteractiveElement({
       </div>
       <div className={numHidden ? '' : 'pl-7 md:pl-12 lg:pl-14'} style={{ fontFamily: bodyFontFamily }}>
         {content}
-        {fieldError && (
+        {validationError && (
           <motion.p
             id={`field-error-${element.id}`}
             initial={{ opacity: 0, y: -4 }}
@@ -389,7 +468,7 @@ export default function InteractiveElement({
             className="text-sm text-destructive mt-2 flex items-center gap-1.5"
           >
             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-            {fieldError}
+            {validationError}
           </motion.p>
         )}
       </div>
@@ -455,12 +534,17 @@ export default function InteractiveElement({
 
     case 'button': {
       const handleButtonClick = () => {
-        if (element.href) {
-          window.open(element.href, '_blank');
-          return;
-        }
+        // A configured form action must win over a decorative/link destination.
+        // In particular, a "finish" button may never open a URL before the
+        // response has been acknowledged by the backend.
         if (element.buttonAction && element.buttonAction !== 'none' && onNavigate) {
           onNavigate(element.buttonAction, element.buttonTargetPageId);
+          return;
+        }
+        const safeHref = resolveRedirectDestination(element.href, variables, answers)?.url;
+        if (safeHref) {
+          const opened = window.open(safeHref, '_blank', 'noopener,noreferrer');
+          if (opened) opened.opener = null;
         }
       };
       return (
@@ -489,12 +573,21 @@ export default function InteractiveElement({
     case 'divider':
       return <hr className="border-border" style={{ borderWidth: element.height || 1 }} />;
 
-    case 'video':
-      return element.src ? (
+    case 'video': {
+      const embedUrl = normalizeVideoEmbedUrl(element.src);
+      return embedUrl ? (
         <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-          <iframe src={element.src} className="w-full h-full" allowFullScreen title="Video" />
+          <iframe
+            src={embedUrl}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            title="Vídeo"
+          />
         </div>
       ) : null;
+    }
 
     case 'spacer':
       return <div style={{ height: element.height || 40 }} />;
@@ -610,15 +703,16 @@ export default function InteractiveElement({
               autoCapitalize="off"
               spellCheck={false}
               aria-labelledby={`field-label-${element.id}`}
-              aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${emailError || fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
-              aria-invalid={!!emailError || !!fieldError}
+              aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${validationError ? `field-error-${element.id}` : ''}`.trim() || undefined}
+              aria-invalid={!!validationError}
               onBlur={handleEmailBlur}
               data-1p-ignore
               data-lpignore="true"
               data-bwignore
               data-form-type="other"
+              data-form-primary-control
               className={`w-full bg-transparent border-0 border-b-2 outline-none text-base md:text-lg lg:text-xl py-2 text-foreground placeholder:text-muted-foreground/40 transition-colors ${
-                emailError ? 'border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
+                validationError ? 'border-destructive focus:border-destructive' : emailValid ? 'border-green-500' : 'border-border focus:border-primary'
               }`}
               style={fieldInputStyle}
               autoFocus
@@ -644,20 +738,8 @@ export default function InteractiveElement({
             </AnimatePresence>
           </div>
           <EmailDomainSuggestions value={value || ''} onSelect={handleEmailChange} />
-          <div className="h-6 flex items-center">
+          {emailValid && element.smartValidation && <div className="h-6 flex items-center">
             <AnimatePresence mode="wait">
-              {emailError && (
-                <motion.p
-                  key="error"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="text-sm text-destructive"
-                >
-                  {emailError}
-                </motion.p>
-              )}
               {emailValid && element.smartValidation && (
                 <motion.p
                   key="valid"
@@ -671,7 +753,7 @@ export default function InteractiveElement({
                 </motion.p>
               )}
             </AnimatePresence>
-          </div>
+          </div>}
         </div>
       );
 
@@ -690,6 +772,7 @@ export default function InteractiveElement({
             aria-labelledby={`field-label-${element.id}`}
             aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
             aria-invalid={!!fieldError}
+            data-form-primary-control
             autoFocus
           />
         </>
@@ -739,7 +822,7 @@ export default function InteractiveElement({
           <input
             id={`${placeholderCssId}-num`}
             type="number"
-            value={t(value) || ''}
+            value={value === undefined || value === null || value === '' ? '' : t(String(value))}
             onChange={e => onChange(e.target.value)}
             placeholder={t(element.placeholder) || '0'}
             min={element.min}
@@ -749,6 +832,7 @@ export default function InteractiveElement({
             aria-labelledby={`field-label-${element.id}`}
             aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
             aria-invalid={!!fieldError}
+            data-form-primary-control
             autoFocus
           />
         </>
@@ -769,6 +853,7 @@ export default function InteractiveElement({
             aria-labelledby={`field-label-${element.id}`}
             aria-describedby={`${element.description ? `field-description-${element.id} ` : ''}${fieldError ? `field-error-${element.id}` : ''}`.trim() || undefined}
             aria-invalid={!!fieldError}
+            data-form-primary-control
             autoFocus
           />
         </>
@@ -782,6 +867,13 @@ export default function InteractiveElement({
           dateMode={element.dateMode}
           dateFormat={element.dateFormat}
           placeholder={t(element.placeholder)}
+          minRule={element.dateMinRule}
+          maxRule={element.dateMaxRule}
+          initialYearRule={element.dateInitialYearRule}
+          selectionOrder={element.dateSelectionOrder}
+          constraintMessage={element.dateConstraintMessage}
+          error={validationError}
+          errorId={validationError ? `field-error-${element.id}` : undefined}
         />
       );
 
@@ -802,7 +894,16 @@ export default function InteractiveElement({
 
     case 'input_phone':
       return withFieldHeader(
-        <PhoneFieldPreview value={value} onChange={onChange} defaultCountryCode={element.defaultCountryCode} />
+        <div className="space-y-2">
+          <PhoneFieldPreview
+            value={value}
+            onChange={handlePhoneChange}
+            defaultCountryCode={element.defaultCountryCode}
+            error={validationError}
+            errorId={validationError ? `field-error-${element.id}` : undefined}
+            labelledBy={`field-label-${element.id}`}
+          />
+        </div>
       );
 
     case 'input_checkbox':
@@ -811,7 +912,7 @@ export default function InteractiveElement({
           onClick={() => {
             const newVal = !value;
             onChange(newVal);
-            if (newVal) triggerSelectionFeedback('checkbox-on');
+            if (newVal) triggerBlink('checkbox-on');
           }}
           className={`flex items-center gap-3 md:gap-4 text-left group ${blinkingId === 'checkbox-on' ? 'animate-selection-tactile' : ''}`}
           whileTap={{ scale: 0.97 }}
@@ -901,7 +1002,11 @@ export default function InteractiveElement({
       const max = element.maxRating || 5;
       const current = value || 0;
       const style = element.ratingStyle || 'star';
-      const activeColor = element.ratingActiveColor || '#facc15';
+      const activeColor = resolveRatingActiveColor(
+        style,
+        element.ratingActiveColor,
+        element.ratingColorCustomized,
+      );
       const inactiveColor = element.ratingInactiveColor || '#d1d5db';
 
       if (style === 'numeric') {
@@ -911,13 +1016,16 @@ export default function InteractiveElement({
               <motion.button
                 key={i}
                 onClick={() => { onChange(i + 1); triggerSelectionFeedback(`rating-${i + 1}`); }}
+                aria-label={`Avaliar com ${i + 1} de ${max}`}
+                aria-pressed={current === i + 1}
                 whileTap={{ scale: 0.9 }}
                 whileHover={{ scale: 1.08 }}
-                className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-sm font-bold transition-colors ${blinkingId === `rating-${i + 1}` ? 'animate-selection-tactile' : ''}`}
+                className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center text-sm font-bold transition-all ${blinkingId === `rating-${i + 1}` ? 'animate-selection-tactile' : ''}`}
                 style={{
                   borderColor: i < current ? activeColor : inactiveColor,
                   backgroundColor: i < current ? activeColor : 'transparent',
                   color: i < current ? '#fff' : inactiveColor,
+                  boxShadow: i < current ? `0 6px 16px ${activeColor}38, inset 0 1px 0 rgba(255,255,255,.35)` : 'none',
                 }}
               >
                 {i + 1}
@@ -927,8 +1035,8 @@ export default function InteractiveElement({
         );
       }
 
-      const iconMap: Record<string, string> = { star: '⭐', heart: '❤️', thumbsUp: '👍', emoji: element.ratingEmoji || '⭐' };
-      const emoji = iconMap[style] || '⭐';
+      const RatingIcon = style === 'heart' ? Heart : style === 'thumbsUp' ? ThumbsUp : Star;
+      const customEmoji = element.ratingEmoji || '⭐';
 
       return withFieldHeader(
         <div className="flex gap-2">
@@ -936,14 +1044,32 @@ export default function InteractiveElement({
             <motion.button
               key={i}
               onClick={() => { onChange(i + 1); triggerSelectionFeedback(`rating-${i + 1}`); }}
+              aria-label={`Avaliar com ${i + 1} de ${max}`}
+              aria-pressed={current === i + 1}
               whileTap={{ scale: 0.85 }}
               whileHover={{ scale: 1.15 }}
               animate={i < current ? { scale: [1, 1.35, 0.9, 1.15, 1] } : {}}
               transition={{ duration: 0.35, delay: i * 0.03 }}
-              className="text-2xl md:text-3xl"
-              style={{ opacity: i < current ? 1 : 0.3, filter: i < current ? 'none' : 'grayscale(1)' }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition-[background-color,box-shadow,opacity]"
+              style={{
+                opacity: i < current ? 1 : 0.35,
+                backgroundColor: i < current && style !== 'emoji' ? `${activeColor}14` : 'transparent',
+                boxShadow: i < current && style !== 'emoji' ? `inset 0 1px 0 rgba(255,255,255,.5), 0 6px 18px ${activeColor}24` : 'none',
+              }}
             >
-              {emoji}
+              {style === 'emoji' ? (
+                <Twemoji className="text-2xl md:text-3xl">{customEmoji}</Twemoji>
+              ) : (
+                <RatingIcon
+                  className="h-7 w-7 md:h-8 md:w-8"
+                  strokeWidth={2}
+                  fill={i < current ? 'currentColor' : 'none'}
+                  style={{
+                    color: i < current ? activeColor : inactiveColor,
+                    filter: i < current ? ratingGlow(activeColor) : 'none',
+                  }}
+                />
+              )}
             </motion.button>
           ))}
         </div>

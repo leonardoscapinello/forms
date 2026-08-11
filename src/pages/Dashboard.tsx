@@ -20,8 +20,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import FolderTree from '@/components/FolderTree';
 import { FormTagsPicker, MoveToFolderMenu } from '@/components/dashboard/FormMenus';
-import { formatDistanceToNow, subDays, format, startOfDay } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 /* ── Inline sparkline chart ── */
 function InlineChart({ responses, dropoffs }: { responses: number[]; dropoffs: number[] }) {
@@ -97,7 +98,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { forms, createForm, deleteForm, moveFormToFolder } = useFormStore();
+  const { forms, homeSummaries: sparkData, createForm, deleteForm, moveFormToFolder } = useFormStore();
   const { tags } = useTags();
   const foldersState = useFolders();
   const { folders } = foldersState;
@@ -110,63 +111,19 @@ export default function Dashboard() {
   const formIds = useMemo(() => forms.map(f => f.id), [forms]);
   const formTagsMap = useAllFormTags(formIds);
 
-  // Fetch last 7 days of responses & sessions per form for sparkline
-  const [sparkData, setSparkData] = useState<Record<string, { responses: number[]; dropoffs: number[] }>>({});
-
-  // Stabilize dependency: only re-fetch when form IDs actually change
-  const formIdsKey = useMemo(() => forms.map(f => f.id).sort().join(','), [forms]);
-
-  useEffect(() => {
-    if (forms.length === 0) return;
-    const ids = forms.map(f => f.id);
-    const since = startOfDay(subDays(new Date(), 6)).toISOString();
-
-    // Only fetch the minimal columns needed, with a reasonable limit
-    Promise.all([
-      supabase.from('form_responses').select('form_id, created_at').gte('created_at', since).in('form_id', ids),
-      supabase.from('form_sessions').select('form_id, started_at, status').gte('started_at', since).in('form_id', ids).neq('status', 'completed'),
-    ]).then(([respRes, sessRes]) => {
-      const respData = (respRes.data || []) as { form_id: string; created_at: string }[];
-      const sessData = (sessRes.data || []) as { form_id: string; started_at: string; status: string }[];
-
-      const days: string[] = [];
-      for (let i = 6; i >= 0; i--) days.push(format(subDays(new Date(), i), 'yyyy-MM-dd'));
-
-      const result: Record<string, { responses: number[]; dropoffs: number[] }> = {};
-
-      for (const form of forms) {
-        const rBuckets = new Array(7).fill(0);
-        const dBuckets = new Array(7).fill(0);
-
-        for (const r of respData) {
-          if (r.form_id !== form.id) continue;
-          const d = format(new Date(r.created_at), 'yyyy-MM-dd');
-          const idx = days.indexOf(d);
-          if (idx >= 0) rBuckets[idx]++;
-        }
-
-        for (const s of sessData) {
-          if (s.form_id !== form.id) continue;
-          const d = format(new Date(s.started_at), 'yyyy-MM-dd');
-          const idx = days.indexOf(d);
-          if (idx >= 0) dBuckets[idx]++;
-        }
-
-        result[form.id] = { responses: rBuckets, dropoffs: dBuckets };
-      }
-
-      setSparkData(result);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formIdsKey]);
-
   const getFormTagIds = useCallback((formId: string) => localTagsMap[formId] ?? formTagsMap[formId] ?? [], [localTagsMap, formTagsMap]);
 
   const toggleTag = useCallback(async (formId: string, tagId: string, isActive: boolean) => {
     const current = getFormTagIds(formId);
-    setLocalTagsMap(prev => ({ ...prev, [formId]: isActive ? current.filter(id => id !== tagId) : [...current, tagId] }));
-    if (isActive) await supabase.from('form_tags').delete().eq('form_id', formId).eq('tag_id', tagId);
-    else await supabase.from('form_tags').insert({ form_id: formId, tag_id: tagId });
+    const next = isActive ? current.filter(id => id !== tagId) : [...current, tagId];
+    setLocalTagsMap(prev => ({ ...prev, [formId]: next }));
+    const { data, error } = isActive
+      ? await supabase.from('form_tags').delete().eq('form_id', formId).eq('tag_id', tagId).select('form_id, tag_id').maybeSingle()
+      : await supabase.from('form_tags').insert({ form_id: formId, tag_id: tagId }).select('form_id, tag_id').maybeSingle();
+    if (error || data?.form_id !== formId || data?.tag_id !== tagId) {
+      setLocalTagsMap(prev => ({ ...prev, [formId]: current }));
+      toast.error('Não foi possível atualizar a etiqueta. A seleção anterior foi restaurada.');
+    }
   }, [getFormTagIds]);
 
   useEffect(() => {
@@ -206,7 +163,7 @@ export default function Dashboard() {
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6 sm:p-8 lg:p-10 max-w-[1100px]">
+        <div className="mx-auto w-full max-w-[1100px] p-6 sm:p-8 lg:p-10">
           {/* Header */}
           <div className="mb-6 flex items-center gap-3">
             <h1 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
@@ -271,7 +228,7 @@ export default function Dashboard() {
               )}
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="w-full space-y-1">
               {filteredForms.map(form => {
                 const status = STATUS_MAP[form.status] ?? STATUS_MAP.draft;
                 const formTags = tags.filter(t => getFormTagIds(form.id).includes(t.id));
@@ -287,7 +244,7 @@ export default function Dashboard() {
                     }}
                     onDragEnd={() => setDraggingFormId(null)}
                     onClick={() => navigate(`/editor/${form.id}`)}
-                    className={`group flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-[hsl(var(--paper-300)/0.5)] ${draggingFormId === form.id ? 'opacity-50' : ''}`}
+                    className={`group flex min-h-16 w-full items-center gap-4 rounded-xl px-4 py-3 cursor-pointer transition-colors hover:bg-[hsl(var(--paper-300)/0.5)] ${draggingFormId === form.id ? 'opacity-50' : ''}`}
                   >
                     {/* Icon */}
                     <div className="h-10 w-10 rounded-xl bg-[hsl(var(--paper-300))] flex items-center justify-center flex-shrink-0">

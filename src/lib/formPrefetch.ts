@@ -6,6 +6,13 @@
  * reducing payload size by ~40% compared to the full Supabase query.
  */
 
+import {
+  clearStoredFormResume,
+  isRejectedResumePayload,
+  readStoredFormResumeIdentity,
+} from './formResume';
+import { clearDurablePublicSavesForForm } from './publicSaveQueue';
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
@@ -19,26 +26,43 @@ export function prefetchFormData(formId: string) {
 
   const promise = (async () => {
     try {
-      // Use the lightweight edge function — faster cold start, smaller payload
-      // Accept-Encoding lets CDN/proxy serve compressed responses
-      const res = await fetch(
+      const fetchPublicForm = async (resumeToken?: string): Promise<Response> => fetch(
         `${SUPABASE_URL}/functions/v1/form-public-get?id=${formId}`,
         {
           headers: {
-            'apikey': ANON_KEY,
-            'Authorization': `Bearer ${ANON_KEY}`,
-            'Accept': 'application/json',
+            apikey: ANON_KEY,
+            Authorization: `Bearer ${ANON_KEY}`,
+            Accept: 'application/json',
             'Accept-Encoding': 'br, gzip',
+            ...(resumeToken ? { 'x-form-resume-token': resumeToken } : {}),
           },
           // 'cors' + 'no-store' avoids double caching with SW
           cache: 'no-store',
-        }
+        },
       );
 
+      // A signed opaque credential lets the server rebind this reload to the
+      // same response/session. Raw IDs are never trusted from browser storage.
+      const resumeIdentity = readStoredFormResumeIdentity(formId);
+      let res = await fetchPublicForm(resumeIdentity?.submissionToken);
+      if (!res.ok && resumeIdentity) {
+        const rejected = await res.clone().json().catch(() => null);
+        if (isRejectedResumePayload(rejected)) {
+          clearStoredFormResume(formId);
+          clearDurablePublicSavesForForm(formId);
+          res = await fetchPublicForm();
+        }
+      }
+
       if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        const error = {
+          message: payload?.error || 'Edge function error',
+          redirectUrl: typeof payload?.redirectUrl === 'string' ? payload.redirectUrl : undefined,
+        };
         const entry = cache.get(formId);
-        if (entry) { entry.error = { message: 'Edge function error' }; }
-        return { data: null, error: { message: 'Edge function error' } };
+        if (entry) { entry.error = error; }
+        return { data: null, error };
       }
 
       const data = await res.json();
@@ -87,6 +111,9 @@ export async function consumePrefetchedForm(formId: string) {
 
 /** Auto-detect /f/:id on page load */
 export function autoDetectAndPrefetch() {
+  const isSandboxedEditorPreview = window.parent !== window
+    && new URLSearchParams(window.location.search).get('editorPreview') === '1';
+  if (isSandboxedEditorPreview) return;
   const match = window.location.pathname.match(/^\/f\/([a-zA-Z0-9-]+)/);
   if (match?.[1]) {
     prefetchFormData(match[1]);

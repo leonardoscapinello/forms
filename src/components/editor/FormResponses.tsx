@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FormData, TrackedParam, DEFAULT_TRACKED_PARAMS } from '@/types/form';
-import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
+import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle, TrendingDown } from 'lucide-react';
+import { Loader2, Download, ChevronDown, ChevronUp, Filter, RefreshCw, Brain, Smile, Frown, Meh, AlertTriangle, TrendingDown, ListChecks, PanelsTopLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { calculatePageDropoff, type DropoffPageEvent } from '@/lib/responseDropoff';
+import { resolveVariablePayloadValues } from '@/lib/variableInterpolation';
 
 
 interface Props {
@@ -39,12 +41,31 @@ type ResponseRow = {
 };
 
 type StatusFilter = 'all' | 'complete' | 'partial';
+type DropoffView = 'response' | 'page';
+type PageDropoffAggregate = {
+  page_id: string | null;
+  page_index: number | null;
+  page_title: string | null;
+  reached: number;
+  dropoffs: number;
+  dropoff_percent: number;
+};
+type ResponseField = {
+  id: string;
+  label: string;
+  type: string;
+  subKey?: string;
+  pageId: string;
+  pageIndex: number;
+  pageTitle: string;
+};
 
 /** Extract all input elements from the form pages — these become the table columns.
  *  Compound fields (address, company, phone) are expanded into sub-columns. */
-function extractInputFields(form: FormData): { id: string; label: string; type: string; subKey?: string }[] {
-  const fields: { id: string; label: string; type: string; subKey?: string }[] = [];
-  for (const page of form.pages || []) {
+function extractInputFields(form: FormData): ResponseField[] {
+  const fields: ResponseField[] = [];
+  for (const [pageIndex, page] of (form.pages || []).entries()) {
+    const pageTitle = page.title?.trim() || `Página ${pageIndex + 1}`;
     for (const el of flattenPageElements(page.elements || [])) {
       if (el.type.startsWith('input_')) {
         const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
@@ -57,6 +78,9 @@ function extractInputFields(form: FormData): { id: string; label: string; type: 
               label: `${parentLabel} — ${sub.label}`,
               type: el.type,
               subKey: sub.key,
+              pageId: page.id,
+              pageIndex,
+              pageTitle,
             });
           }
         } else {
@@ -64,6 +88,9 @@ function extractInputFields(form: FormData): { id: string; label: string; type: 
             id: el.id,
             label: el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '),
             type: el.type,
+            pageId: page.id,
+            pageIndex,
+            pageTitle,
           });
         }
       }
@@ -120,27 +147,58 @@ function formatDate(iso: string): string {
 export default function FormResponses({ form }: Props) {
   const { toast } = useToast();
   const [rows, setRows] = useState<ResponseRow[]>([]);
+  const [pageEvents, setPageEvents] = useState<DropoffPageEvent[]>([]);
+  const [pageDropoffAggregate, setPageDropoffAggregate] = useState<PageDropoffAggregate[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [dropoffView, setDropoffView] = useState<DropoffView>('response');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [refreshing, setRefreshing] = useState(false);
   const [sentimentData, setSentimentData] = useState<Record<string, any>>({});
   const [analyzingSentiment, setAnalyzingSentiment] = useState(false);
 
-  const fetchResponses = useCallback(() => {
+  const fetchResponses = useCallback(async () => {
     setLoading(true);
-    supabase.functions.invoke('form-responses-read', {
-      body: { form_id: form.id, limit: 500 },
-    }).then(({ data, error }: any) => {
-      if (error) {
-        console.error('Failed to fetch responses:', error);
+    try {
+      const [responsesResult, aggregateResult] = await Promise.all([
+        supabase.functions.invoke('form-responses-read', {
+          body: { form_id: form.id, limit: 500 },
+        }),
+        supabase.rpc('get_form_page_dropoff', { p_form_id: form.id }),
+      ]);
+      if (responsesResult.error) {
+        console.error('Failed to fetch responses:', responsesResult.error);
         setRows([]);
       } else {
-        setRows((data?.data || []) as ResponseRow[]);
+        setRows((((responsesResult.data as any)?.data) || []) as ResponseRow[]);
       }
+      if (!aggregateResult.error) {
+        setPageDropoffAggregate((aggregateResult.data || []) as PageDropoffAggregate[]);
+        setPageEvents([]);
+      } else {
+        // Compatibility while the aggregate migration is being rolled out.
+        // Production uses the RPC so the dashboard covers the complete history
+        // instead of silently truncating analytics in the browser.
+        console.warn('Page drop-off aggregate unavailable; using bounded compatibility fallback.');
+        setPageDropoffAggregate(null);
+        const eventsResult = await supabase
+          .from('form_page_events')
+          .select('response_id, page_id, page_index, event_type, created_at')
+          .eq('form_id', form.id)
+          .in('event_type', ['page_view', 'form_complete'])
+          .order('created_at', { ascending: true })
+          .limit(10_000);
+        if (eventsResult.error) {
+          console.error('Failed to fetch page events:', eventsResult.error);
+          setPageEvents([]);
+        } else {
+          setPageEvents((eventsResult.data || []) as DropoffPageEvent[]);
+        }
+      }
+    } finally {
       setLoading(false);
       setRefreshing(false);
-    });
+    }
   }, [form.id]);
 
   useEffect(() => { fetchResponses(); }, [fetchResponses]);
@@ -151,6 +209,50 @@ export default function FormResponses({ form }: Props) {
   }, [fetchResponses]);
 
   const fields = useMemo(() => extractInputFields(form), [form]);
+
+  const pageGroups = useMemo(() => (form.pages || []).map((page, pageIndex) => ({
+    id: page.id,
+    index: pageIndex,
+    title: page.title?.trim() || `Página ${pageIndex + 1}`,
+    fields: fields.filter((field) => field.pageId === page.id),
+  })), [fields, form.pages]);
+
+  const pageDropoffStats = useMemo(() => {
+    if (pageDropoffAggregate) {
+      return pageGroups.map((page) => {
+        const aggregate = pageDropoffAggregate.find((item) => (
+          (item.page_id && item.page_id === page.id)
+          || (item.page_id === null && item.page_index === page.index)
+        ));
+        const reached = Number(aggregate?.reached || 0);
+        const dropoffs = Number(aggregate?.dropoffs || 0);
+        return {
+          ...page,
+          reached,
+          dropoffs,
+          dropoffPercent: Number(aggregate?.dropoff_percent || 0),
+          continued: Math.max(reached - dropoffs, 0),
+        };
+      });
+    }
+
+    return calculatePageDropoff(
+      pageGroups.map(({ id, index, title }) => ({ id, index, title })),
+      pageEvents,
+      rows.map((row) => ({
+        response_id: row.response_id,
+        complete: row.metadata?.status === 'complete' || Boolean(row.metadata?.submitted_at),
+        lastPageIndex: typeof row.metadata?.last_page_index === 'number'
+          ? row.metadata.last_page_index
+          : null,
+      })),
+    );
+  }, [pageDropoffAggregate, pageEvents, pageGroups, rows]);
+
+  const pageDropoffById = useMemo(
+    () => new Map(pageDropoffStats.map((stat) => [stat.id, stat])),
+    [pageDropoffStats],
+  );
 
   const handleAnalyzeSentiment = useCallback(async () => {
     setAnalyzingSentiment(true);
@@ -179,11 +281,20 @@ export default function FormResponses({ form }: Props) {
   // Extract variables as extra columns
   const variableColumns = useMemo(() => {
     return (form.variables || []).map(v => ({
-      key: `__var_${v.name}`,
+      key: v.id,
+      name: v.name,
       label: `⚡ ${v.name}`,
       type: v.type,
     }));
   }, [form.variables]);
+
+  const resolvedVariablesByRowId = useMemo(() => {
+    const variables = form.variables || [];
+    return new Map(rows.map(row => [
+      row.id,
+      resolveVariablePayloadValues(variables, row.answers || {}),
+    ]));
+  }, [form.variables, rows]);
 
   // Extract tracked GET params as columns
   const paramColumns = useMemo(() => {
@@ -254,7 +365,7 @@ export default function FormResponses({ form }: Props) {
         return `"${raw.replace(/"/g, '""')}"`;
       });
       const varVals = variableColumns.map(v => {
-        const val = row.answers?.[v.key];
+        const val = resolvedVariablesByRowId.get(row.id)?.[v.name];
         return `"${formatCellValue(val, v.type).replace(/"/g, '""')}"`;
       });
       const paramVals = paramColumns.map(p => {
@@ -270,7 +381,7 @@ export default function FormResponses({ form }: Props) {
     a.download = `respostas-${form.title || form.id}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filtered, fields, form, variableColumns, paramColumns]);
+  }, [filtered, fields, form, variableColumns, paramColumns, resolvedVariablesByRowId]);
 
   if (loading) {
     return (
@@ -299,8 +410,8 @@ export default function FormResponses({ form }: Props) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap px-6 py-4 border-b border-border shrink-0">
+        <div className="flex items-center gap-4 flex-wrap">
           <h2 className="text-lg font-semibold text-foreground">{total} respostas</h2>
           <div className="flex items-center gap-1.5">
             <Badge variant="secondary" className="text-xs font-normal">
@@ -312,7 +423,38 @@ export default function FormResponses({ form }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div
+            className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-0.5"
+            role="group"
+            aria-label="Visualização da análise de drop-off"
+          >
+            <Button
+              type="button"
+              variant={dropoffView === 'response' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 gap-1.5 rounded-md px-2.5 text-xs"
+              aria-pressed={dropoffView === 'response'}
+              title="Mostra abandono entre as respostas de cada campo"
+              onClick={() => setDropoffView('response')}
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              Resposta
+            </Button>
+            <Button
+              type="button"
+              variant={dropoffView === 'page' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 gap-1.5 rounded-md px-2.5 text-xs"
+              aria-pressed={dropoffView === 'page'}
+              title="Agrupa os campos e calcula abandono por página visitada"
+              onClick={() => setDropoffView('page')}
+            >
+              <PanelsTopLeft className="h-3.5 w-3.5" />
+              Página
+            </Button>
+          </div>
+
           {/* Filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -366,6 +508,86 @@ export default function FormResponses({ form }: Props) {
         <div className="min-w-max">
           <Table>
             <TableHeader>
+              {dropoffView === 'page' && (
+                <TableRow
+                  className="border-b border-border bg-muted/20"
+                  data-testid="page-group-header-row"
+                >
+                  <TableHead className="h-auto w-12 bg-muted/20 px-2 py-2 text-center sticky left-0 z-10">
+                    {pageGroups.some((group) => group.fields.length === 0) && (
+                      <span className="sr-only" data-zero-field-pages>
+                        {pageGroups
+                          .filter((group) => group.fields.length === 0)
+                          .map((group) => `${group.title}: sem campos de resposta`)
+                          .join('; ')}
+                      </span>
+                    )}
+                  </TableHead>
+                  <TableHead className="h-auto w-20 bg-muted/20 px-2 py-2" />
+                  <TableHead className="h-auto w-24 bg-muted/20 px-2 py-2 sticky left-12 z-10" />
+                  <TableHead className="h-auto w-36 bg-muted/20 px-2 py-2" />
+                  <TableHead className="h-auto w-36 bg-muted/20 px-2 py-2" />
+                  <TableHead className="h-auto w-20 bg-muted/20 px-2 py-2" />
+                  {Object.keys(sentimentData).length > 0 && (
+                    <>
+                      <TableHead className="h-auto w-28 bg-muted/20 px-2 py-2" />
+                      <TableHead className="h-auto min-w-[160px] bg-muted/20 px-2 py-2" />
+                    </>
+                  )}
+                  {pageGroups.filter((group) => group.fields.length > 0).map((group) => {
+                    const stat = pageDropoffById.get(group.id);
+                    const dropoffPercent = stat?.dropoffPercent || 0;
+                    const tone = dropoffPercent > 30
+                      ? 'text-destructive'
+                      : dropoffPercent > 15
+                        ? 'text-amber-600'
+                        : 'text-emerald-600';
+                    const bar = dropoffPercent > 30
+                      ? 'bg-destructive'
+                      : dropoffPercent > 15
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500';
+                    return (
+                      <TableHead
+                        key={group.id}
+                        colSpan={group.fields.length}
+                        scope="colgroup"
+                        className="h-auto border-x border-border bg-primary/[0.035] px-3 py-2 align-top"
+                        data-page-group={group.id}
+                        aria-label={`Página ${group.index + 1}, ${group.title}: ${dropoffPercent}% de drop-off`}
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="block text-[9px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+                                Página {group.index + 1}
+                              </span>
+                              <span className="block truncate text-xs font-semibold text-foreground" title={group.title}>
+                                {group.title}
+                              </span>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <span className={`block text-sm font-bold leading-none tabular-nums ${tone}`}>
+                                {dropoffPercent}%
+                              </span>
+                              <span className="text-[8px] font-normal text-muted-foreground">drop-off</span>
+                            </div>
+                          </div>
+                          <div className="h-1 overflow-hidden rounded-full bg-muted">
+                            <div className={`h-full rounded-full ${bar}`} style={{ width: `${dropoffPercent}%` }} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-[8px] font-normal tabular-nums text-muted-foreground">
+                            <span>{group.fields.length} {group.fields.length === 1 ? 'campo' : 'campos'}</span>
+                            <span>{stat?.reached || 0} chegaram · {stat?.dropoffs || 0} saíram</span>
+                          </div>
+                        </div>
+                      </TableHead>
+                    );
+                  })}
+                  {variableColumns.map(v => <TableHead key={`page-group-${v.key}`} className="h-auto bg-muted/20 px-2 py-2" />)}
+                  {paramColumns.map(p => <TableHead key={`page-group-${p.key}`} className="h-auto bg-muted/20 px-2 py-2" />)}
+                </TableRow>
+              )}
               <TableRow className="bg-muted/50">
                 <TableHead className="w-12 text-center sticky left-0 bg-muted/50 z-10">#</TableHead>
                 <TableHead className="w-20 font-mono">ID</TableHead>
@@ -380,7 +602,11 @@ export default function FormResponses({ form }: Props) {
                   </>
                 )}
                 {fields.map((f, fi) => (
-                  <TableHead key={`${f.id}-${f.subKey || fi}`} className="min-w-[160px] max-w-[280px]">
+                  <TableHead
+                    key={`${f.id}-${f.subKey || fi}`}
+                    className="min-w-[160px] max-w-[280px]"
+                    data-field-column={`${f.id}${f.subKey ? `.${f.subKey}` : ''}`}
+                  >
                     <span className="truncate block">{f.label}</span>
                   </TableHead>
                 ))}
@@ -396,8 +622,12 @@ export default function FormResponses({ form }: Props) {
                 ))}
               </TableRow>
               {/* Drop-off analysis row */}
-              {fields.length > 0 && dropOffStats.length > 0 && (
-                <TableRow className="bg-muted/30 border-b-2 border-border">
+              {dropoffView === 'response' && fields.length > 0 && dropOffStats.length > 0 && (
+                <TableRow
+                  className="bg-muted/30 border-b-2 border-border"
+                  data-testid="dropoff-analysis-row"
+                  data-dropoff-view={dropoffView}
+                >
                   <TableCell className="sticky left-0 bg-muted/30 z-10" />
                   <TableCell />
                   <TableCell className="sticky left-12 bg-muted/30 z-10">
@@ -532,16 +762,27 @@ export default function FormResponses({ form }: Props) {
                       );
                     })()}
                     {fields.map((f, fi) => (
-                      <TableCell key={`${f.id}-${f.subKey || fi}`} className="text-sm max-w-[280px]">
+                      <TableCell
+                        key={`${f.id}-${f.subKey || fi}`}
+                        className="text-sm max-w-[280px]"
+                        data-field-answer={`${f.id}${f.subKey ? `.${f.subKey}` : ''}`}
+                      >
                         <span className="truncate block" title={resolveCellValue(row.answers, f)}>
                           {resolveCellValue(row.answers, f)}
                         </span>
                       </TableCell>
                     ))}
                     {variableColumns.map(v => (
-                      <TableCell key={v.key} className="text-sm max-w-[200px]">
-                        <span className="truncate block" title={formatCellValue(row.answers?.[v.key], v.type)}>
-                          {formatCellValue(row.answers?.[v.key], v.type)}
+                      <TableCell
+                        key={v.key}
+                        className="text-sm max-w-[200px]"
+                        data-variable-answer={v.name}
+                      >
+                        <span
+                          className="truncate block"
+                          title={formatCellValue(resolvedVariablesByRowId.get(row.id)?.[v.name], v.type)}
+                        >
+                          {formatCellValue(resolvedVariablesByRowId.get(row.id)?.[v.name], v.type)}
                         </span>
                       </TableCell>
                     ))}

@@ -1,9 +1,17 @@
 import { useParams } from 'react-router-dom';
-import { useFormStoreSafe } from '@/hooks/useFormStore';
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useFormStoreSafe } from '@/hooks/formStoreContext';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { FormData as AppFormData } from '@/types/form';
 import { consumePrefetchedForm } from '@/lib/formPrefetch';
 import { invokeEdge } from '@/lib/edgeClient';
+import { prepareRedirectDestination, resolveRedirectDestination } from '@/lib/redirectDestination';
+import { captureSessionContext, contextToAnswers } from '@/lib/sessionContext';
+import {
+  clearStoredFormResume,
+  isRejectedResumePayload,
+  readStoredFormResumeIdentity,
+} from '@/lib/formResume';
+import { clearDurablePublicSavesForForm } from '@/lib/publicSaveQueue';
 
 // Start loading Core chunk IMMEDIATELY — runs in parallel with data fetch
 const coreModule = import('./FormPreviewCore');
@@ -17,6 +25,31 @@ function LoadingSpinner() {
   );
 }
 
+function dismissServerRenderedShell() {
+  const shell = document.getElementById('form-ssr-shell');
+  if (!shell || shell.dataset.dismissing === 'true') return;
+  shell.dataset.dismissing = 'true';
+  shell.style.opacity = '0';
+  window.setTimeout(() => shell.remove(), 220);
+}
+
+function SafeRedirect({ template, variables = [] }: Pick<AppFormData, 'variables'> & { template: string }) {
+  const contextAnswers = useMemo(() => contextToAnswers(captureSessionContext()), []);
+  const destination = useMemo(
+    () => resolveRedirectDestination(template, variables, contextAnswers),
+    [contextAnswers, template, variables],
+  );
+
+  useEffect(() => {
+    if (!destination) return;
+    prepareRedirectDestination({ template, variables, answers: contextAnswers, phase: 'final' });
+    const timeout = window.setTimeout(() => window.location.assign(destination.url), 0);
+    return () => window.clearTimeout(timeout);
+  }, [contextAnswers, destination, template, variables]);
+
+  return destination ? <LoadingSpinner /> : null;
+}
+
 export default function FormPreview() {
   const { id } = useParams<{ id: string }>();
   const store = useFormStoreSafe();
@@ -24,12 +57,46 @@ export default function FormPreview() {
   const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
   const [publicLoading, setPublicLoading] = useState(!storeForm);
   const [showPublicSkeleton, setShowPublicSkeleton] = useState(true);
+  const [unavailableRedirectUrl, setUnavailableRedirectUrl] = useState<string | null>(null);
+  const previewParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const previewSession = previewParams?.get('previewSession') || '';
+  const isSandboxedEditorPreview = typeof window !== 'undefined'
+    && window.parent !== window
+    && previewParams?.get('editorPreview') === '1'
+    && previewSession.length > 0;
 
   useEffect(() => {
     if (storeForm || !id) return;
     setPublicLoading(true);
 
     let cancelled = false;
+
+    if (isSandboxedEditorPreview) {
+      const previewTimeout = window.setTimeout(() => {
+        if (!cancelled) setPublicLoading(false);
+      }, 10_000);
+      const handlePreviewData = (event: MessageEvent) => {
+        if (event.source !== window.parent) return;
+        const payload = event.data;
+        if (payload?.type !== 'forms-editor-preview-data' || payload?.formId !== id) return;
+        if (payload?.previewSession !== previewSession) return;
+        if (!payload.form || typeof payload.form !== 'object' || payload.form.id !== id) return;
+        window.clearTimeout(previewTimeout);
+        setPublicForm(payload.form as AppFormData);
+        setPublicLoading(false);
+      };
+      window.addEventListener('message', handlePreviewData);
+      window.parent.postMessage({
+        type: 'forms-editor-preview-ready',
+        formId: id,
+        previewSession,
+      }, '*');
+      return () => {
+        cancelled = true;
+        window.clearTimeout(previewTimeout);
+        window.removeEventListener('message', handlePreviewData);
+      };
+    }
 
     const normalizeFormPayload = (payload: any): AppFormData | null => {
       if (!payload) return null;
@@ -51,19 +118,6 @@ export default function FormPreview() {
       };
     };
 
-    const parseFormData = (payload: any): AppFormData | null => {
-      const form = normalizeFormPayload(payload);
-      return form;
-    };
-
-    const formTimestamp = (candidate: AppFormData | null): number => {
-      if (!candidate) return 0;
-      const raw = candidate.updatedAt || candidate.createdAt;
-      if (!raw) return 0;
-      const ts = Date.parse(raw);
-      return Number.isFinite(ts) ? ts : 0;
-    };
-
     const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
       new Promise<T>((resolve, reject) => {
         const timer = window.setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
@@ -72,72 +126,79 @@ export default function FormPreview() {
           .catch((err) => { window.clearTimeout(timer); reject(err); });
       });
 
-    // Source 1: prefetch cache (started in main.tsx)
-    // Always consume so we can reuse in-flight prefetch promise instead of dropping it.
-    const fromPrefetch = withTimeout(
-      consumePrefetchedForm(id).then((result: any) => {
-        const payload = result?.data ?? result;
-        if (!payload || payload?.error) throw new Error('prefetch_failed');
-        return payload;
-      }),
-      5000,
-      'prefetch'
-    );
-
-    // Source 2: edge function
-    const fromEdge = withTimeout(
-      invokeEdge('form-public-get', { id }).then(({ data, error }) => {
-        if (error || !data) throw new Error('edge_failed');
-        return data;
-      }),
-      5000, 'edge'
-    );
-
-    let bestTimestamp = -1;
-    let succeeded = false;
-    let failures = 0;
-    const totalSources = 2;
     const loadingFailSafeTimer = window.setTimeout(() => {
-      if (!cancelled && !succeeded) setPublicLoading(false);
+      if (!cancelled) setPublicLoading(false);
     }, 10000);
 
-    const handleSourceSuccess = (data: any) => {
-      if (cancelled) return;
-      const candidate = parseFormData(data);
-      const candidateTs = formTimestamp(candidate);
-
-      if (candidate && (!succeeded || candidateTs >= bestTimestamp)) {
-        bestTimestamp = candidateTs;
-        setPublicForm(candidate);
+    // A submission token is bound to one response/session pair. Reusing the
+    // early prefetch and only calling the Edge fallback on failure prevents two
+    // concurrent fetches from issuing different identities for the same render.
+    void (async () => {
+      let payload: any = null;
+      let redirectUrl: string | null = null;
+      try {
+        const prefetched = await withTimeout(consumePrefetchedForm(id), 5000, 'prefetch');
+        payload = prefetched?.data ?? prefetched;
+        redirectUrl = typeof prefetched?.error?.redirectUrl === 'string' ? prefetched.error.redirectUrl : null;
+        if (payload?.error) {
+          if (typeof payload.redirectUrl === 'string') redirectUrl = payload.redirectUrl;
+          payload = null;
+        }
+      } catch {
+        payload = null;
       }
 
-      succeeded = true;
+      if (!payload) {
+        try {
+          const resumeIdentity = readStoredFormResumeIdentity(id);
+          let edge = await withTimeout(invokeEdge('form-public-get', {
+            id,
+            resumeToken: resumeIdentity?.submissionToken,
+          }), 5000, 'edge');
+          if (edge.error && resumeIdentity && isRejectedResumePayload(edge.data)) {
+            clearStoredFormResume(id);
+            clearDurablePublicSavesForForm(id);
+            edge = await withTimeout(invokeEdge('form-public-get', { id }), 5000, 'edge_fresh');
+          }
+          if (!edge.error) payload = edge.data;
+          else if (typeof (edge.data as any)?.redirectUrl === 'string') redirectUrl = (edge.data as any).redirectUrl;
+        } catch {
+          payload = null;
+        }
+      }
+
+      if (cancelled) return;
+      const candidate = normalizeFormPayload(payload);
+      if (candidate && candidate.allowResume !== true) {
+        clearStoredFormResume(id);
+        clearDurablePublicSavesForForm(id);
+      }
+      if (candidate) setPublicForm(candidate);
+      if (!candidate && redirectUrl) setUnavailableRedirectUrl(redirectUrl);
       window.clearTimeout(loadingFailSafeTimer);
       setPublicLoading(false);
-    };
-
-    const handleFailure = () => {
-      failures += 1;
-      if (!cancelled && !succeeded && failures >= totalSources) {
-        window.clearTimeout(loadingFailSafeTimer);
-        setPublicLoading(false);
-      }
-    };
-
-    Promise.resolve(fromPrefetch).then(handleSourceSuccess).catch(handleFailure);
-    Promise.resolve(fromEdge).then(handleSourceSuccess).catch(handleFailure);
+    })();
 
     return () => {
       cancelled = true;
       window.clearTimeout(loadingFailSafeTimer);
     };
-  }, [id, storeForm]);
+  }, [id, isSandboxedEditorPreview, previewSession, storeForm]);
 
   const form = storeForm || publicForm;
 
+  useEffect(() => {
+    if (publicLoading) return;
+    // The full renderer dismisses the shell only when its real first screen is
+    // ready. Error/closed states do not mount it, so dismiss here instead.
+    if (!form || (form.status === 'closed' && !isEditorPreviewRef.current)) {
+      dismissServerRenderedShell();
+    }
+  }, [form, publicLoading]);
+
   // ── Preview mode detection ─────────────────
   const isEditorPreviewRef = useRef(false);
-  const computedPreview = !!storeForm || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('editorPreview') === '1');
+  const computedPreview = !!storeForm || isSandboxedEditorPreview;
   if (computedPreview && !isEditorPreviewRef.current) {
     isEditorPreviewRef.current = true;
   }
@@ -153,6 +214,11 @@ export default function FormPreview() {
   }
 
   // Not found
+  if (!form && unavailableRedirectUrl) {
+    const destination = resolveRedirectDestination(unavailableRedirectUrl);
+    if (destination) return <SafeRedirect template={unavailableRedirectUrl} />;
+  }
+
   if (!form) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
       <div className="text-center max-w-md space-y-4">
@@ -167,9 +233,9 @@ export default function FormPreview() {
 
   // Closed
   if (form.status === 'closed' && !isEditorPreview) {
-    if (form.closedRedirectUrl) {
-      window.location.href = form.closedRedirectUrl;
-      return null;
+    const safeRedirectUrl = resolveRedirectDestination(form.closedRedirectUrl, form.variables || []);
+    if (safeRedirectUrl && form.closedRedirectUrl) {
+      return <SafeRedirect template={form.closedRedirectUrl} variables={form.variables} />;
     }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">

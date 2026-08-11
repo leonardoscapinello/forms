@@ -7,6 +7,7 @@
  */
 
 import type { PixelEventRecord } from '@/lib/webhookPayload';
+import { executeWorkflowSideEffect } from '@/lib/workflowSideEffect';
 
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pixel-event`;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -33,6 +34,8 @@ interface FirePixelOptions {
   eventId: string;
   formId: string;
   responseId?: string;
+  workflowSourceNodeId?: string;
+  workflowProof?: string;
   triggerType?: 'load_event' | 'flow_node';
   answers?: Record<string, any>;
   variables?: Record<string, any>;
@@ -73,23 +76,23 @@ function enrichMetaParams(opts: FirePixelOptions): FirePixelOptions {
   };
 }
 
-async function callEdgeFunction(body: FirePixelOptions, attempt: number): Promise<boolean> {
+async function callEdgeFunction(body: FirePixelOptions, signal: AbortSignal): Promise<Record<string, any>> {
   const enriched = enrichMetaParams(body);
-  try {
-    const res = await fetch(EDGE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': ANON_KEY,
-        'Authorization': `Bearer ${ANON_KEY}`,
-      },
-      body: JSON.stringify(enriched),
-    });
-    return res.ok;
-  } catch {
-    // Network error — will retry
-    return false;
+  const res = await fetch(EDGE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': ANON_KEY,
+      'Authorization': `Bearer ${ANON_KEY}`,
+    },
+    body: JSON.stringify(enriched),
+    signal,
+  });
+  const payload = await res.json().catch(() => null);
+  if (!res.ok || payload?.success !== true || payload?.processing === true) {
+    throw new Error(payload?.processing ? 'delivery_still_processing' : 'delivery_not_acknowledged');
   }
+  return payload;
 }
 
 /**
@@ -98,47 +101,36 @@ async function callEdgeFunction(body: FirePixelOptions, attempt: number): Promis
  */
 export async function firePixel(opts: FirePixelOptions): Promise<void> {
   if (opts.platform !== 'webhook' && !isProductionEnvironment()) return; // skip pixels in non-production
-  const MAX_ATTEMPTS = 3;
-  const BACKOFF_BASE = 800; // ms
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    if (attempt > 0) {
-      await new Promise(r => setTimeout(r, BACKOFF_BASE * attempt));
-    }
-    const ok = await callEdgeFunction(opts, attempt);
-    if (ok) return;
-  }
-  // Falha silenciosa após 3 tentativas — nunca quebra a UX do usuário
+  await executeWorkflowSideEffect({
+    label: opts.platform === 'webhook' ? 'o webhook' : 'o evento de analytics',
+    nodeId: opts.nodeId,
+    baseDelayMs: 800,
+    operation: (signal) => callEdgeFunction(opts, signal),
+  });
 }
 
 /**
  * Dispara webhook e retorna o body da resposta JSON (para mapeamento de variáveis).
- * Faz até 3 tentativas. Em caso de falha, retorna null.
+ * Faz até 3 tentativas. Só resolve depois do ACK real do destino.
  */
 export async function fireWebhookWithResponse(opts: FirePixelOptions): Promise<Record<string, any> | null> {
-  const MAX_ATTEMPTS = 3;
-  const BACKOFF_BASE = 800;
+  const payload = await fireWebhookWithWorkflowProof(opts);
+  return payload.webhookResponseBody ?? null;
+}
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, BACKOFF_BASE * attempt));
-    try {
-      const res = await fetch(EDGE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': ANON_KEY,
-          'Authorization': `Bearer ${ANON_KEY}`,
-        },
-        body: JSON.stringify(opts),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        // Edge function returns { success, results, webhookResponseBody }
-        return json?.webhookResponseBody ?? null;
-      }
-    } catch { /* retry */ }
-  }
-  return null;
+export async function fireWebhookWithWorkflowProof(
+  opts: FirePixelOptions,
+): Promise<{ webhookResponseBody: Record<string, any> | null; workflowProof?: string }> {
+  const payload = await executeWorkflowSideEffect({
+    label: 'o webhook',
+    nodeId: opts.nodeId,
+    baseDelayMs: 800,
+    operation: (signal) => callEdgeFunction(opts, signal),
+  });
+  return {
+    webhookResponseBody: payload?.webhookResponseBody ?? null,
+    ...(typeof payload?.workflowProof === 'string' ? { workflowProof: payload.workflowProof } : {}),
+  };
 }
 
 /**
@@ -195,20 +187,33 @@ export function firePixelDual(
     }
   }
 
-  // Record the event for webhook tracking
-  opts.onFired?.({
-    platform: opts.platform,
-    event_name: opts.eventName,
-    event_id: opts.eventId,
-    trigger_type: opts.triggerType || 'flow_node',
-    fired_client: firedClient,
-    fired_server: true, // will be fired below
-    fired_at: new Date().toISOString(),
-    custom_params: opts.customParams,
-  });
-
   // 2. Server-side com retry — SEMPRE, independente do client
-  firePixel({ ...opts, firedClient });
+  void firePixel({ ...opts, firedClient })
+    .then(() => {
+      opts.onFired?.({
+        platform: opts.platform,
+        event_name: opts.eventName,
+        event_id: opts.eventId,
+        trigger_type: opts.triggerType || 'flow_node',
+        fired_client: firedClient,
+        fired_server: true,
+        fired_at: new Date().toISOString(),
+        custom_params: opts.customParams,
+      });
+    })
+    .catch((error) => {
+      console.error('[pixel-event] delivery failed:', error instanceof Error ? error.message : 'unknown_error');
+      opts.onFired?.({
+        platform: opts.platform,
+        event_name: opts.eventName,
+        event_id: opts.eventId,
+        trigger_type: opts.triggerType || 'flow_node',
+        fired_client: firedClient,
+        fired_server: false,
+        fired_at: new Date().toISOString(),
+        custom_params: opts.customParams,
+      });
+    });
 }
 
 /**
@@ -220,22 +225,7 @@ export async function firePixelDualBlocking(
     triggerType?: FirePixelOptions['triggerType'];
     onFired?: (record: PixelEventRecord) => void;
   },
-): Promise<void> {
-  if (!isProductionEnvironment()) {
-    // Still record the event even in non-production for webhook tracking
-    opts.onFired?.({
-      platform: opts.platform,
-      event_name: opts.eventName,
-      event_id: opts.eventId,
-      trigger_type: opts.triggerType || 'flow_node',
-      fired_client: false,
-      fired_server: false,
-      fired_at: new Date().toISOString(),
-      custom_params: opts.customParams,
-    });
-    return;
-  }
-
+): Promise<Record<string, any>> {
   // 1. Client-side (best-effort)
   let firedClient = false;
   if (typeof window !== 'undefined') {
@@ -265,18 +255,26 @@ export async function firePixelDualBlocking(
     }
   }
 
-  // Record the event for webhook tracking
+  // 2. Server-side com retry — aguardar aqui
+  // Workflow analytics are blocking graph nodes. They must reach the server in
+  // every environment so the next node receives a signed path proof. Automatic
+  // load pixels remain suppressed outside production by `firePixelDual`.
+  const payload = await executeWorkflowSideEffect({
+    label: 'o evento de analytics',
+    nodeId: opts.nodeId,
+    baseDelayMs: 800,
+    operation: (signal) => callEdgeFunction({ ...opts, firedClient }, signal),
+  });
+  const analyticsDelivered = payload?.analyticsDelivered !== false;
   opts.onFired?.({
     platform: opts.platform,
     event_name: opts.eventName,
     event_id: opts.eventId,
     trigger_type: opts.triggerType || 'flow_node',
     fired_client: firedClient,
-    fired_server: true,
+    fired_server: analyticsDelivered,
     fired_at: new Date().toISOString(),
     custom_params: opts.customParams,
   });
-
-  // 2. Server-side com retry — aguardar aqui
-  await firePixel({ ...opts, firedClient });
+  return payload;
 }

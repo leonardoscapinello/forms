@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const responseHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
   'Content-Type': 'application/json',
 };
 
@@ -9,7 +10,9 @@ type AuthorizedCaller = {
   ok: true;
   userId: string;
   isAdmin: boolean;
-  admin: ReturnType<typeof createClient>;
+  // Keep the shared authorization contract stable across Supabase client
+  // generic changes in Deno/TypeScript releases.
+  admin: any;
 };
 
 type RejectedCaller = { ok: false; response: Response };
@@ -44,15 +47,23 @@ export async function getAuthorizedCaller(req: Request): Promise<AuthorizationRe
   if (error || !userId) return reject(401, 'Unauthorized');
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: role, error: roleError } = await admin
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .eq('role', 'admin')
-    .maybeSingle();
-  if (roleError) return reject(503, 'Authorization unavailable');
+  const [roleResult, profileResult] = await Promise.all([
+    admin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle(),
+    admin
+      .from('profiles')
+      .select('is_active')
+      .eq('user_id', userId)
+      .maybeSingle(),
+  ]);
+  if (roleResult.error || profileResult.error) return reject(503, 'Authorization unavailable');
+  if (profileResult.data?.is_active !== true) return reject(403, 'Account inactive');
 
-  return { ok: true, userId, isAdmin: !!role, admin };
+  return { ok: true, userId, isAdmin: !!roleResult.data, admin };
 }
 
 export async function requireAdmin(req: Request): Promise<AuthorizationResult> {

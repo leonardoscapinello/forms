@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEditorForm } from '@/hooks/useEditorForm';
+import { useEditorForm } from '@/hooks/editorFormContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { PageElement } from '@/types/pageElements';
 import type { FunnelPageStyle } from '@/types/form';

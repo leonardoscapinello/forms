@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useEditorForm } from '@/hooks/useEditorForm';
+import { useEditorForm } from '@/hooks/editorFormContext';
 import { createDefaultPageElement } from '@/types/pageElements';
 import type { PageElement } from '@/types/pageElements';
 import type { FunnelPageStyle, FormData } from '@/types/form';
@@ -8,6 +8,7 @@ import PageBuilder from '@/components/editor/page-builder/PageBuilder';
 import { scanElementReferences, autoFixReferencesOnMove } from '@/lib/elementReferenceScanner';
 import { validateFormIntegrity } from '@/lib/formIntegrityValidator';
 import { toast } from 'sonner';
+import CompletionRedirectControls from '@/components/editor/CompletionRedirectControls';
 
 /* v3 cache-bust */ export default function EditorPages() {
   const ctx = useEditorForm();
@@ -171,23 +172,40 @@ import { toast } from 'sonner';
           onMoveElementToPage={handleMoveElementToPage}
         />
       ) : editingThankYou ? (
-        <PageBuilder
-          elements={thankYouPage.elements || []}
-          onChange={(elements: PageElement[]) => updateFormData({ thankYouPage: { ...thankYouPage, elements } })}
-          pageStyle={form.globalPageStyle}
-          onPageStyleChange={(patch: Partial<FunnelPageStyle>) => updateFormData({ globalPageStyle: { ...(form.globalPageStyle || {}), ...patch } })}
-          pages={form.pages || []}
-          pageId="thank-you"
-          variables={form.variables || []}
-          integrationNodes={editorIntegrationNodes}
-          allInputElements={editorInputElements}
-          trackedParams={form.trackedParams}
-          lockElement={lockElement}
-          unlockElement={unlockElement}
-          isLockedByOther={isLockedByOther}
-          formStyle={form.style}
-          onMoveElementToPage={handleMoveElementToPage}
-        />
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <div className="shrink-0 border-b border-border bg-card px-4 py-3">
+            <div className="mx-auto max-w-3xl rounded-xl border border-border bg-background p-3">
+              <CompletionRedirectControls
+                action={form.completionAction}
+                redirectUrl={form.completionRedirectUrl}
+                onChange={updateFormData}
+                variables={form.variables || []}
+                integrationNodes={editorIntegrationNodes}
+                allInputElements={editorInputElements}
+                trackedParams={form.trackedParams}
+              />
+            </div>
+          </div>
+          <div className="min-h-0 flex-1">
+            <PageBuilder
+              elements={thankYouPage.elements || []}
+              onChange={(elements: PageElement[]) => updateFormData({ thankYouPage: { ...thankYouPage, elements } })}
+              pageStyle={form.globalPageStyle}
+              onPageStyleChange={(patch: Partial<FunnelPageStyle>) => updateFormData({ globalPageStyle: { ...(form.globalPageStyle || {}), ...patch } })}
+              pages={form.pages || []}
+              pageId="thank-you"
+              variables={form.variables || []}
+              integrationNodes={editorIntegrationNodes}
+              allInputElements={editorInputElements}
+              trackedParams={form.trackedParams}
+              lockElement={lockElement}
+              unlockElement={unlockElement}
+              isLockedByOther={isLockedByOther}
+              formStyle={form.style}
+              onMoveElementToPage={handleMoveElementToPage}
+            />
+          </div>
+        </div>
       ) : editingPage ? (
         <PageBuilder
           elements={editingPage.elements || []}

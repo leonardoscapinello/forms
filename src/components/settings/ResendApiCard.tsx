@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Mail, Plus, Trash2, Save, Loader2, Eye, EyeOff, TestTube, CheckCircle2, XCircle, Send } from 'lucide-react';
+import {
+  deleteIntegrationSetting,
+  listIntegrationSettings,
+  saveIntegrationSetting,
+  withIntegrationTimeout,
+} from '@/lib/integrationSettings';
 
 interface ResendInstance {
   id?: string;
@@ -26,10 +32,8 @@ export default function ResendApiCard() {
   const [testResults, setTestResults] = useState<Record<string, 'success' | 'error'>>({});
 
   useEffect(() => {
-    supabase.from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'resend')
-      .then(({ data: rows }) => {
+    listIntegrationSettings('resend')
+      .then((rows) => {
         if (rows && rows.length > 0) {
           setInstances(rows.map(r => {
             const cfg = r.config as any;
@@ -43,8 +47,16 @@ export default function ResendApiCard() {
           }));
         }
         setLoading(false);
+      })
+      .catch((error: Error) => {
+        toast({
+          title: 'Erro ao carregar Resend',
+          description: error.message || 'Não foi possível carregar as instâncias.',
+          variant: 'destructive',
+        });
+        setLoading(false);
       });
-  }, []);
+  }, [toast]);
 
   const addInstance = useCallback(() => {
     setInstances(prev => [...prev, {
@@ -70,31 +82,45 @@ export default function ResendApiCard() {
     const inst = instances[index];
     const key = inst.id || `new-${index}`;
     setSaving(key);
-    const payload = {
-      integration_type: 'resend',
-      label: inst.label || 'Resend',
-      config: { apiKey: inst.apiKey, defaultFrom: inst.defaultFrom } as any,
-      is_active: inst.isActive,
-    };
-    if (inst.id) {
-      await supabase.from('integration_settings').update(payload).eq('id', inst.id);
-    } else {
-      const { data } = await supabase.from('integration_settings').insert(payload).select().single();
-      if (data) {
-        setInstances(prev => prev.map((p, i) => i === index ? { ...p, id: data.id, isNew: false } : p));
-      }
+    try {
+      const row = await saveIntegrationSetting({
+        id: inst.id,
+        integrationType: 'resend',
+        label: inst.label || 'Resend',
+        isActive: inst.isActive,
+        config: { apiKey: inst.apiKey, defaultFrom: inst.defaultFrom },
+      });
+      setInstances(prev => prev.map((p, i) => i === index
+        ? { ...p, id: row.id, apiKey: row.config.apiKey || p.apiKey, isNew: false }
+        : p));
+      toast({
+        title: inst.isActive ? 'Salvo e validado' : 'Salvo desativado',
+        description: row.validation?.message || `Instância "${inst.label}" salva.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Credencial Resend inválida',
+        description: error?.message || 'A conexão falhou e nada foi salvo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(null);
     }
-    toast({ title: 'Salvo', description: `Instância "${inst.label}" salva.` });
-    setSaving(null);
   }, [instances, toast]);
 
   const deleteInstance = useCallback(async (index: number) => {
     const inst = instances[index];
-    if (inst.id) {
-      await supabase.from('integration_settings').delete().eq('id', inst.id);
+    try {
+      if (inst.id) await deleteIntegrationSetting(inst.id, 'resend');
+      setInstances(prev => prev.filter((_, i) => i !== index));
+      toast({ title: 'Removido', description: `Instância "${inst.label}" removida.` });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao remover Resend',
+        description: error?.message || 'Não foi possível remover a instância.',
+        variant: 'destructive',
+      });
     }
-    setInstances(prev => prev.filter((_, i) => i !== index));
-    toast({ title: 'Removido', description: `Instância "${inst.label}" removida.` });
   }, [instances, toast]);
 
   const testInstance = useCallback(async (index: number) => {
@@ -107,16 +133,19 @@ export default function ResendApiCard() {
     setTesting(key);
     setTestResults(prev => { const c = { ...prev }; delete c[key]; return c; });
     try {
-      const { data: res } = await supabase.functions.invoke('resend-send', {
-        body: {
-          instanceId: inst.id,
-          toEmail: inst.defaultFrom || 'delivered@resend.dev',
-          fromEmail: inst.defaultFrom || 'onboarding@resend.dev',
-          subject: 'Teste de conexão — Forms',
-          bodyText: 'Este é um e-mail de teste enviado pela plataforma.',
-          testMode: true,
-        },
-      });
+      const { data: res, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('resend-send', {
+          body: {
+            instanceId: inst.id,
+            toEmail: inst.defaultFrom || 'delivered@resend.dev',
+            fromEmail: inst.defaultFrom || 'onboarding@resend.dev',
+            subject: 'Teste de conexão — Forms por Leonardo Scapinello',
+            bodyText: 'Este é um e-mail de teste enviado pela plataforma.',
+            testMode: true,
+          },
+        }),
+      );
+      if (error) throw error;
       setTestResults(prev => ({ ...prev, [key]: res?.success ? 'success' : 'error' }));
       toast({
         title: res?.success ? 'E-mail enviado' : 'Falha',
@@ -127,7 +156,7 @@ export default function ResendApiCard() {
       setTestResults(prev => ({ ...prev, [key]: 'error' }));
       toast({ title: 'Erro', description: err.message || 'Falha na conexão.', variant: 'destructive' });
     }
-    setTesting(null);
+    finally { setTesting(null); }
   }, [instances, toast]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;

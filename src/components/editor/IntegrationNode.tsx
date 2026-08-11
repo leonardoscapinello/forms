@@ -10,6 +10,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { LocalInput } from './shared/LocalInput';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { supabase } from '@/integrations/supabase/client';
+import { withIntegrationTimeout } from '@/lib/integrationSettings';
 
 const WEBHOOK_METHODS = ['GET', 'POST', 'PUT', 'PATCH'] as const;
 
@@ -106,13 +108,9 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
         customHeaders[h.key] = h.value;
       }
 
-      // Build query params
-      const qp = (nodeData.webhookQueryParams || []).filter(p => p.key);
-      let testUrl = nodeData.webhookUrl;
-      if (qp.length > 0) {
-        const sep = testUrl.includes('?') ? '&' : '?';
-        testUrl += sep + qp.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-      }
+      const queryParams = Object.fromEntries(
+        (nodeData.webhookQueryParams || []).filter(p => p.key).map(p => [p.key, p.value]),
+      );
 
       // Build body extra params (legacy + new)
       const extraBody = Object.fromEntries(
@@ -121,7 +119,7 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
 
       const testPayload = {
         event: { id: 'test', form_id: 'test', form_name: 'Teste', landed_at: new Date().toISOString(), submitted_at: new Date().toISOString() },
-        respondent: { ip: null, user_agent: 'Lovable Test', geolocation: null },
+        respondent: { ip: null, user_agent: 'Forms by Leonardo Scapinello', geolocation: null },
         answers: {},
         answers_raw: {},
         variables: {},
@@ -129,21 +127,20 @@ function IntegrationNode({ data, selected }: NodeProps & { data: IntegrationNode
         meta: Object.keys(extraBody).length > 0 ? extraBody : undefined,
       };
 
-      const method = nodeData.webhookMethod || 'POST';
-      const fetchOpts: RequestInit = {
-        method,
-        headers: customHeaders,
-      };
-      if (method !== 'GET') {
-        fetchOpts.body = JSON.stringify(testPayload);
-      }
+      const invocation = supabase.functions.invoke('webhook-test', {
+        body: {
+          url: nodeData.webhookUrl,
+          method: nodeData.webhookMethod || 'POST',
+          headers: customHeaders,
+          queryParams,
+          payload: testPayload,
+        },
+      });
+      const { data, error } = await withIntegrationTimeout(invocation, 15_000);
+      if (error) throw error;
+      const body = data?.body ?? null;
 
-      const res = await fetch(testUrl, fetchOpts);
-      let body: any = null;
-      const text = await res.text();
-      try { body = JSON.parse(text); } catch { body = text; }
-
-      setTestResult({ ok: res.ok, status: res.status, body });
+      setTestResult({ ok: data?.ok === true, status: data?.status, body });
 
       if (typeof body === 'object' && body !== null) {
         const paths = flattenPaths(body);

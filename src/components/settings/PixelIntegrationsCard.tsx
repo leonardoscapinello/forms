@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Facebook, BarChart3, Music2, Linkedin, Webhook, Save, Loader2, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { listIntegrationSettings, saveIntegrationSetting } from '@/lib/integrationSettings';
 
 interface PixelConfig {
   // Meta
@@ -56,12 +56,9 @@ export default function PixelIntegrationsCard() {
   const [show, setShow] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    supabase
-      .from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'pixels')
-      .maybeSingle()
-      .then(({ data }) => {
+    listIntegrationSettings('pixels')
+      .then((rows) => {
+        const data = rows[0];
         if (data) {
           setSettingsId(data.id);
           const cfg = data.config as any;
@@ -83,9 +80,16 @@ export default function PixelIntegrationsCard() {
             webhookEnabled: cfg.webhookEnabled ?? false,
           });
         }
-        setLoading(false);
-      });
-  }, []);
+      })
+      .catch((error: Error) => {
+        toast({
+          title: 'Erro ao carregar integrações',
+          description: error.message || 'Não foi possível carregar os pixels.',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => setLoading(false));
+  }, [toast]);
 
   const upd = useCallback((patch: Partial<PixelConfig>) => {
     setConfig(prev => ({ ...prev, ...patch }));
@@ -93,20 +97,29 @@ export default function PixelIntegrationsCard() {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
-    const payload = {
-      integration_type: 'pixels',
-      label: 'Pixels & Webhooks',
-      config: config as any,
-      is_active: true,
-    };
-    if (settingsId) {
-      await supabase.from('integration_settings').update(payload).eq('id', settingsId);
-    } else {
-      const { data } = await supabase.from('integration_settings').insert(payload).select().single();
-      if (data) setSettingsId(data.id);
+    try {
+      const row = await saveIntegrationSetting({
+        id: settingsId,
+        integrationType: 'pixels',
+        label: 'Pixels & Webhooks',
+        isActive: true,
+        config: { ...config },
+      });
+      setSettingsId(row.id);
+      setConfig(prev => ({ ...prev, ...row.config } as PixelConfig));
+      toast({
+        title: 'Salvo e validado',
+        description: row.validation?.message || 'Configurações de pixels salvas.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao salvar pixels',
+        description: error?.message || 'Não foi possível salvar as configurações.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
-    toast({ title: 'Salvo', description: 'Configurações de pixels salvas.' });
-    setSaving(false);
   }, [config, settingsId, toast]);
 
   const toggleShow = (key: string) => setShow(prev => ({ ...prev, [key]: !prev[key] }));

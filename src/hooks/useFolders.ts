@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useAuth } from './authContext';
 import { toast } from 'sonner';
+import { hasSingleIdAck } from '@/lib/databaseAck';
 
 export interface Folder {
   id: string;
@@ -53,7 +54,11 @@ export function useFolders() {
       .select('*')
       .eq('user_id', userId)
       .order('name');
-    if (!error && data) setFolders(data as Folder[]);
+    if (error) {
+      toast.error('Não foi possível carregar as pastas.');
+    } else if (data) {
+      setFolders(data as Folder[]);
+    }
     setLoaded(true);
   }, [userId]);
 
@@ -75,17 +80,19 @@ export function useFolders() {
   }, [user]);
 
   const renameFolder = useCallback(async (id: string, name: string) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('folders')
       .update({ name: name.trim() })
-      .eq('id', id);
-    if (error) { toast.error('Erro ao renomear pasta'); return; }
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+    if (error || !hasSingleIdAck(data, id)) { toast.error('Erro ao renomear pasta'); return; }
     setFolders(prev => prev.map(f => f.id === id ? { ...f, name: name.trim() } : f));
   }, []);
 
-  const deleteFolder = useCallback(async (id: string) => {
-    const { error } = await supabase.from('folders').delete().eq('id', id);
-    if (error) { toast.error('Erro ao excluir pasta'); return; }
+  const deleteFolder = useCallback(async (id: string): Promise<boolean> => {
+    const { data, error } = await supabase.from('folders').delete().eq('id', id).select('id').maybeSingle();
+    if (error || !hasSingleIdAck(data, id)) { toast.error('Erro ao excluir pasta'); return false; }
     // Remove folder and all children (cascades in DB, remove locally too)
     const allIds = new Set<string>();
     const collectIds = (fid: string) => {
@@ -94,16 +101,33 @@ export function useFolders() {
     };
     collectIds(id);
     setFolders(prev => prev.filter(f => !allIds.has(f.id)));
+    return true;
   }, [folders]);
 
-  const moveFolder = useCallback(async (id: string, newParentId: string | null) => {
-    const { error } = await supabase
+  const moveFolder = useCallback(async (id: string, newParentId: string | null): Promise<boolean> => {
+    const descendantIds = new Set<string>();
+    const collectDescendants = (folderId: string) => {
+      folders.filter((folder) => folder.parent_folder_id === folderId).forEach((folder) => {
+        if (descendantIds.has(folder.id)) return;
+        descendantIds.add(folder.id);
+        collectDescendants(folder.id);
+      });
+    };
+    collectDescendants(id);
+    if (newParentId === id || (newParentId !== null && descendantIds.has(newParentId))) {
+      toast.error('Uma pasta não pode ser movida para dentro dela mesma.');
+      return false;
+    }
+    const { data, error } = await supabase
       .from('folders')
       .update({ parent_folder_id: newParentId })
-      .eq('id', id);
-    if (error) { toast.error('Erro ao mover pasta'); return; }
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+    if (error || !hasSingleIdAck(data, id)) { toast.error('Erro ao mover pasta'); return false; }
     setFolders(prev => prev.map(f => f.id === id ? { ...f, parent_folder_id: newParentId } : f));
-  }, []);
+    return true;
+  }, [folders]);
 
   const tree = buildFolderTree(folders);
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MessageSquare, Plus, Trash2, Save, Loader2, Eye, EyeOff, TestTube, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import {
+  deleteIntegrationSetting,
+  fetchEvolutionInstances,
+  listIntegrationSettings,
+  MASKED_INTEGRATION_SECRET,
+  saveIntegrationSetting,
+  testEvolutionInstance,
+} from '@/lib/integrationSettings';
 
 interface EvolutionInstance {
   id?: string;
@@ -30,10 +37,8 @@ export default function EvolutionApiCard() {
   const [availableInstances, setAvailableInstances] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
-    supabase.from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'evolution_api')
-      .then(({ data: rows }) => {
+    listIntegrationSettings('evolution_api')
+      .then((rows) => {
         if (rows && rows.length > 0) {
           setInstances(rows.map(r => {
             const cfg = r.config as any;
@@ -48,8 +53,16 @@ export default function EvolutionApiCard() {
           }));
         }
         setLoading(false);
+      })
+      .catch((error: Error) => {
+        toast({
+          title: 'Erro ao carregar Evolution API',
+          description: error.message || 'Não foi possível carregar as instâncias.',
+          variant: 'destructive',
+        });
+        setLoading(false);
       });
-  }, []);
+  }, [toast]);
 
   const addInstance = useCallback(() => {
     setInstances(prev => [...prev, {
@@ -77,31 +90,47 @@ export default function EvolutionApiCard() {
     const inst = instances[index];
     const key = inst.id || `new-${index}`;
     setSaving(key);
-    const payload = {
-      integration_type: 'evolution_api',
-      label: inst.label || 'Evolution API',
-      config: { apiUrl: inst.apiUrl, apiKey: inst.apiKey, instanceName: inst.instanceName } as any,
-      is_active: inst.isActive,
-    };
-    if (inst.id) {
-      await supabase.from('integration_settings').update(payload).eq('id', inst.id);
-    } else {
-      const { data } = await supabase.from('integration_settings').insert(payload).select().single();
-      if (data) {
-        setInstances(prev => prev.map((p, i) => i === index ? { ...p, id: data.id, isNew: false } : p));
-      }
+    try {
+      const row = await saveIntegrationSetting({
+        id: inst.id,
+        integrationType: 'evolution_api',
+        label: inst.label || 'Evolution API',
+        isActive: inst.isActive,
+        config: { apiUrl: inst.apiUrl, apiKey: inst.apiKey, instanceName: inst.instanceName },
+      });
+      setInstances(prev => prev.map((p, i) => i === index
+        ? { ...p, id: row.id, apiKey: row.config.apiKey || p.apiKey, isNew: false }
+        : p));
+      toast({
+        title: inst.isActive ? 'Salvo e validado' : 'Salvo desativado',
+        description: `Instância "${inst.label}" salva.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao salvar Evolution API',
+        description: error?.message || 'Não foi possível salvar a instância.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(null);
     }
-    toast({ title: 'Salvo', description: `Instância "${inst.label}" salva.` });
-    setSaving(null);
   }, [instances, toast]);
 
   const deleteInstance = useCallback(async (index: number) => {
     const inst = instances[index];
-    if (inst.id) {
-      await supabase.from('integration_settings').delete().eq('id', inst.id);
+    try {
+      if (inst.id) {
+        await deleteIntegrationSetting(inst.id, 'evolution_api');
+      }
+      setInstances(prev => prev.filter((_, i) => i !== index));
+      toast({ title: 'Removido', description: `Instância "${inst.label}" removida.` });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao remover instância',
+        description: error?.message || 'Não foi possível remover a instância.',
+        variant: 'destructive',
+      });
     }
-    setInstances(prev => prev.filter((_, i) => i !== index));
-    toast({ title: 'Removido', description: `Instância "${inst.label}" removida.` });
   }, [instances, toast]);
 
   const fetchAvailableInstances = useCallback(async (index: number) => {
@@ -113,14 +142,11 @@ export default function EvolutionApiCard() {
     }
     setFetchingInstances(key);
     try {
-      const url = inst.apiUrl.replace(/\/+$/, '');
-      const res = await fetch(`${url}/instance/fetchInstances`, {
-        headers: { apikey: inst.apiKey },
+      const names = await fetchEvolutionInstances({
+        id: inst.id,
+        apiUrl: inst.apiUrl,
+        apiKey: inst.apiKey === MASKED_INTEGRATION_SECRET ? undefined : inst.apiKey,
       });
-      const json = await res.json();
-      const names: string[] = Array.isArray(json)
-        ? json.map((i: any) => i.instance?.instanceName || i.instanceName || i.name).filter(Boolean)
-        : [];
       setAvailableInstances(prev => ({ ...prev, [key]: names }));
       if (names.length === 0) {
         toast({ title: 'Nenhuma instância encontrada', description: 'Verifique se há instâncias criadas na Evolution API.' });
@@ -129,8 +155,9 @@ export default function EvolutionApiCard() {
       }
     } catch (err: any) {
       toast({ title: 'Erro ao buscar instâncias', description: err.message || 'Falha na conexão.', variant: 'destructive' });
+    } finally {
+      setFetchingInstances(null);
     }
-    setFetchingInstances(null);
   }, [instances, toast, updateInstance]);
 
   const testInstance = useCallback(async (index: number) => {
@@ -139,22 +166,25 @@ export default function EvolutionApiCard() {
     setTesting(key);
     setTestResults(prev => { const c = { ...prev }; delete c[key]; return c; });
     try {
-      const res = await fetch(`${inst.apiUrl}/instance/connectionState/${inst.instanceName}`, {
-        headers: { apikey: inst.apiKey },
+      const result = await testEvolutionInstance({
+        id: inst.id,
+        apiUrl: inst.apiUrl,
+        apiKey: inst.apiKey === MASKED_INTEGRATION_SECRET ? undefined : inst.apiKey,
+        instanceName: inst.instanceName,
       });
-      const json = await res.json();
-      const ok = res.ok && (json?.instance?.state === 'open' || json?.state === 'open');
+      const ok = result.connected;
       setTestResults(prev => ({ ...prev, [key]: ok ? 'success' : 'error' }));
       toast({
         title: ok ? 'Conectado' : 'Falha',
-        description: ok ? 'Instância WhatsApp conectada.' : `Não foi possível conectar: ${JSON.stringify(json).slice(0, 120)}`,
+        description: ok ? 'Instância WhatsApp conectada.' : `Estado retornado: ${result.state || 'desconhecido'}.`,
         variant: ok ? 'default' : 'destructive',
       });
     } catch (err: any) {
       setTestResults(prev => ({ ...prev, [key]: 'error' }));
       toast({ title: 'Erro', description: err.message || 'Falha na conexão.', variant: 'destructive' });
+    } finally {
+      setTesting(null);
     }
-    setTesting(null);
   }, [instances, toast]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -275,7 +305,7 @@ export default function EvolutionApiCard() {
               </div>
 
               <div className="flex items-center gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={() => testInstance(index)} disabled={isTesting || !inst.apiUrl || !inst.instanceName}>
+                <Button variant="outline" size="sm" onClick={() => testInstance(index)} disabled={isTesting || !inst.apiUrl || !inst.apiKey || !inst.instanceName}>
                   {isTesting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <TestTube className="mr-1.5 h-3.5 w-3.5" />}
                   Testar
                   {testResults[key] === 'success' && <CheckCircle2 className="ml-1.5 h-3.5 w-3.5 text-success" />}

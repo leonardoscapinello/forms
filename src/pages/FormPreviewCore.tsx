@@ -8,24 +8,53 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Check, X, Star, CheckSquare, Loader2, AlertCircle, CheckCircle2, Info, AlertTriangle, XCircle, Send, CornerDownLeft } from 'lucide-react';
-import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
-import { FunnelPage, FormData as AppFormData, UserDataMapping, FormVariable, FormStyle, WaitFeedbackConfig, WaitFeedbackMode } from '@/types/form';
+import { LazyMotion, domAnimation, m as motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { FormData as AppFormData, WaitFeedbackMode } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
 import { invokeEdge } from '@/lib/edgeClient';
 import Twemoji from '@/components/Twemoji';
 import { interpolateText, interpolateTextToNodes } from '@/lib/variableInterpolation';
 import { resolveConditionBranch } from '@/lib/conditionEvaluator';
 import { buildWebhookPayload, PixelEventRecord } from '@/lib/webhookPayload';
-import { firePixelDual, firePixelDualBlocking, fireWebhookWithResponse } from '@/lib/firePixel';
+import { firePixelDual, firePixelDualBlocking, fireWebhookWithWorkflowProof } from '@/lib/firePixel';
 import { captureSessionContext, requestGeolocation, contextToAnswers } from '@/lib/sessionContext';
-import { enqueueTask } from '@/lib/backgroundQueue';
+import {
+  clearDurablePublicSavesForForm,
+  createDurablePublicSaveLane,
+  flushDurablePublicSaves,
+  sendDurablePublicSavesKeepalive,
+  sendPublicSaveRequest,
+  type DurablePublicSaveLane,
+  type PublicSaveRequest,
+} from '@/lib/publicSaveQueue';
+import {
+  resolveWorkflowWaits,
+  waitForAdjustableDuration,
+  type PendingWorkflowWait,
+  type WorkflowStepResult,
+} from '@/lib/workflowWait';
+import { applyWebhookResponse } from '@/lib/workflowAnswers';
 // consumePrefetchedForm/hasPrefetchedForm moved to shell (FormPreview.tsx)
-import { validateEmailFormat } from '@/lib/emailValidation';
 import { normalizeFontFamily } from '@/lib/fontUtils';
+import { prepareRedirectDestination, resolveRedirectDestination } from '@/lib/redirectDestination';
+import { getFormScreenKey, getFormScreenMotion, getRedirectNavigationDelay } from '@/lib/formScreenTransition';
+import { buildFormBackgroundStyle } from '@/lib/formBackground';
+import { resolveFormSeo, serializeJsonLdForHtml } from '@/lib/formSeo';
+import { executeWorkflowSideEffect, WorkflowSideEffectError } from '@/lib/workflowSideEffect';
+import { revealInvalidFormField } from '@/lib/formValidationFeedback';
+import { applyVariableOperations } from '@/lib/variableOperations';
+import {
+  clearStoredFormResume,
+  writeStoredFormResume,
+} from '@/lib/formResume';
 import {
   buildDefaults,
+  applyElementVariableBinding,
+  applyPageVariableAssignments as applyConfiguredPageAssignments,
   flattenPageElements,
   getRequiredFieldErrors,
+  hasUnansweredInputFields,
+  mergeLateContextDefaults,
   resolveUserData,
   prefetchLazyComponentsForElements,
 } from './FormPreview.utils';
@@ -45,6 +74,78 @@ function LazyWrap({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/20" />}>{children}</Suspense>;
 }
 
+type WorkflowDeliveryResponse = {
+  success?: boolean;
+  processing?: boolean;
+  deduplicated?: boolean;
+  error?: string;
+  result?: unknown;
+  workflowProof?: string;
+};
+
+type WorkflowPathContext = {
+  sourceNodeId: string;
+  proof?: string;
+};
+
+function deterministicWorkflowFraction(seed: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) / 0x1_0000_0000;
+}
+
+function workflowPathFields(context: WorkflowPathContext) {
+  return {
+    workflowSourceNodeId: context.sourceNodeId,
+    ...(context.proof ? { workflowProof: context.proof } : {}),
+  };
+}
+
+function acceptWorkflowPathProof(
+  context: WorkflowPathContext,
+  nodeId: string,
+  proof: unknown,
+) {
+  if (typeof proof !== 'string' || !proof) {
+    throw new Error('workflow_path_proof_missing');
+  }
+  context.sourceNodeId = nodeId;
+  context.proof = proof;
+}
+
+async function invokeAcknowledgedWorkflowFunction(
+  functionName: string,
+  body: Record<string, any>,
+  signal: AbortSignal,
+): Promise<WorkflowDeliveryResponse> {
+  const { data, error } = await invokeEdge<WorkflowDeliveryResponse>(functionName, body, { signal });
+  if (error || data?.success !== true || data.processing === true) {
+    throw error || new Error(data?.processing ? 'delivery_still_processing' : 'delivery_not_acknowledged');
+  }
+  return data;
+}
+
+function getWorkflowFailureMessage(error: unknown): string {
+  if (error instanceof WorkflowSideEffectError) {
+    return 'A integração não confirmou o recebimento. O formulário permaneceu nesta etapa para evitar perder o envio.';
+  }
+  return 'Não foi possível executar esta etapa do fluxo. O formulário não avançou; tente novamente.';
+}
+
+function selectWebhookRuntimeAnswers(
+  answers: Record<string, any>,
+): Record<string, any> {
+  return Object.fromEntries(Object.entries(answers).filter(([key]) =>
+    key.startsWith('__var_') ||
+    key.startsWith('__ctx_') ||
+    key.startsWith('__param_') ||
+    key.startsWith('__webhook_')
+  ));
+}
+
 
 
 interface FormPreviewCoreProps {
@@ -55,6 +156,11 @@ interface FormPreviewCoreProps {
 export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCoreProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const prefersReducedMotion = Boolean(useReducedMotion());
+  // Preview authority comes from the authenticated editor store or from the
+  // parent/iframe nonce handshake in FormPreview. A naked query parameter is
+  // public traffic and must never disable persistence.
+  const isPreviewMode = isEditorPreview;
   const [isInitialStateReady, setIsInitialStateReady] = useState(false);
   const [isInteractiveElementReady, setIsInteractiveElementReady] = useState(false);
   const [animationFrameReady, setAnimationFrameReady] = useState(false);
@@ -72,6 +178,20 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       });
     return () => { cancelled = true; };
   }, []);
+
+  // The parent keeps its loading cover visible until the actual form renderer
+  // is ready. A session nonce binds this acknowledgement to the current iframe
+  // instance, including device switches and retries.
+  useEffect(() => {
+    if (!isPreviewMode || window.parent === window || !isInitialStateReady || !isInteractiveElementReady) return;
+    const previewSession = new URLSearchParams(window.location.search).get('previewSession');
+    if (!previewSession) return;
+    window.parent.postMessage({
+      type: 'forms-editor-preview-mounted',
+      formId: form.id,
+      previewSession,
+    }, '*');
+  }, [form.id, isInitialStateReady, isInteractiveElementReady, isPreviewMode]);
 
   // --- First-load animation gate ---
   // Ensures the browser paints the initial (opacity:0) state before framer-motion
@@ -102,13 +222,28 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     };
   }, [isBootstrappingEarly]);
 
-  // isEditorPreview ref for stable access in callbacks
-  const isEditorPreviewRef = useRef(isEditorPreview);
+  useEffect(() => {
+    if (isPreviewMode || !animationFrameReady || !isInitialStateReady || !isInteractiveElementReady) return;
+    const shell = document.getElementById('form-ssr-shell');
+    if (!shell || shell.dataset.dismissing === 'true') return;
+    shell.dataset.dismissing = 'true';
+    shell.style.opacity = '0';
+    const timer = window.setTimeout(() => shell.remove(), 220);
+    return () => window.clearTimeout(timer);
+  }, [animationFrameReady, isInitialStateReady, isInteractiveElementReady, isPreviewMode]);
+
+  // Preview ref for stable access in callbacks
+  const isEditorPreviewRef = useRef(isPreviewMode);
+  useEffect(() => { isEditorPreviewRef.current = isPreviewMode; }, [isPreviewMode]);
 
   const [currentPageIndex, setCurrentPageIndex] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [direction, setDirection] = useState(1);
   const [finished, setFinished] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [resolvedRedirectUrl, setResolvedRedirectUrl] = useState<string | null>(null);
   const [blockedElements, setBlockedElements] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const pageHistoryRef = useRef<number[]>([]);
@@ -125,9 +260,16 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
   const [isFlowProcessing, setIsFlowProcessing] = useState(false);
+  const lastWorkflowActionRef = useRef<
+    | { kind: 'next' }
+    | { kind: 'button'; action: 'specific' | 'finish'; targetPageId?: string }
+  >({ kind: 'next' });
   const validatorsRef = useRef<Record<string, () => Promise<boolean>>>({});
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+  const initialFlowPendingRef = useRef(false);
+  const initialDefaultsRef = useRef<Record<string, any>>({});
+  const protectedDefaultKeysRef = useRef(new Set<string>());
 
   // Track all pixel events fired during this session
   const pixelEventsRef = useRef<PixelEventRecord[]>([]);
@@ -136,7 +278,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   // Capture session metadata once on mount
   const sessionMetaRef = useRef((() => {
-    const uuid = crypto.randomUUID();
+    const uuid = !isPreviewMode && form.submissionResponseId
+      ? form.submissionResponseId
+      : crypto.randomUUID();
     // Short hash: base36 from first 12 hex chars of UUID → 8-char alphanumeric
     const hash = parseInt(uuid.replace(/-/g, '').slice(0, 12), 16).toString(36).toUpperCase().slice(0, 8);
     return {
@@ -150,9 +294,24 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       referrer: typeof document !== 'undefined' ? document.referrer : '',
     };
   })());
-  const sessionDbIdRef = useRef<string | null>(null);
+  const sessionDbIdRef = useRef<string | null>(
+    !isPreviewMode && form.submissionSessionId ? form.submissionSessionId : null,
+  );
   const maxPageVisitedRef = useRef<number>(-1);
   const pageEnteredAtRef = useRef<number>(Date.now());
+  const completionRequestedRef = useRef(false);
+  const completionAcknowledgedRef = useRef(false);
+  const completionQueueAvailableRef = useRef(false);
+  const completionSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const completionRedirectTemplateRef = useRef<string | null>(null);
+  const responseSaveLaneRef = useRef<{ key: string; lane: DurablePublicSaveLane } | null>(null);
+  const responseSaveLaneKey = `response:${form.id}:${sessionMetaRef.current.responseId}`;
+  if (responseSaveLaneRef.current?.key !== responseSaveLaneKey) {
+    responseSaveLaneRef.current = {
+      key: responseSaveLaneKey,
+      lane: createDurablePublicSaveLane(responseSaveLaneKey),
+    };
+  }
 
   // PRIMARY save method — uses edge function with service role key (bypasses RLS)
   const saveViaBackend = useCallback(async (args: {
@@ -174,118 +333,270 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     }
   }, [form.submissionToken]);
 
+  const persistCompletion = useCallback((latestAnswers: Record<string, any>): Promise<boolean> => {
+    if (isPreviewMode || !form.id) return Promise.resolve(true);
+    if (completionAcknowledgedRef.current) return Promise.resolve(true);
+    if (completionSavePromiseRef.current) return completionSavePromiseRef.current;
+
+    const { responseId } = sessionMetaRef.current;
+    const now = new Date().toISOString();
+    const request: PublicSaveRequest = {
+      token: form.submissionToken,
+      kind: 'response',
+      action: 'upsert',
+      onConflict: 'form_id,response_id',
+      payload: {
+        form_id: form.id,
+        response_id: responseId,
+        session_id: sessionDbIdRef.current,
+        answers: latestAnswers,
+        metadata: {
+          status: 'complete',
+          response_hash: sessionMetaRef.current.responseHash,
+          user_agent: sessionMetaRef.current.userAgent,
+          referrer: sessionMetaRef.current.referrer,
+          query_params: sessionMetaRef.current.queryParams,
+          landed_at: sessionMetaRef.current.landedAt,
+          submitted_at: now,
+        },
+        total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
+        pages_visited: maxPageVisitedRef.current + 1,
+        completion_time_on_page_ms: Math.max(0, Date.now() - pageEnteredAtRef.current),
+      },
+    };
+    const savePromise = responseSaveLaneRef.current!.lane.persist(request, {
+      attempts: 2,
+      baseDelayMs: 250,
+      send: (pendingRequest) => sendPublicSaveRequest(pendingRequest, { timeoutMs: 30_000 }),
+    }).then(({ delivered, queued }) => {
+      completionQueueAvailableRef.current = queued;
+      if (!delivered && !queued) {
+        console.error('[form-public-save] completion could not be delivered or queued');
+      }
+      if (delivered) completionAcknowledgedRef.current = true;
+      // The thank-you screen requires a backend acknowledgement. A local queue
+      // protects the payload, but is not presented as a successful submission.
+      return delivered;
+    }).finally(() => {
+      if (!completionAcknowledgedRef.current) completionSavePromiseRef.current = null;
+    });
+    completionSavePromiseRef.current = savePromise;
+    return savePromise;
+  }, [form.id, form.submissionToken, isPreviewMode]);
+
+  const finishForm = useCallback(async (
+    latestAnswers: Record<string, any> = answersRef.current,
+    redirectTemplateOverride?: string,
+  ) => {
+    if (redirectTemplateOverride !== undefined) {
+      completionRedirectTemplateRef.current = redirectTemplateOverride;
+    }
+    answersRef.current = latestAnswers;
+    setAnswers(latestAnswers);
+    completionRequestedRef.current = true;
+    setCompletionError(null);
+    setIsCompleting(true);
+    try {
+      const acknowledged = await persistCompletion(latestAnswers);
+      if (acknowledged) {
+        if (!isPreviewMode) {
+          clearStoredFormResume(form.id);
+          clearDurablePublicSavesForForm(form.id);
+        }
+        const redirectTemplate = completionRedirectTemplateRef.current
+          ?? (form.completionAction === 'redirect' ? form.completionRedirectUrl : undefined);
+        const destination = !isPreviewMode && redirectTemplate
+          ? prepareRedirectDestination({
+              template: redirectTemplate,
+              variables: form.variables || [],
+              answers: latestAnswers,
+              phase: 'final',
+            })
+          : null;
+        if (redirectTemplate && !destination && !isPreviewMode) {
+          console.warn('[redirect] destination is invalid or has unresolved references');
+        }
+        setResolvedRedirectUrl(destination?.url || null);
+        setFinished(true);
+        return true;
+      }
+      setCompletionError(completionQueueAvailableRef.current
+        ? 'Não foi possível confirmar o envio. Seus dados estão preservados neste dispositivo; tente novamente.'
+        : 'Não foi possível confirmar nem preservar o envio. Não feche esta página e tente novamente.');
+      return false;
+    } finally {
+      setIsCompleting(false);
+    }
+  }, [form.completionAction, form.completionRedirectUrl, form.id, form.variables, isPreviewMode, persistCompletion]);
+
+  // Static destinations reveal no respondent data and can be warmed as soon as
+  // the form is ready. Dynamic templates are deliberately deferred to the final
+  // acknowledged submission path above.
+  useEffect(() => {
+    if (isPreviewMode) return;
+    const redirectTemplates = [
+      ...(form.completionAction === 'redirect' && form.completionRedirectUrl
+        ? [form.completionRedirectUrl]
+        : []),
+      ...(form.jumpNodes || [])
+        .filter((node) => (node.destinationType === 'url' || (!node.destinationType && node.redirectUrl)) && node.redirectUrl)
+        .map((node) => node.redirectUrl as string),
+    ];
+    for (const template of redirectTemplates) {
+      prepareRedirectDestination({
+        template,
+        variables: form.variables || [],
+        answers: answersRef.current,
+        phase: 'early',
+      });
+    }
+  }, [form.completionAction, form.completionRedirectUrl, form.jumpNodes, form.variables, isPreviewMode]);
+
+  useEffect(() => {
+    if (!finished || !resolvedRedirectUrl || isPreviewMode) return;
+    const delayMs = getRedirectNavigationDelay(prefersReducedMotion);
+    const timeout = window.setTimeout(() => window.location.assign(resolvedRedirectUrl), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [finished, isPreviewMode, prefersReducedMotion, resolvedRedirectUrl]);
+
+  // Retry durable completions after reload and whenever connectivity returns.
+  useEffect(() => {
+    if (isPreviewMode) return;
+    void flushDurablePublicSaves();
+    const onOnline = () => {
+      if (completionRequestedRef.current && !completionAcknowledgedRef.current) {
+        void finishForm(answersRef.current);
+      } else {
+        void flushDurablePublicSaves();
+      }
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [finishForm, isPreviewMode]);
+
+  // Retain only the short-lived opaque credential in this tab. Answers are
+  // resumed from the canonical encrypted response returned by form-public-get.
+  useEffect(() => {
+    if (isPreviewMode || !form.id) return;
+    if (form.allowResume === true && form.submissionToken) {
+      writeStoredFormResume(form.id, {
+        submissionToken: form.submissionToken,
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      clearStoredFormResume(form.id);
+    }
+  }, [form.allowResume, form.id, form.submissionToken, isPreviewMode]);
+
   // Initialise answers, page index, and session context once form is loaded
   // Phase 1 (sync): defaults + page index for instant first paint
   // Phase 2 (deferred): session context, geo — via requestIdleCallback
   useEffect(() => {
     if (!form) return;
     setIsInitialStateReady(false);
+    protectedDefaultKeysRef.current = new Set();
 
-    const defaults = buildDefaults(form);
+    // Start-node conditions and assignments may depend on context/GET params, so
+    // capture the synchronous portion before resolving the initial route.
+    const contextAnswers = contextToAnswers(captureSessionContext());
+    const defaults = buildDefaults(form, contextAnswers);
+    initialDefaultsRef.current = defaults;
+    const initialAnswers = { ...contextAnswers, ...defaults };
 
-    // Try to resume from saved session
-    if (form.allowResume && form.id) {
-      const storageKey = `form_resume_${form.id}`;
-      try {
-        const saved = localStorage.getItem(storageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const parsedPageIndex = Number(parsed.pageIndex);
-          const hasValidSavedIndex = Number.isInteger(parsedPageIndex)
-            && parsedPageIndex >= 0
-            && parsedPageIndex < (form.pages?.length ?? 0);
-
-          if (parsed.answers && hasValidSavedIndex) {
-            setAnswers({ ...defaults, ...parsed.answers });
-            setCurrentPageIndex(parsedPageIndex);
-            maxPageVisitedRef.current = parsed.maxPage ?? parsedPageIndex;
-
-            prefetchLazyComponentsForElements(form.pages?.[parsedPageIndex]?.elements || [], 'immediate');
-            setIsInitialStateReady(true);
-
-            // Capture context after paint
-            const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
-            sched(() => {
-              const ctx = captureSessionContext();
-              const ctxAns = contextToAnswers(ctx);
-              setAnswers(prev => ({ ...ctxAns, ...prev }));
-            });
-            return;
-          }
-        }
-      } catch { /* ignore corrupt data */ }
-    }
-
-    const initialPageIndex = form.showWelcomeScreen ? null : 0;
-    const initialElements = initialPageIndex === null
-      ? (form.welcomePage?.elements || [])
-      : (form.pages?.[initialPageIndex]?.elements || []);
-
-    prefetchLazyComponentsForElements(initialElements, 'immediate');
-    setAnswers(defaults);
-    setCurrentPageIndex(initialPageIndex);
-    setIsInitialStateReady(true);
-
-    // Phase 2: capture session context after first paint — deferred
-    const sched = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1);
-    sched(() => {
-      const ctx = captureSessionContext();
-      const ctxAns = contextToAnswers(ctx);
-      setAnswers(prev => ({ ...ctxAns, ...prev }));
-    });
-
-    // Request geolocation ONLY when explicitly enabled in form settings
-    // Uses a one-shot interaction listener to defer the heavy geo call
-    if (form.enableGeolocation === true) {
+    const registerGeolocation = () => {
+      if (isPreviewMode || form.enableGeolocation !== true) return undefined;
+      let active = true;
       const geoHandler = () => {
         requestGeolocation().then((geo) => {
-          if (geo.source !== 'none') {
-            setAnswers(prev => ({
-              ...prev,
-              __ctx_latitude: geo.latitude,
-              __ctx_longitude: geo.longitude,
-              __ctx_geoCity: geo.geoCity,
-              __ctx_geoState: geo.geoState,
-              __ctx_geoCountry: geo.geoCountry,
-              __ctx_geoCountryCode: geo.geoCountryCode,
-              __ctx_geoNeighborhood: geo.geoNeighborhood,
-              __ctx_geoStreet: geo.geoStreet,
-              __ctx_geoCep: geo.geoCep,
-              __ctx_geoSource: geo.source,
-            }));
-          }
+          if (!active || geo.source === 'none') return;
+          const geoAnswers = {
+            __ctx_latitude: geo.latitude,
+            __ctx_longitude: geo.longitude,
+            __ctx_geoCity: geo.geoCity,
+            __ctx_geoState: geo.geoState,
+            __ctx_geoCountry: geo.geoCountry,
+            __ctx_geoCountryCode: geo.geoCountryCode,
+            __ctx_geoNeighborhood: geo.geoNeighborhood,
+            __ctx_geoStreet: geo.geoStreet,
+            __ctx_geoCep: geo.geoCep,
+            __ctx_geoSource: geo.source,
+          };
+          const nextAnswers = mergeLateContextDefaults(
+            form,
+            answersRef.current,
+            initialDefaultsRef.current,
+            geoAnswers,
+            protectedDefaultKeysRef.current,
+          );
+          answersRef.current = nextAnswers;
+          setAnswers(nextAnswers);
         });
       };
-      // Only trigger on user interaction — never auto-trigger to avoid blocking rendering
+      // Only trigger on user interaction — never auto-trigger to avoid blocking rendering.
       window.addEventListener('pointerdown', geoHandler, { once: true, passive: true });
-      return () => window.removeEventListener('pointerdown', geoHandler);
+      return () => {
+        active = false;
+        window.removeEventListener('pointerdown', geoHandler);
+      };
+    };
+
+    // The browser never provides answer data here. form-public-get has already
+    // verified the opaque credential and loaded this bounded snapshot from the
+    // canonical encrypted partial response.
+    if (!isPreviewMode && form.allowResume && form.submissionResumed) {
+      const snapshot = form.submissionResumeState;
+      const parsedPageIndex = Number(snapshot?.pageIndex);
+      const hasValidSavedIndex = Number.isInteger(parsedPageIndex)
+        && parsedPageIndex >= 0
+        && parsedPageIndex < (form.pages?.length ?? 0);
+      if (snapshot?.answers && hasValidSavedIndex) {
+        protectedDefaultKeysRef.current = new Set(
+          Object.keys(snapshot.answers).filter((key) => !key.startsWith('__ctx_')),
+        );
+        const resumedAnswers = { ...initialAnswers, ...snapshot.answers };
+        answersRef.current = resumedAnswers;
+        setAnswers(resumedAnswers);
+        setCurrentPageIndex(parsedPageIndex);
+        maxPageVisitedRef.current = Math.max(parsedPageIndex, Number(snapshot.maxPage) || 0);
+        initialFlowPendingRef.current = false;
+
+        prefetchLazyComponentsForElements(form.pages?.[parsedPageIndex]?.elements || [], 'immediate');
+        setIsInitialStateReady(true);
+        return registerGeolocation();
+      }
     }
+
+    const mustResolveStart = form.showWelcomeScreen !== true;
+    const initialElements = form.showWelcomeScreen
+      ? (form.welcomePage?.elements || [])
+      : (form.pages?.[0]?.elements || []);
+
+    prefetchLazyComponentsForElements(initialElements, 'immediate');
+    answersRef.current = initialAnswers;
+    setAnswers(initialAnswers);
+    setCurrentPageIndex(null);
+    initialFlowPendingRef.current = mustResolveStart;
+    // Without welcome, keep content hidden until the start graph picks the page.
+    setIsInitialStateReady(!mustResolveStart);
+
+    return registerGeolocation();
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save session for resume + partial responses
   useEffect(() => {
-    if (!form?.id || finished || isEditorPreview) return;
+    if (!form?.id || finished || isPreviewMode) return;
+    if (completionRequestedRef.current) return;
     if (currentPageIndex === null) return;
 
     const timer = window.setTimeout(() => {
-      // Save to localStorage for resume
-      if (form.allowResume) {
-        const storageKey = `form_resume_${form.id}`;
-        try {
-          localStorage.setItem(storageKey, JSON.stringify({
-            answers: answersRef.current,
-            pageIndex: currentPageIndex,
-            maxPage: maxPageVisitedRef.current,
-            updatedAt: new Date().toISOString(),
-          }));
-        } catch { /* quota exceeded */ }
-      }
-
+      // A timer may have been scheduled just before the final submit click.
+      if (completionRequestedRef.current) return;
       // Save partial response to DB
       if (form.savePartialResponses !== false) {
         const { responseId } = sessionMetaRef.current;
         const sessionId = sessionDbIdRef.current;
-        saveViaBackend({
+        const request: PublicSaveRequest = {
+          token: form.submissionToken,
           kind: 'response',
           action: 'upsert',
           onConflict: 'form_id,response_id',
@@ -305,98 +616,111 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             },
             pages_visited: maxPageVisitedRef.current + 1,
           },
+        };
+        void responseSaveLaneRef.current!.lane.persist(request, {
+          attempts: 1,
+          send: (pendingRequest) => sendPublicSaveRequest(pendingRequest, { timeoutMs: 15_000 }),
+        }).then(({ delivered, queued }) => {
+          if (!delivered && !queued) {
+            console.error('[form-public-save] partial response could not be delivered or queued');
+          }
         });
       }
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [answers, currentPageIndex, form?.id, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [answers, currentPageIndex, form?.id, finished, isPreviewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save partial on beforeunload — use edge function via fetch keepalive
+  // Save the latest partial synchronously into the durable queue before unload,
+  // then make a best-effort keepalive delivery of every queued payload.
   useEffect(() => {
-    if (!form?.id || isEditorPreview) return;
+    if (!form?.id || isPreviewMode) return;
     const handler = () => {
-      if (form.savePartialResponses === false) return;
-      if (finished) return;
-      const { responseId } = sessionMetaRef.current;
-      const sessionId = sessionDbIdRef.current;
-      const edgeBody = JSON.stringify({
-        token: form.submissionToken,
-        kind: 'response',
-        action: 'upsert',
-        onConflict: 'form_id,response_id',
-        payload: {
-          form_id: form.id,
-          response_id: responseId,
-          session_id: sessionId,
-          answers: answersRef.current,
-           metadata: {
+      if (!completionRequestedRef.current && form.savePartialResponses !== false && !finished) {
+        const { responseId } = sessionMetaRef.current;
+        const request: PublicSaveRequest = {
+          token: form.submissionToken,
+          kind: 'response',
+          action: 'upsert',
+          onConflict: 'form_id,response_id',
+          payload: {
+            form_id: form.id,
+            response_id: responseId,
+            session_id: sessionDbIdRef.current,
+            answers: answersRef.current,
+            metadata: {
               status: 'partial',
               response_hash: sessionMetaRef.current.responseHash,
               user_agent: sessionMetaRef.current.userAgent,
+              referrer: sessionMetaRef.current.referrer,
+              query_params: sessionMetaRef.current.queryParams,
               landed_at: sessionMetaRef.current.landedAt,
+              last_page_index: currentPageIndex,
             },
-          pages_visited: maxPageVisitedRef.current + 1,
-        },
-      });
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/form-public-save`;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      try {
-        fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': anonKey,
-            'Authorization': `Bearer ${anonKey}`,
+            pages_visited: maxPageVisitedRef.current + 1,
           },
-          body: edgeBody,
-          keepalive: true,
-        }).catch(() => {});
-      } catch { /* ignore */ }
+        };
+        // persist() enqueues synchronously before its promise is returned.
+        void responseSaveLaneRef.current!.lane.persist(request, { attempts: 1 });
+      }
+      sendDurablePublicSavesKeepalive();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [form?.id, form?.submissionToken, finished, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPageIndex, form?.id, form?.submissionToken, finished, isPreviewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Insert session record on form load — DEFERRED to avoid blocking first paint
   useEffect(() => {
-    if (!form?.id || isEditorPreview) return;
-    const generatedSessionId = crypto.randomUUID();
+    if (!form?.id || isPreviewMode) return;
+    const generatedSessionId = form.submissionSessionId || crypto.randomUUID();
     sessionDbIdRef.current = generatedSessionId;
 
     // Defer session insert to after first paint — not needed for rendering
     const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 50);
     schedule(() => {
       const { responseId, userAgent, queryParams, referrer } = sessionMetaRef.current;
-      saveViaBackend({
-        kind: 'session',
-        action: 'insert',
-        payload: {
-          id: generatedSessionId,
-          form_id: form.id,
-          response_id: responseId,
-          status: 'active',
-          total_pages: form.pages?.length || 0,
-          source_url: typeof window !== 'undefined' ? window.location.href : '',
-          referrer: referrer || null,
-          user_agent: userAgent,
-          query_params: queryParams,
-        },
-      });
+      if (form.submissionResumed) {
+        saveViaBackend({
+          kind: 'session',
+          action: 'update',
+          match: { id: generatedSessionId },
+          payload: {
+            status: 'active',
+            last_seen_at: new Date().toISOString(),
+            total_pages: form.pages?.length || 0,
+          },
+        });
+      } else {
+        saveViaBackend({
+          kind: 'session',
+          action: 'insert',
+          payload: {
+            id: generatedSessionId,
+            form_id: form.id,
+            response_id: responseId,
+            status: 'active',
+            total_pages: form.pages?.length || 0,
+            source_url: typeof window !== 'undefined' ? window.location.href : '',
+            referrer: referrer || null,
+            user_agent: userAgent,
+            query_params: queryParams,
+          },
+        });
 
-      // Insert form_start page event
-      saveViaBackend({
-        kind: 'event',
-        action: 'insert',
-        payload: { form_id: form.id, response_id: responseId, event_type: 'form_start' },
-      });
+        // A resumed visit keeps the original form_start/session identity.
+        saveViaBackend({
+          kind: 'event',
+          action: 'insert',
+          payload: { form_id: form.id, response_id: responseId, event_type: 'form_start' },
+        });
+      }
     });
-  }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form?.id, isPreviewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Fire pixel load events once the form is ready — DEFERRED to avoid blocking first paint
   useEffect(() => {
-    if (!form?.id || isEditorPreview) return;
+    if (!form?.id || isPreviewMode) return;
     const loadEvents = form.pixelLoadEvents || [];
     if (loadEvents.length === 0) return;
 
@@ -433,11 +757,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         });
       }
     });
-  }, [form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form?.id, isPreviewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track page views & session progress when page changes or form completes
   useEffect(() => {
-    if (!form?.id || isEditorPreview) return;
+    if (!form?.id || isPreviewMode) return;
     const { responseId } = sessionMetaRef.current;
     const sessionId = sessionDbIdRef.current;
     const now = new Date().toISOString();
@@ -445,61 +769,15 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     pageEnteredAtRef.current = Date.now();
 
     if (finished) {
-      if (sessionId) {
-        saveViaBackend({
-          kind: 'session',
-          action: 'update',
-          match: { id: sessionId },
-          payload: {
-            status: 'completed',
-            completed_at: now,
-            last_seen_at: now,
-            pages_visited: maxPageVisitedRef.current + 1,
-          },
-        });
-      }
-      saveViaBackend({
-        kind: 'event',
-        action: 'insert',
-        payload: {
-          session_id: sessionId,
-          form_id: form.id,
-          response_id: responseId,
-          event_type: 'form_complete',
-          time_on_page_ms: timeOnPage > 0 ? timeOnPage : null,
-        },
-      });
-
-      // Save/update form responses as complete
+      // Safety net for completion paths. finishForm already awaited this same
+      // promise; form-public-save atomically persists response, completed
+      // session and the idempotent form_complete event before acknowledging.
       const latestAnswers = answersRef.current;
-      saveViaBackend({
-        kind: 'response',
-        action: 'upsert',
-        onConflict: 'form_id,response_id',
-        payload: {
-          form_id: form.id,
-          response_id: responseId,
-          session_id: sessionId,
-          answers: latestAnswers,
-            metadata: {
-              status: 'complete',
-              response_hash: sessionMetaRef.current.responseHash,
-              user_agent: sessionMetaRef.current.userAgent,
-              referrer: sessionMetaRef.current.referrer,
-              query_params: sessionMetaRef.current.queryParams,
-              landed_at: sessionMetaRef.current.landedAt,
-              submitted_at: now,
-            },
-          total_time_ms: Date.now() - new Date(sessionMetaRef.current.landedAt).getTime(),
-          pages_visited: maxPageVisitedRef.current + 1,
-        },
-      });
+      void persistCompletion(latestAnswers);
 
       // Clear resume data
       if (form.allowResume) {
-        try { localStorage.removeItem(`form_resume_${form.id}`); } catch {
-          // localStorage may be unavailable.
-        }
+        clearStoredFormResume(form.id);
       }
 
       return;
@@ -536,7 +814,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         },
       });
     }
-  }, [currentPageIndex, finished, form?.id, isEditorPreview]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPageIndex, finished, form?.id, isPreviewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Always-fresh ref to form — avoids stale closures in callbacks
   const formRef = useRef(form);
@@ -544,7 +822,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   // Scroll to top on page change
   useEffect(() => {
-    scrollContainerRef.current?.scrollTo({ top: 0 });
+    scrollContainerRef.current?.scrollTo?.({ top: 0 });
   }, [currentPageIndex, finished]);
 
 
@@ -606,9 +884,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     const isLastPage = isFlowLastPage;
 
     if (!hasAnyElements && !hasInputFields && !hasActionButtons && !hasOutgoingFlow && isLastPage) {
-      setFinished(true);
+      void finishForm();
     }
-  }, [form, finished, currentPageIndex, pages, isFlowLastPage]);
+  }, [form, finished, currentPageIndex, pages, isFlowLastPage, finishForm]);
 
   const totalScore = useMemo(() => {
     if (!form) return 0;
@@ -656,6 +934,13 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   const isWelcome = currentPageIndex === null && !finished;
   const isThankYou = finished;
+  const currentValidationElements = useMemo(() => {
+    if (isWelcome && form.showWelcomeScreen) return form.welcomePage?.elements || [];
+    return currentPage?.elements || [];
+  }, [currentPage, form.showWelcomeScreen, form.welcomePage?.elements, isWelcome]);
+  const currentValidationElementsRef = useRef(currentValidationElements);
+  currentValidationElementsRef.current = currentValidationElements;
+  const validationAttemptedElementsRef = useRef(new Set<string>());
   const nonEmptyPages = useMemo(() => pages.filter(p => p.elements && p.elements.length > 0), [pages]);
   const totalSteps = nonEmptyPages.length;
   // Progress based on journey step count (history length), not page array position
@@ -687,9 +972,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   }, []);
 
   const isPageBlocked = useMemo(() => {
-    if (!currentPage) return false;
-    return flattenPageElements(currentPage.elements).some(el => blockedElements[el.id]);
-  }, [currentPage, blockedElements]);
+    return flattenPageElements(currentValidationElements).some(el => blockedElements[el.id]);
+  }, [currentValidationElements, blockedElements]);
 
   const setElementBlocked = useCallback((elementId: string, blocked: boolean) => {
     setBlockedElements(prev => ({ ...prev, [elementId]: blocked }));
@@ -703,37 +987,73 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     }
   }, []);
 
-  /** Check that all required fields on the current page have a non-empty value */
-  const areRequiredFieldsFilled = useCallback(() => {
-    if (!currentPage) return true;
-    const errors = getRequiredFieldErrors(currentPage.elements, answers);
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return false;
+  const revealInvalidField = useCallback((elementId: string) => {
+    const root = scrollContainerRef.current;
+    if (!root) return;
+    revealInvalidFormField({ root, elementId, prefersReducedMotion });
+  }, [prefersReducedMotion]);
+
+  const validateCurrentPageBeforeNavigation = useCallback(async (): Promise<boolean> => {
+    if (isPageBlocked) return false;
+
+    const elementsInVisualOrder = flattenPageElements(currentValidationElements);
+    elementsInVisualOrder.forEach((element) => {
+      if (element.type.startsWith('input_')) validationAttemptedElementsRef.current.add(element.id);
+    });
+    const synchronousErrors = getRequiredFieldErrors(currentValidationElements, answersRef.current);
+    setFieldErrors(synchronousErrors);
+
+    // Required/constraint checks and async validators share the same visual
+    // walk. This ensures an invalid optional field above a required empty field
+    // receives feedback first.
+    for (const element of elementsInVisualOrder) {
+      if (synchronousErrors[element.id]) {
+        revealInvalidField(element.id);
+        return false;
+      }
+
+      const validator = validatorsRef.current[element.id];
+      if (!validator) continue;
+      let isValid = false;
+      try {
+        isValid = await validator();
+      } catch {
+        isValid = false;
+      }
+      if (!isValid) {
+        revealInvalidField(element.id);
+        return false;
+      }
     }
-    setFieldErrors({});
+
     return true;
-  }, [currentPage, answers]);
+  }, [currentValidationElements, isPageBlocked, revealInvalidField]);
 
   /** Apply variableAssignments for a given page when entering it */
   const applyPageVariableAssignments = useCallback((page: import('@/types/form').FunnelPage, currentAnswers: Record<string, any>) => {
     const f = formRef.current;
-    if (!page.variableAssignments?.length || !f?.variables?.length) return currentAnswers;
-    const updated = { ...currentAnswers };
-    for (const assignment of page.variableAssignments) {
-      const variable = f.variables?.find(v => v.id === assignment.variableId);
-      if (!variable) continue;
-      if (assignment.sourceType === 'field' && assignment.sourceElementId) {
-        const val = currentAnswers[assignment.sourceElementId];
-        if (val !== undefined && val !== null) {
-          updated[`__var_${variable.name}`] = String(val);
-        }
-      } else if (assignment.sourceType === 'free') {
-        const resolved = interpolateText(assignment.value || '', f.variables || [], currentAnswers);
-        updated[`__var_${variable.name}`] = resolved;
-      }
+    return f ? applyConfiguredPageAssignments(f, page, currentAnswers) : currentAnswers;
+  }, []);
+
+  const authorizeWorkflowCheckpoint = useCallback(async (
+    context: WorkflowPathContext,
+    targetNodeId: string,
+    currentAnswers: Record<string, any>,
+  ) => {
+    const f = formRef.current;
+    if (!f || isEditorPreviewRef.current) return;
+    const { data, error } = await invokeEdge<WorkflowDeliveryResponse>('workflow-path-checkpoint', {
+      submissionToken: f.submissionToken,
+      formId: f.id,
+      responseId: sessionMetaRef.current.responseId,
+      targetNodeId,
+      answers: currentAnswers,
+      ...workflowPathFields(context),
+    });
+    if (error || data?.success !== true) {
+      throw error || new Error(data?.error || 'workflow_checkpoint_not_authorized');
     }
-    return updated;
+    acceptWorkflowPathProof(context, targetNodeId, data.workflowProof);
   }, []);
 
   /**
@@ -748,18 +1068,15 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     fromNodeId: string,
     currentAnswers: Record<string, any>,
     skipSideEffects = false,
-  ): Promise<{ nextNodeId: string | null; updatedAnswers: Record<string, any>; pendingWait?: { durationMs: number; feedback?: WaitFeedbackConfig; remainingNodeId: string } }> => {
+    pathContext?: WorkflowPathContext,
+  ): Promise<WorkflowStepResult> => {
     // Em editor preview, pulamos integrações externas (webhooks/pixels/WhatsApp/email) por segurança,
     // mas permitimos nós internos (IA/variáveis/condições) para que o fluxo seja testável.
     const skipExternal = skipSideEffects || isEditorPreviewRef.current;
-    const skipAI = skipSideEffects && !isEditorPreviewRef.current;
+    const skipAI = skipSideEffects || isEditorPreviewRef.current;
     const f = formRef.current;
     const edges = f?.flowEdges || [];
-
-    console.info('[walkWorkflow] START from:', fromNodeId, '| edges:', edges.length, '| skipExternal:', skipExternal, '| skipAI:', skipAI);
-    if (edges.length > 0) {
-      console.info('[walkWorkflow] Edge map:', edges.map(e => `${e.source} → ${e.target}${e.sourceHandle ? ` [${e.sourceHandle}]` : ''}`).join(' | '));
-    }
+    const workflowPath = pathContext ?? { sourceNodeId: fromNodeId };
 
     if (!edges.length) {
       console.warn('[walkWorkflow] No flowEdges defined — canvas has no connections');
@@ -770,41 +1087,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     const applyVopNode = (vopId: string, ans: Record<string, any>): Record<string, any> => {
       const vop = f?.variableOpNodes?.find(v => v.id === vopId);
       if (!vop || !vop.operations?.length) return ans;
-      const updated = { ...ans };
-      for (const op of vop.operations) {
-        const variable = f?.variables?.find(v => v.id === op.variableId);
-        if (!variable) continue;
-        const storeKey = `__var_${variable.name}`;
-        const operandType = op.operandType ?? 'literal';
-
-        let resolvedOperand: string;
-        if (operandType === 'field') {
-          if (!op.operandFieldId) continue;
-          const fieldVal = updated[op.operandFieldId];
-          if (fieldVal === undefined || fieldVal === null || fieldVal === '') continue;
-          resolvedOperand = String(fieldVal);
-        } else {
-          resolvedOperand = interpolateText(op.operand ?? '', f?.variables || [], updated);
-          if (op.op === 'set' && resolvedOperand === '' && (op.operand ?? '') === '') continue;
-        }
-
-        if (op.op === 'set') {
-          updated[storeKey] = resolvedOperand;
-          continue;
-        }
-
-        const currentRaw = updated[storeKey] ?? variable.defaultValue ?? '0';
-        const currentNum = parseFloat(String(currentRaw)) || 0;
-        const operandNum = parseFloat(resolvedOperand) || 0;
-        switch (op.op) {
-          case 'add':      updated[storeKey] = String(currentNum + operandNum); break;
-          case 'subtract': updated[storeKey] = String(currentNum - operandNum); break;
-          case 'multiply': updated[storeKey] = String(currentNum * operandNum); break;
-          case 'divide':   updated[storeKey] = operandNum !== 0 ? String(currentNum / operandNum) : String(currentNum); break;
-          default:         updated[storeKey] = resolvedOperand;
-        }
-      }
-      return updated;
+      return applyVariableOperations(vop.operations, f?.variables || [], ans);
     };
 
     // Iterative graph traversal — no recursion, no stale closures
@@ -822,57 +1105,69 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
       const outEdges = edges.filter(e => e.source === currentNodeId);
       if (outEdges.length === 0) {
+        // A persisted page without outgoing edges is an intentional terminal
+        // destination. Treat it like `end`; malformed intermediate nodes must
+        // still emit the routing diagnostics below.
+        const terminalPageId = currentNodeId.startsWith('p-')
+          ? currentNodeId.slice(2)
+          : null;
+        if (terminalPageId && f?.pages?.some(page => page.id === terminalPageId)) {
+          return { nextNodeId: 'end', updatedAnswers: currentAns };
+        }
         console.warn('[walkWorkflow] Dead end — no outgoing edges from:', currentNodeId, '| All edges:', JSON.stringify(edges.map(e => ({ s: e.source, t: e.target }))));
         break;
       }
 
       // Determine which edge to follow
-      let nextEdge = outEdges[0]; // default: first edge
+      let nextEdge = outEdges[0]; // default for ordinary single-output nodes
 
       // If current node is a condition node, pick branch by evaluation
       if (currentNodeId.startsWith('c-')) {
         const condId = currentNodeId.replace('c-', '');
         const condData = f?.conditions?.find(c => c.id === condId);
-        if (condData) {
-          // Collect all elements from all pages for option-label resolution
-          const allElements = f?.pages?.flatMap(p => flattenPageElements(p.elements || [])) || [];
-          const matchedBranchId = resolveConditionBranch(condData, currentAns, f?.variables, allElements);
-          const handleId = `branch-${matchedBranchId}`;
-          const branchEdge = outEdges.find(e => e.sourceHandle === handleId);
-          if (branchEdge) nextEdge = branchEdge;
-        }
+        if (!condData) throw new Error(`workflow_condition_missing:${condId}`);
+
+        // Collect all elements from all pages for option-label resolution.
+        // A missing matched branch is a broken graph and must never silently
+        // fall through to whichever edge happens to be stored first.
+        const allElements = f?.pages?.flatMap(p => flattenPageElements(p.elements || [])) || [];
+        const matchedBranchId = resolveConditionBranch(condData, currentAns, f?.variables, allElements);
+        const handleId = `branch-${matchedBranchId}`;
+        const branchEdge = outEdges.find(e => e.sourceHandle === handleId);
+        if (!branchEdge) throw new Error(`workflow_condition_branch_unconnected:${condId}:${matchedBranchId}`);
+        nextEdge = branchEdge;
       }
 
       // If current node is an AB test, pick variant by weight
       if (currentNodeId.startsWith('ab-')) {
         const abId = currentNodeId.replace('ab-', '');
         const abNode = f?.abTestNodes?.find(n => n.id === abId);
-        if (abNode && abNode.variants?.length) {
-          const totalWeight = abNode.variants.reduce((s, v) => s + v.weight, 0);
-          let random = Math.random() * totalWeight;
-          let chosenVariant = abNode.variants[0];
-          for (const variant of abNode.variants) {
-            random -= variant.weight;
-            if (random <= 0) { chosenVariant = variant; break; }
-          }
-          const variantEdge = outEdges.find(e => e.sourceHandle === `ab-${chosenVariant.id}`);
-          if (variantEdge) nextEdge = variantEdge;
+        if (!abNode?.variants?.length) throw new Error(`workflow_ab_test_missing:${abId}`);
+        const weightedVariants = abNode.variants.filter((variant) => Number.isFinite(variant.weight) && variant.weight > 0);
+        const totalWeight = weightedVariants.reduce((sum, variant) => sum + variant.weight, 0);
+        if (weightedVariants.length === 0 || totalWeight <= 0) throw new Error(`workflow_ab_test_invalid_weights:${abId}`);
+        let random = deterministicWorkflowFraction(
+          `${sessionMetaRef.current.responseId}:${abId}`,
+        ) * totalWeight;
+        let chosenVariant = weightedVariants[weightedVariants.length - 1];
+        for (const variant of weightedVariants) {
+          random -= variant.weight;
+          if (random <= 0) { chosenVariant = variant; break; }
         }
+        const variantEdge = outEdges.find(e => e.sourceHandle === `ab-${chosenVariant.id}`);
+        if (!variantEdge) throw new Error(`workflow_ab_test_variant_unconnected:${abId}:${chosenVariant.id}`);
+        nextEdge = variantEdge;
       }
 
       const target = nextEdge.target;
-      console.info(`[walkWorkflow] Step ${i}: ${currentNodeId} → ${target}`);
-
       // If the target node is disabled, skip it entirely (pass-through)
       if (disabledNodes.has(target) && target !== 'end') {
-        console.info('[walkWorkflow] Skipping disabled node:', target);
         currentNodeId = target;
         continue;
       }
 
       // Terminal: found a page
       if (target.startsWith('p-')) {
-        console.info('[walkWorkflow] ✓ Resolved to page:', target);
         return { nextNodeId: target, updatedAnswers: currentAns };
       }
 
@@ -894,14 +1189,17 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         if (!skipExternal) {
           const intgId = target.replace('int-', '');
           const intgNode = f?.integrationNodes?.find(n => n.id === intgId);
-          const shouldFire = intgNode ? (intgNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          // The server ledger deduplicates fireOnce nodes and returns a fresh
+          // path proof. Never skip this acknowledgement client-side.
+          const shouldFire = Boolean(intgNode);
           if (intgNode && f && shouldFire) {
-            firedNodesRef.current.add(target);
-          
             const eventId = `${f.id}_${intgId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
             const sourceUrl = typeof window !== 'undefined' ? window.location.href : '';
             const extraParams = Object.fromEntries(
-              (intgNode.webhookParams || []).filter(p => p.key).map(p => [p.key, p.value])
+              (intgNode.webhookParams || []).filter(p => p.key).map(p => [
+                p.key,
+                interpolateText(p.value || '', f.variables || [], currentAns),
+              ])
             );
             const { payload: wPayload, userData } = buildWebhookPayload({
               form: f,
@@ -929,45 +1227,35 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               webhookUrl: intgNode.webhookUrl,
               webhookMethod: intgNode.webhookMethod,
               webhookPayload: wPayload,
+              // Raw form fields already live in webhookPayload.answers_raw.
+              // Send only runtime state separately so the Edge resolver can
+              // distinguish explicit overrides and resolve context/GET values
+              // without nearly doubling the request body.
+              answers: selectWebhookRuntimeAnswers(currentAns),
               webhookHeaders: intgNode.webhookHeaders,
               webhookQueryParams: intgNode.webhookQueryParams,
               webhookBodyParams: intgNode.webhookBodyParams,
               userData,
               queryParams: sessionMetaRef.current.queryParams,
               userAgent: sessionMetaRef.current.userAgent,
+              ...workflowPathFields(workflowPath),
             };
 
-            const hasResponseMappings = intgNode.responseMappings?.some(m => m.responsePath && m.variableId);
-
-            if (hasResponseMappings) {
-              try {
-                const responseBody = await fireWebhookWithResponse(webhookOpts);
-                if (responseBody && intgNode.responseMappings?.length) {
-                  const getNestedValue = (obj: any, path: string): any => {
-                    const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
-                    return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
-                  };
-                  for (const mapping of intgNode.responseMappings) {
-                    if (!mapping.responsePath || !mapping.variableId) continue;
-                    const value = getNestedValue(responseBody, mapping.responsePath);
-                    if (value !== undefined) {
-                      const mappedVar = f?.variables?.find(v => v.id === mapping.variableId);
-                      const varKey = mappedVar ? `__var_${mappedVar.name}` : `__var_${mapping.variableId}`;
-                      currentAns = { ...currentAns, [varKey]: String(value) };
-                    }
-                  }
-                }
-              } catch (err) {
-                console.error('Webhook (with mappings) error:', err);
-              }
-            } else {
-              // BLOQUEANTE: ainda dispara o webhook (sem mapeamento), mas aguarda conclusão antes de avançar
-              try {
-                await fireWebhookWithResponse(webhookOpts);
-              } catch (err) {
-                console.error('Webhook error:', err);
-              }
+            const delivery = await fireWebhookWithWorkflowProof(webhookOpts);
+            const responseBody = delivery.webhookResponseBody;
+            if (responseBody !== null && responseBody !== undefined) {
+              // Keep the complete response available to direct webhook
+              // conditions and {{webhook:node:path}} interpolation.
+              currentAns = applyWebhookResponse(
+                currentAns,
+                intgId,
+                responseBody,
+                intgNode.responseMappings || [],
+                f.variables || [],
+              );
             }
+            acceptWorkflowPathProof(workflowPath, target, delivery.workflowProof);
+            firedNodesRef.current.add(target);
           }
         }
         currentNodeId = target;
@@ -979,9 +1267,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         if (!skipExternal) {
           const anId = target.replace('an-', '');
           const anNode = f?.analyticsNodes?.find(n => n.id === anId);
-          const shouldFire = anNode ? (anNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          const shouldFire = Boolean(anNode);
           if (anNode && f && shouldFire) {
-            firedNodesRef.current.add(target);
             const variables: Record<string, any> = {};
             for (const [k, v] of Object.entries(currentAns)) {
               if (k.startsWith('__var_')) variables[k.replace('__var_', '')] = v;
@@ -994,13 +1281,22 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 ? [{ id: anId, platform: anNode.platform, eventType: anNode.eventType || 'Lead', enabled: true, customParams: [] as any[] }]
                 : [];
 
+            if (platformEntries.length === 0) {
+              throw new WorkflowSideEffectError('o evento de analytics', 1, target);
+            }
+
+            const analyticsPath = { ...workflowPath };
+            let analyticsProof: string | undefined;
             for (const entry of platformEntries) {
               const eventId = `${f.id}_${anId}_${entry.id}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
               const eventName = entry.eventType === 'custom'
                 ? (('customEventName' in entry ? entry.customEventName : undefined) || 'CustomEvent')
                 : (entry.eventType || 'Lead');
               const extraParams = Object.fromEntries(
-                (entry.customParams || []).filter(p => p.key).map(p => [p.key, p.value])
+                (entry.customParams || []).filter(p => p.key).map(p => [
+                  p.key,
+                  interpolateText(p.value || '', f.variables || [], currentAns),
+                ])
               );
               const userData = resolveUserData(
                 'userDataMapping' in entry ? (entry as any).userDataMapping : undefined,
@@ -1008,7 +1304,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 f,
               );
 
-              await firePixelDualBlocking({
+              const delivery = await firePixelDualBlocking({
                 submissionToken: f.submissionToken,
                 nodeId: anId,
                 entryId: entry.id,
@@ -1024,9 +1320,15 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 userData,
                 sourceUrl,
                 userAgent: sessionMetaRef.current.userAgent,
+                ...workflowPathFields(analyticsPath),
                 onFired: (rec) => pixelEventsRef.current.push(rec),
               });
+              analyticsProof = typeof delivery.workflowProof === 'string'
+                ? delivery.workflowProof
+                : analyticsProof;
             }
+            acceptWorkflowPathProof(workflowPath, target, analyticsProof);
+            firedNodesRef.current.add(target);
           }
         }
         currentNodeId = target;
@@ -1037,23 +1339,24 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         if (!skipExternal) {
           const waId = target.replace('wa-', '');
           const waNode = f?.whatsappNodes?.find(n => n.id === waId);
-          const shouldFire = waNode ? (waNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          const shouldFire = Boolean(waNode);
           if (waNode && f && shouldFire) {
-            firedNodesRef.current.add(target);
             const body: Record<string, any> = {
               submissionToken: f.submissionToken,
               formId: f.id,
+              responseId: sessionMetaRef.current.responseId,
               nodeId: waId,
               answers: currentAns,
+              ...workflowPathFields(workflowPath),
             };
 
-            // Tentativa única (a própria função pode fazer retries). Em caso de falha, loga e segue.
-            try {
-              const { error } = await invokeEdge('whatsapp-send', body);
-              if (error) console.error('[walkWorkflow] WhatsApp error:', error);
-            } catch (err) {
-              console.error('[walkWorkflow] WhatsApp exception:', err);
-            }
+            const data = await executeWorkflowSideEffect({
+              label: 'o envio por WhatsApp',
+              nodeId: target,
+              operation: (signal) => invokeAcknowledgedWorkflowFunction('whatsapp-send', body, signal),
+            });
+            acceptWorkflowPathProof(workflowPath, target, data.workflowProof);
+            firedNodesRef.current.add(target);
           }
         }
         currentNodeId = target;
@@ -1065,22 +1368,24 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         if (!skipExternal) {
           const emId = target.replace('em-', '');
           const emNode = f?.emailNodes?.find(n => n.id === emId);
-          const shouldFire = emNode ? (emNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          const shouldFire = Boolean(emNode);
           if (emNode && f && shouldFire) {
-            firedNodesRef.current.add(target);
             const body: Record<string, any> = {
               submissionToken: f.submissionToken,
               formId: f.id,
+              responseId: sessionMetaRef.current.responseId,
               nodeId: emId,
               answers: currentAns,
+              ...workflowPathFields(workflowPath),
             };
 
-            try {
-              const { error } = await invokeEdge('resend-send', body);
-              if (error) console.error('[walkWorkflow] Email error:', error);
-            } catch (err) {
-              console.error('[walkWorkflow] Email exception:', err);
-            }
+            const data = await executeWorkflowSideEffect({
+              label: 'o envio de e-mail',
+              nodeId: target,
+              operation: (signal) => invokeAcknowledgedWorkflowFunction('resend-send', body, signal),
+            });
+            acceptWorkflowPathProof(workflowPath, target, data.workflowProof);
+            firedNodesRef.current.add(target);
           }
         }
         currentNodeId = target;
@@ -1093,18 +1398,21 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         continue;
       }
 
-      // Intermediate: Wait node — return wait info instead of blocking
+      // Intermediate: Wait node — stop traversal here. The caller resumes from
+      // this node only after the delay, so downstream side effects cannot run early.
       if (target.startsWith('wt-')) {
         const wtId = target.replace('wt-', '');
         const wtNode = f?.waitNodes?.find(n => n.id === wtId);
         if (wtNode) {
+          if (!skipExternal) {
+            await authorizeWorkflowCheckpoint(workflowPath, target, currentAns);
+          }
           const multiplier = wtNode.unit === 'hours' ? 3600000 : wtNode.unit === 'minutes' ? 60000 : 1000;
           const durationMs = (wtNode.duration || 1) * multiplier;
-          // Walk the rest of the workflow from the wait node to find the destination
-          const restResult = await walkWorkflow(target, currentAns, skipExternal);
           return {
-            ...restResult,
-            pendingWait: { durationMs, feedback: wtNode.feedback, remainingNodeId: target },
+            nextNodeId: null,
+            updatedAnswers: currentAns,
+            pendingWait: { durationMs, feedback: wtNode.feedback, resumeFromNodeId: target },
           };
         }
         currentNodeId = target;
@@ -1116,55 +1424,33 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         const aiId = target.replace('ai-', '');
         const aiNode = f?.aiNodes?.find(n => n.id === aiId);
 
-        console.info('[walkWorkflow] Processing AI node:', target, '| skipAI:', skipAI, '| hasNode:', !!aiNode);
-
         if (!skipAI) {
-          const shouldFire = aiNode ? (aiNode.fireOnce !== false ? !firedNodesRef.current.has(target) : true) : false;
+          const shouldFire = Boolean(aiNode);
           if (aiNode && f && shouldFire) {
-            firedNodesRef.current.add(target);
-            console.info('[walkWorkflow] Executing AI node:', target);
-
             const body = {
               submissionToken: f.submissionToken,
               formId: f.id,
+              responseId: sessionMetaRef.current.responseId,
               nodeId: aiId,
               answers: currentAns,
-            };
-
-            const doInvoke = async () => {
-              try {
-                console.info('[walkWorkflow] AI invoke starting...', body);
-                const { data, error } = await invokeEdge('ai-process', body);
-                console.info('[walkWorkflow] AI response:', { success: data?.success, hasResult: !!data?.result, error });
-
-                if (!error && data?.success && data.result && aiNode.outputVariableId) {
-                  const outVar = f?.variables?.find(v => v.id === aiNode.outputVariableId);
-                  if (outVar) {
-                    console.info('[walkWorkflow] AI result saved to variable:', outVar.name, '=', data.result);
-                    currentAns = { ...currentAns, [`__var_${outVar.name}`]: data.result };
-                    console.info('[walkWorkflow] Updated answers after AI:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
-                  }
-                } else if (error) {
-                  console.error('[walkWorkflow] AI processing error:', error);
-                } else if (!data?.success) {
-                  console.error('[walkWorkflow] AI processing failed:', data?.error);
-                }
-                return currentAns;
-              } catch (err) {
-                console.error('[walkWorkflow] AI node exception:', err);
-                return currentAns;
-              }
+              ...workflowPathFields(workflowPath),
             };
 
             // BLOQUEANTE: sempre aguarda a IA antes de avançar
-            console.info('[walkWorkflow] Blocking AI execution - awaiting result...');
-            currentAns = await doInvoke();
-            console.info('[walkWorkflow] Blocking AI execution completed. Variables:', Object.keys(currentAns).filter(k => k.startsWith('__var_')));
-          } else {
-            console.info('[walkWorkflow] AI node skipped:', target, '| shouldFire:', shouldFire, '| alreadyFired:', firedNodesRef.current.has(target));
+            const data = await executeWorkflowSideEffect({
+              label: 'o processamento de IA',
+              nodeId: target,
+              operation: (signal) => invokeAcknowledgedWorkflowFunction('ai-process', body, signal),
+            });
+            if (aiNode.outputVariableId) {
+              const outVar = f.variables?.find(v => v.id === aiNode.outputVariableId);
+              if (outVar) {
+                currentAns = { ...currentAns, [`__var_${outVar.name}`]: data.result ?? '' };
+              }
+            }
+            acceptWorkflowPathProof(workflowPath, target, data.workflowProof);
+            firedNodesRef.current.add(target);
           }
-        } else {
-          console.info('[walkWorkflow] AI node skipped (skipAI=true):', target);
         }
         currentNodeId = target;
         continue;
@@ -1192,11 +1478,20 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         continue;
       }
 
-      // Intermediate: Jump node — redirect to target page
+      // Intermediate: Jump node — either route internally or complete and
+      // redirect. Existing nodes without destinationType remain page jumps.
       if (target.startsWith('jp-')) {
         const jpId = target.replace('jp-', '');
         const jpNode = f?.jumpNodes?.find(n => n.id === jpId);
-        if (jpNode?.targetPageId) {
+        const destinationType = jpNode?.destinationType || (jpNode?.redirectUrl ? 'url' : 'page');
+        if (destinationType === 'url' && jpNode?.redirectUrl) {
+          return {
+            nextNodeId: 'end',
+            updatedAnswers: currentAns,
+            redirectUrlTemplate: jpNode.redirectUrl,
+          };
+        }
+        if (destinationType === 'page' && jpNode?.targetPageId) {
           // Return with `p-` prefix so goNext can match it correctly
           return { nextNodeId: `p-${jpNode.targetPageId}`, updatedAnswers: currentAns };
         }
@@ -1239,207 +1534,147 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
     console.warn('[walkWorkflow] No reachable page found from:', fromNodeId);
     return { nextNodeId: null, updatedAnswers: currentAns };
-  }, []);
+  }, [authorizeWorkflowCheckpoint]);
 
   // Helper: navigate forward to a page index, pushing current to history
   const navigateToPage = useCallback((targetIndex: number, newAnswers: Record<string, any>) => {
-    console.info('[navigateToPage] Moving to page', targetIndex, '| answers keys:', Object.keys(newAnswers).filter(k => k.startsWith('__var_')));
     if (currentPageIndex !== null) {
       pageHistoryRef.current.push(currentPageIndex);
     }
     const finalAnswers = applyPageVariableAssignments(pages[targetIndex], newAnswers);
-    console.info('[navigateToPage] Final answers after variable assignments:', Object.keys(finalAnswers).filter(k => k.startsWith('__var_')));
+    answersRef.current = finalAnswers;
     setAnswers(finalAnswers);
+    setWorkflowError(null);
     setCurrentPageIndex(targetIndex);
   }, [currentPageIndex, pages, applyPageVariableAssignments]);
+
+  const waitForWorkflowNode = useCallback(async (pending: PendingWorkflowWait) => {
+    const fb = pending.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
+    const mode = fb.mode || 'button_countdown';
+    const originalDurationMs = pending.durationMs;
+    const skipAction = fb.skipAction || 'continue';
+    const storageNamespace = isEditorPreviewRef.current ? 'preview' : 'public';
+    const waitStorageKey = `__wait_${storageNamespace}_${formRef.current?.id || id}_${pending.resumeFromNodeId}`;
+
+    let startedAt = Date.now();
+    let effectiveDurationMs = originalDurationMs;
+    try {
+      const stored = sessionStorage.getItem(waitStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Number.isFinite(parsed.startedAt)) startedAt = parsed.startedAt;
+        if (Number.isFinite(parsed.effectiveDurationMs)) effectiveDurationMs = parsed.effectiveDurationMs;
+      }
+    } catch {
+      // Session storage can be unavailable; the wait still works in memory.
+    }
+
+    if (Date.now() - startedAt >= effectiveDurationMs) {
+      try { sessionStorage.removeItem(waitStorageKey); } catch { /* unavailable */ }
+      return {};
+    }
+
+    const persistWait = (durationMs: number) => {
+      try {
+        sessionStorage.setItem(waitStorageKey, JSON.stringify({
+          startedAt,
+          effectiveDurationMs: durationMs,
+        }));
+      } catch {
+        // Session storage can be unavailable.
+      }
+    };
+    persistWait(effectiveDurationMs);
+
+    const remainingMs = Math.max(0, effectiveDurationMs - (Date.now() - startedAt));
+    setWaitFeedback({
+      active: true,
+      mode,
+      durationMs: effectiveDurationMs,
+      remainingMs,
+      buttonText: fb.buttonText,
+      loadingStyle: fb.loadingStyle,
+      loadingLabel: fb.loadingLabel,
+      allowSkip: fb.allowSkip || false,
+    });
+
+    if (fb.showToast) {
+      sonnerToast(fb.toastTitle || 'Processando...', {
+        description: fb.toastDescription || undefined,
+        duration: remainingMs,
+      });
+    }
+
+    const reduceUnit = fb.skipReduceUnit || 'seconds';
+    const reduceAmount = fb.skipReduceAmount || 5;
+    const reductionMs = reduceAmount * (reduceUnit === 'hours' ? 3_600_000 : reduceUnit === 'minutes' ? 60_000 : 1_000);
+    const signal = { cancelled: false, reductionRequests: 0 };
+    (window as any).__waitCancelRef = signal;
+    (window as any).__waitSkipAction = skipAction;
+    (window as any).__waitSkipFeedback = fb;
+
+    try {
+      const outcome = await waitForAdjustableDuration({
+        startedAt,
+        durationMs: effectiveDurationMs,
+        reductionMs,
+        signal,
+        onDurationChange: persistWait,
+        onTick: (remaining, duration) => {
+          setWaitFeedback((previous) => previous ? {
+            ...previous,
+            remainingMs: remaining,
+            durationMs: duration,
+          } : null);
+        },
+      });
+
+      if (outcome.skipped && skipAction === 'go_to_page' && fb.skipTargetPageId) {
+        return { targetNodeId: `p-${fb.skipTargetPageId}` };
+      }
+      return {};
+    } finally {
+      setWaitFeedback(null);
+      try { sessionStorage.removeItem(waitStorageKey); } catch { /* unavailable */ }
+      delete (window as any).__waitCancelRef;
+      delete (window as any).__waitSkipAction;
+      delete (window as any).__waitSkipFeedback;
+    }
+  }, [id]);
 
 
   const goNext = useCallback(async () => {
     if (navigatingRef.current) return;
-    if (isPageBlocked) return;
-    if (!areRequiredFieldsFilled()) return;
     navigatingRef.current = true;
+    lastWorkflowActionRef.current = { kind: 'next' };
+    setWorkflowError(null);
     setIsFlowProcessing(true);
 
     try {
-      // Run async validators for current page
-      if (currentPage) {
-        const validators = flattenPageElements(currentPage.elements)
-          .map(el => validatorsRef.current[el.id])
-          .filter(Boolean);
-        if (validators.length > 0) {
-          const results = await Promise.all(validators.map(v => v()));
-          if (results.some(r => !r)) return;
-        }
-      }
+      if (!await validateCurrentPageBeforeNavigation()) return;
 
       setDirection(1);
 
       const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
-      const allEdges = formRef.current?.flowEdges || [];
-      const currentNodeHasOutEdges = allEdges.some(e => e.source === fromNodeId);
 
       // Use answersRef.current to always get the latest state — avoids stale closure
       const latestAnswers = answersRef.current;
-      const { nextNodeId, updatedAnswers, pendingWait } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
+      const workflowPath: WorkflowPathContext = { sourceNodeId: fromNodeId };
+      const initialResult = await walkWorkflow(fromNodeId, latestAnswers, isPreviewMode, workflowPath);
+      const { nextNodeId, updatedAnswers, redirectUrlTemplate } = await resolveWorkflowWaits(
+        initialResult,
+        (resumeFromNodeId, resumedAnswers) => walkWorkflow(resumeFromNodeId, resumedAnswers, isPreviewMode, workflowPath),
+        waitForWorkflowNode,
+      );
 
-      // If there's a wait node in the path, show feedback and delay navigation
-      if (pendingWait) {
-        const fb = pendingWait.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
-        const mode = fb.mode || 'button_countdown';
-        const originalDurationMs = pendingWait.durationMs;
-        const skipAction = fb.skipAction || 'continue';
-        const waitNodeId = pendingWait.remainingNodeId || 'wait';
-
-        // ── Session-aware wait: resume from where we left off ──
-        const waitStorageKey = `__wait_${id}_${waitNodeId}`;
-        let startTime: number;
-        let effectiveDuration: number;
-
-        const stored = sessionStorage.getItem(waitStorageKey);
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            startTime = parsed.startedAt;
-            effectiveDuration = parsed.effectiveDurationMs ?? originalDurationMs;
-            const elapsed = Date.now() - startTime;
-            if (elapsed >= effectiveDuration) {
-              // Already completed in this session — skip wait entirely
-              sessionStorage.removeItem(waitStorageKey);
-              // fall through to navigation below (no wait needed)
-              {
-                if (nextNodeId === 'end') {
-                  setAnswers(updatedAnswers); answersRef.current = updatedAnswers; setFinished(true); return;
-                }
-                if (nextNodeId && nextNodeId.startsWith('p-')) {
-                  const pageId = nextNodeId.replace('p-', '');
-                  const targetIndex = pages.findIndex(p => p.id === pageId);
-                  if (targetIndex !== -1) { navigateToPage(targetIndex, updatedAnswers); return; }
-                }
-                // No flow target — finish
-                setFinished(true);
-                return;
-              }
-            }
-          } catch { startTime = Date.now(); effectiveDuration = originalDurationMs; }
-        } else {
-          startTime = Date.now();
-          effectiveDuration = originalDurationMs;
-        }
-
-        // Persist start info to sessionStorage
-        sessionStorage.setItem(waitStorageKey, JSON.stringify({ startedAt: startTime, effectiveDurationMs: effectiveDuration }));
-
-        const elapsedSoFar = Date.now() - startTime;
-        const remainingMs = Math.max(0, effectiveDuration - elapsedSoFar);
-
-        // Set up the feedback state
-        const allowSkip = fb.allowSkip || false;
-        setWaitFeedback({
-          active: true,
-          mode,
-          durationMs: effectiveDuration,
-          remainingMs,
-          buttonText: fb.buttonText,
-          loadingStyle: fb.loadingStyle,
-          loadingLabel: fb.loadingLabel,
-          allowSkip,
-        });
-
-        // Show toast notification if configured
-        if (fb.showToast) {
-          sonnerToast(fb.toastTitle || 'Processando...', {
-            description: fb.toastDescription || undefined,
-            duration: remainingMs,
-          });
-        }
-
-        // Countdown interval for button_countdown mode
-        const countdownInterval = mode === 'button_countdown'
-          ? setInterval(() => {
-              const elapsed = Date.now() - startTime;
-              const remaining = Math.max(0, effectiveDuration - elapsed);
-              setWaitFeedback(prev => prev ? { ...prev, remainingMs: remaining } : null);
-            }, 100)
-          : null;
-
-        // Wait for remaining duration — but allow cancellation/reduction via ref
-        const waitCancelRef = { cancelled: false, reduced: false };
-        (window as any).__waitCancelRef = waitCancelRef;
-        (window as any).__waitSkipAction = skipAction;
-        (window as any).__waitSkipFeedback = fb;
-
-        const wasSkipped = await new Promise<boolean>(resolve => {
-          const timer = setTimeout(() => resolve(false), remainingMs);
-          const checkCancel = setInterval(() => {
-            if (waitCancelRef.cancelled) {
-              clearTimeout(timer);
-              clearInterval(checkCancel);
-              resolve(true);
-            }
-            if (waitCancelRef.reduced) {
-              waitCancelRef.reduced = false;
-              const reduceUnit = fb.skipReduceUnit || 'seconds';
-              const reduceAmount = fb.skipReduceAmount || 5;
-              const reduceMs = reduceAmount * (reduceUnit === 'hours' ? 3600000 : reduceUnit === 'minutes' ? 60000 : 1000);
-              effectiveDuration = Math.max(0, effectiveDuration - reduceMs);
-              // Update sessionStorage with new effective duration
-              sessionStorage.setItem(waitStorageKey, JSON.stringify({ startedAt: startTime, effectiveDurationMs: effectiveDuration }));
-              const elapsed = Date.now() - startTime;
-              const remaining = Math.max(0, effectiveDuration - elapsed);
-              setWaitFeedback(prev => prev ? { ...prev, remainingMs: remaining, durationMs: effectiveDuration } : null);
-              if (remaining <= 0) {
-                clearTimeout(timer);
-                clearInterval(checkCancel);
-                resolve(false);
-              }
-            }
-          }, 50);
-          setTimeout(() => clearInterval(checkCancel), remainingMs + 100);
-        });
-
-        if (countdownInterval) clearInterval(countdownInterval);
-        setWaitFeedback(null);
-        sessionStorage.removeItem(waitStorageKey);
-        delete (window as any).__waitCancelRef;
-        delete (window as any).__waitSkipAction;
-        delete (window as any).__waitSkipFeedback;
-
-        // Handle skip actions
-        if (wasSkipped && skipAction === 'go_to_page' && fb.skipTargetPageId) {
-          const targetIndex = pages.findIndex(p => p.id === fb.skipTargetPageId);
-          if (targetIndex !== -1) {
-            navigateToPage(targetIndex, updatedAnswers);
-            return;
-          }
-        }
-        // For 'continue' and 'reduce_time' (when timer hits 0), fall through to normal navigation
-
-        // Navigate to the resolved destination
-        if (nextNodeId === 'end') {
-          setAnswers(updatedAnswers);
-          answersRef.current = updatedAnswers;
-          setFinished(true);
-          return;
-        }
-        if (nextNodeId && nextNodeId.startsWith('p-')) {
-          const pageId = nextNodeId.replace('p-', '');
-          const targetIndex = pages.findIndex(p => p.id === pageId);
-          if (targetIndex !== -1) {
-            navigateToPage(targetIndex, updatedAnswers);
-            return;
-          }
-        }
-        // Fallback: finish
-        setFinished(true);
+      if (redirectUrlTemplate) {
+        await finishForm(updatedAnswers, redirectUrlTemplate);
         return;
       }
 
       if (nextNodeId === 'end') {
         // Apply any variable ops that ran along the path to 'end'
-        setAnswers(updatedAnswers);
-        answersRef.current = updatedAnswers;
-        setFinished(true);
+        await finishForm(updatedAnswers);
         return;
       }
 
@@ -1449,9 +1684,25 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         if (targetIndex !== -1) {
           // Skip empty pages in workflow-resolved navigation
           if (isPageEmpty(pages[targetIndex])) {
+            if (!isPreviewMode) {
+              await authorizeWorkflowCheckpoint(workflowPath, `p-${pageId}`, updatedAnswers);
+            }
             // Recursively navigate from this empty page
-            const { nextNodeId: n2, updatedAnswers: a2 } = await walkWorkflow(`p-${pageId}`, updatedAnswers, isEditorPreview);
-            if (n2 === 'end') { setAnswers(a2); answersRef.current = a2; setFinished(true); return; }
+            const emptyInitialResult = await walkWorkflow(`p-${pageId}`, updatedAnswers, isPreviewMode, workflowPath);
+            const {
+              nextNodeId: n2,
+              updatedAnswers: a2,
+              redirectUrlTemplate: nestedRedirectUrlTemplate,
+            } = await resolveWorkflowWaits(
+              emptyInitialResult,
+              (resumeFromNodeId, resumedAnswers) => walkWorkflow(resumeFromNodeId, resumedAnswers, isPreviewMode, workflowPath),
+              waitForWorkflowNode,
+            );
+            if (nestedRedirectUrlTemplate) {
+              await finishForm(a2, nestedRedirectUrlTemplate);
+              return;
+            }
+            if (n2 === 'end') { await finishForm(a2); return; }
             if (n2 && n2.startsWith('p-')) {
               const idx2 = pages.findIndex(p => p.id === n2.replace('p-', ''));
               if (idx2 !== -1) {
@@ -1471,10 +1722,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               navigateToPage(nextNonEmpty, updatedAnswers);
               return;
             }
-            setFinished(true);
+            await finishForm(updatedAnswers);
             return;
           }
-          console.info('[walkWorkflow] Navigating to resolved page:', pageId, '| targetIndex:', targetIndex, '| updatedAnswers keys:', Object.keys(updatedAnswers).filter(k => k.startsWith('__var_')));
           navigateToPage(targetIndex, updatedAnswers);
           return;
         }
@@ -1520,7 +1770,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
               }
             }
             if (node === 'end') {
-              setFinished(true);
+              await finishForm(updatedAnswers);
               return;
             }
             for (const e of allFormEdges) {
@@ -1539,7 +1789,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           return;
         }
 
-        setFinished(true);
+        await finishForm(updatedAnswers);
         return;
       }
 
@@ -1550,82 +1800,134 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         if (idx !== -1) {
           navigateToPage(idx, updatedAnswers);
         } else {
-          setFinished(true);
+          await finishForm(updatedAnswers);
         }
       } else if (currentPageIndex < pages.length - 1) {
         const idx = findNextNonEmpty(currentPageIndex + 1);
         if (idx !== -1) {
           navigateToPage(idx, updatedAnswers);
         } else {
-          setFinished(true);
+          await finishForm(updatedAnswers);
         }
       } else {
-        setFinished(true);
+        await finishForm(updatedAnswers);
       }
+    } catch (error) {
+      console.error('[workflow] navigation blocked before delivery acknowledgement:', error);
+      setWorkflowError(getWorkflowFailureMessage(error));
     } finally {
       setIsFlowProcessing(false);
       navigatingRef.current = false;
     }
-  }, [currentPageIndex, pages, isPageBlocked, currentPage, areRequiredFieldsFilled, navigateToPage, walkWorkflow, isPageEmpty, isEditorPreview, id]);
+  }, [currentPageIndex, pages, validateCurrentPageBeforeNavigation, navigateToPage, walkWorkflow, isPageEmpty, isPreviewMode, waitForWorkflowNode, finishForm, authorizeWorkflowCheckpoint]);
+
+  // Forms without a welcome screen still enter through the canvas start node.
+  // Keeping initial content hidden avoids flashing page[0] before conditions,
+  // variables, waits or jumps resolve the actual first page.
+  useEffect(() => {
+    if (!initialFlowPendingRef.current) return;
+    initialFlowPendingRef.current = false;
+    let mounted = true;
+
+    void goNext()
+      .catch((error) => {
+        console.error('[initial workflow] failed to resolve start node:', error);
+        const firstPageIndex = pages.findIndex((page) => !isPageEmpty(page));
+        if (firstPageIndex !== -1) navigateToPage(firstPageIndex, answersRef.current);
+      })
+      .finally(() => {
+        if (mounted) setIsInitialStateReady(true);
+      });
+
+    return () => { mounted = false; };
+  }, [form.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Apply SEO meta tags — deferred to avoid blocking first paint ──
   useEffect(() => {
-    if (isEditorPreview || !form) return;
-    const seo = form.seo;
-    if (!seo && !form.title) return;
+    if (isPreviewMode || !form) return;
 
     // SEO tags don't affect visual rendering — defer
     const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 50);
     schedule(() => {
-      if (seo?.title) document.title = seo.title;
-      else if (form.title) document.title = form.title;
+      const seo = resolveFormSeo({
+        id: form.id,
+        title: form.title,
+        description: form.description,
+        status: form.status,
+        updatedAt: form.updatedAt,
+        brand: form.brand,
+        seo: form.seo,
+        preview: { primaryColor: form.style?.buttonBgColor || form.style?.primaryColor },
+      }, { origin: window.location.origin });
+      document.title = seo.title;
 
       const setMeta = (name: string, content: string, attr = 'name') => {
-        if (!content) return;
         let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
         if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
         el.content = content;
       };
+      setMeta('description', seo.description);
+      setMeta('keywords', seo.keywords);
+      setMeta('author', seo.author);
+      setMeta('creator', seo.author);
+      setMeta('robots', seo.robots);
+      setMeta('theme-color', seo.themeColor);
+      setMeta('og:title', seo.title, 'property');
+      setMeta('og:description', seo.description, 'property');
+      setMeta('og:type', seo.ogType, 'property');
+      setMeta('og:url', seo.canonicalUrl, 'property');
+      setMeta('og:site_name', seo.siteName, 'property');
+      setMeta('og:locale', seo.locale, 'property');
+      setMeta('og:image', seo.imageUrl, 'property');
+      setMeta('og:image:secure_url', seo.imageUrl, 'property');
+      setMeta('og:image:type', seo.imageType, 'property');
+      setMeta('og:image:width', String(seo.imageWidth), 'property');
+      setMeta('og:image:height', String(seo.imageHeight), 'property');
+      setMeta('og:image:alt', seo.imageAlt, 'property');
+      setMeta('twitter:card', seo.twitterCard);
+      setMeta('twitter:title', seo.title);
+      setMeta('twitter:description', seo.description);
+      setMeta('twitter:image', seo.imageUrl);
+      setMeta('twitter:image:alt', seo.imageAlt);
+      setMeta('pinterest-rich-pin', 'true');
+      setMeta('pinterest:title', seo.title);
+      setMeta('pinterest:description', seo.description);
+      setMeta('pinterest:image', seo.imageUrl);
 
-      if (seo) {
-        if (seo.description) { setMeta('description', seo.description); setMeta('og:description', seo.description, 'property'); }
-        if (seo.keywords) setMeta('keywords', seo.keywords);
-        if (seo.ogImage) { setMeta('og:image', seo.ogImage, 'property'); setMeta('twitter:image', seo.ogImage); }
-        if (seo.ogType) setMeta('og:type', seo.ogType, 'property');
-        setMeta('og:title', seo.title || form.title || '', 'property');
-        if (seo.twitterCard) setMeta('twitter:card', seo.twitterCard);
-        if (seo.robots) setMeta('robots', seo.robots);
-        if (seo.themeColor) setMeta('theme-color', seo.themeColor);
+      let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
+      canonical.href = seo.canonicalUrl;
+      let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+      if (!favicon) { favicon = document.createElement('link'); favicon.rel = 'icon'; document.head.appendChild(favicon); }
+      favicon.href = seo.faviconUrl;
 
-        if (seo.canonicalUrl) {
-          let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-          if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
-          link.href = seo.canonicalUrl;
-        }
-
-        if (seo.favicon) {
-          let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
-          if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
-          link.href = seo.favicon;
-        }
-
-        if (seo.structuredData) {
-          try {
-            JSON.parse(seo.structuredData);
-            let script = document.getElementById('seo-jsonld') as HTMLScriptElement | null;
-            if (!script) { script = document.createElement('script'); script.id = 'seo-jsonld'; script.type = 'application/ld+json'; document.head.appendChild(script); }
-            script.textContent = seo.structuredData;
-          } catch { /* invalid JSON, skip */ }
-        }
-      }
+      let script = document.getElementById('form-seo-jsonld') as HTMLScriptElement | null;
+      if (!script) { script = document.createElement('script'); script.id = 'form-seo-jsonld'; script.type = 'application/ld+json'; document.head.appendChild(script); }
+      script.textContent = serializeJsonLdForHtml(seo.jsonLd);
     });
-  }, [form, isEditorPreview]);
+  }, [form, isPreviewMode]);
 
   const goBack = useCallback(() => {
+    // A pending wait, integration or completion owns the navigation lane. Going
+    // back while it is still resolving can otherwise let the stale async result
+    // jump forward from a different page.
+    if (navigatingRef.current) return;
+    // A public completion is canonical/immutable. Reopening it for edits would
+    // let the respondent see a second "success" even though the backend keeps
+    // the first acknowledged payload. Preview remains freely reversible.
+    if (finished && !isPreviewMode) return;
     setDirection(-1);
     setFieldErrors({});
+    setWorkflowError(null);
     if (finished) {
       setFinished(false);
+      completionRequestedRef.current = false;
+      completionAcknowledgedRef.current = false;
+      completionQueueAvailableRef.current = false;
+      completionSavePromiseRef.current = null;
+      completionRedirectTemplateRef.current = null;
+      setResolvedRedirectUrl(null);
+      setCompletionError(null);
       return;
     }
     // Use navigation history to go back to the actual previous page in the flow
@@ -1639,11 +1941,38 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     if (currentPageIndex !== null && form?.showWelcomeScreen) {
       setCurrentPageIndex(null);
     }
-  }, [currentPageIndex, finished, form?.showWelcomeScreen]);
+  }, [currentPageIndex, finished, form?.showWelcomeScreen, isPreviewMode]);
 
   const setAnswer = useCallback((elementId: string, value: any) => {
-    // Clear field error when user provides a value
+    protectedDefaultKeysRef.current.add(elementId);
+    const pagesToSearch = [
+      ...(formRef.current.pages || []),
+      formRef.current.welcomePage,
+      formRef.current.thankYouPage,
+    ].filter(Boolean);
+    const configuredElement = pagesToSearch
+      .flatMap(page => flattenPageElements(page?.elements || []))
+      .find(candidate => candidate.id === elementId);
+    const boundVariable = formRef.current.variables?.find(
+      variable => configuredElement?.variableId === variable.id,
+    );
+    if (boundVariable) protectedDefaultKeysRef.current.add(`__var_${boundVariable.name}`);
+    // Once validation has been attempted, keep the visible state truthful on
+    // every edit. It only returns to the theme after the value is actually
+    // valid, and becomes invalid again if a corrected required value is erased.
     setFieldErrors(prev => {
+      const validationWasAttempted = validationAttemptedElementsRef.current.has(elementId);
+      const nextError = validationWasAttempted
+        ? getRequiredFieldErrors(currentValidationElementsRef.current, {
+          ...answersRef.current,
+          [elementId]: value,
+        })[elementId]
+        : undefined;
+
+      if (nextError) {
+        if (prev[elementId] === nextError) return prev;
+        return { ...prev, [elementId]: nextError };
+      }
       if (prev[elementId]) {
         const next = { ...prev };
         delete next[elementId];
@@ -1661,74 +1990,134 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           }
         }
       }
+      const withVariableBinding = applyElementVariableBinding(formRef.current, elementId, value, next);
       // Keep ref in sync immediately to avoid stale saves on fast submit/navigation
-      answersRef.current = next;
-      return next;
+      answersRef.current = withVariableBinding;
+      return withVariableBinding;
     });
   }, []);
 
   // Auto-continue: after a single-selection field completes the page, advance automatically
-  const handleSelectionMade = useCallback(() => {
+  const handleSelectionMade = useCallback((elementType: PageElement['type']) => {
     // This is called ~500ms after the selection (after tactile animation)
     if (navigatingRef.current || isFlowProcessing) return;
-    const page = currentPageIndex !== null ? pages[currentPageIndex] : null;
-    if (!page) return;
+    // A respondent may open a date picker or another modal during the tactile
+    // delay. Never let the older selection close that newer interaction by
+    // navigating underneath it.
+    if (typeof document !== 'undefined' && document.querySelector('[role="dialog"]')) return;
+    // Multi-value controls need an explicit manual advance because the first
+    // toggle cannot tell us that the respondent finished choosing.
+    if (elementType === 'input_multi_select' || elementType === 'input_checkbox') return;
+    const pageElements = currentPageIndex !== null
+      ? pages[currentPageIndex]?.elements
+      : (formRef.current?.showWelcomeScreen ? formRef.current.welcomePage?.elements : undefined);
+    if (!pageElements) return;
 
-    // Check all required input fields are filled using latest answers
+    // Auto-advance only when the click filled the final unanswered input.
+    // Optional fields still count here; manual navigation may leave them blank.
     const latestAns = answersRef.current;
-    const allFilled = Object.keys(getRequiredFieldErrors(page.elements, latestAns)).length === 0;
+    const allFieldsAnswered = !hasUnansweredInputFields(pageElements, latestAns);
 
     // Also check no elements are blocked (e.g. email validation in progress)
-    const anyBlocked = flattenPageElements(page.elements).some(el => blockedElements[el.id]);
+    const anyBlocked = flattenPageElements(pageElements).some(el => blockedElements[el.id]);
     if (anyBlocked) return;
 
-    if (allFilled) {
+    if (allFieldsAnswered) {
       goNext();
     }
   }, [currentPageIndex, pages, goNext, isFlowProcessing, blockedElements]);
 
   const handleButtonNavigate = useCallback(async (action: 'next' | 'previous' | 'specific' | 'finish', targetPageId?: string) => {
+    // Automated elements (loading/timer) share this path with explicit action
+    // buttons. Never let an automation navigate underneath an active picker or
+    // dialog: doing so discards the respondent's in-progress interaction.
+    if (typeof document !== 'undefined' && document.querySelector('[role="dialog"]')) return;
     if (action === 'next') {
-      goNext();
-    } else if (action === 'previous') {
-      goBack();
-    } else if (action === 'finish') {
-      // Run the workflow from current page before finishing — ensures WhatsApp, webhooks, analytics execute
-      setDirection(1);
-      const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
-      const latestAnswers = answersRef.current;
-      const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
-      setAnswers(updatedAnswers);
-      answersRef.current = updatedAnswers;
-      setFinished(true);
-    } else if (action === 'specific' && targetPageId) {
-      const targetIndex = pages.findIndex(p => p.id === targetPageId);
-      if (targetIndex !== -1) {
-        setDirection(targetIndex > (currentPageIndex ?? -1) ? 1 : -1);
-        // Run workflow from current page to execute intermediate nodes
-        const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
-        const latestAnswers = answersRef.current;
-        const { updatedAnswers } = await walkWorkflow(fromNodeId, latestAnswers, isEditorPreview);
-        navigateToPage(targetIndex, updatedAnswers);
-        answersRef.current = updatedAnswers;
-      }
+      await goNext();
+      return;
     }
-  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, navigateToPage, isEditorPreview]);
+    if (action === 'previous') {
+      goBack();
+      return;
+    }
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
+    lastWorkflowActionRef.current = { kind: 'button', action, targetPageId };
+    setWorkflowError(null);
+    setIsFlowProcessing(true);
+
+    try {
+      if (!await validateCurrentPageBeforeNavigation()) return;
+
+      const fromNodeId = currentPageIndex === null ? 'start' : `p-${pages[currentPageIndex].id}`;
+      const workflowPath: WorkflowPathContext = { sourceNodeId: fromNodeId };
+      const initialResult = await walkWorkflow(fromNodeId, answersRef.current, isPreviewMode, workflowPath);
+      const { updatedAnswers, redirectUrlTemplate } = await resolveWorkflowWaits(
+        initialResult,
+        (resumeFromNodeId, resumedAnswers) => walkWorkflow(resumeFromNodeId, resumedAnswers, isPreviewMode, workflowPath),
+        waitForWorkflowNode,
+      );
+
+      if (redirectUrlTemplate) {
+        setDirection(1);
+        await finishForm(updatedAnswers, redirectUrlTemplate);
+        return;
+      }
+
+      if (action === 'finish') {
+        setDirection(1);
+        await finishForm(updatedAnswers);
+        return;
+      }
+
+      if (action === 'specific' && targetPageId) {
+        const targetIndex = pages.findIndex((page) => page.id === targetPageId);
+        if (targetIndex !== -1) {
+          setDirection(targetIndex > (currentPageIndex ?? -1) ? 1 : -1);
+          navigateToPage(targetIndex, updatedAnswers);
+        }
+      }
+    } catch (error) {
+      console.error('[workflow] button action blocked before delivery acknowledgement:', error);
+      setWorkflowError(getWorkflowFailureMessage(error));
+    } finally {
+      setIsFlowProcessing(false);
+      navigatingRef.current = false;
+    }
+  }, [goNext, goBack, pages, currentPageIndex, walkWorkflow, navigateToPage, isPreviewMode, validateCurrentPageBeforeNavigation, waitForWorkflowNode, finishForm]);
+
+  const retryLastWorkflowAction = useCallback(() => {
+    const previous = lastWorkflowActionRef.current;
+    if (previous.kind === 'button') {
+      void handleButtonNavigate(previous.action, previous.targetPageId);
+      return;
+    }
+    void goNext();
+  }, [goNext, handleButtonNavigate]);
 
   // Keyboard navigation: Enter = next (always), ArrowDown = next (except last page), ArrowUp = back
   const isLastPage = isFlowLastPage;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
       const isTextarea = tag === 'TEXTAREA';
+      const inputType = tag === 'INPUT' ? (target as HTMLInputElement).type : '';
+      const ownsEnter = tag === 'BUTTON'
+        || tag === 'A'
+        || tag === 'SELECT'
+        || target.isContentEditable
+        || (tag === 'INPUT' && ['button', 'checkbox', 'file', 'radio', 'range', 'reset', 'submit'].includes(inputType));
+      const ownsArrowKeys = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(tag)
+        || target.isContentEditable;
 
-      if (e.key === 'Enter' && !isTextarea) {
+      if (e.key === 'Enter' && !isTextarea && !ownsEnter) {
         e.preventDefault();
         goNext();
-      } else if (e.key === 'ArrowDown' && tag !== 'SELECT' && !isLastPage) {
+      } else if (e.key === 'ArrowDown' && !ownsArrowKeys && !isLastPage) {
         e.preventDefault();
         goNext();
-      } else if (e.key === 'ArrowUp' && tag !== 'SELECT') {
+      } else if (e.key === 'ArrowUp' && !ownsArrowKeys) {
         e.preventDefault();
         goBack();
       }
@@ -1741,22 +2130,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const outerContainerStyle = useMemo((): React.CSSProperties => {
     if (!form) return {};
     const pageStyle = form.globalPageStyle || {};
-    const bgColor = pageStyle.backgroundColor || undefined;
     const fontFamily = normalizeFontFamily(pageStyle.fontFamily || form.style?.fontFamily);
     const formStyle = form.style;
-    const s: React.CSSProperties = { fontFamily };
-
-    if (formStyle?.backgroundType === 'gradient' && formStyle.backgroundGradient) {
-      s.background = formStyle.backgroundGradient;
-    } else if (formStyle?.backgroundType === 'image' && formStyle.backgroundImage) {
-      s.backgroundImage = `url(${formStyle.backgroundImage})`;
-      s.backgroundSize = formStyle.backgroundSize || 'cover';
-      s.backgroundPosition = 'center';
-      s.backgroundRepeat = 'no-repeat';
-    } else {
-      const rawBg = bgColor || formStyle?.backgroundColor || '#FAFAFA';
-      s.backgroundColor = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
-    }
+    const s: React.CSSProperties = {
+      fontFamily,
+      ...buildFormBackgroundStyle(formStyle, pageStyle.backgroundColor),
+    };
 
     if (formStyle?.textColor) {
       s.color = formStyle.textColor;
@@ -1772,26 +2151,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
 
   const isBootstrapping = !isInitialStateReady;
 
-  const variants = {
-    enter: (d: number) => ({
-      opacity: 0,
-      y: d >= 0 ? 28 : -28,
-      scale: 0.985,
-      filter: 'blur(2px)',
-    }),
-    center: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      filter: 'blur(0px)',
-    },
-    exit: (d: number) => ({
-      opacity: 0,
-      y: d >= 0 ? -20 : 20,
-      scale: 0.99,
-      filter: 'blur(1px)',
-    }),
-  };
+  const screenKey = getFormScreenKey(finished, currentPageIndex, currentPage?.id);
+  const screenMotion = getFormScreenMotion(prefersReducedMotion);
 
   const hasVariables = (form.variables?.length ?? 0) > 0;
 
@@ -1806,7 +2167,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     >
 
       {/* Close — only visible when opened from the editor (not inside iframe) */}
-      {isEditorPreview && window.self === window.top && (
+      {isPreviewMode && window.self === window.top && (
         <div className="absolute top-4 right-4 z-20">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/editor/${id}`)}>
             <X className="h-5 w-5" />
@@ -1883,13 +2244,14 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             <AnimatePresence mode="wait" custom={direction}>
               {contentReady && (
               <motion.div
-                key={currentPageIndex ?? (finished ? 'end' : 'welcome')}
+                key={screenKey}
+                data-testid={`form-screen-${screenKey}`}
                 custom={direction}
-                variants={variants}
+                variants={screenMotion.variants}
                 initial="enter"
                 animate={animationFrameReady ? 'center' : 'enter'}
                 exit="exit"
-                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                transition={screenMotion.transition}
                 className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
@@ -1938,6 +2300,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           onElementBlockedChange={setElementBlocked}
                           registerElementValidator={registerValidator}
                           fieldErrors={fieldErrors}
+                          publicValidationContext={!isPreviewMode ? {
+                            formId: form.id,
+                            submissionToken: form.submissionToken,
+                            responseId: sessionMetaRef.current.responseId,
+                          } : undefined}
                         />
                       );
                     })}
@@ -1954,7 +2321,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                       {form.thankYouTitle || 'Obrigado!'}
                     </h1>
                     <p className="text-base md:text-lg text-muted-foreground" style={{ fontFamily: bodyFontFamily }}>
-                      {form.thankYouDescription || 'Suas respostas foram enviadas com sucesso.'}
+                      {form.thankYouDescription || (isPreviewMode
+                        ? 'Simulação concluída. Nenhuma resposta foi salva.'
+                        : 'Suas respostas foram enviadas com sucesso.')}
                     </p>
                     {totalScore > 0 && (
                       <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 inline-block">
@@ -1993,6 +2362,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                           onElementBlockedChange={setElementBlocked}
                           registerElementValidator={registerValidator}
                           fieldErrors={fieldErrors}
+                          publicValidationContext={!isPreviewMode ? {
+                            formId: form.id,
+                            submissionToken: form.submissionToken,
+                            responseId: sessionMetaRef.current.responseId,
+                          } : undefined}
                         />
                       );
                     })}
@@ -2042,6 +2416,11 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                                   onElementBlockedChange={setElementBlocked}
                                   registerElementValidator={registerValidator}
                                   fieldErrors={fieldErrors}
+                                  publicValidationContext={!isPreviewMode ? {
+                                    formId: form.id,
+                                    submissionToken: form.submissionToken,
+                                    responseId: sessionMetaRef.current.responseId,
+                                  } : undefined}
                                 />
                               );
                             })}
@@ -2059,9 +2438,60 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         );
       })()}
 
+      {completionError && !isThankYou && (
+        <div className="fixed bottom-20 left-1/2 z-[70] w-[min(92vw,520px)] -translate-x-1/2 rounded-xl border border-destructive/30 bg-background/95 p-3 shadow-xl backdrop-blur-md">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Envio ainda não confirmado</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{completionError}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isCompleting}
+              onClick={() => { void finishForm(answersRef.current); }}
+              className="shrink-0"
+            >
+              {isCompleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Tentar novamente'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {workflowError && !isThankYou && (
+        <div
+          role="alert"
+          className="fixed bottom-20 left-1/2 z-[70] w-[min(92vw,560px)] -translate-x-1/2 rounded-xl border border-destructive/30 bg-background/95 p-3 shadow-xl backdrop-blur-md"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Etapa não confirmada</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{workflowError}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isFlowProcessing}
+              onClick={retryLastWorkflowAction}
+              className="shrink-0"
+            >
+              {isFlowProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Tentar novamente'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation bar — centered at bottom */}
       {!isWelcome && !isThankYou && (() => {
-        const hasActionButtons = currentPage?.elements?.some(el => el.type === 'button');
+        const hasActionButtons = flattenPageElements(currentPage?.elements || []).some((element) => (
+          element.type === 'button'
+          && (
+            (element.buttonAction !== undefined && element.buttonAction !== 'none')
+            || Boolean(resolveRedirectDestination(element.href, form.variables || [], answers)?.url)
+          )
+        ));
         if (hasActionButtons) return null;
         const canGoBack = pageHistoryRef.current.length > 0 || (currentPageIndex !== null && !!form?.showWelcomeScreen);
         const isLastPage = isFlowLastPage;
@@ -2072,7 +2502,8 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={goBack}
+                  onClick={isFlowProcessing || !!waitFeedback || isCompleting ? undefined : goBack}
+                  disabled={isFlowProcessing || !!waitFeedback || isCompleting}
                   className="h-9 px-3 gap-1.5 text-xs"
                   style={{
                     backgroundColor: form.style?.backButtonBgColor || 'transparent',
@@ -2151,7 +2582,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                     const action = (window as any).__waitSkipAction || 'continue';
                     if (ref) {
                       if (action === 'reduce_time') {
-                        ref.reduced = true;
+                        ref.reductionRequests = (ref.reductionRequests || 0) + 1;
                       } else {
                         ref.cancelled = true;
                       }
@@ -2215,7 +2646,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                     const action = (window as any).__waitSkipAction || 'continue';
                     if (ref) {
                       if (action === 'reduce_time') {
-                        ref.reduced = true;
+                        ref.reductionRequests = (ref.reductionRequests || 0) + 1;
                       } else {
                         ref.cancelled = true;
                       }

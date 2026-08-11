@@ -9,11 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, Eye, EyeOff, TestTube, CheckCircle2, XCircle, Brain, RefreshCw, MessageSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  listIntegrationSettings,
+  MASKED_INTEGRATION_SECRET,
+  saveIntegrationSetting,
+  withIntegrationTimeout,
+} from '@/lib/integrationSettings';
 
 interface OpenAIConfig {
   apiKey: string;
   model: string;
-  provider: 'openai' | 'lovable';
   /** System prompt (replaces old Assistant instructions) */
   systemPrompt?: string;
   /** Conversation ID for context continuity */
@@ -121,7 +126,7 @@ Return ONLY a valid JSON object with this structure:
 - Always return valid, parseable JSON.`;
 
 const EMPTY: OpenAIConfig = {
-  apiKey: '', model: 'gpt-4.1-mini', provider: 'openai',
+  apiKey: '', model: 'gpt-4.1-mini',
   systemPrompt: DEFAULT_SYSTEM_PROMPT, conversationId: '', webSearch: false, fileSearch: false,
 };
 
@@ -141,12 +146,9 @@ export default function OpenAIIntegrationCard() {
   const [modelSearch, setModelSearch] = useState('');
 
   useEffect(() => {
-    (supabase as any)
-      .from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'openai')
-      .maybeSingle()
-      .then(({ data }: any) => {
+    listIntegrationSettings('openai')
+      .then((rows) => {
+        const data = rows[0];
         if (data) {
           setSettingsId(data.id);
           setIsActive(data.is_active);
@@ -154,7 +156,6 @@ export default function OpenAIIntegrationCard() {
           setConfig({
             apiKey: c.apiKey || '',
             model: c.model || 'gpt-4.1-mini',
-            provider: c.provider || 'openai',
             systemPrompt: c.systemPrompt || DEFAULT_SYSTEM_PROMPT,
             conversationId: c.conversationId || '',
             webSearch: c.webSearch ?? false,
@@ -162,18 +163,32 @@ export default function OpenAIIntegrationCard() {
           });
         }
         setLoading(false);
+      })
+      .catch((error: Error) => {
+        toast({
+          title: 'Erro ao carregar OpenAI',
+          description: error.message || 'Não foi possível carregar a integração.',
+          variant: 'destructive',
+        });
+        setLoading(false);
       });
-  }, []);
+  }, [toast]);
 
   const fetchModels = useCallback(async (apiKey: string) => {
     setLoadingModels(true);
     try {
-      const res = await fetch('https://api.openai.com/v1/models', {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      const chatModels = (data.data as OpenAIModel[])
+      const { data, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('integration-settings', {
+          body: {
+            action: 'openai-models',
+            integrationType: 'openai',
+            id: settingsId,
+            apiKey: apiKey === MASKED_INTEGRATION_SECRET ? undefined : apiKey,
+          },
+        }),
+      );
+      if (error || !data?.success) throw error || new Error(data?.error || 'Failed');
+      const chatModels = (data.models as OpenAIModel[])
         .filter(m =>
           m.id.includes('gpt') ||
           m.id.startsWith('o1') ||
@@ -183,14 +198,20 @@ export default function OpenAIIntegrationCard() {
         )
         .sort((a, b) => a.id.localeCompare(b.id));
       setModels(chatModels);
-    } catch {
+    } catch (error: any) {
       setModels([]);
+      toast({
+        title: 'Não foi possível consultar os modelos',
+        description: error?.message || 'A lista padrão será usada temporariamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingModels(false);
     }
-    setLoadingModels(false);
-  }, []);
+  }, [settingsId, toast]);
 
   useEffect(() => {
-    if (config.apiKey && config.apiKey.startsWith('sk-')) {
+    if (config.apiKey && (config.apiKey.startsWith('sk-') || config.apiKey === MASKED_INTEGRATION_SECRET)) {
       fetchModels(config.apiKey);
     }
   }, [config.apiKey, fetchModels]);
@@ -208,15 +229,16 @@ export default function OpenAIIntegrationCard() {
       config: config as any,
     };
     try {
-      if (settingsId) {
-        const { error } = await (supabase as any).from('integration_settings').update(payload).eq('id', settingsId);
-        if (error) throw error;
-      } else {
-        const { data, error } = await (supabase as any).from('integration_settings').insert(payload).select('id').single();
-        if (error) throw error;
-        if (data) setSettingsId(data.id);
-      }
-      toast({ title: 'Configurações salvas' });
+      const row = await saveIntegrationSetting({
+        id: settingsId,
+        integrationType: payload.integration_type,
+        label: payload.label,
+        isActive: payload.is_active,
+        config: payload.config,
+      });
+      setSettingsId(row.id);
+      setConfig(prev => ({ ...prev, apiKey: row.config.apiKey || prev.apiKey }));
+      toast({ title: isActive ? 'Configurações salvas e validadas' : 'Configurações salvas' });
     } catch (e: any) {
       toast({
         title: 'Erro ao salvar integração',
@@ -232,9 +254,11 @@ export default function OpenAIIntegrationCard() {
     setTesting(true);
     setTestResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
-        body: { test: true, text: 'Estou muito feliz com o produto, é incrível!' },
-      });
+      const { data, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('analyze-sentiment', {
+          body: { test: true, text: 'Estou muito feliz com o produto, é incrível!' },
+        }),
+      );
 
       if (error) {
         let message = error.message || 'Falha ao testar integração';
@@ -264,7 +288,7 @@ export default function OpenAIIntegrationCard() {
   }, [toast]);
 
   const handleRefresh = useCallback(() => {
-    if (config.apiKey && config.apiKey.startsWith('sk-')) {
+    if (config.apiKey && (config.apiKey.startsWith('sk-') || config.apiKey === MASKED_INTEGRATION_SECRET)) {
       fetchModels(config.apiKey);
     }
   }, [config.apiKey, fetchModels]);

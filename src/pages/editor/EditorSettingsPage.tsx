@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { useEditorForm } from '@/hooks/useEditorForm';
+import { useEditorForm } from '@/hooks/editorFormContext';
 
 const FormSettings = lazy(() => import('@/components/editor/FormSettings'));
 

@@ -85,7 +85,7 @@ A arquitetura-alvo recomendada é híbrida:
 Objetivo: saber exatamente o que existe e impedir perda/regressão.
 
 - [ ] Criar branch/tag imutável do estado atual e registrar commit, ambiente e deploy ativo.
-- [ ] Identificar hospedagem, domínio, conta Lovable, projeto Supabase real, regiões e integrações externas.
+- [ ] Identificar hospedagem, domínio, conta de deploy, projeto Supabase real, regiões e integrações externas.
 - [ ] Inventariar variáveis por **nome e finalidade**, nunca copiar valores para documentação.
 - [ ] Gerar matriz completa de recursos, tipos de pergunta/elemento, workflows, permissões, integrações e estados do formulário.
 - [ ] Criar fixtures sem dados pessoais: formulário simples, multipágina, condicional, upload, webhook, e-mail, WhatsApp, IA, gráficos, SEO e analytics.
@@ -107,7 +107,7 @@ Objetivo: manter a Twobrain intacta e criar a edição pessoal independente.
 - [ ] Copiar apenas código/histórico; recriar deploy keys, webhooks, Actions secrets, ambientes e protections.
 - [ ] Executar secret scanning no histórico antes de tornar o novo repositório público ou compartilhá-lo.
 - [ ] Definir proteção de `main`, PR obrigatório, CODEOWNERS, Dependabot/Renovate e commits assinados se aplicável.
-- [ ] Substituir README genérico do Lovable por setup, arquitetura, ambientes, deploy, segurança e recuperação.
+- [ ] Manter o README com setup, arquitetura, ambientes, deploy, segurança e recuperação.
 
 **Rollback:** o repositório Twobrain não é alterado; apagar a cópia pessoal não afeta a origem.
 

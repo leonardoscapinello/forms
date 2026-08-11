@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ElementPreview from '@/components/editor/page-builder/ElementPreview';
@@ -40,16 +41,20 @@ describe('page element contract', () => {
 
   it.each(ALL_ELEMENT_TYPES)('renders %s in the public form', async (type) => {
     const element = createDefaultPageElement(type as PageElementType);
+    const loadingTestId = `public-element-loading-${type}`;
     const { container } = render(
-      <InteractiveElement
-        element={element}
-        value={undefined}
-        onChange={vi.fn()}
-        stepNumber={1}
-        onBlockedChange={vi.fn()}
-        registerValidator={vi.fn()}
-      />,
+      <Suspense fallback={<div data-testid={loadingTestId} />}>
+        <InteractiveElement
+          element={element}
+          value={undefined}
+          onChange={vi.fn()}
+          stepNumber={1}
+          onBlockedChange={vi.fn()}
+          registerValidator={vi.fn()}
+        />
+      </Suspense>,
     );
+    await waitFor(() => expect(screen.queryByTestId(loadingTestId)).not.toBeInTheDocument(), { timeout: 3000 });
     if (type === 'confetti') {
       await waitFor(() => expect(document.querySelector('canvas')).not.toBeNull());
     } else if (!EMPTY_PUBLIC_DEFAULTS.has(type as PageElementType)) {
@@ -101,5 +106,62 @@ describe('page element contract', () => {
     const input = screen.getByRole('textbox', { name: 'E-mail corporativo' });
     expect(input).toHaveAttribute('type', 'email');
     expect(input).toHaveAttribute('autocomplete', 'email');
+  });
+
+  it('sanitizes stored rich text before rendering it in the editor canvas', () => {
+    const element = createDefaultPageElement('rich_text');
+    element.content = '<script>alert(1)</script><img src=x onerror=alert(1)><strong>Conteúdo seguro</strong>';
+
+    const { container } = render(<ElementPreview element={element} />);
+
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('strong')).toHaveTextContent('Conteúdo seguro');
+  });
+
+  it.each(['star', 'heart', 'thumbsUp'] as const)(
+    'uses a platform-independent SVG for the %s rating style and saves the click',
+    (ratingStyle) => {
+      const element = createDefaultPageElement('input_rating');
+      element.ratingStyle = ratingStyle;
+      element.maxRating = 5;
+      const onChange = vi.fn();
+
+      const { container } = render(
+        <InteractiveElement
+          element={element}
+          value={0}
+          onChange={onChange}
+          stepNumber={1}
+          onBlockedChange={vi.fn()}
+          registerValidator={vi.fn()}
+        />,
+      );
+
+      const option = screen.getByRole('button', { name: 'Avaliar com 3 de 5' });
+      expect(option.querySelector('svg')).not.toBeNull();
+      expect(container.querySelector('img.emoji')).toBeNull();
+      fireEvent.click(option);
+      expect(onChange).toHaveBeenCalledWith(3);
+    },
+  );
+
+  it('keeps the custom rating style as a consistent emoji', async () => {
+    const element = createDefaultPageElement('input_rating');
+    element.ratingStyle = 'emoji';
+    element.ratingEmoji = '🚀';
+
+    const { container } = render(
+      <InteractiveElement
+        element={element}
+        value={0}
+        onChange={vi.fn()}
+        stepNumber={1}
+        onBlockedChange={vi.fn()}
+        registerValidator={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector('img.emoji')).not.toBeNull());
   });
 });

@@ -12,6 +12,7 @@ import { LocalInput } from '../shared/LocalInput';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { InputElementGroup } from '../VariableAssignPanel';
+import { withIntegrationTimeout } from '@/lib/integrationSettings';
 
 const OBJECTIVES: { value: AIObjective; label: string; icon: string; description: string }[] = [
   { value: 'summarize', label: 'Resumir', icon: '📝', description: 'Gera um resumo das respostas coletadas' },
@@ -61,18 +62,21 @@ export default function AIConfigDialog({ open, onOpenChange, nodeData, onChange,
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await supabase.functions.invoke('ai-process', {
-        body: {
-          objective: nodeData.objective || 'custom',
-          prompt: nodeData.prompt || '',
-          systemPrompt: nodeData.systemPrompt || '',
-          inputData: {},
-          model: nodeData.model,
-          maxTokens: nodeData.maxTokens,
-          temperature: nodeData.temperature,
-          test: true,
-        },
-      });
+      const res = await withIntegrationTimeout(
+        supabase.functions.invoke('ai-process', {
+          body: {
+            objective: nodeData.objective || 'custom',
+            prompt: nodeData.prompt || '',
+            systemPrompt: nodeData.systemPrompt || '',
+            inputData: {},
+            model: nodeData.model,
+            maxTokens: nodeData.maxTokens,
+            temperature: nodeData.temperature,
+            test: true,
+          },
+        }),
+        30_000,
+      );
       if (res.error) throw res.error;
       const d = res.data as any;
       if (d?.success) {

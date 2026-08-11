@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FormData, FormPixelEvent, AnalyticsPlatform, PixelEventType } from '@/types/form';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,17 +8,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Facebook, BarChart3, Music2, Linkedin, Plus, Trash2, Zap,
-  Activity, TrendingUp, Clock, CheckCircle2, XCircle, RefreshCw,
-  Webhook, Globe, MousePointerClick, BarChart2, Users, Target,
+  Activity, Clock, CheckCircle2, XCircle, RefreshCw,
+  Webhook, BarChart2, Users, Target,
   ArrowRight, TrendingDown, AlertCircle, ChevronDown, ChevronRight as ChevronRightIcon,
-  Eye, Layers,
+  Layers, CircleHelp, MonitorSmartphone, Send, ShieldCheck, AlertTriangle,
 } from 'lucide-react';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { formatDistanceToNow, format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AnalyticsDashboardData,
+  AnalyticsDashboardView,
+  calculateMetricChange,
+  calculatePercentagePointChange,
+  getAnalyticsTimeZone,
+  isAnalyticsDashboardRpcUnavailable,
+  parseAnalyticsDashboard,
+  selectAnalyticsDashboardView,
+  summarizeDeliveryHealth,
+  summarizePixelHealth,
+} from '@/lib/analyticsDashboard';
+import { formatAnalyticsDuration } from '@/lib/analyticsTime';
 
 interface Props {
   form: FormData;
@@ -151,56 +164,146 @@ function msToReadable(ms: number | null): string {
   return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
 }
 
+function MetricHelp({ children }: { children: string }) {
+  return (
+    <UiTooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label="Como esta métrica é calculada"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <CircleHelp className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[280px] text-xs leading-relaxed">
+        {children}
+      </TooltipContent>
+    </UiTooltip>
+  );
+}
+
 // ─── Data hook ────────────────────────────────────────────────────────────────
 
 function useAnalyticsData(formId: string) {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [pageEvents, setPageEvents] = useState<PageEventRow[]>([]);
   const [pixelLogs, setPixelLogs] = useState<PixelLogRow[]>([]);
+  const [aggregate, setAggregate] = useState<AnalyticsDashboardData | null>(null);
+  const [aggregateMode, setAggregateMode] = useState<'aggregate' | 'legacy_sample' | 'error'>('aggregate');
+  const [aggregateError, setAggregateError] = useState<string | null>(null);
+  const [recentLogsError, setRecentLogsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadedAt, setLoadedAt] = useState(0);
+  const requestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
-    const [sRes, pRes, plRes] = await Promise.all([
-      (supabase as any).from('form_sessions').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(500),
-      (supabase as any).from('form_page_events').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(2000),
-      (supabase as any).from('pixel_events_log').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(500),
-    ]);
-    setSessions(sRes.data || []);
-    setPageEvents(pRes.data || []);
-    setPixelLogs(plRes.data || []);
-    setLoading(false);
-    setLoadedAt(Date.now());
+    setAggregateError(null);
+    setRecentLogsError(null);
+    const since = startOfDay(subDays(new Date(), 29)).toISOString();
+    const until = new Date().toISOString();
+
+    try {
+      const [rpcResult, sRes, pRes, plRes] = await Promise.all([
+        supabase.rpc('get_analytics_dashboard', {
+          p_form_ids: [formId],
+          p_since: since,
+          p_until: until,
+          p_timezone: getAnalyticsTimeZone(),
+        }),
+        supabase.from('form_sessions').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(500),
+        supabase.from('form_page_events').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(500),
+        supabase.from('pixel_events_log').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(500),
+      ]);
+      if (requestId !== requestIdRef.current) return;
+
+      const rawError = sRes.error?.message || pRes.error?.message || plRes.error?.message || null;
+      setRecentLogsError(rawError);
+      setSessions((sRes.data || []) as SessionRow[]);
+      setPageEvents((pRes.data || []) as PageEventRow[]);
+      setPixelLogs((plRes.data || []) as PixelLogRow[]);
+
+      if (!rpcResult.error) {
+        const parsed = parseAnalyticsDashboard(rpcResult.data);
+        if (!parsed) throw new Error('O servidor retornou um agregado de analytics inválido.');
+        setAggregate(parsed);
+        setAggregateMode('aggregate');
+      } else if (isAnalyticsDashboardRpcUnavailable(rpcResult.error)) {
+        setAggregate(null);
+        setAggregateMode('legacy_sample');
+      } else {
+        setAggregate(null);
+        setAggregateMode('error');
+        setAggregateError(rpcResult.error.message || 'Não foi possível carregar as métricas completas.');
+      }
+    } catch (error) {
+      if (requestId !== requestIdRef.current) return;
+      setAggregate(null);
+      setAggregateMode('error');
+      setAggregateError(error instanceof Error ? error.message : 'Não foi possível carregar analytics.');
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setLoadedAt(Date.now());
+      }
+    }
   }, [formId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { requestIdRef.current += 1; };
+  }, [load]);
 
-  return { sessions, pageEvents, pixelLogs, loading, refresh: load, loadedAt };
+  const dashboardView = useMemo(
+    () => aggregate ? selectAnalyticsDashboardView(aggregate, formId) : null,
+    [aggregate, formId],
+  );
+
+  return {
+    sessions,
+    pageEvents,
+    pixelLogs,
+    dashboardView,
+    aggregateMode,
+    aggregateError,
+    recentLogsError,
+    loading,
+    refresh: load,
+    loadedAt,
+  };
 }
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
 function KpiCard({
-  icon, label, value, sub, trend, color,
+  icon, label, value, sub, trend, trendSuffix = '%', positiveIsGood = true, help, color,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
   sub?: string;
-  trend?: number;
+  trend?: number | null;
+  trendSuffix?: string;
+  positiveIsGood?: boolean;
+  help?: string;
   color?: string;
 }) {
+  const trendIsGood = trend == null || trend === 0 ? null : (trend > 0) === positiveIsGood;
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className={`flex items-center gap-2 text-muted-foreground text-xs ${color || ''}`}>
           {icon}
           <span>{label}</span>
+          {help && <MetricHelp>{help}</MetricHelp>}
         </div>
         {trend !== undefined && (
-          <span className={`text-[10px] font-medium ${trend >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}%
+          <span className={`text-[10px] font-medium ${trendIsGood === true ? 'text-success' : trendIsGood === false ? 'text-destructive' : 'text-muted-foreground'}`} title="Comparação com o período anterior de mesma duração">
+            {trend === null
+              ? 'sem base anterior'
+              : `${trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} ${Math.abs(trend).toFixed(1)}${trendSuffix}`}
           </span>
         )}
       </div>
@@ -214,36 +317,67 @@ function KpiCard({
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
-function OverviewTab({ sessions, pixelLogs, pageEvents }: {
+function OverviewTab({ sessions, pixelLogs, dashboardView }: {
   sessions: SessionRow[];
   pixelLogs: PixelLogRow[];
-  pageEvents: PageEventRow[];
+  dashboardView: AnalyticsDashboardView | null;
 }) {
-  const total = sessions.length;
-  const completed = sessions.filter(s => s.status === 'completed').length;
-  const completionRate = total > 0 ? (completed / total) * 100 : 0;
+  const sampleCompleted = sessions.filter(s => s.status === 'completed').length;
+  const total = dashboardView?.summary.totalSessions ?? sessions.length;
+  const completed = dashboardView?.summary.completedSessions ?? sampleCompleted;
+  const completionRate = dashboardView?.summary.completionRate
+    ?? (total > 0 ? (completed / total) * 100 : 0);
 
-  const avgPagesVisited = total > 0
+  const avgPagesVisited = dashboardView?.summary.avgPagesVisited ?? (total > 0
     ? sessions.reduce((a, s) => a + (s.pages_visited || 0), 0) / total
-    : 0;
+    : 0);
 
-  const pixelTotal = pixelLogs.length;
-  const pixelSuccess = pixelLogs.filter(isPixelSuccess).length;
+  const pixelTotal = dashboardView
+    ? dashboardView.pixels.reduce((sum, row) => sum + row.total, 0)
+    : pixelLogs.length;
+  const pixelSuccess = dashboardView
+    ? dashboardView.pixels.reduce((sum, row) => sum + row.firedServer, 0)
+    : pixelLogs.filter(isPixelSuccess).length;
   const pixelSuccessRate = pixelTotal > 0 ? (pixelSuccess / pixelTotal) * 100 : 0;
+  const sessionChange = dashboardView
+    ? calculateMetricChange(total, dashboardView.summary.previousTotalSessions)
+    : undefined;
+  const conversionChange = dashboardView
+    ? calculatePercentagePointChange(completionRate, dashboardView.summary.previousCompletionRate)
+    : undefined;
+  const deliveryHealth = useMemo(
+    () => summarizeDeliveryHealth(dashboardView?.deliveries || []),
+    [dashboardView],
+  );
+  const pixelHealth = useMemo(
+    () => summarizePixelHealth(dashboardView?.pixels || []),
+    [dashboardView],
+  );
 
   // Sessions over last 30 days
   const days = useMemo(() => eachDayOfInterval({ start: subDays(new Date(), 29), end: new Date() }), []);
   const sessionsByDay = useMemo(() => {
+    const aggregateByDate = new Map((dashboardView?.daily || []).map(row => [row.date, row]));
     return days.map(day => {
       const dayStr = format(day, 'yyyy-MM-dd');
-      const count = sessions.filter(s => s.created_at.startsWith(dayStr)).length;
-      const done = sessions.filter(s => s.created_at.startsWith(dayStr) && s.status === 'completed').length;
+      const aggregateRow = aggregateByDate.get(dayStr);
+      const count = aggregateRow?.sessions ?? sessions.filter(s => s.created_at.startsWith(dayStr)).length;
+      const done = aggregateRow?.completed ?? sessions.filter(s => s.created_at.startsWith(dayStr) && s.status === 'completed').length;
       return { date: format(day, 'dd/MM', { locale: ptBR }), sessions: count, completed: done };
     });
-  }, [sessions, days]);
+  }, [dashboardView, sessions, days]);
 
   // Pixel platform breakdown
   const byPlatform = useMemo(() => {
+    if (dashboardView) {
+      return dashboardView.pixels.map(row => ({
+        platform: row.platform,
+        label: PLATFORM_LABELS[row.platform] || row.platform,
+        total: row.total,
+        success: row.firedServer,
+        rate: row.total > 0 ? Math.round(row.firedServer / row.total * 100) : 0,
+      }));
+    }
     const acc: Record<string, { total: number; success: number }> = {};
     for (const log of pixelLogs) {
       if (!acc[log.platform]) acc[log.platform] = { total: 0, success: 0 };
@@ -256,7 +390,7 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
       ...v,
       rate: v.total > 0 ? Math.round((v.success / v.total) * 100) : 0,
     }));
-  }, [pixelLogs]);
+  }, [dashboardView, pixelLogs]);
 
   return (
     <div className="space-y-6">
@@ -266,25 +400,60 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
           icon={<Users className="h-4 w-4" />}
           label="Sessões totais"
           value={total}
-          sub="formulário aberto"
+          sub="nos últimos 30 dias"
+          trend={sessionChange}
+          help="Sessões distintas iniciadas no período. Retries com o mesmo response ID são consolidados."
         />
         <KpiCard
           icon={<Target className="h-4 w-4" />}
           label="Taxa de conclusão"
           value={`${completionRate.toFixed(1)}%`}
           sub={`${completed} de ${total} concluídos`}
+          trend={conversionChange}
+          trendSuffix=" pp"
+          help="Sessões concluídas divididas pelas sessões iniciadas. A tendência usa pontos percentuais contra os 30 dias anteriores."
         />
         <KpiCard
-          icon={<Layers className="h-4 w-4" />}
-          label="Páginas por sessão"
-          value={avgPagesVisited.toFixed(1)}
-          sub="média de páginas vistas"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          label="Leads únicos"
+          value={dashboardView?.summary.uniqueLeads ?? completed}
+          sub="respostas completas distintas"
+          help="Response IDs distintos concluídos. Não tenta identificar a mesma pessoa entre formulários e não usa dados pessoais."
         />
         <KpiCard
           icon={<Activity className="h-4 w-4" />}
           label="Pixels disparados"
           value={pixelTotal}
           sub={pixelTotal > 0 ? `${pixelSuccessRate.toFixed(0)}% confirmados` : 'Nenhum configurado'}
+          help="Eventos registrados no período. A confirmação server-side informa transporte para a API, não atribuição definitiva pela plataforma."
+        />
+        <KpiCard
+          icon={<Clock className="h-4 w-4" />}
+          label="Tempo médio"
+          value={dashboardView ? formatAnalyticsDuration(dashboardView.summary.avgDurationMs) : '—'}
+          sub={`${avgPagesVisited.toFixed(1)} páginas por sessão`}
+          help="Média do tempo entre início e conclusão. Durações negativas ou acima de 24 horas são descartadas."
+        />
+        <KpiCard
+          icon={<Activity className="h-4 w-4" />}
+          label="Tempo típico (p50)"
+          value={dashboardView ? formatAnalyticsDuration(dashboardView.summary.p50DurationMs) : '—'}
+          sub="mediana de conclusão"
+          help="Metade das conclusões válidas levou até este tempo. É menos sensível a casos extremos que a média."
+        />
+        <KpiCard
+          icon={<ShieldCheck className="h-4 w-4" />}
+          label="Cauda lenta (p95)"
+          value={dashboardView ? formatAnalyticsDuration(dashboardView.summary.p95DurationMs) : '—'}
+          sub="95% concluem até aqui"
+          help="95º percentil do tempo de conclusão; revela experiências lentas escondidas pela média."
+        />
+        <KpiCard
+          icon={<Layers className="h-4 w-4" />}
+          label="Páginas por sessão"
+          value={avgPagesVisited.toFixed(1)}
+          sub="média de páginas vistas"
+          help="Média do maior progresso registrado por sessão, incluindo sessões não concluídas."
         />
       </div>
 
@@ -315,6 +484,76 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+
+      {dashboardView && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <MonitorSmartphone className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">Origem e dispositivo</p>
+              <MetricHelp>Origem usa utm_source ou domínio de referência; dispositivo é uma classificação aproximada do user agent, sem fingerprinting.</MetricHelp>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Origens principais</p>
+                {dashboardView.sources.length > 0 ? dashboardView.sources.slice(0, 5).map(source => (
+                  <div key={source.source} className="flex items-center gap-2 text-xs">
+                    <span className="min-w-0 flex-1 truncate font-medium" title={source.source}>{source.source}</span>
+                    <span className="tabular-nums text-muted-foreground">{source.sessions}</span>
+                    <strong className="w-11 text-right tabular-nums">{source.conversionRate}%</strong>
+                  </div>
+                )) : <p className="py-4 text-center text-xs text-muted-foreground">Sem origem registrada</p>}
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dispositivos</p>
+                {dashboardView.devices.length > 0 ? dashboardView.devices.map(device => {
+                  const label = device.device === 'mobile' ? 'Celular' : device.device === 'tablet' ? 'Tablet' : 'Desktop';
+                  return (
+                    <div key={device.device} className="flex items-center gap-2 text-xs">
+                      <span className="flex-1 font-medium">{label}</span>
+                      <span className="tabular-nums text-muted-foreground">{device.sessions}</span>
+                      <strong className="w-11 text-right tabular-nums">{device.conversionRate}%</strong>
+                    </div>
+                  );
+                }) : <p className="py-4 text-center text-xs text-muted-foreground">Sem dispositivo registrado</p>}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-success" />
+              <p className="text-sm font-semibold text-foreground">Saúde operacional</p>
+              <MetricHelp>Entregas externas ficam em outbox durável. Falhas são retentadas; dead-letter exige intervenção. Pixels mostram registro client e server-side.</MetricHelp>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg bg-muted/30 p-3">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-medium"><Send className="h-3.5 w-3.5" /> Entregas</div>
+                {deliveryHealth.total > 0 ? (
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Entregues</span><strong className="text-success">{deliveryHealth.delivered}</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Processando</span><strong>{deliveryHealth.processing}</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Retentativa</span><strong className="text-amber-600">{deliveryHealth.retrying}</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Dead-letter</span><strong className="text-destructive">{deliveryHealth.deadLetter}</strong></div>
+                    <div className="flex justify-between border-t border-border pt-1.5"><span className="text-muted-foreground">Taxa entregue</span><strong>{deliveryHealth.successRate}%</strong></div>
+                  </div>
+                ) : <p className="py-3 text-center text-[11px] text-muted-foreground">Sem entregas no período</p>}
+              </div>
+              <div className="rounded-lg bg-muted/30 p-3">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-medium"><Activity className="h-3.5 w-3.5" /> Pixels</div>
+                {pixelHealth.total > 0 ? (
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Navegador</span><strong>{pixelHealth.clientRate}%</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Server-side</span><strong>{pixelHealth.serverRate}%</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Sem CAPI</span><strong className="text-destructive">{pixelHealth.missingServer}</strong></div>
+                    <div className="flex justify-between border-t border-border pt-1.5"><span className="text-muted-foreground">Eventos</span><strong>{pixelHealth.total}</strong></div>
+                  </div>
+                ) : <p className="py-3 text-center text-[11px] text-muted-foreground">Sem pixels no período</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pixel success per platform */}
       {byPlatform.length > 0 && (
@@ -352,19 +591,36 @@ function OverviewTab({ sessions, pixelLogs, pageEvents }: {
 
 // ─── Funnel Tab ───────────────────────────────────────────────────────────────
 
-function FunnelTab({ sessions, pageEvents, form }: {
+function FunnelTab({ sessions, pageEvents, form, dashboardView }: {
   sessions: SessionRow[];
   pageEvents: PageEventRow[];
   form: FormData;
+  dashboardView: AnalyticsDashboardView | null;
 }) {
-  const totalStarts = useMemo(() => {
+  const sampleStarts = useMemo(() => {
     const unique = new Set(sessions.map(s => s.response_id));
     return unique.size;
   }, [sessions]);
+  const totalStarts = dashboardView?.summary.totalSessions ?? sampleStarts;
 
   const funnelData = useMemo(() => {
     const pages = form.pages || [];
     return pages.map((page, idx) => {
+      const aggregatePage = dashboardView?.pages.find(metric => (
+        (metric.pageId && metric.pageId === page.id) || metric.pageIndex === idx
+      ));
+      if (dashboardView) {
+        return {
+          idx,
+          title: aggregatePage?.pageTitle || page.title || `Página ${idx + 1}`,
+          reached: aggregatePage?.reached || 0,
+          pct: totalStarts > 0 ? (aggregatePage?.reached || 0) / totalStarts * 100 : 0,
+          dropoff: aggregatePage?.dropoffPercent || 0,
+          avgTimeMs: aggregatePage?.avgTimeOnPageMs || 0,
+          avgHesitationMs: aggregatePage?.avgHesitationMs || 0,
+          avgInteractions: aggregatePage?.avgInteractions || 0,
+        };
+      }
       const reached = new Set(
         pageEvents.filter(e => e.page_index === idx && e.event_type === 'page_view').map(e => e.response_id)
       ).size;
@@ -373,14 +629,24 @@ function FunnelTab({ sessions, pageEvents, form }: {
       ).size;
       const pct = totalStarts > 0 ? (reached / totalStarts) * 100 : 0;
       const dropoff = prevReached > 0 ? ((prevReached - reached) / prevReached) * 100 : 0;
-      return { idx, title: page.title || `Página ${idx + 1}`, reached, pct, dropoff };
+      return {
+        idx,
+        title: page.title || `Página ${idx + 1}`,
+        reached,
+        pct,
+        dropoff,
+        avgTimeMs: null,
+        avgHesitationMs: null,
+        avgInteractions: null,
+      };
     });
-  }, [pageEvents, form.pages, totalStarts]);
+  }, [dashboardView, pageEvents, form.pages, totalStarts]);
 
-  const completions = useMemo(
+  const sampleCompletions = useMemo(
     () => new Set(pageEvents.filter(e => e.event_type === 'form_complete').map(e => e.response_id)).size,
-    [pageEvents]
+    [pageEvents],
   );
+  const completions = dashboardView?.summary.completedSessions ?? sampleCompletions;
 
   if (totalStarts === 0) {
     return (
@@ -396,12 +662,13 @@ function FunnelTab({ sessions, pageEvents, form }: {
     <div className="space-y-6">
       {/* Summary KPIs */}
       <div className="grid grid-cols-3 gap-3">
-        <KpiCard icon={<Users className="h-4 w-4" />} label="Acessos" value={totalStarts} />
-        <KpiCard icon={<Target className="h-4 w-4" />} label="Concluídos" value={completions} />
+        <KpiCard icon={<Users className="h-4 w-4" />} label="Acessos" value={totalStarts} help="Sessões distintas que iniciaram o formulário no período." />
+        <KpiCard icon={<Target className="h-4 w-4" />} label="Concluídos" value={completions} help="Sessões que chegaram ao estado concluído." />
         <KpiCard
           icon={<TrendingDown className="h-4 w-4" />}
           label="Taxa de conversão"
           value={`${totalStarts > 0 ? ((completions / totalStarts) * 100).toFixed(1) : 0}%`}
+          help="Concluídos divididos pelas sessões iniciadas."
         />
       </div>
 
@@ -424,6 +691,9 @@ function FunnelTab({ sessions, pageEvents, form }: {
               count={row.reached}
               pct={row.pct}
               dropoff={row.dropoff}
+              detail={dashboardView && row.reached > 0
+                ? `${formatAnalyticsDuration(row.avgTimeMs || 0)} na página · ${formatAnalyticsDuration(row.avgHesitationMs || 0)} até a 1ª interação · ${Number(row.avgInteractions || 0).toFixed(1)} interações`
+                : undefined}
             />
           ))}
           {/* Completion row */}
@@ -444,19 +714,23 @@ function FunnelTab({ sessions, pageEvents, form }: {
 }
 
 function FunnelRow({
-  label, count, pct, dropoff, isFirst, isLast,
+  label, count, pct, dropoff, detail, isFirst, isLast,
 }: {
   label: string;
   count: number;
   pct: number;
   dropoff: number;
+  detail?: string;
   isFirst?: boolean;
   isLast?: boolean;
 }) {
   return (
     <div className={`rounded-lg p-3 ${isLast ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'}`}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className={`text-xs font-medium ${isLast ? 'text-primary' : 'text-foreground'}`}>{label}</span>
+        <div className="min-w-0">
+          <span className={`block truncate text-xs font-medium ${isLast ? 'text-primary' : 'text-foreground'}`}>{label}</span>
+          {detail && <span className="mt-0.5 block truncate text-[10px] text-muted-foreground" title={detail}>{detail}</span>}
+        </div>
         <div className="flex items-center gap-3">
           {!isFirst && dropoff > 0 && (
             <span className="text-[10px] text-destructive font-medium flex items-center gap-0.5">
@@ -495,8 +769,11 @@ function SessionsTab({ sessions }: { sessions: SessionRow[] }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground">{sessions.length} sessões</p>
-        <p className="text-xs text-muted-foreground">Clique em uma linha para expandir</p>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Sessões recentes</p>
+          <p className="text-[10px] text-muted-foreground">Até 500 registros mais recentes; os KPIs usam o período completo.</p>
+        </div>
+        <p className="text-xs text-muted-foreground">{sessions.length} carregadas · clique para expandir</p>
       </div>
       <div className="divide-y divide-border">
         {sessions.map(session => (
@@ -610,7 +887,10 @@ function PixelMonitorTab({ pixelLogs, refresh, loading }: {
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <p className="text-sm font-semibold text-foreground">Log de eventos de pixel</p>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Log recente de eventos de pixel</p>
+            <p className="text-[10px] text-muted-foreground">Até 500 registros para diagnóstico; totais completos ficam na Visão Geral.</p>
+          </div>
           <div className="flex items-center gap-2">
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger className="h-7 text-xs w-[140px]">
@@ -855,9 +1135,21 @@ function EmptyState({ icon, title, description, action, compact }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FormAnalytics({ form, onUpdate }: Props) {
-  const { sessions, pageEvents, pixelLogs, loading, refresh, loadedAt } = useAnalyticsData(form.id);
+  const {
+    sessions,
+    pageEvents,
+    pixelLogs,
+    dashboardView,
+    aggregateMode,
+    aggregateError,
+    recentLogsError,
+    loading,
+    refresh,
+    loadedAt,
+  } = useAnalyticsData(form.id);
 
   return (
+    <TooltipProvider delayDuration={250}>
     <div className="flex-1 overflow-y-auto bg-background">
       <div className="max-w-4xl mx-auto px-8 py-8 space-y-2">
         {/* Header */}
@@ -867,7 +1159,7 @@ export default function FormAnalytics({ form, onUpdate }: Props) {
               <Activity className="h-4 w-4 text-node-analytics-accent" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Análiticas & Pixels</h2>
+              <h2 className="text-lg font-semibold text-foreground">Analíticas & Pixels</h2>
               <p className="text-xs text-muted-foreground">
                 Sessões, funil de conversão, disparos de pixel e taxa de confirmação em tempo real.
               </p>
@@ -886,6 +1178,35 @@ export default function FormAnalytics({ form, onUpdate }: Props) {
           </div>
         </div>
 
+        {aggregateMode === 'legacy_sample' && (
+          <div role="status" className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-900 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Modo de compatibilidade temporário</p>
+              <p className="mt-0.5 opacity-80">A migration da agregação ainda não está disponível. Visão Geral e Funil usam somente o recorte recente de até 500 registros e não representam o histórico completo.</p>
+            </div>
+          </div>
+        )}
+        {aggregateMode === 'error' && aggregateError && (
+          <div role="alert" className="mb-5 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">As métricas completas não puderam ser carregadas</p>
+              <p className="mt-0.5 break-words opacity-80">{aggregateError}</p>
+            </div>
+            <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={refresh}>Tentar novamente</Button>
+          </div>
+        )}
+        {recentLogsError && (
+          <div role="alert" className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-900 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Os logs recentes não puderam ser carregados</p>
+              <p className="mt-0.5 break-words opacity-80">Os KPIs completos continuam disponíveis. Sessões recentes e detalhes de pixel podem ficar vazios: {recentLogsError}</p>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="overview">
           <TabsList className="mb-6 bg-muted/40 h-auto p-1 flex-wrap gap-0.5">
             <TabsTrigger value="overview" className="flex items-center gap-1.5 text-xs px-4 py-1.5">
@@ -895,10 +1216,10 @@ export default function FormAnalytics({ form, onUpdate }: Props) {
               <TrendingDown className="h-3.5 w-3.5" />Funil
             </TabsTrigger>
             <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-xs px-4 py-1.5">
-              <Users className="h-3.5 w-3.5" />Sessões <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">{sessions.length}</Badge>
+              <Users className="h-3.5 w-3.5" />Sessões recentes <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">{sessions.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="pixels" className="flex items-center gap-1.5 text-xs px-4 py-1.5">
-              <Activity className="h-3.5 w-3.5" />Pixels <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">{pixelLogs.length}</Badge>
+              <Activity className="h-3.5 w-3.5" />Pixels recentes <Badge variant="outline" className="ml-1 h-4 px-1 text-[10px]">{pixelLogs.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="load-events" className="flex items-center gap-1.5 text-xs px-4 py-1.5">
               <Zap className="h-3.5 w-3.5" />Eventos de Carga
@@ -906,10 +1227,18 @@ export default function FormAnalytics({ form, onUpdate }: Props) {
           </TabsList>
 
           <TabsContent value="overview">
-            <OverviewTab sessions={sessions} pixelLogs={pixelLogs} pageEvents={pageEvents} />
+            {aggregateMode === 'error' ? (
+              <EmptyState icon={<AlertTriangle className="h-8 w-8" />} title="Métricas indisponíveis" description="Corrija o erro da agregação ou tente novamente. O painel não substitui falhas do servidor por números parciais." />
+            ) : (
+              <OverviewTab sessions={sessions} pixelLogs={pixelLogs} dashboardView={dashboardView} />
+            )}
           </TabsContent>
           <TabsContent value="funnel">
-            <FunnelTab sessions={sessions} pageEvents={pageEvents} form={form} />
+            {aggregateMode === 'error' ? (
+              <EmptyState icon={<AlertTriangle className="h-8 w-8" />} title="Funil indisponível" description="O funil completo não foi carregado; métricas parciais não são exibidas como se fossem definitivas." />
+            ) : (
+              <FunnelTab sessions={sessions} pageEvents={pageEvents} form={form} dashboardView={dashboardView} />
+            )}
           </TabsContent>
           <TabsContent value="sessions">
             <SessionsTab sessions={sessions} />
@@ -923,5 +1252,6 @@ export default function FormAnalytics({ form, onUpdate }: Props) {
         </Tabs>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

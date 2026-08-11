@@ -121,16 +121,16 @@ export function validateEmailFormat(email: string): EmailValidationResult {
     }
   }
 
-  // TLD validation — last part must be a known TLD
+  // TLD validation. The registry changes continuously, so a bundled allowlist
+  // must not reject a legitimate lead merely because the application has not
+  // yet shipped an update for a new gTLD. Keep known TLDs as a fast path and
+  // accept other syntactically valid ASCII/punycode TLDs.
   const tld = domainParts[domainParts.length - 1];
 
-  if (tld.length < 2) {
+  const validUnlistedTld = /^[a-z]{2,63}$/.test(tld)
+    || /^xn--[a-z0-9](?:[a-z0-9-]{0,57}[a-z0-9])?$/.test(tld);
+  if (!VALID_TLDS.has(tld) && !validUnlistedTld) {
     return { valid: false, error: 'Extensão do domínio inválida' };
-  }
-
-  // For compound ccTLDs like .com.br, check the last part
-  if (!VALID_TLDS.has(tld)) {
-    return { valid: false, error: `Extensão ".${tld}" não é reconhecida` };
   }
 
   return { valid: true };

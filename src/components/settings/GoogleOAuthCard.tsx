@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Eye, EyeOff, ExternalLink, CheckCircle2, Unplug, Copy } from 'lucide-react';
+import { listIntegrationSettings, saveIntegrationSetting, withIntegrationTimeout } from '@/lib/integrationSettings';
 
 interface GoogleOAuthConfig {
   clientId: string;
@@ -33,27 +34,33 @@ export default function GoogleOAuthCard() {
   const redirectUri = `${supabaseUrl}/functions/v1/google-oauth-callback`;
 
   const loadSettings = useCallback(async () => {
-    const { data } = await supabase
-      .from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'google_oauth')
-      .maybeSingle();
-    if (data) {
-      setSettingsId(data.id);
-      setIsActive(data.is_active);
-      const cfg = data.config as any;
-      setConfig({
-        clientId: cfg.clientId || '',
-        clientSecret: cfg.clientSecret || '',
-        accessToken: cfg.accessToken,
-        refreshToken: cfg.refreshToken,
-        tokenExpiry: cfg.tokenExpiry,
-        connectedEmail: cfg.connectedEmail,
-        connectedAt: cfg.connectedAt,
+    try {
+      const rows = await listIntegrationSettings('google_oauth');
+      const data = rows[0];
+      if (data) {
+        setSettingsId(data.id);
+        setIsActive(data.is_active);
+        const cfg = data.config as any;
+        setConfig({
+          clientId: cfg.clientId || '',
+          clientSecret: cfg.clientSecret || '',
+          accessToken: cfg.accessToken,
+          refreshToken: cfg.refreshToken,
+          tokenExpiry: cfg.tokenExpiry,
+          connectedEmail: cfg.connectedEmail,
+          connectedAt: cfg.connectedAt,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao carregar Google OAuth',
+        description: error?.message || 'Não foi possível carregar a integração.',
+        variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadSettings();
@@ -84,53 +91,101 @@ export default function GoogleOAuthCard() {
     setConfig(prev => ({ ...prev, ...patch }));
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const persistSettings = useCallback(async (active: boolean): Promise<boolean> => {
     setSaving(true);
-    const payload = {
-      integration_type: 'google_oauth',
-      label: 'Google OAuth2',
-      config: { clientId: config.clientId, clientSecret: config.clientSecret, accessToken: config.accessToken, refreshToken: config.refreshToken, tokenExpiry: config.tokenExpiry, connectedEmail: config.connectedEmail, connectedAt: config.connectedAt } as any,
-      is_active: isActive,
-    };
-    if (settingsId) {
-      await supabase.from('integration_settings').update(payload).eq('id', settingsId);
-    } else {
-      const { data } = await supabase.from('integration_settings').insert(payload).select().single();
-      if (data) setSettingsId(data.id);
+    try {
+      const row = await saveIntegrationSetting({
+        id: settingsId,
+        integrationType: 'google_oauth',
+        label: 'Google OAuth2',
+        isActive: active,
+        config: {
+          clientId: config.clientId,
+          clientSecret: config.clientSecret,
+          accessToken: config.accessToken,
+          refreshToken: config.refreshToken,
+          tokenExpiry: config.tokenExpiry,
+          connectedEmail: config.connectedEmail,
+          connectedAt: config.connectedAt,
+        },
+      });
+      setSettingsId(row.id);
+      setIsActive(active);
+      setConfig(prev => ({
+        ...prev,
+        clientSecret: row.config.clientSecret || prev.clientSecret,
+        accessToken: row.config.accessToken,
+        refreshToken: row.config.refreshToken,
+      }));
+      toast({
+        title: 'Credenciais salvas',
+        description: active
+          ? 'Agora conclua o OAuth para validar a conexão com o Google.'
+          : 'Integração salva desativada.',
+      });
+      return true;
+    } catch (error: any) {
+      toast({
+        title: 'Erro nas credenciais Google',
+        description: error?.message || 'A validação falhou e nada foi salvo.',
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setSaving(false);
     }
-    toast({ title: 'Salvo', description: 'Credenciais Google OAuth salvas.' });
-    setSaving(false);
-  }, [config, isActive, settingsId, toast]);
+  }, [config, settingsId, toast]);
+
+  const handleSave = useCallback(async () => {
+    await persistSettings(isActive);
+  }, [isActive, persistSettings]);
 
   const handleConnect = useCallback(async () => {
-    // Save first to make sure credentials are persisted
-    await handleSave();
     setConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('google-oauth-start', {
-        body: { returnUrl: window.location.origin + '/settings' },
-      });
+      const saved = await persistSettings(true);
+      if (!saved) return;
+      const { data, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('google-oauth-start', {
+          body: { returnUrl: window.location.origin + '/settings' },
+        }),
+      );
       if (error || !data?.authUrl) {
         toast({ title: 'Erro', description: data?.error || 'Não foi possível iniciar autenticação.', variant: 'destructive' });
-        setConnecting(false);
         return;
       }
       // Redirect to Google consent
       window.location.href = data.authUrl;
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
       setConnecting(false);
     }
-  }, [handleSave, toast]);
+  }, [persistSettings, toast]);
 
   const handleDisconnect = useCallback(async () => {
     const updated = { clientId: config.clientId, clientSecret: config.clientSecret };
-    setConfig({ ...updated });
-    if (settingsId) {
-      await supabase.from('integration_settings').update({ config: updated as any }).eq('id', settingsId);
+    try {
+      if (settingsId) {
+        await saveIntegrationSetting({
+          id: settingsId,
+          integrationType: 'google_oauth',
+          label: 'Google OAuth2',
+          isActive,
+          config: updated,
+          clearSecretFields: ['accessToken', 'refreshToken'],
+        });
+      }
+      setConfig({ ...updated });
+      toast({ title: 'Desconectado', description: 'Tokens Google removidos.' });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao desconectar Google',
+        description: error?.message || 'Não foi possível remover os tokens.',
+        variant: 'destructive',
+      });
     }
-    toast({ title: 'Desconectado', description: 'Tokens Google removidos.' });
-  }, [config.clientId, config.clientSecret, settingsId, toast]);
+  }, [config.clientId, config.clientSecret, isActive, settingsId, toast]);
 
   const isConnected = !!config.accessToken;
 
@@ -270,7 +325,7 @@ export default function GoogleOAuthCard() {
           )}
           {isConnected ? 'Reconectar' : 'Conectar com Google'}
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+        <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
           {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
           Salvar
         </Button>

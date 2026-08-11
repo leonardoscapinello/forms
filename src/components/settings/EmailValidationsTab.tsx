@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
   Search, Loader2, RefreshCw, Trash2, ChevronLeft, ChevronRight,
@@ -13,6 +14,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import { formatEmailValidationIdentifier } from '@/lib/emailValidationIdentifier';
+import { withIntegrationTimeout } from '@/lib/integrationSettings';
+import { hasSingleIdAck } from '@/lib/databaseAck';
 
 interface EmailValidation {
   id: string;
@@ -81,27 +85,40 @@ export default function EmailValidationsTab() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<EmailValidation | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [revalidating, setRevalidating] = useState(false);
+  const [revalidateEmail, setRevalidateEmail] = useState('');
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('email_validations').select('*', { count: 'exact' });
+    try {
+      let query = supabase.from('email_validations').select('*', { count: 'exact' });
 
-    if (search.trim()) {
-      query = query.or(`email.ilike.%${search.trim()}%,domain.ilike.%${search.trim()}%`);
+      if (search.trim()) {
+        query = query.or(`email.ilike.%${search.trim()}%,domain.ilike.%${search.trim()}%`);
+      }
+
+      if (filter === 'safe') query = query.eq('is_safe_to_send', true);
+      else if (filter === 'risky') query = query.eq('is_safe_to_send', false).eq('is_disposable', false).eq('is_spamtrap', false);
+      else if (filter === 'invalid') query = query.or('is_disposable.eq.true,is_spamtrap.eq.true');
+
+      const { data, count, error } = await withIntegrationTimeout(Promise.resolve(
+        query
+          .order('created_at', { ascending: false })
+          .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1),
+      ));
+      if (error) throw error;
+      setRecords((data as EmailValidation[]) || []);
+      setTotal(count || 0);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao carregar validações',
+        description: error?.message || 'Não foi possível carregar o histórico.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
-
-    if (filter === 'safe') query = query.eq('is_safe_to_send', true);
-    else if (filter === 'risky') query = query.eq('is_safe_to_send', false).eq('is_disposable', false).eq('is_spamtrap', false);
-    else if (filter === 'invalid') query = query.or('is_disposable.eq.true,is_spamtrap.eq.true');
-
-    const { data, count } = await query
-      .order('created_at', { ascending: false })
-      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
-
-    setRecords((data as EmailValidation[]) || []);
-    setTotal(count || 0);
-    setLoading(false);
-  }, [search, filter, page]);
+  }, [search, filter, page, toast]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
@@ -110,34 +127,49 @@ export default function EmailValidationsTab() {
 
   const handleDelete = useCallback(async (id: string) => {
     setDeleting(id);
-    const { error } = await supabase.from('email_validations').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Erro', description: 'Não foi possível excluir.', variant: 'destructive' });
-    } else {
+    try {
+      const { data, error } = await withIntegrationTimeout(Promise.resolve(
+        supabase.from('email_validations').delete().eq('id', id).select('id').maybeSingle(),
+      ));
+      if (error || !hasSingleIdAck(data, id)) throw error || new Error('O servidor não confirmou a exclusão.');
       toast({ title: 'Excluído', description: 'Registro removido.' });
       if (selected?.id === id) setSelected(null);
-      fetchRecords();
+      void fetchRecords();
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error?.message || 'Não foi possível excluir.', variant: 'destructive' });
+    } finally {
+      setDeleting(null);
     }
-    setDeleting(null);
   }, [selected, toast, fetchRecords]);
 
-  const handleRevalidate = useCallback(async (email: string) => {
-    toast({ title: 'Re-validando...', description: email });
-    // Delete cached record then invoke edge function
-    await supabase.from('email_validations').delete().eq('email', email);
+  const handleRevalidate = useCallback(async () => {
+    const email = revalidateEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: 'E-mail inválido', description: 'Digite novamente um endereço válido.', variant: 'destructive' });
+      return;
+    }
+    setRevalidating(true);
     try {
-      const res = await supabase.functions.invoke('verify-email', { body: { email } });
+      const res = await withIntegrationTimeout(
+        supabase.functions.invoke('verify-email', { body: { email, force: true } }),
+        20_000,
+      );
+      if (res.error) throw res.error;
       const data = res.data as any;
-      if (data?.is_safe_to_send !== undefined) {
+      if (typeof data?.is_safe_to_send === 'boolean') {
         toast({ title: 'Validação concluída', description: `Score: ${data.overall_score ?? '—'}` });
+        setSelected(null);
       } else {
         toast({ title: 'Sem resultado', description: 'Verifique se o Reoon está configurado.', variant: 'destructive' });
       }
-    } catch {
-      toast({ title: 'Erro', description: 'Falha na validação.', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error?.message || 'Falha na validação.', variant: 'destructive' });
+    } finally {
+      setRevalidateEmail('');
+      setRevalidating(false);
+      void fetchRecords();
     }
-    fetchRecords();
-  }, [toast, fetchRecords]);
+  }, [revalidateEmail, toast, fetchRecords]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -150,7 +182,7 @@ export default function EmailValidationsTab() {
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por e-mail ou domínio..."
+            placeholder="Buscar por identificador ou domínio..."
             className="pl-9 text-sm"
           />
         </div>
@@ -192,7 +224,7 @@ export default function EmailValidationsTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">E-mail</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identificador seguro</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Score</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Modo</th>
@@ -209,7 +241,7 @@ export default function EmailValidationsTab() {
                 >
                   <td className="px-4 py-3">
                     <div>
-                      <p className="font-medium text-foreground">{r.email}</p>
+                      <p className="font-mono font-medium text-foreground">{formatEmailValidationIdentifier(r.email)}</p>
                       {r.domain && <p className="text-xs text-muted-foreground">{r.domain}</p>}
                     </div>
                   </td>
@@ -223,15 +255,6 @@ export default function EmailValidationsTab() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-primary"
-                        onClick={() => handleRevalidate(r.email)}
-                        title="Re-validar"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -269,14 +292,21 @@ export default function EmailValidationsTab() {
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}>
+      <Dialog open={!!selected} onOpenChange={open => {
+        if (!open) {
+          setSelected(null);
+          setRevalidateEmail('');
+        }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-primary" />
               Detalhes da validação
             </DialogTitle>
-            <DialogDescription>{selected?.email}</DialogDescription>
+            <DialogDescription>
+              Identificador: {formatEmailValidationIdentifier(selected?.email)}
+            </DialogDescription>
           </DialogHeader>
 
           {selected && (
@@ -302,9 +332,28 @@ export default function EmailValidationsTab() {
                 <DetailRow label="Atualizado em" value={new Date(selected.updated_at).toLocaleString('pt-BR')} />
               </div>
 
+              <div className="space-y-1.5 rounded-lg border border-border bg-muted/20 p-3">
+                <Label htmlFor="revalidate-email" className="text-xs text-muted-foreground">
+                  Digite novamente o e-mail para revalidar
+                </Label>
+                <Input
+                  id="revalidate-email"
+                  type="email"
+                  autoComplete="off"
+                  value={revalidateEmail}
+                  onChange={event => setRevalidateEmail(event.target.value)}
+                  placeholder="pessoa@exemplo.com"
+                  disabled={revalidating}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  O endereço é usado somente nesta validação e removido da tela ao concluir.
+                </p>
+              </div>
+
               <DialogFooter className="gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleRevalidate(selected.email)}>
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-validar
+                <Button variant="outline" size="sm" onClick={handleRevalidate} disabled={revalidating || !revalidateEmail.trim()}>
+                  {revalidating && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Revalidar e-mail digitado
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(selected.id)} disabled={deleting === selected.id}>
                   {deleting === selected.id ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-2 h-3.5 w-3.5" />}

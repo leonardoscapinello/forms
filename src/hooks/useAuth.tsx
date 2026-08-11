@@ -1,19 +1,8 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
-
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  profile: { display_name: string; email: string; avatar_url?: string } | null;
-  role: 'admin' | 'user' | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signOut: () => Promise<void>;
-  isAdmin: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
+import { signInErrorMessage } from '@/lib/authMessages';
+import { AuthContext, type AuthContextType } from './authContext';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -25,14 +14,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = useCallback(async (userId: string): Promise<boolean> => {
     try {
       const [profileRes, roleRes] = await Promise.all([
-        supabase.from('profiles').select('display_name, email, avatar_url').eq('user_id', userId).maybeSingle(),
+        supabase.from('profiles').select('display_name, email, avatar_url, is_active').eq('user_id', userId).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
       ]);
 
       const userRole = roleRes.data?.role as 'admin' | 'user' | undefined;
 
-      // If user has no role, they are not authorized
-      if (!userRole) {
+      // A role alone is not enough: deactivated accounts must lose access even
+      // while an old Supabase session/token is still valid.
+      if (!userRole || profileRes.data?.is_active !== true) {
         setProfile(null);
         setRole(null);
         return false;
@@ -65,6 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'INITIAL_SESSION') return;
         // Skip token refreshes entirely — no state changes needed
         if (event === 'TOKEN_REFRESHED') return;
+
+        if (event === 'PASSWORD_RECOVERY') {
+          try { sessionStorage.setItem('password_recovery_started_at', String(Date.now())); } catch { /* unavailable */ }
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          setLoading(false);
+          return;
+        }
 
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
@@ -143,9 +141,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserData]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message || null };
-  }, []);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: signInErrorMessage(error.code, error.message) };
+    if (!data.user || !data.session) return { error: signInErrorMessage() };
+
+    const authorized = await fetchUserData(data.user.id);
+    if (!authorized) {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+      return { error: 'Acesso não autorizado. Solicite acesso a um administrador.' };
+    }
+    return { error: null };
+  }, [fetchUserData]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -163,10 +173,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 }

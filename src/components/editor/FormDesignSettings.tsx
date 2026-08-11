@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import type { FormData, BackgroundType } from '@/types/form';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Palette, Type, Image, Upload, Loader2, X, ImageIcon, Trash2, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ColorPickerField from '@/components/editor/shared/ColorPickerField';
 import GradientEditor from '@/components/editor/shared/GradientEditor';
 import QuestionFieldStyleEditor from '@/components/editor/QuestionFieldStyleEditor';
 import { FONT_OPTIONS } from '@/components/editor/shared/TypographySelector';
 import { normalizeFontFamily, normalizeFontFamilyName } from '@/lib/fontUtils';
+import { DEFAULT_FORM_BACKGROUND_COLOR, ensureImageBackgroundFallback } from '@/lib/formBackground';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 interface Props {
   form: FormData;
@@ -26,58 +27,36 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
   const bodyFontFamily = normalizeFontFamilyName(style.bodyFontFamily || generalFontFamily);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
   const updateStyle = useCallback((patch: Partial<typeof style>) => {
     onUpdate({ style: { ...style, ...patch } });
   }, [style, onUpdate]);
 
-  const handleImageUpload = useCallback(async (file: File) => {
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `form-backgrounds/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', path);
-      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-      if (error || !res?.success) {
-        toast.error(res?.message || 'Falha no upload');
-        return;
-      }
-      updateStyle({ backgroundImage: res.url, backgroundType: 'image' });
+  const { upload: handleImageUpload, uploading } = useImageUpload({
+    pathPrefix: 'form-backgrounds',
+    maxSizeMB: 2,
+    onSuccess: (url) => {
+      updateStyle(ensureImageBackgroundFallback({
+        backgroundImage: url,
+        backgroundType: 'image',
+        backgroundColor: style.backgroundColor,
+      }));
       toast.success('Imagem de fundo enviada');
-    } catch {
-      toast.error('Erro ao enviar imagem');
-    } finally {
-      setUploading(false);
-    }
-  }, [updateStyle]);
+    },
+    onError: () => toast.error('Erro ao enviar imagem'),
+  });
 
-  const handleLogoUpload = useCallback(async (file: File) => {
-    setUploadingLogo(true);
-    try {
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `form-logos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', path);
-      const { data: res, error } = await supabase.functions.invoke('minio-upload', { body: formData });
-      if (error || !res?.success) {
-        toast.error(res?.message || 'Falha no upload do logotipo');
-        return;
-      }
-      updateStyle({ logoUrl: res.url });
+  const { upload: handleLogoUpload, uploading: uploadingLogo } = useImageUpload({
+    pathPrefix: 'form-logos',
+    maxSizeMB: 1,
+    onSuccess: (url) => {
+      updateStyle({ logoUrl: url });
       toast.success('Logotipo enviado com sucesso');
-    } catch {
-      toast.error('Erro ao enviar logotipo');
-    } finally {
-      setUploadingLogo(false);
-    }
-  }, [updateStyle]);
+    },
+    onError: () => toast.error('Erro ao enviar logotipo'),
+  });
 
   const bgType: BackgroundType = style.backgroundType || 'solid';
+  const fallbackBackgroundColor = resolveHex(style.backgroundColor, DEFAULT_FORM_BACKGROUND_COLOR);
 
   return (
     <div className="space-y-6">
@@ -104,7 +83,10 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
                   variant={bgType === opt.value ? 'default' : 'outline'}
                   size="sm"
                   className="flex-1 text-xs h-8"
-                  onClick={() => updateStyle({ backgroundType: opt.value })}
+                  onClick={() => updateStyle({
+                    backgroundType: opt.value,
+                    ...(opt.value === 'image' && !style.backgroundColor ? { backgroundColor: DEFAULT_FORM_BACKGROUND_COLOR } : {}),
+                  })}
                 >
                   {opt.label}
                 </Button>
@@ -116,8 +98,8 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
           {bgType === 'solid' && (
             <ColorPickerField
               label="Cor de fundo"
-              value={resolveHex(style.backgroundColor, '#FAFAFA')}
-              onChange={v => updateStyle({ backgroundColor: v || '#FAFAFA' })}
+              value={resolveHex(style.backgroundColor, DEFAULT_FORM_BACKGROUND_COLOR)}
+              onChange={v => updateStyle({ backgroundColor: v || DEFAULT_FORM_BACKGROUND_COLOR })}
               placeholder="#FAFAFA"
               allowTransparent={false}
               defaultColor="#FAFAFA"
@@ -135,6 +117,19 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
           {/* Image */}
           {bgType === 'image' && (
             <div className="space-y-3">
+              <div className="rounded-lg border border-border/70 bg-muted/25 p-3">
+                <ColorPickerField
+                  label="Cor de carregamento e segurança"
+                  value={fallbackBackgroundColor}
+                  onChange={v => updateStyle({ backgroundColor: v || DEFAULT_FORM_BACKGROUND_COLOR })}
+                  placeholder="#FAFAFA"
+                  allowTransparent={false}
+                  defaultColor="#FAFAFA"
+                />
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Esta cor aparece primeiro e permanece atrás da imagem. Assim, o formulário nunca fica sem fundo durante o carregamento ou se a imagem falhar.
+                </p>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -150,7 +145,11 @@ export default function FormDesignSettings({ form, onUpdate }: Props) {
                 <div className="space-y-2">
                   <div
                     className="h-24 rounded-[8px] border border-border bg-cover bg-center"
-                    style={{ backgroundImage: `url(${style.backgroundImage})` }}
+                    style={{
+                      backgroundColor: fallbackBackgroundColor,
+                      backgroundImage: `url(${style.backgroundImage})`,
+                    }}
+                    aria-label="Prévia da imagem com a cor de segurança ao fundo"
                   />
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => fileInputRef.current?.click()}>

@@ -1,6 +1,6 @@
 import { FunnelPage, FormVariable, FormVariableType } from '@/types/form';
 import { COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
-import { Plus, FileText, Trash2, Home, Variable, Pencil, Check, X, Copy, Braces, CheckCircle, Settings2, ChevronDown, ChevronRight, Unplug } from 'lucide-react';
+import { Plus, FileText, Trash2, Home, Pencil, Check, X, Copy, Braces, CheckCircle, Settings2, ChevronDown, Unplug, PanelsTopLeft, Files } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -50,35 +50,42 @@ const TYPE_BADGE: Record<FormVariableType, string> = {
 
 function SectionHeader({
   title,
+  description,
+  icon: Icon,
   count,
   open,
   onToggle,
   action,
 }: {
   title: string;
+  description: string;
+  icon: React.ElementType;
   count?: number;
   open: boolean;
   onToggle: () => void;
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1 px-3 py-2 select-none">
+    <div className="flex select-none items-center gap-1 px-3 py-2.5">
       <button
+        type="button"
         onClick={onToggle}
-        className="flex items-center gap-1.5 flex-1 min-w-0 text-left group"
+        className="group flex min-w-0 flex-1 items-center gap-2 text-left"
+        aria-expanded={open}
       >
-        {open
-          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-        }
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
-          {title}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-foreground">
+          <Icon className="h-3.5 w-3.5" />
         </span>
-        {count !== undefined && count > 0 && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium ml-0.5">
-            {count}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground">{title}</span>
+            {count !== undefined && count > 0 && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">{count}</span>
+            )}
           </span>
-        )}
+          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{description}</span>
+        </span>
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {action}
     </div>
@@ -100,6 +107,8 @@ export default function PageListPanel({
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
   const [editingVarName, setEditingVarName] = useState('');
   const [settingsVarId, setSettingsVarId] = useState<string | null>(null);
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editingPageTitle, setEditingPageTitle] = useState('');
 
   // Listen for dnd-kit drag hover events from PageBuilder
   useEffect(() => {
@@ -151,21 +160,52 @@ export default function PageListPanel({
     toast.success(`{{${name}}} copiado!`);
   };
 
+  const startEditPage = (page: FunnelPage) => {
+    setEditingPageId(page.id);
+    setEditingPageTitle(page.title || '');
+  };
+
+  const confirmEditPage = () => {
+    if (!editingPageId) return;
+    const title = editingPageTitle.trim();
+    if (!title) {
+      toast.error('Dê um nome para a página');
+      return;
+    }
+    onRenamePage(editingPageId, title);
+    setEditingPageId(null);
+  };
+
   return (
-    <div className="w-64 border-r border-border bg-card flex flex-col h-full">
+    <aside className="flex h-full w-[276px] shrink-0 flex-col border-r border-border bg-card" aria-label="Estrutura do formulário">
+      <div className="border-b border-border bg-gradient-to-br from-primary/[0.055] via-card to-card px-4 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <PanelsTopLeft className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-xs font-semibold text-foreground">Estrutura</h2>
+            <p className="text-[10px] text-muted-foreground">Páginas e dados do formulário</p>
+          </div>
+        </div>
+      </div>
       <div className="flex-1 overflow-auto py-2">
 
         {/* ─── PAGES SECTION ─── */}
         <SectionHeader
           title="Páginas"
+          description="Ordem e conteúdo do formulário"
+          icon={Files}
           count={pages.length}
           open={pagesOpen}
           onToggle={() => setPagesOpen(v => !v)}
           action={
             <button
+              type="button"
               onClick={onAddPage}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+              className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="Nova página"
+              aria-label="Adicionar nova página"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -173,13 +213,13 @@ export default function PageListPanel({
         />
 
         {pagesOpen && (
-          <div className="pb-2 space-y-0.5 px-2">
+          <div className="space-y-1 px-2 pb-2">
             {/* Welcome screen */}
             <div
-              className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+              className={`group flex cursor-pointer items-center gap-2 rounded-xl border px-2.5 py-2.5 transition-colors ${
                 isWelcomeSelected
                   ? 'bg-primary text-primary-foreground border border-primary'
-                  : 'hover:bg-[hsl(var(--paper-300))] border border-transparent'
+                  : 'border-transparent hover:bg-muted/60'
               }`}
               onClick={() => showWelcomeScreen && onSelectWelcome?.()}
             >
@@ -190,7 +230,7 @@ export default function PageListPanel({
               <Switch
                 checked={!!showWelcomeScreen}
                 onCheckedChange={(checked) => { onToggleWelcomeScreen?.(checked); }}
-                className="scale-[0.65] flex-shrink-0"
+                  className="scale-[0.7] flex-shrink-0"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -205,14 +245,14 @@ export default function PageListPanel({
                 return (
                 <div
                   key={page.id}
-                  className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
+                  className={`group flex min-h-[42px] cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 transition-all duration-150 ${
                     activeDropPageId === page.id
                       ? 'bg-primary/10 border-2 border-primary/40 ring-2 ring-primary/15 scale-[1.03] shadow-sm'
                       : selectedPageId === page.id
                         ? 'bg-primary text-primary-foreground border border-primary'
                         : isDisconnected
-                          ? 'hover:bg-[hsl(var(--paper-300))] border border-destructive/30 bg-destructive/5'
-                          : 'hover:bg-[hsl(var(--paper-300))] border border-transparent'
+                          ? 'border border-destructive/30 bg-destructive/5 hover:bg-destructive/10'
+                          : 'border border-transparent hover:bg-muted/60'
                   }`}
                   data-page-drop-id={page.id}
                   onClick={() => onSelectPage(page.id)}
@@ -265,18 +305,48 @@ export default function PageListPanel({
                       ) : (
                         <FileText className="h-3.5 w-3.5 flex-shrink-0" />
                       )}
-                      <span className={`text-xs font-medium truncate flex-1 ${isDisconnected ? 'text-destructive/70' : ''}`}>{page.title || 'Sem título'}</span>
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[10px] text-muted-foreground">{page.elements?.length || 0}</span>
+                      {editingPageId === page.id ? (
+                        <div className="flex min-w-0 flex-1 items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <Input
+                            value={editingPageTitle}
+                            onChange={e => setEditingPageTitle(e.target.value)}
+                            className="h-7 min-w-0 flex-1 px-2 text-xs"
+                            autoFocus
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') confirmEditPage();
+                              if (e.key === 'Escape') setEditingPageId(null);
+                            }}
+                            onBlur={confirmEditPage}
+                            aria-label="Nome da página"
+                          />
+                          <button type="button" onMouseDown={e => e.preventDefault()} onClick={confirmEditPage} className="rounded p-1 text-foreground hover:bg-muted" aria-label="Salvar nome da página"><Check className="h-3 w-3" /></button>
+                        </div>
+                      ) : (
+                        <span className={`flex-1 truncate text-xs font-medium ${isDisconnected ? 'text-destructive/70' : ''}`} onDoubleClick={e => { e.stopPropagation(); startEditPage(page); }}>{page.title || 'Sem título'}</span>
+                      )}
+                      {editingPageId !== page.id && (
+                      <div className={`flex items-center gap-0.5 transition-opacity ${selectedPageId === page.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        <span className={`mr-0.5 text-[10px] ${selectedPageId === page.id ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{page.elements?.length || 0}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); startEditPage(page); }}
+                          className={`rounded p-1 transition-colors ${selectedPageId === page.id ? '!bg-white/10 !text-white hover:!bg-white/20 hover:!text-white' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                          aria-label={`Renomear ${page.title || `página ${index + 1}`}`}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
                         {pages.length > 1 && (
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); onDeletePage(page.id); }}
-                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                            className={`rounded p-1 ${selectedPageId === page.id ? '!bg-white/10 !text-white hover:!bg-white/20 hover:!text-white' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'}`}
+                            aria-label={`Excluir ${page.title || `página ${index + 1}`}`}
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
                         )}
                       </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -286,10 +356,10 @@ export default function PageListPanel({
 
             {/* Thank you page */}
             <div
-              className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+              className={`group flex cursor-pointer items-center gap-2 rounded-xl border px-2.5 py-2.5 transition-colors ${
                 isThankYouSelected
                   ? 'bg-primary text-primary-foreground border border-primary'
-                  : 'hover:bg-[hsl(var(--paper-300))] border border-transparent'
+                  : 'border-transparent hover:bg-muted/60'
               }`}
               onClick={() => onSelectThankYou?.()}
             >
@@ -305,14 +375,18 @@ export default function PageListPanel({
         {/* ─── VARIABLES SECTION ─── */}
         <SectionHeader
           title="Variáveis"
+          description="Valores reutilizáveis no workflow"
+          icon={Braces}
           count={variables.length}
           open={varsOpen}
           onToggle={() => setVarsOpen(v => !v)}
           action={
             <button
+              type="button"
               onClick={() => { onAddVariable?.(); setVarsOpen(true); }}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+              className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="Nova variável"
+              aria-label="Adicionar nova variável"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -478,6 +552,6 @@ export default function PageListPanel({
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </aside>
   );
 }

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { listIntegrationSettings, saveIntegrationSetting } from '@/lib/integrationSettings';
 
 interface ReoonConfig {
   apiKey: string;
@@ -29,8 +29,9 @@ export default function ReoonIntegrationCard() {
   const [config, setConfig] = useState<ReoonConfig>(EMPTY_REOON);
 
   useEffect(() => {
-    supabase.from('integration_settings').select('*').eq('integration_type', 'reoon_email').maybeSingle()
-      .then(({ data }) => {
+    listIntegrationSettings('reoon_email')
+      .then((rows) => {
+        const data = rows[0];
         if (data) {
           setSettingsId(data.id);
           setIsActive(data.is_active);
@@ -41,8 +42,16 @@ export default function ReoonIntegrationCard() {
           });
         }
         setLoading(false);
+      })
+      .catch((error: Error) => {
+        toast({
+          title: 'Erro ao carregar Reoon',
+          description: error.message || 'Não foi possível carregar a integração.',
+          variant: 'destructive',
+        });
+        setLoading(false);
       });
-  }, []);
+  }, [toast]);
 
   const updateConfig = useCallback((patch: Partial<ReoonConfig>) => {
     setConfig(prev => ({ ...prev, ...patch }));
@@ -50,20 +59,26 @@ export default function ReoonIntegrationCard() {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
-    const payload = {
-      integration_type: 'reoon_email',
-      label: 'Reoon Email Verifier',
-      config: config as any,
-      is_active: isActive,
-    };
-    if (settingsId) {
-      await supabase.from('integration_settings').update(payload).eq('id', settingsId);
-    } else {
-      const { data } = await supabase.from('integration_settings').insert(payload).select().single();
-      if (data) setSettingsId(data.id);
+    try {
+      const row = await saveIntegrationSetting({
+        id: settingsId,
+        integrationType: 'reoon_email',
+        label: 'Reoon Email Verifier',
+        isActive,
+        config: { ...config },
+      });
+      setSettingsId(row.id);
+      setConfig(prev => ({ ...prev, apiKey: row.config.apiKey || prev.apiKey }));
+      toast({ title: isActive ? 'Salvo e validado' : 'Salvo', description: 'Configuração do Reoon salva.' });
+    } catch (error: any) {
+      toast({
+        title: 'Credencial Reoon inválida',
+        description: error?.message || 'A conexão falhou e nada foi salvo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
-    toast({ title: 'Salvo', description: 'Configuração do Reoon salva.' });
-    setSaving(false);
   }, [config, isActive, settingsId, toast]);
 
   if (loading) {

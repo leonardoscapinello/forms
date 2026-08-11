@@ -1,6 +1,7 @@
 // PageBuilder – drag-and-drop page editor
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { normalizeFontFamily } from '@/lib/fontUtils';
+import { buildFormBackgroundStyle } from '@/lib/formBackground';
 import { FunnelPage, FormVariable, IntegrationNodeData, TrackedParam } from '@/types/form';
 import { CollaboratorPresence } from '@/hooks/useRealtimeCollaboration';
 import type { ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
@@ -497,12 +498,12 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
   };
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full min-w-0 overflow-hidden">
       {!hideToolbar && <ElementToolbar onAdd={handleAdd} />}
 
       {/* Center — Preview canvas */}
       <div
-        className={`flex-1 overflow-auto flex flex-col transition-colors duration-200 ${
+        className={`min-w-0 flex-1 overflow-auto flex flex-col transition-colors duration-200 ${
           isExternalDragOver && !readOnly && !designMode ? 'bg-primary/[0.03]' : 'bg-muted/30'
         }`}
         onClick={designMode ? () => onDesignSelect?.(null) : readOnly ? undefined : () => { setSelectedId(null); unlockElement?.(); }}
@@ -513,26 +514,15 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         style={{
           ['--primary' as any]: '0 0% 4%',
           ...(() => {
-            const bgType = formStyle?.backgroundType || 'solid';
-            const rawBg = effectiveStyle.backgroundColor || formStyle?.backgroundColor || '#FAFAFA';
-            const bg = rawBg.startsWith('#') ? rawBg : `hsl(${rawBg})`;
             const result: React.CSSProperties = {
               fontFamily: normalizeFontFamily(effectiveStyle.fontFamily),
               color: formStyle?.textColor || undefined,
             };
             if (isExternalDragOver) return result;
-            if (bgType === 'gradient' && formStyle?.backgroundGradient) {
-              result.background = formStyle.backgroundGradient;
-            } else if (bgType === 'image' && formStyle?.backgroundImage) {
-              result.backgroundColor = bg;
-              result.backgroundImage = `url(${formStyle.backgroundImage})`;
-              result.backgroundSize = formStyle.backgroundSize || 'cover';
-              result.backgroundPosition = 'center';
-              result.backgroundRepeat = 'no-repeat';
-            } else {
-              result.backgroundColor = bg;
-            }
-            return result;
+            return {
+              ...result,
+              ...buildFormBackgroundStyle(formStyle, effectiveStyle.backgroundColor),
+            };
           })(),
         }}
       >
@@ -737,12 +727,12 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
         {!readOnly && !designMode && selectedElement && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 288, opacity: 1 }}
+            animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="border-l border-border bg-card flex flex-col h-full flex-shrink-0 overflow-hidden"
+            className="border-l border-border bg-card flex flex-col h-full min-w-0 flex-shrink-0 overflow-hidden"
           >
-            <div className="w-72 h-full flex flex-col">
+            <div className="h-full w-80 min-w-0 max-w-full flex flex-col overflow-hidden">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={selectedElement.id}
@@ -750,7 +740,7 @@ export default function PageBuilder({ elements, onChange, pageStyle, onPageStyle
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.15, ease: 'easeOut' }}
-                  className="h-full flex flex-col"
+                  className="h-full min-w-0 flex flex-col overflow-hidden"
                 >
                   <ElementSettingsPanel
                     element={selectedElement}

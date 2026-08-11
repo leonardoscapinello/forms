@@ -1,78 +1,133 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { requireFormAccess } from '../_shared/auth.ts';
-
-// ── AES-256-GCM decryption for encrypted form data ──
-async function _deriveKey(secret: string): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  const km = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode('twobrain-salt-v1'), iterations: 100_000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
-}
-async function tryDecryptField(value: any, secret: string): Promise<any> {
-  if (!value || typeof value !== 'string' || !value.startsWith('enc:') || !secret) return value;
-  try {
-    const key = await _deriveKey(secret);
-    const combined = Uint8Array.from(atob(value.slice(4)), c => c.charCodeAt(0));
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: combined.slice(0, 12) }, key, combined.slice(12));
-    const text = new TextDecoder().decode(decrypted);
-    try { return JSON.parse(text); } catch { return text; }
-  } catch { return value; }
-}
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireFormAccess } from "../_shared/auth.ts";
+import { openIntegrationConfig } from "../_shared/integrationSettingsCrypto.ts";
+import { readStoredJsonObject } from "../_shared/formResponseCrypto.ts";
+import { enforceProviderRequestRateLimits } from "../_shared/rateLimit.ts";
+import {
+  readResponseJsonLimited,
+  safeIntegrationErrorCode,
+} from "../_shared/integrationReliability.ts";
+import { readLimitedJsonObject } from "../_shared/limitedJsonBody.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+const MAX_REQUEST_BYTES = 32_000;
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
+      status: 405,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        Allow: "POST, OPTIONS",
+      },
+    });
+  }
 
   try {
-    const { form_id } = await req.json();
-    if (!form_id) throw new Error('form_id is required');
+    const parsedBody = await readLimitedJsonObject(
+      req,
+      MAX_REQUEST_BYTES,
+      corsHeaders,
+    );
+    if (!parsedBody.ok) return parsedBody.response;
+    const form_id = parsedBody.value.form_id;
+    if (typeof form_id !== "string" || !form_id) {
+      return new Response(JSON.stringify({ error: "form_id is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const caller = await requireFormAccess(req, form_id);
     if (!caller.ok) return caller.response;
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const analysisLimited = await enforceProviderRequestRateLimits(
+      caller.admin,
+      req,
+      {
+        bucket: "analyze-form-responses",
+        ipLimit: 300,
+        ipWindowSeconds: 60,
+        providerScope: "openai-aggregate-analysis",
+        providerLimit: 30,
+        providerWindowSeconds: 60,
+        subjectScope: caller.userId,
+        subjectLimit: 5,
+        subjectWindowSeconds: 600,
+        responseHeaders: corsHeaders,
+      },
+    );
+    if (analysisLimited) return analysisLimited;
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(
+      "SUPABASE_SERVICE_ROLE_KEY",
+    )!;
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Check if user has custom OpenAI config with systemPrompt
     const { data: aiSettings } = await supabase
-      .from('integration_settings')
-      .select('config, is_active')
-      .eq('integration_type', 'openai')
+      .from("integration_settings")
+      .select("config, is_active")
+      .eq("integration_type", "openai")
       .maybeSingle();
 
-    const aiConfig = (aiSettings?.config as any) || {};
-    const customSystemPrompt = aiConfig.systemPrompt || '';
-    const openaiKey = aiSettings?.is_active && typeof aiConfig.apiKey === 'string' ? aiConfig.apiKey : '';
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY') || '';
-    const useOpenAI = aiConfig.provider === 'openai' && !!openaiKey;
-    const apiKey = useOpenAI ? openaiKey : lovableKey;
+    const aiConfig = aiSettings
+      ? (await openIntegrationConfig(
+        "openai",
+        aiSettings.config,
+        Deno.env.get("ENCRYPTION_SECRET") ?? "",
+      )).config
+      : {};
+    const customSystemPrompt = typeof aiConfig.systemPrompt === "string"
+      ? aiConfig.systemPrompt
+      : "";
+    const apiKey = aiSettings?.is_active && typeof aiConfig.apiKey === "string"
+      ? aiConfig.apiKey
+      : "";
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'no_ai_configured', message: 'Nenhum provedor de IA está ativo.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "no_ai_configured",
+          message: "A integração com a OpenAI não está ativa.",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // Fetch last 100 responses for this form
     const { data: responses, error } = await supabase
-      .from('form_responses')
-      .select('answers, total_time_ms, pages_visited, metadata, created_at')
-      .eq('form_id', form_id)
-      .order('created_at', { ascending: false })
+      .from("form_responses")
+      .select("answers, total_time_ms, pages_visited, metadata, created_at")
+      .eq("form_id", form_id)
+      .order("created_at", { ascending: false })
       .limit(100);
 
     if (error) throw error;
     if (!responses || responses.length === 0) {
-      return new Response(JSON.stringify({ error: 'no_responses', message: 'Nenhuma resposta encontrada para análise.' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "no_responses",
+          message: "Nenhuma resposta encontrada para análise.",
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // Extract text answers for analysis
@@ -80,14 +135,18 @@ serve(async (req) => {
     const completionTimes: number[] = [];
     const responseLengths: number[] = [];
 
-    const encSecret = Deno.env.get('ENCRYPTION_SECRET') ?? '';
+    const encSecret = Deno.env.get("ENCRYPTION_SECRET") ?? "";
 
     for (const resp of responses) {
       if (resp.total_time_ms) completionTimes.push(resp.total_time_ms);
-      const answers = await tryDecryptField(resp.answers, encSecret) || {};
+      const answers = await readStoredJsonObject(
+        resp.answers,
+        encSecret,
+        "answers",
+      );
       let totalChars = 0;
       for (const val of Object.values(answers)) {
-        if (typeof val === 'string' && val.trim().length > 10) {
+        if (typeof val === "string" && val.trim().length > 10) {
           textAnswers.push(val.trim());
           totalChars += val.length;
         }
@@ -95,21 +154,27 @@ serve(async (req) => {
       if (totalChars > 0) responseLengths.push(totalChars);
     }
 
-    const sampleAnswers = textAnswers.slice(0, 40).join(' | ');
+    const sampleAnswers = textAnswers.slice(0, 40).join(" | ");
     const avgTime = completionTimes.length > 0
-      ? Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length / 1000)
+      ? Math.round(
+        completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length /
+          1000,
+      )
       : null;
     const avgChars = responseLengths.length > 0
-      ? Math.round(responseLengths.reduce((a, b) => a + b, 0) / responseLengths.length)
+      ? Math.round(
+        responseLengths.reduce((a, b) => a + b, 0) / responseLengths.length,
+      )
       : null;
 
     const baseContext = `FORM RESPONSE DATA:
 - Total responses analyzed: ${responses.length}
-- Average completion time: ${avgTime ? `${avgTime} seconds` : 'N/A'}
-- Average response length: ${avgChars ? `${avgChars} characters` : 'N/A'}
-- Sample text responses: ${sampleAnswers || '(no text responses available)'}`;
+- Average completion time: ${avgTime ? `${avgTime} seconds` : "N/A"}
+- Average response length: ${avgChars ? `${avgChars} characters` : "N/A"}
+- Sample text responses: ${sampleAnswers || "(no text responses available)"}`;
 
-    const systemPrompt = customSystemPrompt || `You are an elite behavioral psychologist and consumer intelligence analyst. Analyze form response data and return structured insights.`;
+    const systemPrompt = customSystemPrompt ||
+      `You are an elite behavioral psychologist and consumer intelligence analyst. Analyze form response data and return structured insights.`;
 
     const prompt = `${baseContext}
 
@@ -133,47 +198,65 @@ Provide a comprehensive aggregate analysis as JSON with:
 Return ONLY valid JSON.`;
 
     const aiResponse = await fetch(
-      useOpenAI ? 'https://api.openai.com/v1/chat/completions' : 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      "https://api.openai.com/v1/chat/completions",
       {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: useOpenAI ? (aiConfig.model || 'gpt-4.1-mini') : 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-      }),
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: aiConfig.model || "gpt-4.1-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.3,
+        }),
+        signal: AbortSignal.timeout(30_000),
+        redirect: "error",
       },
     );
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: 'rate_limited', message: 'Limite de requisições atingido. Tente novamente em alguns minutos.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({
+            error: "rate_limited",
+            message:
+              "Limite de requisições atingido. Tente novamente em alguns minutos.",
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: 'payment_required', message: 'Créditos insuficientes para análise AI.' }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({
+            error: "payment_required",
+            message: "Créditos insuficientes para análise AI.",
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
+      throw new Error(`OpenAI API error: ${aiResponse.status}`);
     }
 
-    const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || '{}';
+    const aiData = await readResponseJsonLimited<Record<string, any>>(
+      aiResponse,
+      1_000_000,
+    );
+    const rawContent = aiData.choices?.[0]?.message?.content || "{}";
 
     const jsonStr = rawContent
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/\s*```$/i, '')
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
       .trim();
 
     let analysis: Record<string, unknown> = {};
@@ -183,22 +266,34 @@ Return ONLY valid JSON.`;
       analysis = { raw: rawContent };
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      responses_analyzed: responses.length,
-      text_responses_analyzed: textAnswers.length,
-      avg_completion_time_s: avgTime,
-      avg_response_chars: avgChars,
-      analysis,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        responses_analyzed: responses.length,
+        text_responses_analyzed: textAnswers.length,
+        avg_completion_time_s: avgTime,
+        avg_response_chars: avgChars,
+        analysis,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
-    console.error('analyze-form-responses error:', e);
-    return new Response(JSON.stringify({ error: 'internal', message: e instanceof Error ? e.message : 'Erro desconhecido' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const errorCode = safeIntegrationErrorCode(
+      e,
+      "aggregate_analysis_failed",
+    );
+    console.error("analyze_form_responses_error", errorCode);
+    return new Response(
+      JSON.stringify({
+        error: errorCode,
+        message: "Não foi possível concluir a análise agora.",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

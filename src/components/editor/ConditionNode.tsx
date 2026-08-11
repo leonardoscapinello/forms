@@ -89,7 +89,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
               </Tooltip>
             )}
             {onToggleDisabled && <NodeToggleSwitch isDisabled={isNodeDisabled} onToggle={onToggleDisabled} />}
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive active:bg-destructive/20" onClick={onDelete}>
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
@@ -210,7 +210,7 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-xs h-7 text-muted-foreground border border-dashed border-border"
+            className="w-full text-xs h-7 text-muted-foreground border border-dashed border-border hover:bg-primary hover:text-primary-foreground focus-visible:bg-primary focus-visible:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
             onClick={addBranch}
           >
             <Plus className="mr-1 h-3 w-3" />
@@ -223,4 +223,3 @@ function ConditionNode({ data, selected }: NodeProps & { data: ConditionNodeData
 }
 
 export default memo(ConditionNode);
-

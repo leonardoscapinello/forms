@@ -53,11 +53,11 @@ export function useImageUpload(opts: UseImageUploadOptions = {}) {
       if (error) throw error;
       if (abortRef.current) return null;
       const url = data?.url as string | undefined;
-      if (url) {
+      if (data?.success === true && url) {
         onSuccess?.(url);
         return url;
       }
-      return null;
+      throw new Error(typeof data?.message === 'string' ? data.message : 'upload_not_acknowledged');
     } catch (err) {
       if (import.meta.env.DEV) console.error('Upload failed:', err);
       onError?.(err);

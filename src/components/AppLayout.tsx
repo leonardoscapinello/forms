@@ -1,6 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/authContext';
 import { Search, Bell } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 

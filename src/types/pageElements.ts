@@ -60,6 +60,27 @@ export type PageElementType =
 export type RatingIconStyle = 'star' | 'heart' | 'thumbsUp' | 'emoji' | 'numeric' | 'nps';
 export type LoadingStyle = 'bar' | 'circular' | 'infinite';
 
+export type DatePart = 'year' | 'month' | 'day';
+export type DateLimitMode = 'none' | 'today' | 'fixed' | 'relative';
+export type DateRelativeUnit = 'days' | 'months' | 'years';
+export type DateRelativeDirection = 'past' | 'future';
+export type DateRestrictionPreset = 'free' | 'past_or_today' | 'future_or_today' | 'minimum_age' | 'custom';
+
+export interface DateLimitRule {
+  mode: DateLimitMode;
+  fixedDate?: string;
+  amount?: number;
+  unit?: DateRelativeUnit;
+  direction?: DateRelativeDirection;
+}
+
+export interface DateInitialYearRule {
+  mode: 'current' | 'relative' | 'fixed';
+  amount?: number;
+  direction?: DateRelativeDirection;
+  fixedYear?: number;
+}
+
 export type CardActionType = 'go_to_page' | 'open_modal' | 'copy_text';
 
 export interface CardItem {
@@ -404,6 +425,12 @@ export interface PageElement {
   max?: number;
   dateMode?: 'date' | 'time' | 'datetime';
   dateFormat?: string;
+  dateRestrictionPreset?: DateRestrictionPreset;
+  dateMinRule?: DateLimitRule;
+  dateMaxRule?: DateLimitRule;
+  dateInitialYearRule?: DateInitialYearRule;
+  dateSelectionOrder?: DatePart[];
+  dateConstraintMessage?: string;
   columnCount?: number;
   columnData?: ColumnData[];
   yesScore?: number;
@@ -414,6 +441,7 @@ export interface PageElement {
   ratingStyle?: RatingIconStyle;
   ratingEmoji?: string; // custom emoji when ratingStyle === 'emoji'
   ratingActiveColor?: string;
+  ratingColorCustomized?: boolean;
   ratingInactiveColor?: string;
   npsLowLabel?: string;
   npsHighLabel?: string;
@@ -813,6 +841,7 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.maxRating = 5;
       base.ratingStyle = 'star';
       base.ratingActiveColor = '#facc15';
+      base.ratingColorCustomized = false;
       base.ratingInactiveColor = '#d1d5db';
       break;
     case 'input_nps':
@@ -838,6 +867,11 @@ export function createDefaultPageElement(type: PageElementType): PageElement {
       base.required = false;
       base.dateMode = 'date';
       base.dateFormat = 'dd/MM/yyyy';
+      base.dateRestrictionPreset = 'free';
+      base.dateMinRule = { mode: 'none' };
+      base.dateMaxRule = { mode: 'none' };
+      base.dateInitialYearRule = { mode: 'current' };
+      base.dateSelectionOrder = ['year', 'month', 'day'];
       break;
     case 'input_height':
       base.label = 'Qual sua altura?';

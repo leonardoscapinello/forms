@@ -3,20 +3,22 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/authContext";
 import { FormStoreProvider } from "@/hooks/useFormStore";
-import { Loader2 } from "lucide-react";
 
-// Standard imports for core admin routes (already code-split via AdminApp)
-import Dashboard from "./pages/Dashboard";
-import AnalyticsDashboard from "./pages/AnalyticsDashboard";
-import Settings from "./pages/Settings";
-import Gallery from "./pages/Gallery";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
-import AppLayout from "./components/AppLayout";
+import { BrandProvider } from '@/hooks/useBrand';
 
-// Lazy-loaded editor pages (these are heavy, keep them lazy)
+// Route-level chunks keep login and the admin shell independent from heavy
+// dashboards, settings/integrations, gallery and the editor.
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Gallery = lazy(() => import("./pages/Gallery"));
+const Login = lazy(() => import("./pages/Login"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AppLayout = lazy(() => import("./components/AppLayout"));
 const FormPreview = lazy(() => import("./pages/FormPreview"));
 const EditorLayout = lazy(() => import("./pages/editor/EditorLayout"));
 const EditorWorkflow = lazy(() => import("./pages/editor/EditorWorkflow"));
@@ -84,14 +86,17 @@ function ScrollToTop() {
 
 function LegacyPreviewRedirect() {
   const { id } = useParams();
-  return <Navigate to={id ? `/f/${id}?editorPreview=1` : "/"} replace />;
+  // Legacy preview URLs return to the authenticated editor. A public query
+  // parameter cannot grant the no-persistence preview capability.
+  return <Navigate to={id ? `/editor/${id}/pages` : "/"} replace />;
 }
 
 export default function AdminApp() {
   return (
     <AuthProvider>
-      <FormStoreProvider>
-        <TooltipProvider delayDuration={300}>
+      <BrandProvider>
+        <FormStoreProvider>
+          <TooltipProvider delayDuration={300}>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -99,6 +104,7 @@ export default function AdminApp() {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/dashboard" element={<ProtectedRoute><AppLayout><AnalyticsDashboard /></AppLayout></ProtectedRoute>} />
                 <Route path="/" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
                 <Route path="/gallery" element={<ProtectedRoute><AppLayout><Gallery /></AppLayout></ProtectedRoute>} />
@@ -124,8 +130,9 @@ export default function AdminApp() {
               </Routes>
             </Suspense>
           </BrowserRouter>
-        </TooltipProvider>
-      </FormStoreProvider>
+          </TooltipProvider>
+        </FormStoreProvider>
+      </BrandProvider>
     </AuthProvider>
   );
 }

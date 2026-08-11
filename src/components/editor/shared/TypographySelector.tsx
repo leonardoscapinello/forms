@@ -38,21 +38,35 @@ interface Props {
   onFontFamilyChange: (value: string | undefined) => void;
   onFontWeightChange: (value: string | undefined) => void;
   label?: string;
+  helpText?: string;
 }
 
-export default function TypographySelector({ fontFamily, fontWeight, onFontFamilyChange, onFontWeightChange, label = 'Tipografia' }: Props) {
-  const selectedFontFamily = normalizeFontFamilyName(fontFamily);
+const INHERIT_VALUE = '__inherit__';
+
+export default function TypographySelector({
+  fontFamily,
+  fontWeight,
+  onFontFamilyChange,
+  onFontWeightChange,
+  label = 'Tipografia',
+  helpText,
+}: Props) {
+  const selectedFontFamily = fontFamily ? normalizeFontFamilyName(fontFamily) : INHERIT_VALUE;
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs">{label}</Label>
+      <div>
+        <Label className="text-xs">{label}</Label>
+        {helpText && <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{helpText}</p>}
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <Select
           value={selectedFontFamily}
-          onValueChange={v => onFontFamilyChange(v || DEFAULT_FONT_FAMILY)}
+          onValueChange={v => onFontFamilyChange(v === INHERIT_VALUE ? undefined : v)}
         >
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Fonte" /></SelectTrigger>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Fonte" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value={INHERIT_VALUE}>Herdar fonte do formulário</SelectItem>
             {FONT_OPTIONS.map(f => (
               <SelectItem key={f.value} value={f.value}>
                 <span style={{ fontFamily: f.value }}>{f.label}</span>
@@ -61,13 +75,14 @@ export default function TypographySelector({ fontFamily, fontWeight, onFontFamil
           </SelectContent>
         </Select>
         <Select
-          value={fontWeight || ''}
-          onValueChange={v => onFontWeightChange(v || undefined)}
+          value={fontWeight || INHERIT_VALUE}
+          onValueChange={v => onFontWeightChange(v === INHERIT_VALUE ? undefined : v)}
         >
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Peso" /></SelectTrigger>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Peso" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value={INHERIT_VALUE}>Herdar peso</SelectItem>
             {WEIGHT_OPTIONS.map(w => (
-              <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+              <SelectItem key={w.value} value={w.value}>{w.label === 'Light' ? 'Leve' : w.label === 'Semibold' ? 'Seminegrito' : w.label === 'Bold' ? 'Negrito' : w.label === 'Extra Bold' ? 'Extra negrito' : w.label === 'Black' ? 'Preto' : w.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

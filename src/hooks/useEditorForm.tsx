@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFormStore } from '@/hooks/useFormStore';
 import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
@@ -12,10 +12,11 @@ import {
 import { PageElement, createDefaultPageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
 import type { InputElementGroup } from '@/components/editor/VariableAssignPanel';
 import { flattenPageElements } from '@/lib/pageElementTree';
+import { EditorFormContext } from './editorFormContext';
 
 // ─── Context type ────────────────────────────────────────────────────
 
-interface EditorFormContextType {
+export interface EditorFormContextType {
   form: FormData;
   formId: string;
   saveStatus: string;
@@ -99,14 +100,6 @@ interface EditorFormContextType {
   handleAddVariable: () => void;
   handleUpdateVariable: (varId: string, patch: Partial<FormVariable>) => void;
   handleDeleteVariable: (varId: string) => void;
-}
-
-const EditorFormContext = createContext<EditorFormContextType | null>(null);
-
-export function useEditorForm() {
-  const ctx = useContext(EditorFormContext);
-  if (!ctx) throw new Error('useEditorForm must be used within EditorFormProvider');
-  return ctx;
 }
 
 // ─── Generic node CRUD factory ──────────────────────────────────────

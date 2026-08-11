@@ -519,8 +519,12 @@ export interface WaitNodeData {
 export interface JumpNodeData {
   id: string;
   label?: string;
-  /** The page ID to jump to */
+  /** Existing nodes default to `page` for backwards compatibility. */
+  destinationType?: 'page' | 'url';
+  /** The page ID to jump to when destinationType === 'page'. */
   targetPageId?: string;
+  /** Final redirect template when destinationType === 'url'. */
+  redirectUrl?: string;
 }
 
 // ── AI Node ─────────────────────────────────────────────────────────────────
@@ -706,14 +710,37 @@ export interface FormVariable {
 
 export interface FormData {
   id: string;
+  /** Public, non-secret application identity attached by form-public-get. */
+  brand?: {
+    productName?: string;
+    ownerName?: string;
+    description?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
+  };
   /** Short-lived token issued by form-public-get for anonymous persistence. */
   submissionToken?: string;
+  /** Response/session identifiers cryptographically bound to submissionToken. */
+  submissionResponseId?: string;
+  submissionSessionId?: string;
+  /** True only when form-public-get verified and rebound a signed resume token. */
+  submissionResumed?: boolean;
+  /** Canonical partial state returned only after the resume credential is verified. */
+  submissionResumeState?: {
+    answers: Record<string, unknown>;
+    pageIndex: number;
+    maxPage: number;
+  };
   title: string;
   description?: string;
   welcomeTitle?: string;
   welcomeDescription?: string;
   thankYouTitle?: string;
   thankYouDescription?: string;
+  /** What happens after a completed response receives a backend acknowledgement. */
+  completionAction?: 'thank_you' | 'redirect';
+  /** HTTPS or same-origin root-relative URL; supports runtime interpolation. */
+  completionRedirectUrl?: string;
   /** @deprecated — use pages instead */
   questions: Question[];
   /** Funnel pages — the primary workflow unit */

@@ -8,8 +8,8 @@ interface TwemojiProps {
 }
 
 /**
- * Wraps children and replaces all Unicode emojis with Twemoji SVGs
- * so they render consistently (Apple-style) across all platforms.
+ * Wraps children and replaces Unicode emojis with Twemoji SVGs so custom
+ * emojis keep the same appearance across platforms.
  */
 export default function Twemoji({ children, className, tag: Tag = 'span' }: TwemojiProps) {
   const ref = useRef<HTMLElement>(null);

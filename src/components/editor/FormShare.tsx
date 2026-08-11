@@ -1,12 +1,11 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { FormData } from '@/types/form';
-import { PageElement, COMPOUND_FIELD_SUB_KEYS } from '@/types/pageElements';
+import { PageElement } from '@/types/pageElements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { flattenPageElements } from '@/lib/pageElementTree';
 import {
   Check, Copy, ExternalLink, Globe, Loader2, CheckCircle2,
   Unplug, Sheet, Webhook, ChevronDown, Link2, X,
@@ -14,13 +13,42 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import { listIntegrationCatalog, withIntegrationTimeout } from '@/lib/integrationSettings';
 
 interface Props {
   form: FormData;
   onUpdate: (patch: Partial<FormData>) => void;
 }
 
-const PUBLISHED_BASE = 'https://nodecraft-forms.lovable.app';
+function getPublishedBase(): string {
+  const configuredBase = import.meta.env.VITE_PUBLIC_APP_URL?.trim();
+  return (configuredBase || window.location.origin).replace(/\/+$/, '');
+}
+
+const GOOGLE_SHEET_ERROR_MESSAGES: Record<string, string> = {
+  google_sheet_sync_in_progress: 'Já existe uma sincronização desta planilha em andamento.',
+  google_sheet_delivery_in_progress: 'Um envio automático está terminando. Aguarde alguns segundos e tente novamente.',
+  google_sheet_schema_mismatch: 'A estrutura do formulário mudou. Execute “Sincronizar agora” para atualizar a planilha.',
+  google_sheet_variable_limit_exceeded: 'O formulário ultrapassa o limite seguro de 250 variáveis para o Google Sheets.',
+  google_oauth_not_configured: 'Configure e ative o Google OAuth nas Configurações.',
+  google_oauth_not_authenticated: 'Reconecte sua conta Google antes de continuar.',
+  google_oauth_ambiguous_configuration: 'Há mais de uma configuração Google ativa. Mantenha somente uma ativa.',
+  upstream_timeout: 'O Google demorou demais para responder. Tente novamente.',
+};
+
+async function googleSheetErrorMessage(error: any, data: any, fallback: string): Promise<string> {
+  let code = typeof data?.error === 'string' ? data.error : '';
+  if (!code && error?.context?.json) {
+    try {
+      const payload = await error.context.json();
+      code = typeof payload?.error === 'string' ? payload.error : '';
+    } catch {
+      // The Functions client does not always expose the JSON error body.
+    }
+  }
+  const stableCode = code.split(':')[0];
+  return GOOGLE_SHEET_ERROR_MESSAGES[stableCode] || code || error?.message || fallback;
+}
 
 /* ── Helpers ── */
 
@@ -43,28 +71,6 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function extractFieldHeaders(form: FormData): string[] {
-  const headers: string[] = [];
-  for (const page of form.pages || []) {
-    for (const el of flattenPageElements((page.elements || []) as PageElement[])) {
-      if (el.type.startsWith('input_')) {
-        const subKeys = COMPOUND_FIELD_SUB_KEYS[el.type];
-        if (subKeys && subKeys.length > 0) {
-          const parentLabel = el.label || el.type.replace('input_', '').replace(/_/g, ' ');
-          for (const sub of subKeys) headers.push(`${parentLabel} — ${sub.label}`);
-        } else {
-          headers.push(el.label || el.placeholder || el.type.replace('input_', '').replace(/_/g, ' '));
-        }
-      }
-    }
-  }
-  // Add variables as columns
-  for (const v of form.variables || []) {
-    headers.push(`⚡ ${v.name}`);
-  }
-  return headers;
-}
-
 /* ── Integration card type ── */
 interface IntegrationDef {
   id: string;
@@ -76,7 +82,7 @@ interface IntegrationDef {
 
 /* ── Main component ── */
 export default function FormShare({ form, onUpdate }: Props) {
-  const previewUrl = `${PUBLISHED_BASE}/f/${form.id}`;
+  const previewUrl = `${getPublishedBase()}/f/${form.id}`;
   const isPublished = form.status === 'published';
   const { toast } = useToast();
 
@@ -89,55 +95,75 @@ export default function FormShare({ form, onUpdate }: Props) {
   const [webhookDraftUrl, setWebhookDraftUrl] = useState(form.completionWebhookUrl || '');
 
   useEffect(() => {
-    supabase
-      .from('integration_settings')
-      .select('config, is_active')
-      .eq('integration_type', 'google_oauth')
-      .maybeSingle()
-      .then(({ data }) => {
+    listIntegrationCatalog('google_oauth')
+      .then((rows) => {
+        const data = rows[0];
         if (data?.is_active) {
           const cfg = data.config as any;
-          setGoogleOAuthReady(!!cfg?.accessToken);
+          setGoogleOAuthReady(cfg?.connected === true);
         }
+      })
+      .catch((error: Error) => {
+        setGoogleOAuthReady(false);
+        toast({
+          title: 'Erro ao verificar Google Sheets',
+          description: error.message || 'Não foi possível verificar a integração Google.',
+          variant: 'destructive',
+        });
       });
-  }, []);
+  }, [toast]);
 
   /* ── Google Sheets handlers ── */
   const handleConnectSheet = useCallback(async () => {
     setGoogleLoading(true);
     try {
-      const headers = ['#', 'Status', 'Entrada', 'Envio', 'Duração', ...extractFieldHeaders(form)];
-      const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-        body: { action: 'create', formId: form.id, formTitle: form.title, headers },
-      });
+      const { data, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('google-sheets-sync', {
+          body: { action: 'create', formId: form.id },
+        }),
+        30_000,
+      );
       if (error || !data?.spreadsheetId) {
-        toast({ title: 'Erro', description: data?.error || 'Falha ao criar planilha.', variant: 'destructive' });
+        toast({
+          title: 'Erro ao criar planilha',
+          description: await googleSheetErrorMessage(error, data, 'Falha ao criar planilha.'),
+          variant: 'destructive',
+        });
       } else {
         onUpdate({ googleSheetId: data.spreadsheetId, googleSheetUrl: data.spreadsheetUrl });
         toast({ title: 'Planilha criada!', description: 'Google Sheets conectado.' });
       }
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setGoogleLoading(false);
     }
-    setGoogleLoading(false);
   }, [form, onUpdate, toast]);
 
   const handleSyncNow = useCallback(async () => {
     if (!form.googleSheetId) return;
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('google-sheets-sync', {
-        body: { action: 'sync', formId: form.id, formTitle: form.title, spreadsheetId: form.googleSheetId },
-      });
+      const { data, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('google-sheets-sync', {
+          body: { action: 'sync', formId: form.id, spreadsheetId: form.googleSheetId },
+        }),
+        30_000,
+      );
       if (error || !data?.success) {
-        toast({ title: 'Erro', description: data?.error || 'Falha ao sincronizar.', variant: 'destructive' });
+        toast({
+          title: 'Erro ao sincronizar',
+          description: await googleSheetErrorMessage(error, data, 'Falha ao sincronizar.'),
+          variant: 'destructive',
+        });
       } else {
         toast({ title: 'Sincronizado!', description: `${data.rowsWritten || 0} respostas enviadas.` });
       }
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   }, [form, toast]);
 
   const handleDisconnectSheet = useCallback(() => {
@@ -188,9 +214,11 @@ export default function FormShare({ form, onUpdate }: Props) {
     setWebhookTesting(true);
     setWebhookTestResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('webhook-test', {
-        body: { url: webhookDraftUrl, payload: { ...examplePayload, _test: true } },
-      });
+      const { data, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('webhook-test', {
+          body: { url: webhookDraftUrl, payload: { ...examplePayload, _test: true } },
+        }),
+      );
       if (error) {
         setWebhookTestResult({ ok: false, status: 0 });
         toast({ title: 'Erro', description: 'Falha ao testar webhook.', variant: 'destructive' });
@@ -207,8 +235,9 @@ export default function FormShare({ form, onUpdate }: Props) {
     } catch (err: any) {
       setWebhookTestResult({ ok: false, status: 0 });
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setWebhookTesting(false);
     }
-    setWebhookTesting(false);
   }, [webhookDraftUrl, examplePayload, onUpdate, toast]);
 
   const handleDisconnectWebhook = useCallback(() => {
@@ -336,14 +365,9 @@ export default function FormShare({ form, onUpdate }: Props) {
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <CopyField label="Link" value={previewUrl} />
-            <Button variant="outline" size="sm" asChild>
-              <a href={`${previewUrl}?editorPreview=1`} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Testar em nova aba
-              </a>
-            </Button>
-            <p className="text-[11px] text-muted-foreground">
-              O link de teste não dispara WhatsApp, e-mails, webhooks nem salva respostas.
-            </p>
+            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+              Para simular sem salvar respostas ou disparar integrações, feche esta janela e use o botão <strong className="text-foreground">Preview</strong> no topo do editor.
+            </div>
           </div>
         </DialogContent>
       </Dialog>

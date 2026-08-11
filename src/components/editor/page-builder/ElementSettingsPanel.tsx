@@ -9,10 +9,24 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { X, Plus, Trash2, Star, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Trash2,
+  Star,
+  ChevronDown,
+  BookOpenText,
+  SlidersHorizontal,
+  Palette,
+  Move,
+  Wrench,
+  RotateCcw,
+} from 'lucide-react';
+import { RATING_STYLE_COLORS } from '@/lib/ratingStyle';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
 import RichTextEditor from './RichTextEditor';
+import DateFieldRulesEditor from './DateFieldRulesEditor';
 import {
   ColorPickerField,
   TypographySelector,
@@ -38,26 +52,66 @@ interface Props {
 
 const isFormField = (type: string) => type.startsWith('input_');
 
+const TEXT_APPEARANCE_TYPES = new Set<PageElement['type']>([
+  'heading',
+  'text',
+  'rich_text',
+  'button',
+]);
+
+const hasTextAppearance = (element: PageElement) =>
+  isFormField(element.type) || TEXT_APPEARANCE_TYPES.has(element.type);
+
+const hasBehaviorSettings = (element: PageElement) =>
+  isFormField(element.type)
+  || element.type === 'button'
+  || element.type === 'loading';
+
 export default function ElementSettingsPanel({ element, onChange, onClose, pages, variables = [], integrationNodes, allInputElements, trackedParams }: Props) {
   const varProps = { variables, integrationNodes, allInputElements, trackedParams };
-  const [openSections, setOpenSections] = useState({ content: true, appearance: false, exterior: false });
+  const [openSections, setOpenSections] = useState({
+    content: true,
+    behavior: false,
+    appearance: false,
+    spacing: false,
+    advanced: false,
+  });
 
   const toggleSection = (key: keyof typeof openSections) =>
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const SectionHeader = ({ sectionKey, label }: { sectionKey: keyof typeof openSections; label: string }) => (
+  const SectionHeader = ({
+    sectionKey,
+    label,
+    description,
+    icon: Icon,
+  }: {
+    sectionKey: keyof typeof openSections;
+    label: string;
+    description: string;
+    icon: React.ElementType;
+  }) => (
     <button
       type="button"
       onClick={() => toggleSection(sectionKey)}
-      className="w-full flex items-center gap-2 py-2 px-1 text-left group"
+      className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all ${
+        openSections[sectionKey]
+          ? 'border-primary/20 bg-primary/[0.045] shadow-sm'
+          : 'border-transparent hover:border-border hover:bg-muted/45'
+      }`}
+      aria-expanded={openSections[sectionKey]}
+      data-settings-section={sectionKey}
     >
-      {openSections[sectionKey]
-        ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-        : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-      }
-      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors flex-1">
-        {label}
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+        openSections[sectionKey] ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+      }`}>
+        <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-semibold text-foreground">{label}</span>
+        <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">{description}</span>
+      </span>
+      <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${openSections[sectionKey] ? 'rotate-180' : ''}`} />
     </button>
   );
 
@@ -97,24 +151,30 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
 
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <h3 className="text-sm font-semibold">{PAGE_ELEMENT_LABELS[element.type]}</h3>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+    <div className="flex h-full min-w-0 max-w-full flex-col overflow-hidden bg-background">
+      <div className="flex items-center justify-between border-b border-border bg-card/70 px-4 py-3.5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Editar elemento</p>
+          <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">{PAGE_ELEMENT_LABELS[element.type]}</h3>
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onClose} aria-label="Fechar configurações do elemento">
           <X className="h-4 w-4" />
         </Button>
       </div>
 
       {/* ═══ Collapsible sections (replaces tabs) ═══ */}
 
-      <ScrollArea className="flex-1">
-        <div className="px-4 py-2">
+      <ScrollArea className="min-w-0 flex-1">
+        <div className="w-full min-w-0 max-w-full space-y-2 overflow-x-hidden p-3">
 
           {/* ══ CONTEÚDO ══ */}
-          <div className="border-b border-border/50">
-            <SectionHeader sectionKey="content" label="Conteúdo" />
-          </div>
-          {openSections.content && (<div className="space-y-4 pt-2 pb-4">
+          <SectionHeader
+            sectionKey="content"
+            label="Conteúdo"
+            description="Textos, opções e dados exibidos"
+            icon={BookOpenText}
+          />
+          {openSections.content && (<div className="mx-1 space-y-4 rounded-xl border border-border/60 bg-card px-3 py-4 shadow-sm">
           {/* ─── Form field: label (enunciado) ─── */}
           {isFormField(element.type) && (
 
@@ -255,150 +315,26 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 </Select>
               </div>
               {(element.dateMode || 'date') !== 'time' && (
-                <div className="space-y-2">
-                  <Label>Formato da data</Label>
-                  <Select
-                    value={element.dateFormat || 'dd/MM/yyyy'}
-                    onValueChange={v => onChange({ dateFormat: v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dd/MM/yyyy">DD/MM/AAAA</SelectItem>
-                      <SelectItem value="MM/dd/yyyy">MM/DD/AAAA</SelectItem>
-                      <SelectItem value="yyyy-MM-dd">AAAA-MM-DD</SelectItem>
-                      <SelectItem value="dd 'de' MMMM 'de' yyyy">Extenso (01 de Janeiro de 2025)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label>Formato da data</Label>
+                    <Select
+                      value={element.dateFormat || 'dd/MM/yyyy'}
+                      onValueChange={v => onChange({ dateFormat: v })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dd/MM/yyyy">DD/MM/AAAA</SelectItem>
+                        <SelectItem value="MM/dd/yyyy">MM/DD/AAAA</SelectItem>
+                        <SelectItem value="yyyy-MM-dd">AAAA-MM-DD</SelectItem>
+                        <SelectItem value="dd 'de' MMMM 'de' yyyy">Extenso (01 de Janeiro de 2025)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DateFieldRulesEditor element={element} onChange={onChange} />
+                </>
               )}
             </>
-          )}
-
-          {isFormField(element.type) && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Obrigatório</Label>
-                <Switch
-                  checked={element.required || false}
-                  onCheckedChange={v => onChange({ required: v })}
-                />
-              </div>
-              {element.required && (
-                <Input
-                  value={element.requiredMessage || ''}
-                  onChange={e => onChange({ requiredMessage: e.target.value })}
-                  placeholder="Preencha este campo"
-                  className="text-xs"
-                />
-              )}
-              {element.type === 'input_email' && element.smartValidation && (
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground/70">Msg erro de validação</Label>
-                  <Input
-                    value={element.validationMessage || ''}
-                    onChange={e => onChange({ validationMessage: e.target.value })}
-                    placeholder="E-mail inválido"
-                    className="text-xs"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ─── Form field: fieldName (ID para webhooks) ─── */}
-          {isFormField(element.type) && (
-            <div className="space-y-2">
-              <Label>
-                Nome do campo{' '}
-                <span className="text-muted-foreground font-normal">(ID)</span>
-              </Label>
-              <Input
-                value={element.fieldName || ''}
-                onChange={e => onChange({ fieldName: e.target.value.replace(/\s+/g, '_').toLowerCase() || undefined })}
-                placeholder={element.id.slice(0, 8) + '…'}
-                className="font-mono text-xs"
-              />
-              <p className="text-xs text-muted-foreground">
-                Chave usada nos webhooks e integrações. Use letras, números e <code className="bg-muted px-0.5 rounded">_</code>. Ex: <code className="bg-muted px-0.5 rounded">email_principal</code>
-              </p>
-            </div>
-          )}
-
-          {/* ─── Form field: variable binding ─── */}
-          {isFormField(element.type) && variables.length > 0 && (
-            <div className="space-y-2">
-              <Label>Salvar em variável</Label>
-              <Select
-                value={element.variableId || '_none_'}
-                onValueChange={v => onChange({ variableId: v === '_none_' ? undefined : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Nenhuma" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none_">Nenhuma</SelectItem>
-                  {variables.map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                A resposta deste campo será armazenada na variável selecionada
-              </p>
-            </div>
-          )}
-
-          {/* ─── Form field: default value ─── */}
-          {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating', 'input_nps'].includes(element.type) && (
-            <div className="space-y-2">
-              <Label>Valor pré-definido</Label>
-              <VariableInput
-                value={String(element.defaultValue ?? '')}
-                onChange={v => onChange({ defaultValue: v || undefined })}
-                placeholder="Deixe vazio para não preencher"
-                {...varProps}
-              />
-              <p className="text-xs text-muted-foreground">
-                Valor que aparecerá preenchido ao abrir o formulário. Use <code className="bg-muted px-0.5 rounded font-mono text-[10px]">{`{{variavel}}`}</code> para preencher dinamicamente.
-              </p>
-            </div>
-          )}
-          {element.type === 'input_checkbox' && (
-            <div className="flex items-center justify-between">
-              <Label>Pré-marcado</Label>
-              <Switch
-                checked={element.defaultValue === true}
-                onCheckedChange={v => onChange({ defaultValue: v || undefined })}
-              />
-            </div>
-          )}
-          {(element.type === 'input_rating' || element.type === 'input_nps') && (
-            <div className="space-y-2">
-              <Label>Avaliação pré-definida</Label>
-              <Input
-                type="number"
-                value={element.defaultValue ?? ''}
-                onChange={e => onChange({ defaultValue: e.target.value ? Number(e.target.value) : undefined })}
-                placeholder="0"
-                min={0}
-                max={element.maxRating || 5}
-              />
-            </div>
-          )}
-
-          {element.type === 'input_email' && (
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Validação inteligente</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Verifica em tempo real se o e-mail é válido e pode receber mensagens
-                </p>
-              </div>
-              <Switch
-                checked={element.smartValidation || false}
-                onCheckedChange={v => onChange({ smartValidation: v, ...(v ? { required: true } : {}) })}
-              />
-            </div>
           )}
 
           {/* ─── Phone: default DDI ─── */}
@@ -605,14 +541,21 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
             <>
               <div className="space-y-2">
                 <Label>Estilo</Label>
-                <Select value={element.ratingStyle || 'star'} onValueChange={v => onChange({ ratingStyle: v as any })}>
+                <Select
+                  value={element.ratingStyle || 'star'}
+                  onValueChange={v => onChange({
+                    ratingStyle: v as any,
+                    ratingActiveColor: RATING_STYLE_COLORS[v as keyof typeof RATING_STYLE_COLORS],
+                    ratingColorCustomized: false,
+                  })}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="star">⭐ Estrelas</SelectItem>
-                    <SelectItem value="heart">❤️ Corações</SelectItem>
-                    <SelectItem value="thumbsUp">👍 Curtidas</SelectItem>
-                    <SelectItem value="emoji">😀 Emoji personalizado</SelectItem>
-                    <SelectItem value="numeric">🔢 Numérico</SelectItem>
+                    <SelectItem value="star">Ícone de estrela</SelectItem>
+                    <SelectItem value="heart">Ícone de coração</SelectItem>
+                    <SelectItem value="thumbsUp">Ícone de curtida</SelectItem>
+                    <SelectItem value="emoji">Emoji personalizado</SelectItem>
+                    <SelectItem value="numeric">Numérico</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -739,31 +682,6 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 <Label>Texto</Label>
                 <Input value={element.loadingLabel || ''} onChange={e => onChange({ loadingLabel: e.target.value })} placeholder="Carregando..." />
               </div>
-              <div className="space-y-2">
-                <Label>Ação ao completar</Label>
-                <Select value={element.loadingAction || 'none'} onValueChange={v => onChange({ loadingAction: v as any })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    <SelectItem value="next">Próxima página</SelectItem>
-                    <SelectItem value="specific">Página específica</SelectItem>
-                    <SelectItem value="finish">Concluir / Enviar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {element.loadingAction === 'specific' && pages && pages.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Página destino</Label>
-                  <Select value={element.loadingTargetPageId || ''} onValueChange={v => onChange({ loadingTargetPageId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {pages.map((p, i) => (
-                        <SelectItem key={p.id} value={p.id}>{p.title || `Página ${i + 1}`}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               {element.loadingStyle === 'circular' && (
                 <>
                   <div className="space-y-2">
@@ -964,56 +882,6 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 placeholder="https://youtube.com/..."
               />
             </div>
-          )}
-
-          {/* Button action */}
-          {element.type === 'button' && (
-            <>
-              <div className="space-y-2">
-                <Label>Ação do botão</Label>
-                <Select
-                  value={element.buttonAction || 'none'}
-                  onValueChange={v => onChange({ buttonAction: v as any })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    <SelectItem value="next">Próxima página</SelectItem>
-                    <SelectItem value="previous">Página anterior</SelectItem>
-                    <SelectItem value="specific">Página específica</SelectItem>
-                    <SelectItem value="finish">Concluir / Enviar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {element.buttonAction === 'specific' && pages && pages.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Página destino</Label>
-                  <Select
-                    value={element.buttonTargetPageId || ''}
-                    onValueChange={v => onChange({ buttonTargetPageId: v })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {pages.map((p, i) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.title || `Página ${i + 1}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Link externo (opcional)</Label>
-                <Input
-                  value={element.href || ''}
-                  onChange={e => onChange({ href: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
-            </>
           )}
 
           {/* Spacer height */}
@@ -2351,35 +2219,238 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
 
           </div>)}
 
+          {/* ══ COMPORTAMENTO ══ */}
+          {hasBehaviorSettings(element) && (
+            <>
+              <SectionHeader
+                sectionKey="behavior"
+                label="Comportamento"
+                description="Validação, valores iniciais e ações"
+                icon={SlidersHorizontal}
+              />
+              {openSections.behavior && (
+                <div className="mx-1 space-y-4 rounded-xl border border-border/60 bg-card px-3 py-4 shadow-sm">
+                  {isFormField(element.type) && (
+                    <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <Label>Resposta obrigatória</Label>
+                          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                            Impede o avanço enquanto este campo não estiver preenchido corretamente.
+                          </p>
+                        </div>
+                        <Switch
+                          className="shrink-0"
+                          checked={element.required || false}
+                          onCheckedChange={v => onChange({ required: v })}
+                          aria-label="Tornar resposta obrigatória"
+                        />
+                      </div>
+                      {element.required && (
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] text-muted-foreground">Mensagem quando estiver vazio</Label>
+                          <Input
+                            value={element.requiredMessage || ''}
+                            onChange={e => onChange({ requiredMessage: e.target.value })}
+                            placeholder="Preencha este campo para continuar"
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating', 'input_nps'].includes(element.type) && (
+                    <div className="space-y-2">
+                      <Label>Valor inicial</Label>
+                      <VariableInput
+                        value={String(element.defaultValue ?? '')}
+                        onChange={v => onChange({ defaultValue: v || undefined })}
+                        placeholder="Deixe vazio para iniciar sem resposta"
+                        {...varProps}
+                      />
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        Preenche o campo ao abrir. Você pode usar <code className="rounded bg-muted px-1 font-mono text-[10px]">{`{{variavel}}`}</code>.
+                      </p>
+                    </div>
+                  )}
+
+                  {element.type === 'input_checkbox' && (
+                      <div className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-border/60 p-3">
+                      <div className="min-w-0 flex-1">
+                        <Label>Iniciar marcado</Label>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">O checkbox já aparece selecionado para o respondente.</p>
+                      </div>
+                      <Switch
+                        checked={element.defaultValue === true}
+                        onCheckedChange={v => onChange({ defaultValue: v || undefined })}
+                        aria-label="Iniciar checkbox marcado"
+                      />
+                    </div>
+                  )}
+
+                  {(element.type === 'input_rating' || element.type === 'input_nps') && (
+                    <div className="space-y-2">
+                      <Label>Nota inicial</Label>
+                      <Input
+                        type="number"
+                        value={element.defaultValue ?? ''}
+                        onChange={e => onChange({ defaultValue: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="Sem nota inicial"
+                        min={0}
+                        max={element.maxRating || 5}
+                      />
+                    </div>
+                  )}
+
+                  {element.type === 'input_email' && (
+                    <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <Label>Validar se o e-mail existe</Label>
+                          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                            Confere o formato e se o endereço pode receber mensagens. Ao ativar, o campo se torna obrigatório.
+                          </p>
+                        </div>
+                        <Switch
+                          className="shrink-0"
+                          checked={element.smartValidation || false}
+                          onCheckedChange={v => onChange({ smartValidation: v, ...(v ? { required: true } : {}) })}
+                          aria-label="Ativar validação inteligente de e-mail"
+                        />
+                      </div>
+                      {element.smartValidation && (
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] text-muted-foreground">Mensagem quando o e-mail for inválido</Label>
+                          <Input
+                            value={element.validationMessage || ''}
+                            onChange={e => onChange({ validationMessage: e.target.value })}
+                            placeholder="Informe um e-mail válido"
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {element.type === 'button' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Ao clicar no botão</Label>
+                        <Select
+                          value={element.buttonAction || 'none'}
+                          onValueChange={v => onChange({ buttonAction: v as any })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Não fazer nada</SelectItem>
+                            <SelectItem value="next">Ir para a próxima página</SelectItem>
+                            <SelectItem value="previous">Voltar para a página anterior</SelectItem>
+                            <SelectItem value="specific">Ir para uma página específica</SelectItem>
+                            <SelectItem value="finish">Concluir e enviar o formulário</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {element.buttonAction === 'specific' && pages && pages.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Página de destino</Label>
+                          <Select value={element.buttonTargetPageId || ''} onValueChange={v => onChange({ buttonTargetPageId: v })}>
+                            <SelectTrigger><SelectValue placeholder="Escolha uma página" /></SelectTrigger>
+                            <SelectContent>
+                              {pages.map((p, i) => (
+                                <SelectItem key={p.id} value={p.id}>{p.title || `Página ${i + 1}`}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <Label>Link seguro (opcional)</Label>
+                        <VariableInput
+                          value={element.href || ''}
+                          onChange={href => onChange({ href })}
+                          placeholder="https://exemplo.com ou /caminho"
+                          {...varProps}
+                        />
+                        <p className="text-[11px] text-muted-foreground">HTTPS ou caminho interno; insira campos e variáveis pelo botão {'{ }'}.</p>
+                      </div>
+                    </>
+                  )}
+
+                  {element.type === 'loading' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Quando o carregamento terminar</Label>
+                        <Select value={element.loadingAction || 'none'} onValueChange={v => onChange({ loadingAction: v as any })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Não fazer nada</SelectItem>
+                            <SelectItem value="next">Ir para a próxima página</SelectItem>
+                            <SelectItem value="specific">Ir para uma página específica</SelectItem>
+                            <SelectItem value="finish">Concluir e enviar o formulário</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {element.loadingAction === 'specific' && pages && pages.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Página de destino</Label>
+                          <Select value={element.loadingTargetPageId || ''} onValueChange={v => onChange({ loadingTargetPageId: v })}>
+                            <SelectTrigger><SelectValue placeholder="Escolha uma página" /></SelectTrigger>
+                            <SelectContent>
+                              {pages.map((p, i) => (
+                                <SelectItem key={p.id} value={p.id}>{p.title || `Página ${i + 1}`}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
           {/* ══ APARÊNCIA ══ */}
-          <div className="border-b border-border/50">
-            <SectionHeader sectionKey="appearance" label="Aparência" />
-          </div>
+          <SectionHeader
+            sectionKey="appearance"
+            label="Aparência"
+            description="Cores e tipografia deste elemento"
+            icon={Palette}
+          />
           {openSections.appearance && (
-            <div className="space-y-4">
-              {!['divider', 'spacer', 'columns'].includes(element.type) && (
+            <div className="mx-1 space-y-4 rounded-xl border border-border/60 bg-card px-3 py-4 shadow-sm">
+              {hasTextAppearance(element) && (
                 <AlignmentSelector
                   value={element.style?.textAlign as any}
                   onChange={v => updateStyle({ textAlign: v })}
                 />
               )}
 
+              {hasTextAppearance(element) && (
+                <>
+                  <div className="space-y-2">
+                    <ColorPickerField
+                      label="Cor do texto"
+                      value={element.style?.color || ''}
+                      onChange={v => updateStyle({ color: v || undefined })}
+                      placeholder="Herdar cor do formulário"
+                      defaultColor="#0A0A0A"
+                    />
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      Sem uma cor local, este elemento acompanha automaticamente o tema do formulário.
+                    </p>
+                  </div>
 
-
-              <ColorPickerField
-                label="Cor do texto"
-                value={element.style?.color || ''}
-                onChange={v => updateStyle({ color: v || undefined })}
-                placeholder="Padrão"
-                defaultColor="#000000"
-              />
-
-              <TypographySelector
-                fontFamily={element.style?.fontFamily}
-                fontWeight={element.style?.fontWeight}
-                onFontFamilyChange={v => updateStyle({ fontFamily: v })}
-                onFontWeightChange={v => updateStyle({ fontWeight: v })}
-              />
+                  <TypographySelector
+                    fontFamily={element.style?.fontFamily}
+                    fontWeight={element.style?.fontWeight}
+                    onFontFamilyChange={v => updateStyle({ fontFamily: v })}
+                    onFontWeightChange={v => updateStyle({ fontWeight: v })}
+                    helpText="Deixe como herdar para acompanhar as configurações gerais do formulário."
+                  />
+                </>
+              )}
 
               {/* Rating/NPS colors */}
               {(element.type === 'input_rating') && (
@@ -2389,7 +2460,7 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     <ColorPickerField
                       label="Ativo"
                       value={element.ratingActiveColor || '#facc15'}
-                      onChange={v => onChange({ ratingActiveColor: v })}
+                      onChange={v => onChange({ ratingActiveColor: v, ratingColorCustomized: true })}
                       allowTransparent={false}
                     />
                     <ColorPickerField
@@ -2697,39 +2768,50 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                   </div>
                 </div>
               )}
+
+              <div className="space-y-4 border-t border-border/60 pt-4">
+                <div>
+                  <Label className="text-xs">Superfície do bloco</Label>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                    Fundo, borda e sombra aplicados ao contêiner completo deste elemento.
+                  </p>
+                </div>
+                <ColorPickerField
+                  label="Cor de fundo do bloco"
+                  value={element.style?.backgroundColor || ''}
+                  onChange={v => updateStyle({ backgroundColor: v || undefined })}
+                  placeholder="Transparente"
+                  defaultColor="#ffffff"
+                />
+                <BorderSettings
+                  borderWidth={element.style?.borderWidth}
+                  borderStyle={element.style?.borderStyle}
+                  borderColor={element.style?.borderColor}
+                  borderRadius={element.style?.borderRadius}
+                  onChange={updateStyle}
+                />
+                <ShadowSelector
+                  value={element.style?.boxShadow}
+                  onChange={v => updateStyle({ boxShadow: v })}
+                  label="Sombra do bloco"
+                />
+              </div>
             </div>
           )}
 
-          {/* ══ EXTERIOR ══ */}
-          <div className="border-b border-border/50">
-            <SectionHeader sectionKey="exterior" label="Exterior" />
-          </div>
-          {openSections.exterior && (
-            <div className="space-y-4 pt-2 pb-4">
-              <ColorPickerField
-                label="Cor do fundo"
-                value={element.style?.backgroundColor || ''}
-                onChange={v => updateStyle({ backgroundColor: v || undefined })}
-                placeholder="Transparente"
-                defaultColor="#ffffff"
-              />
-
-              <BorderSettings
-                borderWidth={element.style?.borderWidth}
-                borderStyle={element.style?.borderStyle}
-                borderColor={element.style?.borderColor}
-                borderRadius={element.style?.borderRadius}
-                onChange={updateStyle}
-              />
-
-              <ShadowSelector
-                value={element.style?.boxShadow}
-                onChange={v => updateStyle({ boxShadow: v })}
-              />
-
+          {/* ══ ESPAÇAMENTO E POSIÇÃO ══ */}
+          <SectionHeader
+            sectionKey="spacing"
+            label="Espaçamento e posição"
+            description="Respiro interno, externo e largura"
+            icon={Move}
+          />
+          {openSections.spacing && (
+            <div className="mx-1 space-y-5 rounded-xl border border-border/60 bg-card px-3 py-4 shadow-sm">
               <SpacingControl
+                key={`${element.id}-padding`}
                 property="padding"
-                label="Padding"
+                label="Espaço interno"
                 value={element.style?.padding}
                 sides={{
                   top: element.style?.paddingTop,
@@ -2741,8 +2823,9 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
               />
 
               <SpacingControl
+                key={`${element.id}-margin`}
                 property="margin"
-                label="Margem"
+                label="Espaço externo"
                 value={element.style?.margin}
                 sides={{
                   top: element.style?.marginTop,
@@ -2753,12 +2836,83 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 onChange={updateStyle}
               />
 
-              {['button', 'image', 'divider'].includes(element.type) && (
+              <div className="space-y-2 border-t border-border/60 pt-4">
                 <WidthSelector
                   value={element.style?.width}
                   onChange={v => updateStyle({ width: v })}
+                  label="Largura do bloco"
                 />
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Controla quanto da linha este elemento ocupa. O conteúdo interno continua responsivo.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ══ AVANÇADO ══ */}
+          <SectionHeader
+            sectionKey="advanced"
+            label="Avançado"
+            description={isFormField(element.type) ? 'Identificador, variáveis e restauração' : 'Restauração das personalizações locais'}
+            icon={Wrench}
+          />
+          {openSections.advanced && (
+            <div className="mx-1 space-y-4 rounded-xl border border-border/60 bg-card px-3 py-4 shadow-sm">
+              {isFormField(element.type) && (
+                <div className="space-y-2">
+                  <Label>
+                    Identificador do campo{' '}
+                    <span className="font-normal text-muted-foreground">(ID)</span>
+                  </Label>
+                  <Input
+                    value={element.fieldName || ''}
+                    onChange={e => onChange({ fieldName: e.target.value.replace(/\s+/g, '_').toLowerCase() || undefined })}
+                    placeholder={element.id.slice(0, 8) + '…'}
+                    className="h-9 font-mono text-xs"
+                  />
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Chave técnica usada em webhooks e integrações. Exemplo: <code className="rounded bg-muted px-1 font-mono text-[10px]">email_principal</code>.
+                  </p>
+                </div>
               )}
+
+              {isFormField(element.type) && variables.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Guardar resposta em uma variável</Label>
+                  <Select
+                    value={element.variableId || '_none_'}
+                    onValueChange={v => onChange({ variableId: v === '_none_' ? undefined : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Nenhuma variável" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none_">Não guardar em variável</SelectItem>
+                      {variables.map(v => (
+                        <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    A resposta continuará salva normalmente; esta opção também a disponibiliza no workflow.
+                  </p>
+                </div>
+              )}
+
+              <div className="border-t border-border/60 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 text-xs"
+                  onClick={() => onChange({ style: undefined })}
+                  disabled={!element.style || Object.keys(element.style).length === 0}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Restaurar aparência e espaçamento
+                </Button>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  Remove somente as personalizações locais e volta a herdar o tema do formulário.
+                </p>
+              </div>
             </div>
           )}
 

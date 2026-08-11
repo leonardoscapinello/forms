@@ -1,6 +1,6 @@
 import { PageElement } from '@/types/pageElements';
 import type { FormStyle, FormVariable } from '@/types/form';
-import { ImageIcon, VideoIcon, Star, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon, Bell } from 'lucide-react';
+import { ImageIcon, VideoIcon, Star, Heart, ThumbsUp, Check, Info, CheckCircle2, AlertTriangle, XCircle, Calendar as CalendarIcon, Bell } from 'lucide-react';
 import HeightWeightField from '@/components/preview/HeightWeightField';
 import Twemoji from '@/components/Twemoji';
 import { ArgumentsPreview, TestimonialsPreview, FAQPreview, PricingPreview, BeforeAfterPreview, CarouselPreview } from './SectionPreviews';
@@ -14,6 +14,8 @@ import ListPreview from '@/components/preview/ListPreview';
 import LoadingPreview from '@/components/preview/LoadingPreview';
 import { normalizeFontFamily } from '@/lib/fontUtils';
 import { sanitizeRichTextHtml } from '@/lib/sanitize';
+import { normalizeVideoEmbedUrl } from '@/lib/embedUrl';
+import { ratingGlow, resolveRatingActiveColor } from '@/lib/ratingStyle';
 import { VariableHighlightOverlay, type ElementLookup } from '@/components/editor/shared/VariableHighlightOverlay';
 
 import { Button } from '@/components/ui/button';
@@ -52,7 +54,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
   };
 
   const renderRichTextWithReadableTokens = (html: string | undefined) => {
-    if (!html || !html.includes('{{')) return html || '';
+    if (!html || !html.includes('{{')) return sanitizeRichTextHtml(html || '');
 
     const escapeHtml = (value: string) => value
       .replace(/&/g, '&amp;')
@@ -123,6 +125,10 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       boxStyle.backgroundColor = style.backgroundColor;
     }
   }
+  if (style?.color) boxStyle.color = style.color;
+  if (style?.textAlign) boxStyle.textAlign = style.textAlign;
+  if (style?.fontFamily) boxStyle.fontFamily = normalizeFontFamily(style.fontFamily);
+  if (style?.fontWeight) boxStyle.fontWeight = style.fontWeight;
   if (style?.borderRadius !== undefined) boxStyle.borderRadius = style.borderRadius;
   if (style?.borderWidth) {
     boxStyle.borderWidth = style.borderWidth;
@@ -164,13 +170,31 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
       <div className="flex items-start gap-1.5 md:gap-3">
         <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit', fontFamily: headingFontFamily }}>{stepNumber ?? '?'}</span>
         <span className="text-base md:text-xl lg:text-2xl font-semibold mt-0.5" style={{ color: 'inherit', fontFamily: headingFontFamily }}>→</span>
-        <div>
-          <h2 className="text-base md:text-xl lg:text-2xl font-semibold text-foreground leading-snug" style={{ fontFamily: headingFontFamily }}>
+        <div className="min-w-0 flex-1">
+          <h2
+            className="text-base md:text-xl lg:text-2xl font-semibold leading-snug"
+            style={{
+              color: style?.color || formStyle?.questionTitleColor || undefined,
+              fontFamily: headingFontFamily,
+              fontWeight: style?.fontWeight || formStyle?.questionTitleWeight || undefined,
+              textAlign: style?.textAlign || undefined,
+            }}
+          >
             {renderVarContent(element.label, 'Sem título')}
             {element.required && <span className="text-destructive ml-1">*</span>}
           </h2>
           {element.description && (
-            <div className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2" style={{ fontFamily: bodyFontFamily }}>{renderVarContent(element.description, '')}</div>
+            <div
+              className="text-sm md:text-base text-muted-foreground mt-1 md:mt-2"
+              style={{
+                color: style?.color || formStyle?.questionDescColor || undefined,
+                fontFamily: bodyFontFamily,
+                fontWeight: style?.fontWeight || formStyle?.questionDescWeight || undefined,
+                textAlign: style?.textAlign || undefined,
+              }}
+            >
+              {renderVarContent(element.description, '')}
+            </div>
           )}
         </div>
       </div>
@@ -264,10 +288,18 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
     case 'divider':
       return <hr className="border-border" style={{ borderWidth: element.height || 1 }} />;
 
-    case 'video':
-      return element.src ? (
+    case 'video': {
+      const embedUrl = normalizeVideoEmbedUrl(element.src);
+      return embedUrl ? (
         <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-          <iframe src={element.src} className="w-full h-full" allowFullScreen title="Video" />
+          <iframe
+            src={embedUrl}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            title="Vídeo"
+          />
         </div>
       ) : (
         <div className="p-6 border-2 border-dashed border-border rounded-lg flex flex-col items-center gap-2 text-muted-foreground">
@@ -275,6 +307,7 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
           <span className="text-sm">Cole a URL do vídeo</span>
         </div>
       );
+    }
 
     case 'spacer':
       return (
@@ -440,7 +473,11 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
     case 'input_rating': {
       const max = element.maxRating || 5;
       const style = element.ratingStyle || 'star';
-      const activeColor = element.ratingActiveColor || '#facc15';
+      const activeColor = resolveRatingActiveColor(
+        style,
+        element.ratingActiveColor,
+        element.ratingColorCustomized,
+      );
       const inactiveColor = element.ratingInactiveColor || '#d1d5db';
       if (style === 'numeric') {
         return withFieldHeader(
@@ -451,12 +488,27 @@ export default function ElementPreview({ element, stepNumber, formStyle, element
           </div>
         );
       }
-      const iconMap: Record<string, string> = { star: '⭐', heart: '❤️', thumbsUp: '👍', emoji: element.ratingEmoji || '⭐' };
-      const emoji = iconMap[style] || '⭐';
+      const RatingIcon = style === 'heart' ? Heart : style === 'thumbsUp' ? ThumbsUp : Star;
+      const customEmoji = element.ratingEmoji || '⭐';
       return withFieldHeader(
         <div className="flex gap-2">
           {Array.from({ length: max }).map((_, i) => (
-            <span key={i} className="text-2xl opacity-30">{emoji}</span>
+            <span
+              key={i}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ backgroundColor: style === 'emoji' ? 'transparent' : `${activeColor}12` }}
+            >
+              {style === 'emoji' ? (
+                <Twemoji className="text-2xl">{customEmoji}</Twemoji>
+              ) : (
+                <RatingIcon
+                  className="h-7 w-7"
+                  strokeWidth={2}
+                  fill="currentColor"
+                  style={{ color: activeColor, filter: ratingGlow(activeColor) }}
+                />
+              )}
+            </span>
           ))}
         </div>
       );

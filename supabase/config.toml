@@ -1,5 +1,30 @@
 project_id = "gxotayvavefhlcvbuczq"
 
+[auth]
+site_url = "https://forms-olive-three.vercel.app"
+additional_redirect_urls = [
+  "https://forms-olive-three.vercel.app/reset-password",
+  "http://127.0.0.1:8080/reset-password",
+  "http://localhost:8080/reset-password",
+]
+minimum_password_length = 12
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+max_frequency = "1m"
+otp_length = 8
+otp_expiry = 3600
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [functions.minio-test]
 verify_jwt = true
 
@@ -21,7 +46,15 @@ verify_jwt = false
 [functions.pixel-event]
 verify_jwt = false
 
+[functions.workflow-path-checkpoint]
+verify_jwt = false
+
 [functions.form-public-save]
+verify_jwt = false
+
+# Invoked only by an internal cron/service-role request. JWT verification is
+# performed inside the function so Vault can use a dedicated rotating secret.
+[functions.form-response-delivery-worker]
 verify_jwt = false
 
 [functions.google-oauth-start]
@@ -61,4 +94,10 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.execute-workflow]
+verify_jwt = false
+
+[functions.integration-settings]
+verify_jwt = true
+
+[functions.form-public-metadata]
 verify_jwt = false

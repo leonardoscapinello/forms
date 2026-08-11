@@ -1,5 +1,5 @@
 import FlowCanvas from '@/components/editor/FlowCanvas';
-import { useEditorForm } from '@/hooks/useEditorForm';
+import { useEditorForm } from '@/hooks/editorFormContext';
 
 export default function EditorWorkflow() {
   const ctx = useEditorForm();

@@ -1,13 +1,29 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { FormData, DEFAULT_FORM_STYLE, createDefaultFunnelPage } from '@/types/form';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import type { Json } from '@/integrations/supabase/types';
+import { useAuth } from './authContext';
 import { useNetworkStatus } from './useNetworkStatus';
 import { toast } from 'sonner';
 import React from 'react';
+import { FormStoreContext, type FormHomeSummary, type FormSaveStatus } from './formStoreContext';
+import { hasSingleIdAck } from '@/lib/databaseAck';
+import {
+  advanceNewerFormAutosaveRevision,
+  hasFormAutosaveAck,
+  PerFormSaveQueue,
+  persistFormAutosaveEntry,
+  readFormAutosaveEntries,
+  readFormAutosaveEntry,
+  removeAllFormAutosaveEntries,
+  removeConfirmedFormAutosaveRevision,
+  type AutosaveStorage,
+  type FormAutosaveJournalEntry,
+} from '@/lib/formAutosaveJournal';
+
+export { useFormStore, useFormStoreSafe } from './formStoreContext';
 
 const DEBOUNCE_MS = 1000;
-const OFFLINE_STORAGE_KEY = 'formstore_offline_queue';
 
 interface DbForm {
   id: string;
@@ -44,28 +60,34 @@ function formToDb(form: FormData, userId: string) {
   };
 }
 
-interface FormStoreContextType {
-  forms: FormData[];
-  loaded: boolean;
-  createForm: (folderId?: string | null) => Promise<FormData | null>;
-  updateForm: (id: string, patch: Partial<FormData>) => void;
-  deleteForm: (id: string) => Promise<void>;
-  getForm: (id: string) => FormData | undefined;
-  getSaveStatus: (id: string) => 'saved' | 'saving' | 'idle';
-  getLastSavedAt: (id: string) => string | null;
-  moveFormToFolder: (formId: string, folderId: string | null) => Promise<void>;
+function getPersistentAutosaveStorage(): AutosaveStorage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
-const FormStoreContext = createContext<FormStoreContextType | null>(null);
+function createAutosaveRevision(): string {
+  return `${Date.now()}-${crypto.randomUUID()}`;
+}
 
 export function FormStoreProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const online = useNetworkStatus();
   const [forms, setForms] = useState<FormData[]>([]);
+  const [homeSummaries, setHomeSummaries] = useState<Record<string, FormHomeSummary>>({});
   const [loaded, setLoaded] = useState(false);
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const [saveStatuses, setSaveStatuses] = useState<Map<string, 'saved' | 'saving' | 'idle'>>(new Map());
+  const [saveStatuses, setSaveStatuses] = useState<Map<string, FormSaveStatus>>(new Map());
   const [lastSavedTimes, setLastSavedTimes] = useState<Map<string, string>>(new Map());
+  const writerIdRef = useRef(crypto.randomUUID());
+  const pendingEntriesRef = useRef<Map<string, FormAutosaveJournalEntry>>(new Map());
+  const conflictedFormsRef = useRef<Set<string>>(new Set());
+  const serverUpdatedAtRef = useRef<Map<string, string>>(new Map());
+  const saveQueueRef = useRef(new PerFormSaveQueue());
+  const recoveredUserRef = useRef<string | null>(null);
   // Keep a ref to latest forms for debounce callbacks
   const formsRef = useRef<FormData[]>(forms);
   formsRef.current = forms;
@@ -75,7 +97,16 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   // Load forms from DB on auth
   useEffect(() => {
     if (!user) {
+      for (const timer of debounceTimers.current.values()) clearTimeout(timer);
+      debounceTimers.current.clear();
+      pendingEntriesRef.current.clear();
+      conflictedFormsRef.current.clear();
+      serverUpdatedAtRef.current.clear();
+      recoveredUserRef.current = null;
       setForms([]);
+      setHomeSummaries({});
+      setSaveStatuses(new Map());
+      setLastSavedTimes(new Map());
       setLoaded(false);
       return;
     }
@@ -99,6 +130,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
 
         const formRows = (formsRes.data || []) as unknown as DbForm[];
         const formIds = formRows.map(r => r.id);
+        serverUpdatedAtRef.current = new Map(formRows.map((row) => [row.id, row.updated_at]));
 
         // Render forms immediately (do not block UI on response count queries)
         const parsed = formRows.map(row => ({
@@ -106,28 +138,32 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
           responseCount: 0,
         }));
         setForms(parsed);
+        setSaveStatuses(new Map(formRows.map((row) => [row.id, 'saved' as const])));
+        setLastSavedTimes(new Map(formRows.map((row) => [row.id, row.updated_at])));
         setLoaded(true);
 
-        // Fetch response counts in background using count-only queries (no row data transferred)
+        // Fetch every lifetime count and seven-day sparkline in one owner-scoped
+        // PostgreSQL aggregation. This avoids N+1 requests and browser row caps.
         if (formIds.length > 0) {
           (async () => {
+            const { data, error } = await supabase.rpc('get_forms_home_summary', { p_days: 7 });
+            if (cancelled) return;
+            if (error) {
+              toast.error('Não foi possível carregar as métricas da página inicial.');
+              return;
+            }
             const countMap: Record<string, number> = {};
-
-            // Use individual count-only queries per form (head:true = no rows transferred)
-            const results = await Promise.all(
-              formIds.map(fid =>
-                supabase.from('form_responses').select('*', { count: 'exact', head: true }).eq('form_id', fid)
-              )
-            );
-
-            if (cancelled) return;
-
-            results.forEach((res, idx) => {
-              countMap[formIds[idx]] = res.count ?? 0;
-            });
-
-            if (cancelled) return;
-
+            const summaries: Record<string, FormHomeSummary> = {};
+            for (const row of data || []) {
+              const responseCount = Number(row.response_count);
+              countMap[row.form_id] = Number.isFinite(responseCount) ? responseCount : 0;
+              summaries[row.form_id] = {
+                bucketDates: Array.isArray(row.bucket_dates) ? row.bucket_dates : [],
+                responses: Array.isArray(row.responses_by_day) ? row.responses_by_day.map(Number) : [],
+                dropoffs: Array.isArray(row.dropoffs_by_day) ? row.dropoffs_by_day.map(Number) : [],
+              };
+            }
+            setHomeSummaries(summaries);
             setForms(prev =>
               prev.map(f => ({
                 ...f,
@@ -135,7 +171,7 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
               }))
             );
           })().catch(() => {
-            // Keep UI usable even if background counts fail
+            toast.error('Não foi possível carregar as métricas da página inicial.');
           });
         }
       } catch (error) {
@@ -165,14 +201,23 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             const row = payload.new as unknown as DbForm;
+            if (pendingEntriesRef.current.has(row.id)
+              || debounceTimers.current.has(row.id)
+              || saveQueueRef.current.hasPending(row.id)) {
+              return;
+            }
+            serverUpdatedAtRef.current.set(row.id, row.updated_at);
+            conflictedFormsRef.current.delete(row.id);
             setForms(prev => {
               const existing = prev.find(f => f.id === row.id);
               if (!existing) return prev;
-              if (debounceTimers.current.has(row.id)) return prev;
-              return prev.map(f => (f.id === row.id ? dbToForm(row) : f));
+              return prev.map(f => (f.id === row.id ? { ...dbToForm(row), responseCount: existing.responseCount } : f));
             });
+            setSaveStatuses(prev => new Map(prev).set(row.id, 'saved'));
+            setLastSavedTimes(prev => new Map(prev).set(row.id, row.updated_at));
           } else if (payload.eventType === 'INSERT') {
             const row = payload.new as unknown as DbForm;
+            serverUpdatedAtRef.current.set(row.id, row.updated_at);
             setForms(prev => {
               if (prev.some(f => f.id === row.id)) return prev;
               return [...prev, dbToForm(row)];
@@ -180,7 +225,15 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
           } else if (payload.eventType === 'DELETE') {
             const oldRow = payload.old as { id?: string };
             if (oldRow.id) {
+              pendingEntriesRef.current.delete(oldRow.id);
+              conflictedFormsRef.current.delete(oldRow.id);
+              serverUpdatedAtRef.current.delete(oldRow.id);
               setForms(prev => prev.filter(f => f.id !== oldRow.id));
+              setHomeSummaries(prev => {
+                const next = { ...prev };
+                delete next[oldRow.id!];
+                return next;
+              });
             }
           }
         }
@@ -190,129 +243,283 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     return () => { channel.unsubscribe(); };
   }, [user]);
 
-  // Save form data to sessionStorage for offline resilience
-  const saveToOfflineQueue = useCallback((id: string) => {
-    try {
-      const form = formsRef.current.find(f => f.id === id);
-      if (!form || !user) return;
-      const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
-      queue[id] = formToDb(form, user.id);
-      sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
-    } catch {
-      // sessionStorage may be unavailable
-    }
-  }, [user]);
-
-  const removeFromOfflineQueue = useCallback((id: string) => {
-    try {
-      const queue: Record<string, unknown> = JSON.parse(sessionStorage.getItem(OFFLINE_STORAGE_KEY) || '{}');
-      delete queue[id];
-      sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
-    } catch {
-      // sessionStorage may be unavailable.
-    }
-  }, []);
-
-  // Flush pending update to DB
-  const flushUpdate = useCallback(async (id: string) => {
+  const flushUpdateNow = useCallback(async (id: string) => {
     if (!user) return;
 
-    const form = formsRef.current.find(f => f.id === id);
-    if (!form) return;
+    const storage = getPersistentAutosaveStorage();
+    const storedEntry = storage
+      ? readFormAutosaveEntry(storage, user.id, id, writerIdRef.current)
+      : null;
+    let entry = pendingEntriesRef.current.get(id) ?? storedEntry;
+    if (storedEntry && (!entry || storedEntry.writtenAt > entry.writtenAt)) {
+      entry = storedEntry;
+      pendingEntriesRef.current.set(id, storedEntry);
+    }
+    if (!entry) return;
+    if (conflictedFormsRef.current.has(id)) {
+      setSaveStatuses(prev => new Map(prev).set(id, 'conflict'));
+      return;
+    }
 
-    // If offline, queue locally instead of hitting DB
+    // The complete snapshot was already persisted synchronously by updateForm.
     if (!onlineRef.current) {
-      saveToOfflineQueue(id);
-      setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
+      const durable = Boolean(storage && readFormAutosaveEntry(
+        storage,
+        entry.userId,
+        entry.formId,
+        entry.writerId,
+      )?.revision === entry.revision);
+      setSaveStatuses(prev => new Map(prev).set(id, durable ? 'idle' : 'error'));
       return;
     }
 
     setSaveStatuses(prev => new Map(prev).set(id, 'saving'));
 
-    const row = formToDb(form, user.id);
-    const { error } = await supabase
+    const { data: savedRow, error } = await supabase
       .from('forms')
       .update({
-        title: row.title,
-        status: row.status,
-        data: row.data,
+        title: entry.payload.title,
+        status: entry.payload.status,
+        data: entry.payload.data as Json,
       })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('updated_at', entry.expectedUpdatedAt)
+      .select('id,updated_at')
+      .maybeSingle();
 
     if (error) {
-      // Network may have dropped mid-request — queue offline
-      saveToOfflineQueue(id);
-      setSaveStatuses(prev => new Map(prev).set(id, 'idle'));
+      setSaveStatuses(prev => new Map(prev).set(id, 'error'));
+      toast.error('O servidor não confirmou o salvamento. A alteração continua preservada neste dispositivo.', {
+        id: `form-save-error-${id}`,
+        duration: 8000,
+      });
       return;
     }
 
-    removeFromOfflineQueue(id);
-    const now = new Date().toISOString();
-    setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
-    setLastSavedTimes(prev => new Map(prev).set(id, now));
-  }, [user, saveToOfflineQueue, removeFromOfflineQueue]);
+    if (!hasFormAutosaveAck(savedRow, id)) {
+      conflictedFormsRef.current.add(id);
+      setSaveStatuses(prev => new Map(prev).set(id, 'conflict'));
+      toast.error('Conflito de edição: este formulário mudou em outra aba ou sessão. Nada foi sobrescrito e sua versão local continua preservada.', {
+        id: `form-save-error-${id}`,
+        duration: 10000,
+      });
+      return;
+    }
 
-  // Replay offline queue when back online
+    const acknowledgedUpdatedAt = savedRow.updated_at;
+    const currentMemoryEntry = pendingEntriesRef.current.get(id);
+    const persistedBeforeAck = storage
+      ? readFormAutosaveEntry(storage, user.id, id, entry.writerId)
+      : null;
+    let journalHandled = true;
+    let advancedPersistedEntry: FormAutosaveJournalEntry | null = null;
+
+    if (storage && persistedBeforeAck?.revision === entry.revision) {
+      journalHandled = removeConfirmedFormAutosaveRevision(storage, entry);
+    } else if (storage && persistedBeforeAck) {
+      advancedPersistedEntry = advanceNewerFormAutosaveRevision(
+        storage,
+        entry,
+        acknowledgedUpdatedAt,
+      );
+      journalHandled = Boolean(advancedPersistedEntry);
+    }
+
+    if (!journalHandled) {
+      setSaveStatuses(prev => new Map(prev).set(id, 'error'));
+      toast.error('A versão foi salva no servidor, mas o rascunho local não pôde ser atualizado com segurança. Recarregue antes de continuar.', {
+        id: `form-save-error-${id}`,
+        duration: 10000,
+      });
+      return;
+    }
+
+    serverUpdatedAtRef.current.set(id, acknowledgedUpdatedAt);
+    conflictedFormsRef.current.delete(id);
+    const nextForms = formsRef.current.map(form => (
+      form.id === id ? { ...form, updatedAt: acknowledgedUpdatedAt } : form
+    ));
+    formsRef.current = nextForms;
+    setForms(nextForms);
+    setLastSavedTimes(prev => new Map(prev).set(id, acknowledgedUpdatedAt));
+
+    if (currentMemoryEntry?.revision === entry.revision) {
+      pendingEntriesRef.current.delete(id);
+    } else if (currentMemoryEntry
+      && currentMemoryEntry.writerId === entry.writerId
+      && currentMemoryEntry.expectedUpdatedAt === entry.expectedUpdatedAt) {
+      pendingEntriesRef.current.set(id, advancedPersistedEntry ?? {
+        ...currentMemoryEntry,
+        expectedUpdatedAt: acknowledgedUpdatedAt,
+      });
+    }
+
+    const stillPending = pendingEntriesRef.current.has(id);
+    setSaveStatuses(prev => new Map(prev).set(id, stillPending ? 'idle' : 'saved'));
+    toast.dismiss(`form-save-error-${id}`);
+  }, [user]);
+
+  const flushUpdate = useCallback((id: string): Promise<void> => {
+    return saveQueueRef.current.enqueue(id, () => flushUpdateNow(id)).catch(() => {
+      setSaveStatuses(prev => new Map(prev).set(id, 'error'));
+      toast.error('Falha inesperada ao salvar. A alteração continua preservada neste dispositivo.', {
+        id: `form-save-error-${id}`,
+        duration: 8000,
+      });
+    });
+  }, [flushUpdateNow]);
+
+  // Restore the newest durable snapshot after authentication. A stale base or
+  // multiple tab drafts is shown as a conflict and is never replayed blindly.
+  useEffect(() => {
+    if (!loaded || !user || recoveredUserRef.current === user.id) return;
+    recoveredUserRef.current = user.id;
+    const storage = getPersistentAutosaveStorage();
+    if (!storage) return;
+
+    const nextForms = [...formsRef.current];
+    const recoveredIds: string[] = [];
+    const conflictIds: string[] = [];
+
+    for (let index = 0; index < nextForms.length; index += 1) {
+      const form = nextForms[index];
+      const entries = readFormAutosaveEntries(storage, user.id, form.id);
+      if (entries.length === 0) continue;
+
+      const entry = entries[0];
+      const restored = {
+        ...form,
+        ...(entry.payload.data as Partial<FormData>),
+        id: form.id,
+        title: entry.payload.title,
+        status: entry.payload.status as FormData['status'],
+        createdAt: form.createdAt,
+        updatedAt: form.updatedAt,
+        responseCount: form.responseCount,
+      };
+      nextForms[index] = restored;
+      pendingEntriesRef.current.set(form.id, entry);
+
+      if (entries.length > 1 || entry.expectedUpdatedAt !== serverUpdatedAtRef.current.get(form.id)) {
+        conflictedFormsRef.current.add(form.id);
+        conflictIds.push(form.id);
+      } else {
+        recoveredIds.push(form.id);
+      }
+    }
+
+    if (recoveredIds.length === 0 && conflictIds.length === 0) return;
+    formsRef.current = nextForms;
+    setForms(nextForms);
+    setSaveStatuses(prev => {
+      const next = new Map(prev);
+      recoveredIds.forEach(id => next.set(id, 'idle'));
+      conflictIds.forEach(id => next.set(id, 'conflict'));
+      return next;
+    });
+
+    if (recoveredIds.length > 0) {
+      toast.info('Alterações locais pendentes foram recuperadas com segurança.');
+      if (onlineRef.current) recoveredIds.forEach(id => { void flushUpdate(id); });
+    }
+    if (conflictIds.length > 0) {
+      toast.error('Há rascunhos locais de outra versão ou aba. Eles foram preservados e não serão enviados até o conflito ser resolvido.', {
+        id: 'form-autosave-recovery-conflict',
+        duration: 10000,
+      });
+    }
+  }, [flushUpdate, loaded, user]);
+
   useEffect(() => {
     if (!online || !user) return;
-    try {
-      const raw = sessionStorage.getItem(OFFLINE_STORAGE_KEY);
-      if (!raw) return;
-      const queue: Record<string, { title: string; status: string; data: unknown }> = JSON.parse(raw);
-      const ids = Object.keys(queue);
-      if (ids.length === 0) return;
-
-      toast.dismiss('offline-toast');
-
-      (async () => {
-        for (const id of ids) {
-          const entry = queue[id];
-          if (!entry) continue;
-          const { error } = await supabase
-            .from('forms')
-            .update({ title: entry.title, status: entry.status, data: entry.data as any })
-            .eq('id', id);
-          if (!error) {
-            delete queue[id];
-            const now = new Date().toISOString();
-            setSaveStatuses(prev => new Map(prev).set(id, 'saved'));
-            setLastSavedTimes(prev => new Map(prev).set(id, now));
-          }
-        }
-        sessionStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(queue));
-      })();
-    } catch {
-      // sessionStorage may be unavailable.
+    toast.dismiss('offline-toast');
+    for (const [id, entry] of pendingEntriesRef.current.entries()) {
+      if (!conflictedFormsRef.current.has(id)
+        && entry.expectedUpdatedAt === serverUpdatedAtRef.current.get(id)) {
+        void flushUpdate(id);
+      }
     }
-  }, [online, user]);
+  }, [flushUpdate, online, user]);
 
   const updateForm = useCallback((id: string, patch: Partial<FormData>) => {
-    setForms(prev => {
-      const updated = prev.map(f =>
-        f.id === id ? { ...f, ...patch, updatedAt: new Date().toISOString() } : f
-      );
-      return updated;
-    });
+    if (!user) return;
+    const currentForm = formsRef.current.find(form => form.id === id);
+    if (!currentForm) return;
+
+    // Keep updatedAt as the last server-issued concurrency token. A client-side
+    // edit must never manufacture a value used in an optimistic DB predicate.
+    const updatedForm = { ...currentForm, ...patch, updatedAt: currentForm.updatedAt };
+    const row = formToDb(updatedForm, user.id);
+    const previousEntry = pendingEntriesRef.current.get(id);
+    const now = new Date().toISOString();
+    const entry: FormAutosaveJournalEntry = {
+      version: 1,
+      formId: id,
+      userId: user.id,
+      writerId: writerIdRef.current,
+      revision: createAutosaveRevision(),
+      expectedUpdatedAt: previousEntry?.expectedUpdatedAt
+        ?? serverUpdatedAtRef.current.get(id)
+        ?? currentForm.updatedAt,
+      writtenAt: now,
+      payload: {
+        title: row.title,
+        status: row.status,
+        data: row.data,
+      },
+    };
+
+    pendingEntriesRef.current.set(id, entry);
+    const storage = getPersistentAutosaveStorage();
+    const preserved = Boolean(storage && persistFormAutosaveEntry(storage, entry));
+
+    const nextForms = formsRef.current.map(form => form.id === id ? updatedForm : form);
+    formsRef.current = nextForms;
+    setForms(nextForms);
+    const alreadyConflicted = conflictedFormsRef.current.has(id);
+    setSaveStatuses(prev => new Map(prev).set(
+      id,
+      alreadyConflicted ? 'conflict' : preserved ? 'idle' : 'error',
+    ));
+
+    if (alreadyConflicted) {
+      toast.error('Esta edição continua preservada, mas não será enviada enquanto houver conflito com outra versão.', {
+        id: `form-save-error-${id}`,
+        duration: 10000,
+      });
+      return;
+    }
+
+    if (!preserved) {
+      toast.error('O navegador não permitiu preservar esta alteração localmente. Tentaremos enviá-la agora; mantenha a página aberta.', {
+        id: `form-save-error-${id}`,
+        duration: 10000,
+      });
+      void flushUpdate(id);
+      return;
+    }
 
     // Debounced DB save
     const existing = debounceTimers.current.get(id);
     if (existing) clearTimeout(existing);
 
     const timer = setTimeout(() => {
-      flushUpdate(id);
       debounceTimers.current.delete(id);
+      void flushUpdate(id);
     }, DEBOUNCE_MS);
     debounceTimers.current.set(id, timer);
-  }, [flushUpdate]);
+  }, [flushUpdate, user]);
 
   // Flush pending debounced saves when user leaves/changes tab to avoid losing structural edits
   useEffect(() => {
     const flushAllPending = () => {
+      const pendingIds = new Set<string>(pendingEntriesRef.current.keys());
       for (const [id, timer] of debounceTimers.current.entries()) {
+        pendingIds.add(id);
         clearTimeout(timer);
         debounceTimers.current.delete(id);
-        flushUpdate(id);
       }
+      pendingIds.forEach(id => { void flushUpdate(id); });
     };
 
     const handleVisibilityChange = () => {
@@ -364,14 +571,24 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     };
 
     const row = { ...formToDb(form, user.id), folder_id: folderId };
-    const { error } = await supabase.from('forms').insert(row);
-    if (error) {
+    const { data: createdRow, error } = await supabase
+      .from('forms')
+      .insert(row)
+      .select('id,updated_at')
+      .maybeSingle();
+    if (error || !hasFormAutosaveAck(createdRow, form.id)) {
       console.error('Error creating form:', error);
+      toast.error('Não foi possível criar o formulário. Tente novamente.');
       return null;
     }
 
-    const formWithFolder = { ...form, folderId };
-    setForms(prev => [...prev, formWithFolder]);
+    const formWithFolder = { ...form, folderId, updatedAt: createdRow.updated_at };
+    serverUpdatedAtRef.current.set(form.id, createdRow.updated_at);
+    setLastSavedTimes(prev => new Map(prev).set(form.id, createdRow.updated_at));
+    setSaveStatuses(prev => new Map(prev).set(form.id, 'saved'));
+    const nextForms = [...formsRef.current, formWithFolder];
+    formsRef.current = nextForms;
+    setForms(nextForms);
     return formWithFolder;
   }, [user, forms]);
 
@@ -380,15 +597,59 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
     if (timer) clearTimeout(timer);
     debounceTimers.current.delete(id);
 
-    setForms(prev => prev.filter(f => f.id !== id));
-    await supabase.from('forms').delete().eq('id', id);
-  }, []);
+    const currentForms = formsRef.current;
+    const removedIndex = currentForms.findIndex((form) => form.id === id);
+    const removedForm = removedIndex >= 0 ? currentForms[removedIndex] : undefined;
+    const withoutForm = currentForms.filter(form => form.id !== id);
+    formsRef.current = withoutForm;
+    setForms(withoutForm);
+    const { data: deletedRow, error } = await saveQueueRef.current.enqueue(id, async () => {
+      let query = supabase.from('forms').delete().eq('id', id);
+      const expectedUpdatedAt = serverUpdatedAtRef.current.get(id);
+      if (expectedUpdatedAt) query = query.eq('updated_at', expectedUpdatedAt);
+      return query.select('id').maybeSingle();
+    }).catch(cause => ({ data: null, error: cause }));
+    if (error || !hasSingleIdAck(deletedRow, id)) {
+      if (removedForm) {
+        setForms((previous) => {
+          if (previous.some((form) => form.id === id)) return previous;
+          const restored = [...previous];
+          restored.splice(Math.min(removedIndex, restored.length), 0, removedForm);
+          formsRef.current = restored;
+          return restored;
+        });
+      }
+      toast.error('Não foi possível excluir o formulário porque ele mudou ou o servidor não confirmou a operação. Ele foi restaurado na lista.');
+      return;
+    }
+    pendingEntriesRef.current.delete(id);
+    conflictedFormsRef.current.delete(id);
+    serverUpdatedAtRef.current.delete(id);
+    const storage = getPersistentAutosaveStorage();
+    if (storage && user) removeAllFormAutosaveEntries(storage, user.id, id);
+    setSaveStatuses(prev => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+    setLastSavedTimes(prev => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+    setHomeSummaries(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    toast.success('Formulário excluído.');
+  }, [user]);
 
   const getForm = useCallback((id: string) => {
     return forms.find(f => f.id === id);
   }, [forms]);
 
-  const getSaveStatus = useCallback((id: string): 'saved' | 'saving' | 'idle' => {
+  const getSaveStatus = useCallback((id: string): FormSaveStatus => {
     return saveStatuses.get(id) || 'idle';
   }, [saveStatuses]);
 
@@ -397,24 +658,59 @@ export function FormStoreProvider({ children }: { children: ReactNode }) {
   }, [lastSavedTimes]);
 
   const moveFormToFolder = useCallback(async (formId: string, folderId: string | null) => {
-    setForms(prev => prev.map(f => f.id === formId ? { ...f, folderId } : f));
-    await supabase.from('forms').update({ folder_id: folderId }).eq('id', formId);
-  }, []);
+    const timer = debounceTimers.current.get(formId);
+    if (timer) {
+      clearTimeout(timer);
+      debounceTimers.current.delete(formId);
+    }
+    if (pendingEntriesRef.current.has(formId)) await flushUpdate(formId);
+    if (pendingEntriesRef.current.has(formId)) {
+      toast.error('Resolva o salvamento pendente antes de mover este formulário. A pasta não foi alterada.');
+      return;
+    }
+
+    const currentForm = formsRef.current.find(form => form.id === formId);
+    if (!currentForm) return;
+    const previousFolderId = currentForm.folderId ?? null;
+    const expectedUpdatedAt = serverUpdatedAtRef.current.get(formId) ?? currentForm.updatedAt;
+    const movedLocally = formsRef.current.map(form => (
+      form.id === formId ? { ...form, folderId } : form
+    ));
+    formsRef.current = movedLocally;
+    setForms(movedLocally);
+
+    const { data: movedRow, error } = await saveQueueRef.current.enqueue(formId, async () => {
+      return await supabase
+        .from('forms')
+        .update({ folder_id: folderId })
+        .eq('id', formId)
+        .eq('updated_at', expectedUpdatedAt)
+        .select('id,updated_at')
+        .maybeSingle();
+    }).catch(cause => ({ data: null, error: cause }));
+    if (error || !hasFormAutosaveAck(movedRow, formId)) {
+      const restored = formsRef.current.map(form => (
+        form.id === formId ? { ...form, folderId: previousFolderId } : form
+      ));
+      formsRef.current = restored;
+      setForms(restored);
+      toast.error('Não foi possível mover o formulário porque ele mudou ou o servidor não confirmou a operação. A pasta anterior foi restaurada.');
+      return;
+    }
+
+    serverUpdatedAtRef.current.set(formId, movedRow.updated_at);
+    setLastSavedTimes(prev => new Map(prev).set(formId, movedRow.updated_at));
+    setSaveStatuses(prev => new Map(prev).set(formId, 'saved'));
+    const acknowledged = formsRef.current.map(form => (
+      form.id === formId ? { ...form, updatedAt: movedRow.updated_at } : form
+    ));
+    formsRef.current = acknowledged;
+    setForms(acknowledged);
+  }, [flushUpdate]);
 
   const value = useMemo(() => ({
-    forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder,
-  }), [forms, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder]);
+    forms, homeSummaries, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder,
+  }), [forms, homeSummaries, loaded, createForm, updateForm, deleteForm, getForm, getSaveStatus, getLastSavedAt, moveFormToFolder]);
 
   return React.createElement(FormStoreContext.Provider, { value }, children);
-}
-
-export function useFormStore() {
-  const ctx = useContext(FormStoreContext);
-  if (!ctx) throw new Error('useFormStore must be used within FormStoreProvider');
-  return ctx;
-}
-
-/** Safe version that returns null when no provider exists (e.g. public form route) */
-export function useFormStoreSafe() {
-  return useContext(FormStoreContext);
 }

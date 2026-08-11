@@ -1,4 +1,6 @@
-const CACHE_NAME = 'forms-v5';
+const CACHE_NAME = 'forms-public-runtime-v1';
+const CACHE_PREFIX = 'forms-public-';
+const NAVIGATION_TIMEOUT_MS = 3500;
 
 // ONLY cache assets for public form routes (/f/:id)
 // Admin/dashboard routes must NEVER be cached
@@ -10,15 +12,68 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((key) => (key.startsWith(CACHE_PREFIX) || /^forms-v\d+$/.test(key)) && key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
     )
   );
   self.clients.claim();
 });
 
-// Check if a URL is a public form route
-function isPublicFormRoute(url) {
-  return url.pathname.startsWith('/f/');
+// Editor previews share the /f/:id path but must never be cached/intercepted.
+function isPublishedFormRoute(url) {
+  return /^\/f\/[^/]+\/?$/.test(url.pathname) && url.searchParams.get('editorPreview') !== '1';
+}
+
+function isCacheable(response) {
+  return response && response.ok && response.type !== 'opaque';
+}
+
+// The HTML shell never embeds GET parameters. Keeping them in the Cache API
+// key would retain campaign ids — and potentially pre-populated PII — on the
+// device while also creating an unbounded entry for every query variation.
+function navigationCacheKey(request) {
+  const url = new URL(request.url);
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+}
+
+async function requestComesFromPublicForm(event) {
+  const clientId = event.clientId || event.resultingClientId;
+  if (!clientId) return false;
+  const client = await self.clients.get(clientId);
+  if (!client) return false;
+  return isPublishedFormRoute(new URL(client.url));
+}
+
+async function networkFirstNavigation(event) {
+  const cache = await caches.open(CACHE_NAME);
+  const cacheKey = navigationCacheKey(event.request);
+  const controller = new AbortController();
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error('navigation_timeout'));
+    }, NAVIGATION_TIMEOUT_MS);
+  });
+
+  try {
+    const response = await Promise.race([fetch(event.request, { signal: controller.signal }), timeout]);
+    clearTimeout(timeoutId);
+    if (isCacheable(response)) {
+      event.waitUntil(cache.put(cacheKey, response.clone()));
+    }
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+    throw error;
+  }
 }
 
 self.addEventListener('fetch', (event) => {
@@ -42,72 +97,58 @@ self.addEventListener('fetch', (event) => {
 
   // For navigation requests: ONLY cache public form routes, never admin
   if (event.request.mode === 'navigate') {
-    if (!isPublicFormRoute(url)) return;
-    // Public form: network-first with cache fallback
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+    if (!isPublishedFormRoute(url)) return;
+    event.respondWith(networkFirstNavigation(event));
     return;
   }
 
-  // Static assets: cache-first for immutable hashed assets, stale-while-revalidate for others
-  if (
-    url.pathname.match(/\.(js|css|woff2?|ttf|png|svg|ico|webp|avif|jpg|jpeg)$/) ||
-    url.hostname === 'fonts.googleapis.com' ||
-    url.hostname === 'fonts.gstatic.com'
-  ) {
-    // Hashed assets (contain content hash in filename) → cache-first (immutable)
-    const isHashed = url.pathname.match(/[-.][\da-f]{8,}\.(js|css)$/);
-    const isScriptOrStyle = /\.(js|css)$/.test(url.pathname);
+  // The worker is scoped to /f/, but the client check also protects users who
+  // still have the old root-scoped worker during the one-time migration.
+  if (url.origin !== self.location.origin) return;
 
-    // Non-hashed JS/CSS (dev chunks/HMR-like URLs) must stay network-first
-    if (isScriptOrStyle && !isHashed) {
-      return;
-    }
-    
-    if (isHashed) {
-      event.respondWith(
-        caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          return fetch(event.request).then((response) => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-            }
-            return response;
-          });
-        })
-      );
-    } else {
-      // Non-code assets: stale-while-revalidate
-      event.respondWith(
-        caches.match(event.request).then((cached) => {
-          const fetchPromise = fetch(event.request).then((response) => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-            }
-            return response;
-          }).catch(() => cached);
-          return cached || fetchPromise;
-        })
-      );
-    }
+  // Static assets: cache-first for immutable hashed assets, stale-while-revalidate for others.
+  if (
+    url.pathname.match(/\.(js|css|woff2?|ttf|png|svg|ico|webp|avif|jpg|jpeg)$/)
+  ) {
+    const responsePromise = requestComesFromPublicForm(event).then(async (isPublicClient) => {
+      if (!isPublicClient) return fetch(event.request);
+
+      // Vite/Rolldown hashes are URL-safe alphanumeric strings, not only hex.
+      const isHashed = /[-.][A-Za-z0-9_-]{8,}\.(js|css)$/.test(url.pathname);
+      const isScriptOrStyle = /\.(js|css)$/.test(url.pathname);
+
+      // Non-hashed code must never be persisted; this avoids cache/version skew.
+      if (isScriptOrStyle && !isHashed) return fetch(event.request);
+
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(event.request);
+
+      if (isHashed && cached) return cached;
+
+      const network = fetch(event.request).then((response) => {
+        if (isCacheable(response)) {
+          event.waitUntil(cache.put(event.request, response.clone()));
+        }
+        return response;
+      }).catch(() => cached);
+
+      return cached || network;
+    });
+
+    event.respondWith(responsePromise);
     return;
   }
 });
 
 // Listen for messages to force-clear cache
 self.addEventListener('message', (event) => {
-  if (event.data === 'CLEAR_CACHE') {
+  if (event.data === 'CLEAR_CACHE' || event.data?.type === 'CLEAR_PUBLIC_CACHES') {
     caches.keys().then((keys) =>
-      Promise.all(keys.map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((key) => key.startsWith(CACHE_PREFIX) || /^forms-v\d+$/.test(key))
+          .map((key) => caches.delete(key))
+      )
     ).then(() => {
       self.clients.matchAll().then((clients) => {
         clients.forEach((client) => client.postMessage('CACHE_CLEARED'));

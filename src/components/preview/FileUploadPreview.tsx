@@ -181,23 +181,24 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
     }, 300);
   }, [value, onChange, uploadFile]);
 
-  const removeFile = useCallback((filePath: string) => {
-    // Optimistic removal: update UI immediately, delete in background
+  const removeFile = useCallback(async (filePath: string) => {
     setRemovingPaths(prev => new Set(prev).add(filePath));
-
-    // Remove from parent state immediately
-    const updated = (value || []).filter(f => f.path !== filePath);
-    onChange(updated);
-
-    // Fire and forget the server-side delete
-    supabase.functions.invoke('minio-delete', { body: { path: filePath } })
-      .finally(() => {
-        setRemovingPaths(prev => {
-          const next = new Set(prev);
-          next.delete(filePath);
-          return next;
-        });
+    try {
+      const { data, error: deleteError } = await supabase.functions.invoke('minio-delete', { body: { path: filePath } });
+      if (deleteError || data?.success !== true) {
+        setError('Não foi possível remover o arquivo. Ele foi mantido no formulário.');
+        return;
+      }
+      onChange((value || []).filter(file => file.path !== filePath));
+    } catch {
+      setError('Não foi possível remover o arquivo. Ele foi mantido no formulário.');
+    } finally {
+      setRemovingPaths(prev => {
+        const next = new Set(prev);
+        next.delete(filePath);
+        return next;
       });
+    }
   }, [value, onChange]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -387,7 +388,7 @@ export default function FileUploadPreview({ value, onChange, maxFileSize = 10, a
                 size="icon"
                 disabled={isRemoving}
                 className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={e => { e.stopPropagation(); removeFile(file.path); }}
+                onClick={e => { e.stopPropagation(); void removeFile(file.path); }}
               >
                 {isRemoving ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3.5 w-3.5" />}
               </Button>

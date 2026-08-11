@@ -1,93 +1,137 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getAuthorizedCaller } from '../_shared/auth.ts';
+import {
+  decryptStoredResponseRows,
+  prepareLegacyResponseEncryption,
+} from '../_shared/formResponseCrypto.ts';
+import { readLimitedJsonObject } from '../_shared/limitedJsonBody.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// ── AES-256-GCM decryption ──
-const ALGORITHM = 'AES-GCM';
-const IV_LENGTH = 12;
-
-async function deriveKey(secret: string): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: enc.encode('twobrain-salt-v1'), iterations: 100_000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: ALGORITHM, length: 256 },
-    false,
-    ['decrypt'],
-  );
-}
-
-async function decryptValue(cipherB64: string, secret: string): Promise<string> {
-  // Strip "enc:" prefix
-  const raw = cipherB64.startsWith('enc:') ? cipherB64.slice(4) : cipherB64;
-  const key = await deriveKey(secret);
-  const combined = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
-  const iv = combined.slice(0, IV_LENGTH);
-  const data = combined.slice(IV_LENGTH);
-  const decrypted = await crypto.subtle.decrypt({ name: ALGORITHM, iv }, key, data);
-  return new TextDecoder().decode(decrypted);
-}
-
-/** Try to decrypt a field; if it's not encrypted (legacy data), return as-is */
-async function tryDecrypt(value: any, secret: string): Promise<any> {
-  if (!value || typeof value !== 'string') return value;
-  if (!value.startsWith('enc:')) return value; // Not encrypted (legacy)
-  try {
-    const decrypted = await decryptValue(value, secret);
-    // Try to parse as JSON (answers/metadata are stringified JSON)
-    try { return JSON.parse(decrypted); } catch { return decrypted; }
-  } catch {
-    return value; // Decryption failed — return raw
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', Allow: 'POST, OPTIONS' },
+    });
+  }
 
   try {
-    // ── Auth check: only authenticated users ──
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const caller = await getAuthorizedCaller(req);
+    if (!caller.ok) return caller.response;
     const encryptionSecret = Deno.env.get('ENCRYPTION_SECRET') ?? '';
-
-    // Verify caller identity
-    const callerClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claimsData, error: claimsErr } = await callerClient.auth.getClaims(
-      authHeader.replace('Bearer ', ''),
-    );
-    if (claimsErr || !claimsData?.claims?.sub) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!encryptionSecret) {
+      return new Response(JSON.stringify({ error: 'Response decryption unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '10' },
       });
     }
 
-    const body = await req.json();
+    const parsedBody = await readLimitedJsonObject(req, 16 * 1024, corsHeaders);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.value;
+    const action = typeof body.action === 'string' ? body.action : 'read';
     const { form_id, form_ids, limit = 500, since, fields } = body;
 
-    if (!form_id && (!form_ids || form_ids.length === 0)) {
+    if (action === 'backfill-encryption') {
+      if (!caller.isAdmin) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const requestedLimit = Number(limit);
+      const batchSize = Number.isInteger(requestedLimit)
+        ? Math.max(1, Math.min(requestedLimit, 50))
+        : 25;
+      const cursor = typeof body.cursor === 'string' ? body.cursor : '';
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (cursor && !uuidPattern.test(cursor)) {
+        return new Response(JSON.stringify({ error: 'Invalid cursor' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let migrationQuery = caller.admin
+        .from('form_responses')
+        .select('id, answers, metadata')
+        .order('id', { ascending: true })
+        .limit(batchSize + 1);
+      if (cursor) migrationQuery = migrationQuery.gt('id', cursor);
+      const { data: migrationRows, error: migrationReadError } = await migrationQuery;
+      if (migrationReadError) {
+        return new Response(JSON.stringify({ error: 'Response encryption backfill failed' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const selectedRows = ((migrationRows ?? []) as Record<string, unknown>[]).slice(0, batchSize);
+      let migrated = 0;
+      try {
+        for (const row of selectedRows) {
+          const prepared = await prepareLegacyResponseEncryption(row, encryptionSecret);
+          if (!prepared.needsMigration) continue;
+          const { data: acknowledged, error: migrationWriteError } = await caller.admin.rpc(
+            'migrate_form_response_encryption',
+            {
+              p_id: row.id,
+              p_expected_answers: row.answers,
+              p_expected_metadata: row.metadata ?? null,
+              p_encrypted_answers: prepared.encryptedAnswers,
+              p_encrypted_metadata: prepared.encryptedMetadata ?? null,
+            },
+          );
+          if (migrationWriteError || acknowledged !== true) {
+            throw new Error('response_encryption_backfill_ack_failed');
+          }
+          migrated += 1;
+        }
+      } catch (error) {
+        console.error(
+          'response_encryption_backfill_error',
+          error instanceof Error ? error.message : 'unknown_backfill_error',
+        );
+        return new Response(JSON.stringify({ error: 'Response encryption backfill failed' }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const hasMore = (migrationRows?.length ?? 0) > batchSize;
+      return new Response(JSON.stringify({
+        success: true,
+        scanned: selectedRows.length,
+        migrated,
+        nextCursor: hasMore && selectedRows.length
+          ? selectedRows[selectedRows.length - 1].id
+          : null,
+        hasMore,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action !== 'read') {
+      return new Response(JSON.stringify({ error: 'Invalid action' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!form_id && (!Array.isArray(form_ids) || form_ids.length === 0)) {
       return new Response(JSON.stringify({ error: 'form_id or form_ids is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const requestedFormIds = [...new Set(
-      (form_id ? [form_id] : form_ids)
+    const candidateFormIds: unknown[] = typeof form_id === 'string'
+      ? [form_id]
+      : (Array.isArray(form_ids) ? form_ids : []);
+    const requestedFormIds: string[] = [...new Set(
+      candidateFormIds
         .filter((id: unknown): id is string => typeof id === 'string'),
     )];
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -99,21 +143,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const admin = createClient(supabaseUrl, serviceKey);
-
-    const callerId = claimsData.claims.sub;
-    const { data: adminRole } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', callerId)
-      .eq('role', 'admin')
-      .maybeSingle();
-
-    if (!adminRole) {
+    const admin = caller.admin;
+    if (!caller.isAdmin) {
       const { data: ownedForms } = await admin
         .from('forms')
         .select('id')
-        .eq('user_id', callerId)
+        .eq('user_id', caller.userId)
         .in('id', requestedFormIds);
 
       if ((ownedForms?.length ?? 0) !== requestedFormIds.length) {
@@ -155,15 +190,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Decrypt answers and metadata if encryption is active
-    if (encryptionSecret && rows) {
-      await Promise.all(rows.map(async (row: any) => {
-        row.answers = await tryDecrypt(row.answers, encryptionSecret);
-        row.metadata = await tryDecrypt(row.metadata, encryptionSecret);
-      }));
+    let safeRows: Record<string, unknown>[];
+    try {
+      safeRows = await decryptStoredResponseRows(
+        (rows ?? []) as Record<string, unknown>[],
+        encryptionSecret,
+      );
+    } catch (error) {
+      console.error(
+        'form-responses-read rejected unreadable encrypted data',
+        error instanceof Error ? error.message : 'unknown_decryption_error',
+      );
+      return new Response(JSON.stringify({ error: 'Response decryption unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '10' },
+      });
     }
 
-    return new Response(JSON.stringify({ data: rows }), {
+    return new Response(JSON.stringify({ data: safeRows }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

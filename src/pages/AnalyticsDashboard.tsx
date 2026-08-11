@@ -1,19 +1,38 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useFormStore } from '@/hooks/useFormStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BarChart3, TrendingUp, TrendingDown, Clock, ArrowDownRight, Eye, CheckCircle2, RefreshCw, MessageSquare, Zap, Activity, Brain, Smile, Frown, Meh, AlertTriangle, Loader2,
+  Users, CircleHelp, MonitorSmartphone, Send, ShieldCheck,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, PieChart, Pie,
+  ResponsiveContainer,
 } from 'recharts';
 import { format, subDays, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  averageBoundedDuration,
+  averageSessionDurationMs,
+  formatAnalyticsDuration,
+} from '@/lib/analyticsTime';
+import {
+  AnalyticsDashboardData,
+  AnalyticsDashboardView,
+  calculateMetricChange,
+  calculatePercentagePointChange,
+  getAnalyticsTimeZone,
+  isAnalyticsDashboardRpcUnavailable,
+  parseAnalyticsDashboard,
+  selectAnalyticsDashboardView,
+  summarizeDeliveryHealth,
+  summarizePixelHealth,
+} from '@/lib/analyticsDashboard';
 
 /* ── types ── */
 interface Session {
@@ -42,15 +61,6 @@ interface FormResponse {
 }
 
 /* ── helpers ── */
-function msToReadable(ms: number) {
-  if (ms < 1000) return `${ms}ms`;
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  const rest = s % 60;
-  return rest > 0 ? `${m}m ${rest}s` : `${m}m`;
-}
-
 const PERIOD_OPTIONS = [
   { value: '7', label: '7 dias' },
   { value: '14', label: '14 dias' },
@@ -71,6 +81,31 @@ function AnimatedNumber({ value, suffix = '' }: { value: number | string; suffix
       {value}{suffix}
     </motion.span>
   );
+}
+
+function MetricHelp({ children }: { children: string }) {
+  return (
+    <UiTooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Como esta métrica é calculada"
+        >
+          <CircleHelp className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[280px] text-xs leading-relaxed" side="top">
+        {children}
+      </TooltipContent>
+    </UiTooltip>
+  );
+}
+
+function formatTrend(value: number | null, suffix = '%'): string {
+  if (value === null) return 'sem base anterior';
+  if (value === 0) return `0${suffix}`;
+  return `${value > 0 ? '+' : ''}${value}${suffix}`;
 }
 
 /* ── Radial progress ── */
@@ -101,11 +136,13 @@ function RadialProgress({ value, size = 64, strokeWidth = 5, color }: {
 }
 
 /* ── KPI card ── */
-function KpiCard({ icon: Icon, label, value, sub, trend, accent, delay = 0 }: {
+function KpiCard({ icon: Icon, label, value, sub, trend, change, changeSuffix = '%', positiveIsGood = true, help, accent, delay = 0 }: {
   icon: React.ElementType; label: string; value: string | number; sub?: string;
-  trend?: 'up' | 'down' | 'neutral'; accent?: string; delay?: number;
+  trend?: 'up' | 'down' | 'neutral'; change?: number | null; changeSuffix?: string;
+  positiveIsGood?: boolean; help?: string; accent?: string; delay?: number;
 }) {
   const accentColor = accent || 'hsl(var(--primary))';
+  const changeIsGood = change == null || change === 0 ? null : (change > 0) === positiveIsGood;
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -127,12 +164,26 @@ function KpiCard({ icon: Icon, label, value, sub, trend, accent, delay = 0 }: {
             <Icon className="h-4 w-4" style={{ color: accentColor }} />
           </div>
           <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+          {help && <MetricHelp>{help}</MetricHelp>}
         </div>
-        <p className="text-3xl font-bold text-foreground">
+        <p
+          className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-[clamp(1.45rem,2.4vw,1.875rem)] font-bold leading-tight text-foreground"
+          title={String(value)}
+        >
           <AnimatedNumber value={value} />
         </p>
         <div className="flex items-center gap-2 mt-1.5">
-          {trend && trend !== 'neutral' && (
+          {change !== undefined && (
+            <span className={`flex shrink-0 items-center gap-0.5 text-[10px] font-semibold ${
+              changeIsGood === true ? 'text-success' : changeIsGood === false ? 'text-destructive' : 'text-muted-foreground'
+            }`} title="Comparação com o período anterior de mesma duração">
+              {change !== null && change !== 0 && (change > 0
+                ? <TrendingUp className="h-3 w-3" />
+                : <TrendingDown className="h-3 w-3" />)}
+              {formatTrend(change, changeSuffix)}
+            </span>
+          )}
+          {change === undefined && trend && trend !== 'neutral' && (
             <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${
               trend === 'up' ? 'text-primary' : 'text-destructive'
             }`}>
@@ -241,33 +292,97 @@ export default function AnalyticsDashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [pageEvents, setPageEvents] = useState<PageEvent[]>([]);
   const [responses, setResponses] = useState<FormResponse[]>([]);
+  const [aggregate, setAggregate] = useState<AnalyticsDashboardData | null>(null);
+  const [dataMode, setDataMode] = useState<'aggregate' | 'legacy_sample' | 'error'>('aggregate');
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [days, setDays] = useState('30');
   const [formFilter, setFormFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [sentimentAgg, setSentimentAgg] = useState<any>(null);
   const [analyzingSentiment, setAnalyzingSentiment] = useState(false);
+  const analyticsRequestId = useRef(0);
 
   const since = useMemo(() => startOfDay(subDays(new Date(), Number(days))).toISOString(), [days]);
 
   const formIds = useMemo(() => forms.map(f => f.id), [forms]);
 
   const fetchData = useCallback(async () => {
-    if (formIds.length === 0) { setLoading(false); return; }
+    const requestId = ++analyticsRequestId.current;
+    if (formIds.length === 0) {
+      setAggregate(null);
+      setSessions([]);
+      setPageEvents([]);
+      setResponses([]);
+      setAnalyticsError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const [sessRes, evtRes, respRes] = await Promise.all([
-      supabase.from('form_sessions').select('id, form_id, status, started_at, completed_at, pages_visited, total_pages').gte('started_at', since).in('form_id', formIds).order('started_at', { ascending: false }).limit(1000),
-      supabase.from('form_page_events').select('form_id, page_index, page_title, event_type, time_on_page_ms').gte('created_at', since).in('form_id', formIds).limit(1000),
-      supabase.functions.invoke('form-responses-read', {
-        body: { form_ids: formIds, limit: 1000, since, fields: 'form_id, answers, metadata, created_at' },
-      }),
-    ]);
-    setSessions((sessRes.data as Session[]) || []);
-    setPageEvents((evtRes.data as PageEvent[]) || []);
-    setResponses((respRes.data?.data || []) as FormResponse[]);
-    setLoading(false);
+    setAnalyticsError(null);
+    const until = new Date().toISOString();
+
+    try {
+      const [rpcResult, responseSample] = await Promise.all([
+        supabase.rpc('get_analytics_dashboard', {
+          p_form_ids: formIds,
+          p_since: since,
+          p_until: until,
+          p_timezone: getAnalyticsTimeZone(),
+        }),
+        supabase.functions.invoke('form-responses-read', {
+          body: { form_ids: formIds, limit: 1000, since, fields: 'form_id, answers, metadata, created_at' },
+        }),
+      ]);
+
+      if (requestId !== analyticsRequestId.current) return;
+
+      setResponses((responseSample.data?.data || []) as FormResponse[]);
+
+      if (!rpcResult.error) {
+        const parsed = parseAnalyticsDashboard(rpcResult.data);
+        if (!parsed) throw new Error('O servidor retornou um agregado de analytics inválido.');
+        setAggregate(parsed);
+        setDataMode('aggregate');
+        setSessions([]);
+        setPageEvents([]);
+        return;
+      }
+
+      if (!isAnalyticsDashboardRpcUnavailable(rpcResult.error)) {
+        throw new Error(rpcResult.error.message || 'Não foi possível carregar as métricas completas.');
+      }
+
+      // Compatibility window for environments where the migration has not yet
+      // reached PostgREST. This mode is visible in the UI and never used for
+      // permission, timeout or database errors.
+      const [sessRes, evtRes] = await Promise.all([
+        supabase.from('form_sessions').select('id, form_id, status, started_at, completed_at, pages_visited, total_pages').gte('started_at', since).in('form_id', formIds).order('started_at', { ascending: false }).limit(1000),
+        supabase.from('form_page_events').select('form_id, page_index, page_title, event_type, time_on_page_ms').gte('created_at', since).in('form_id', formIds).order('created_at', { ascending: false }).limit(2000),
+      ]);
+      if (requestId !== analyticsRequestId.current) return;
+      if (sessRes.error || evtRes.error) {
+        throw new Error(sessRes.error?.message || evtRes.error?.message || 'Falha no modo de compatibilidade.');
+      }
+      setAggregate(null);
+      setDataMode('legacy_sample');
+      setSessions((sessRes.data as Session[]) || []);
+      setPageEvents((evtRes.data as PageEvent[]) || []);
+    } catch (error) {
+      if (requestId !== analyticsRequestId.current) return;
+      setAggregate(null);
+      setDataMode('error');
+      setAnalyticsError(error instanceof Error ? error.message : 'Não foi possível carregar analytics.');
+      setSessions([]);
+      setPageEvents([]);
+    } finally {
+      if (requestId === analyticsRequestId.current) setLoading(false);
+    }
   }, [since, formIds]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    return () => { analyticsRequestId.current += 1; };
+  }, [fetchData]);
 
   /* filtered data */
   const filteredSessions = useMemo(() =>
@@ -282,22 +397,23 @@ export default function AnalyticsDashboard() {
     formFilter === 'all' ? responses : responses.filter(r => r.form_id === formFilter),
   [responses, formFilter]);
 
+  const dashboardView = useMemo<AnalyticsDashboardView | null>(() => (
+    aggregate ? selectAnalyticsDashboardView(aggregate, formFilter) : null
+  ), [aggregate, formFilter]);
+
   /* KPIs */
-  const totalSessions = filteredSessions.length;
+  const totalSessions = dashboardView?.summary.totalSessions ?? filteredSessions.length;
   const completedSessions = filteredSessions.filter(s => s.status === 'completed');
-  const completionRate = totalSessions > 0 ? Math.round((completedSessions.length / totalSessions) * 100) : 0;
+  const completedCount = dashboardView?.summary.completedSessions ?? completedSessions.length;
+  const completionRate = dashboardView?.summary.completionRate
+    ?? (totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0);
   const dropoffRate = 100 - completionRate;
 
-  const avgTimeMs = completedSessions.length > 0
-    ? completedSessions.reduce((sum, s) => {
-        if (!s.completed_at || !s.started_at) return sum;
-        return sum + (new Date(s.completed_at).getTime() - new Date(s.started_at).getTime());
-      }, 0) / completedSessions.length
-    : 0;
+  const avgTimeMs = dashboardView?.summary.avgDurationMs ?? averageSessionDurationMs(completedSessions);
 
-  const avgPagesVisited = filteredSessions.length > 0
+  const avgPagesVisited = dashboardView?.summary.avgPagesVisited ?? (filteredSessions.length > 0
     ? Math.round(filteredSessions.reduce((sum, s) => sum + (s.pages_visited || 0), 0) / filteredSessions.length * 10) / 10
-    : 0;
+    : 0);
 
   /* trend chart */
   const trendData = useMemo(() => {
@@ -307,15 +423,24 @@ export default function AnalyticsDashboard() {
       const d = format(subDays(new Date(), i), 'yyyy-MM-dd');
       buckets[d] = { date: d, sessões: 0, completas: 0 };
     }
-    filteredSessions.forEach(s => {
-      const d = format(parseISO(s.started_at), 'yyyy-MM-dd');
-      if (buckets[d]) {
-        buckets[d].sessões++;
-        if (s.status === 'completed') buckets[d].completas++;
-      }
-    });
+    if (dashboardView) {
+      dashboardView.daily.forEach(row => {
+        if (buckets[row.date]) {
+          buckets[row.date].sessões += row.sessions;
+          buckets[row.date].completas += row.completed;
+        }
+      });
+    } else {
+      filteredSessions.forEach(s => {
+        const d = format(parseISO(s.started_at), 'yyyy-MM-dd');
+        if (buckets[d]) {
+          buckets[d].sessões++;
+          if (s.status === 'completed') buckets[d].completas++;
+        }
+      });
+    }
     return Object.values(buckets).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filteredSessions, days]);
+  }, [dashboardView, filteredSessions, days]);
 
   /* ── Flow-ordered page list from canvas BFS ── */
   const flowOrderedPageList = useMemo(() => {
@@ -358,6 +483,26 @@ export default function AnalyticsDashboard() {
 
   /* ── DROPOFF BY PAGE (flow order) ── */
   const pageDropoffData = useMemo(() => {
+    if (dashboardView) {
+      const formTitle = new Map(forms.map(form => [form.id, form.title]));
+      return dashboardView.pages
+        .map(page => ({
+          index: page.pageIndex ?? Number.MAX_SAFE_INTEGER,
+          title: formFilter === 'all'
+            ? `${formTitle.get(page.formId) || 'Formulário'} · ${page.pageTitle}`
+            : page.pageTitle,
+          views: page.reached,
+          dropoffs: page.dropoffs,
+          avgTimeMs: page.avgTimeOnPageMs,
+          formId: page.formId,
+          pageId: page.pageId,
+        }))
+        .sort((left, right) => {
+          const byForm = left.formId.localeCompare(right.formId);
+          return formFilter === 'all' && byForm !== 0 ? byForm : left.index - right.index;
+        });
+    }
+
     // Build a map from (formId, pageIndex) -> flowOrder position
     const flowIndexMap = new Map<string, { flowIdx: number; title: string }>();
     flowOrderedPageList.forEach((p, flowIdx) => {
@@ -396,9 +541,9 @@ export default function AnalyticsDashboard() {
     return sorted.map(p => ({
       ...p,
       dropoffs: abandonsByPage[p.index] || 0,
-      avgTimeMs: p.timesArr.length > 0 ? p.timesArr.reduce((s, v) => s + v, 0) / p.timesArr.length : 0,
+      avgTimeMs: averageBoundedDuration(p.timesArr, 60 * 60 * 1000),
     }));
-  }, [filteredEvents, filteredResponses, flowOrderedPageList, formFilter]);
+  }, [dashboardView, filteredEvents, filteredResponses, flowOrderedPageList, formFilter, forms]);
 
   /* ── DROPOFF BY QUESTION (flow order) ── */
   const questionDropoffData = useMemo(() => {
@@ -461,12 +606,24 @@ export default function AnalyticsDashboard() {
 
   /* pie */
   const pieData = useMemo(() => [
-    { name: 'Completas', value: completedSessions.length, color: 'hsl(var(--primary))' },
-    { name: 'Abandonos', value: totalSessions - completedSessions.length, color: 'hsl(var(--destructive))' },
-  ], [completedSessions.length, totalSessions]);
+    { name: 'Completas', value: completedCount, color: 'hsl(var(--primary))' },
+    { name: 'Não concluídas', value: Math.max(totalSessions - completedCount, 0), color: 'hsl(var(--destructive))' },
+  ], [completedCount, totalSessions]);
 
   /* top forms */
   const topFormsData = useMemo(() => {
+    if (aggregate) {
+      return aggregate.forms
+        .filter(metric => formFilter === 'all' || metric.formId === formFilter)
+        .map(metric => ({
+          id: metric.formId,
+          name: metric.title,
+          sessions: metric.totalSessions,
+          completed: metric.completedSessions,
+        }))
+        .sort((left, right) => right.sessions - left.sessions)
+        .slice(0, 8);
+    }
     const map: Record<string, { id: string; name: string; sessions: number; completed: number }> = {};
     sessions.forEach(s => {
       if (!map[s.form_id]) {
@@ -477,9 +634,32 @@ export default function AnalyticsDashboard() {
       if (s.status === 'completed') map[s.form_id].completed++;
     });
     return Object.values(map).sort((a, b) => b.sessions - a.sessions).slice(0, 8);
-  }, [sessions, forms]);
+  }, [aggregate, sessions, forms, formFilter]);
+
+  const sessionChange = dashboardView
+    ? calculateMetricChange(totalSessions, dashboardView.summary.previousTotalSessions)
+    : undefined;
+  const completedChange = dashboardView
+    ? calculateMetricChange(completedCount, dashboardView.summary.previousCompletedSessions)
+    : undefined;
+  const conversionChange = dashboardView
+    ? calculatePercentagePointChange(completionRate, dashboardView.summary.previousCompletionRate)
+    : undefined;
+  const deliveryHealth = useMemo(
+    () => summarizeDeliveryHealth(dashboardView?.deliveries || []),
+    [dashboardView],
+  );
+  const pixelHealth = useMemo(
+    () => summarizePixelHealth(dashboardView?.pixels || []),
+    [dashboardView],
+  );
+  const maxPageReach = useMemo(
+    () => Math.max(...pageDropoffData.map(page => page.views), 1),
+    [pageDropoffData],
+  );
 
   return (
+    <TooltipProvider delayDuration={250}>
     <div className="flex-1 overflow-y-auto bg-background">
       <div className="p-6 sm:p-8 lg:p-10 max-w-[1280px] mx-auto space-y-8">
         {/* ── Header ── */}
@@ -496,7 +676,7 @@ export default function AnalyticsDashboard() {
               </div>
               <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
             </div>
-            <p className="text-sm text-muted-foreground ml-[42px]">Performance em tempo real</p>
+            <p className="text-sm text-muted-foreground ml-[42px]">Performance completa, conversão e saúde operacional</p>
           </div>
           <div className="flex items-center gap-2">
             <Select value={formFilter} onValueChange={setFormFilter}>
@@ -522,13 +702,109 @@ export default function AnalyticsDashboard() {
           </div>
         </motion.div>
 
+        <AnimatePresence mode="popLayout">
+          {dataMode === 'legacy_sample' && (
+            <motion.div
+              key="legacy-sample"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              role="status"
+              className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-900 dark:text-amber-100"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-semibold">Modo de compatibilidade temporário</p>
+                <p className="mt-0.5 opacity-80">
+                  A agregação corporativa ainda não está disponível neste ambiente. Os números abaixo usam uma amostra recente de até 1.000 sessões e 2.000 eventos; portanto, não representam o histórico completo.
+                </p>
+              </div>
+            </motion.div>
+          )}
+          {analyticsError && (
+            <motion.div
+              key="analytics-error"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              role="alert"
+              className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">As métricas completas não puderam ser carregadas</p>
+                <p className="mt-0.5 break-words opacity-80">{analyticsError}</p>
+              </div>
+              <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={fetchData}>Tentar novamente</Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── KPIs ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <KpiCard icon={Eye} label="Sessões" value={totalSessions} sub={`em ${days} dias`} accent="hsl(var(--primary))" delay={0} />
-          <KpiCard icon={CheckCircle2} label="Completas" value={completedSessions.length} trend="up" accent="hsl(var(--success))" delay={0.05} />
-          <KpiCard icon={Zap} label="Conversão" value={`${completionRate}%`} trend={completionRate >= 50 ? 'up' : 'down'} accent="hsl(var(--primary))" delay={0.1} />
-          <KpiCard icon={ArrowDownRight} label="Abandono" value={`${dropoffRate}%`} trend={dropoffRate > 50 ? 'down' : 'up'} accent="hsl(var(--destructive))" delay={0.15} />
-          <KpiCard icon={Clock} label="Tempo médio" value={msToReadable(avgTimeMs)} sub={`${avgPagesVisited} pág. em média`} delay={0.2} />
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          <KpiCard
+            icon={Eye}
+            label="Sessões"
+            value={totalSessions}
+            sub={`em ${days} dias`}
+            change={sessionChange}
+            help="Sessões distintas iniciadas no período. Tentativas duplicadas com o mesmo identificador são contadas uma única vez."
+            accent="hsl(var(--primary))"
+            delay={0}
+          />
+          <KpiCard
+            icon={Users}
+            label="Leads únicos"
+            value={dashboardView?.summary.uniqueLeads ?? completedCount}
+            sub="respostas completas distintas"
+            help="Quantidade de response IDs distintos concluídos no período. Não deduplica a mesma pessoa entre formulários, pois o painel não usa PII."
+            accent="hsl(var(--success))"
+            delay={0.04}
+          />
+          <KpiCard
+            icon={CheckCircle2}
+            label="Completas"
+            value={completedCount}
+            change={completedChange}
+            help="Sessões que chegaram ao estado concluído, independentemente de integrações externas posteriores."
+            accent="hsl(var(--success))"
+            delay={0.08}
+          />
+          <KpiCard
+            icon={Zap}
+            label="Conversão"
+            value={`${completionRate}%`}
+            change={conversionChange}
+            changeSuffix=" pp"
+            help="Percentual de sessões distintas concluídas. A comparação é em pontos percentuais contra o período anterior de mesma duração."
+            accent="hsl(var(--primary))"
+            delay={0.12}
+          />
+          <KpiCard
+            icon={Clock}
+            label="Tempo médio"
+            value={formatAnalyticsDuration(avgTimeMs)}
+            sub={`${avgPagesVisited} pág. em média`}
+            help="Média entre início e conclusão. Durações negativas ou acima de 24 horas são descartadas para evitar distorções."
+            delay={0.16}
+          />
+          <KpiCard
+            icon={Activity}
+            label="Tempo típico (p50)"
+            value={dashboardView ? formatAnalyticsDuration(dashboardView.summary.p50DurationMs) : '—'}
+            sub="metade conclui até aqui"
+            help="Mediana do tempo de conclusão: 50% das conclusões válidas foram mais rápidas que este valor."
+            delay={0.2}
+          />
+          <KpiCard
+            icon={ShieldCheck}
+            label="Cauda lenta (p95)"
+            value={dashboardView ? formatAnalyticsDuration(dashboardView.summary.p95DurationMs) : '—'}
+            sub={`${dropoffRate}% não concluíram`}
+            help="95º percentil do tempo de conclusão. Ajuda a revelar experiências lentas que a média pode esconder."
+            accent="hsl(var(--destructive))"
+            delay={0.24}
+          />
         </div>
 
         {/* ── Charts row ── */}
@@ -602,6 +878,128 @@ export default function AnalyticsDashboard() {
           </GlassPanel>
         </div>
 
+        {/* ── Acquisition and operational health ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <GlassPanel delay={0.22}>
+            <div className="border-b border-border px-6 py-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                  <MonitorSmartphone className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Aquisição e dispositivos</p>
+                  <p className="text-[11px] text-muted-foreground">Origem declarada por UTM/referrer e categoria do user agent</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-6 p-6 sm:grid-cols-2">
+              <div>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Principais origens</p>
+                  <MetricHelp>Usa utm_source quando presente; caso contrário, o domínio de referência. Sem ambos, a sessão é classificada como direto.</MetricHelp>
+                </div>
+                {dashboardView?.sources.length ? (
+                  <div className="space-y-2.5">
+                    {dashboardView.sources.slice(0, 6).map(source => (
+                      <div key={source.source} className="flex items-center gap-3 text-xs">
+                        <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={source.source}>{source.source}</span>
+                        <span className="tabular-nums text-muted-foreground">{source.sessions}</span>
+                        <span className="w-12 text-right font-semibold tabular-nums text-foreground">{source.conversionRate}%</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-end gap-4 border-t border-border pt-2 text-[10px] text-muted-foreground">
+                      <span>sessões</span><span>conversão</span>
+                    </div>
+                  </div>
+                ) : <p className="py-5 text-center text-xs text-muted-foreground">Sem origem registrada</p>}
+              </div>
+              <div>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Dispositivos</p>
+                  <MetricHelp>Classificação aproximada do user agent em desktop, mobile ou tablet. Não é fingerprinting.</MetricHelp>
+                </div>
+                {dashboardView?.devices.length ? (
+                  <div className="space-y-2.5">
+                    {dashboardView.devices.map(device => {
+                      const labels = { desktop: 'Desktop', mobile: 'Celular', tablet: 'Tablet' };
+                      const share = totalSessions > 0 ? Math.round(device.sessions / totalSessions * 100) : 0;
+                      return (
+                        <div key={device.device} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-foreground">{labels[device.device]}</span>
+                            <span className="tabular-nums text-muted-foreground">{device.sessions} · {device.conversionRate}% conv.</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-primary/70" style={{ width: `${share}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : <p className="py-5 text-center text-xs text-muted-foreground">Sem dispositivo registrado</p>}
+              </div>
+            </div>
+          </GlassPanel>
+
+          <GlassPanel delay={0.24}>
+            <div className="border-b border-border px-6 py-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/10">
+                  <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Saúde operacional</p>
+                  <p className="text-[11px] text-muted-foreground">Entregas duráveis e confirmações de pixels no período</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              <div className="rounded-xl border border-border bg-background/50 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Send className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold text-foreground">Entregas / outbox</p>
+                  <MetricHelp>Cada envio para webhook ou Google Sheets é persistido antes da resposta ao lead. Falhas entram em retentativa; dead-letter exige intervenção.</MetricHelp>
+                </div>
+                {deliveryHealth.total > 0 ? (
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Entregues</span><strong className="tabular-nums text-success">{deliveryHealth.delivered}</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Processando</span><strong className="tabular-nums">{deliveryHealth.processing}</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Em retentativa</span><strong className="tabular-nums text-amber-600">{deliveryHealth.retrying}</strong></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Dead-letter</span><strong className="tabular-nums text-destructive">{deliveryHealth.deadLetter}</strong></div>
+                    <div className="mt-3 border-t border-border pt-3 text-center">
+                      <strong className="text-xl tabular-nums text-foreground">{deliveryHealth.successRate}%</strong>
+                      <p className="text-[10px] text-muted-foreground">já entregues</p>
+                    </div>
+                  </div>
+                ) : <p className="py-5 text-center text-xs text-muted-foreground">Nenhuma entrega externa no período</p>}
+              </div>
+              <div className="rounded-xl border border-border bg-background/50 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold text-foreground">Pixels</p>
+                  <MetricHelp>Confirma se o evento foi registrado no navegador e no endpoint server-side. O log indica transporte, não atribuição final pela plataforma.</MetricHelp>
+                </div>
+                {pixelHealth.total > 0 ? (
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Navegador</span><strong>{pixelHealth.clientRate}%</strong></div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pixelHealth.clientRate}%` }} /></div>
+                    </div>
+                    <div>
+                      <div className="mb-1 flex justify-between"><span className="text-muted-foreground">Server-side</span><strong>{pixelHealth.serverRate}%</strong></div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-success" style={{ width: `${pixelHealth.serverRate}%` }} /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2 text-center">
+                      <div className="rounded-lg bg-muted/50 p-2"><strong className="block tabular-nums">{pixelHealth.total}</strong><span className="text-[10px] text-muted-foreground">eventos</span></div>
+                      <div className="rounded-lg bg-destructive/5 p-2"><strong className="block tabular-nums text-destructive">{pixelHealth.missingServer}</strong><span className="text-[10px] text-muted-foreground">sem CAPI</span></div>
+                    </div>
+                  </div>
+                ) : <p className="py-5 text-center text-xs text-muted-foreground">Nenhum pixel disparado no período</p>}
+              </div>
+            </div>
+          </GlassPanel>
+        </div>
+
         {/* ── Dropoff analysis ── */}
         <GlassPanel delay={0.25}>
           <div className="px-6 pt-5 pb-2 flex items-center gap-2.5">
@@ -626,13 +1024,16 @@ export default function AnalyticsDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {pageDropoffData.map((page, i) => (
-                      <DropoffBar key={page.index} label={page.title} total={page.views} dropoffs={page.dropoffs} index={i} maxTotal={pageDropoffData[0]?.views || 1} />
+                      <DropoffBar key={`${'formId' in page ? page.formId : 'legacy'}:${'pageId' in page ? page.pageId : page.index}`} label={page.title} total={page.views} dropoffs={page.dropoffs} index={i} maxTotal={maxPageReach} />
                     ))}
                   </div>
                 )}
               </TabsContent>
 
               <TabsContent value="question">
+                <p className="mb-4 text-[11px] text-muted-foreground">
+                  Diagnóstico por pergunta baseado nas até 1.000 respostas mais recentes do período; o funil por página acima usa o histórico completo.
+                </p>
                 {questionDropoffData.length === 0 ? (
                   <div className="py-10 text-center">
                     <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-40" />
@@ -789,5 +1190,6 @@ export default function AnalyticsDashboard() {
         </GlassPanel>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

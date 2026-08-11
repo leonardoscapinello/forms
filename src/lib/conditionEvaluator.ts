@@ -1,16 +1,17 @@
-import { ConditionGroup, ConditionRule, ConditionBranch, ConditionNodeData, FormData, FormVariable } from '@/types/form';
+import { ConditionGroup, ConditionRule, ConditionBranch, ConditionNodeData, FormVariable } from '@/types/form';
 import { PageElement } from '@/types/pageElements';
+import {
+  interpolateText,
+  readAnswerValue,
+  resolveConfiguredVariableValue,
+  resolveInterpolationToken,
+  stringifyInterpolationValue,
+} from '@/lib/variableInterpolation';
 
 /** Option-based field types where the stored answer is an option ID, not the label */
 const OPTION_FIELD_TYPES = new Set([
   'input_select', 'input_radio', 'input_quiz_icon', 'input_quiz_image', 'input_multi_select',
 ]);
-
-/** Get a value from an object using dot/bracket path */
-function getNestedValue(obj: any, path: string): any {
-  const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
-  return tokens.reduce((acc, key) => acc != null ? acc[key] : undefined, obj);
-}
 
 /**
  * Given an element and the raw answer value (option ID), resolves the human-readable label.
@@ -18,10 +19,10 @@ function getNestedValue(obj: any, path: string): any {
  * Returns the original value unchanged if no resolution is possible.
  */
 function resolveOptionLabel(element: PageElement | undefined, rawValue: any): string {
-  if (!element || !rawValue) return rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
+  if (!element || !rawValue) return stringifyInterpolationValue(rawValue);
 
   if (!OPTION_FIELD_TYPES.has(element.type)) {
-    return rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
+    return stringifyInterpolationValue(rawValue);
   }
 
   const options = element.options || [];
@@ -50,37 +51,36 @@ function resolveSubjectValue(
   allElements?: PageElement[],
 ): { raw: string; label: string } {
   if (rule.subjectType === 'context' && rule.contextKey) {
-    const val = answers[`__ctx_${rule.contextKey}`];
-    const s = val !== undefined && val !== null ? String(val) : '';
+    const val = readAnswerValue(answers, `__ctx_${rule.contextKey}`);
+    const s = stringifyInterpolationValue(val);
     return { raw: s, label: s };
   }
   if (rule.subjectType === 'param' && rule.paramKey) {
-    const val = answers[`__param_${rule.paramKey}`];
-    const s = val !== undefined && val !== null ? String(val) : '';
+    const val = readAnswerValue(answers, `__param_${rule.paramKey}`);
+    const s = stringifyInterpolationValue(val);
     return { raw: s, label: s };
   }
   if (rule.subjectType === 'webhook_response' && rule.webhookNodeId && rule.webhookResponsePath) {
-    const webhookData = answers[`__webhook_${rule.webhookNodeId}`];
-    if (webhookData) {
-      const val = getNestedValue(webhookData, rule.webhookResponsePath);
-      const s = val !== undefined && val !== null ? String(val) : '';
-      return { raw: s, label: s };
-    }
-    return { raw: '', label: '' };
+    const val = resolveInterpolationToken(
+      `webhook:${rule.webhookNodeId}:${rule.webhookResponsePath}`,
+      variables || [],
+      answers,
+    ).value;
+    const s = stringifyInterpolationValue(val);
+    return { raw: s, label: s };
   }
   if (rule.subjectType === 'variable' && rule.variableId && variables) {
     const variable = variables.find(v => v.id === rule.variableId);
     if (variable) {
-      const storeKey = `__var_${variable.name}`;
-      const val = answers[storeKey] ?? answers[variable.sourceElementId || ''] ?? variable.defaultValue ?? '';
-      const s = String(val);
+      const val = resolveConfiguredVariableValue(variable, variables, answers);
+      const s = stringifyInterpolationValue(val);
       return { raw: s, label: s };
     }
     return { raw: '', label: '' };
   }
   // Default: question answer
   const answer = answers[rule.questionId];
-  const rawStr = answer !== undefined && answer !== null ? String(answer) : '';
+  const rawStr = stringifyInterpolationValue(answer);
 
   // Resolve option label if element info is available
   const element = allElements?.find(el => el.id === rule.questionId);
@@ -101,7 +101,7 @@ function evaluateRule(
   allElements?: PageElement[],
 ): boolean {
   const { raw: rawStr, label: labelStr } = resolveSubjectValue(rule, answers, variables, allElements);
-  const ruleValue = rule.value ?? '';
+  const ruleValue = interpolateText(rule.value ?? '', variables || [], answers);
 
   // Helper: check match against both raw and label
   const matchAny = (check: (val: string) => boolean): boolean => {

@@ -17,11 +17,12 @@ import { toast } from 'sonner';
 import type { InputElementGroup } from './VariableAssignPanel';
 import { Textarea } from '@/components/ui/textarea';
 import EmailPreviewCard from './email-builder/EmailPreviewCard';
+import { listIntegrationCatalog, withIntegrationTimeout } from '@/lib/integrationSettings';
 
 interface ResendInstance {
   id: string;
   label: string;
-  config: { apiKey: string; defaultFrom: string };
+  config: { defaultFrom: string };
   is_active: boolean;
 }
 
@@ -45,16 +46,17 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps & { is
   const EmailBuilderDialog = useMemo(() => lazy(() => import('./email-builder/EmailBuilderDialog')), []);
 
   useEffect(() => {
-    supabase.from('integration_settings')
-      .select('*')
-      .eq('integration_type', 'resend')
-      .then(({ data: rows }) => {
-        if (rows) {
-          setInstances(rows.map(r => ({
+    listIntegrationCatalog('resend')
+      .then((rows) => {
+        setInstances(rows.map(r => ({
             id: r.id, label: r.label,
-            config: r.config as any, is_active: r.is_active,
+            config: { defaultFrom: String(r.config.defaultFrom || '') },
+            is_active: r.is_active,
           })));
-        }
+      })
+      .catch((error: Error) => {
+        setInstances([]);
+        toast.error(error.message || 'Não foi possível carregar as instâncias Resend.');
       });
   }, []);
 
@@ -67,25 +69,32 @@ function EmailNode({ data, selected }: NodeProps & { data: EmailNodeProps & { is
     if (!nodeData.instanceId || !nodeData.toEmail) return;
     setTesting(true); setTestResult(null);
     try {
-      const { data: res } = await supabase.functions.invoke('resend-send', {
-        body: {
-          instanceId: nodeData.instanceId,
-          fromEmail: nodeData.fromEmail || selectedInstance?.config.defaultFrom || 'onboarding@resend.dev',
-          fromName: nodeData.fromName || '',
-          toEmail: nodeData.toEmail,
-          subject: nodeData.subject || 'Teste',
-          bodyText: nodeData.bodyText || 'E-mail de teste',
-          bodyHtml: nodeData.bodyHtml,
-          useHtml: nodeData.useHtml,
-          testMode: true,
-        },
-      });
+      const { data: res, error } = await withIntegrationTimeout(
+        supabase.functions.invoke('resend-send', {
+          body: {
+            instanceId: nodeData.instanceId,
+            fromEmail: nodeData.fromEmail || selectedInstance?.config.defaultFrom || 'onboarding@resend.dev',
+            fromName: nodeData.fromName || '',
+            toEmail: nodeData.toEmail,
+            subject: nodeData.subject || 'Teste',
+            bodyText: nodeData.bodyText || 'E-mail de teste',
+            bodyHtml: nodeData.bodyHtml,
+            useHtml: nodeData.useHtml,
+            testMode: true,
+          },
+        }),
+      );
+      if (error) throw error;
       setTestResult(res?.success ? 'success' : 'error');
       toast[res?.success ? 'success' : 'error'](
         res?.success ? 'E-mail enviado!' : `Falhou: ${JSON.stringify(res?.data || res?.error).slice(0, 100)}`
       );
-    } catch { setTestResult('error'); toast.error('Erro ao enviar'); }
-    setTesting(false);
+    } catch (error: any) {
+      setTestResult('error');
+      toast.error(error?.message || 'Erro ao enviar');
+    } finally {
+      setTesting(false);
+    }
   }, [nodeData, selectedInstance]);
 
   return (

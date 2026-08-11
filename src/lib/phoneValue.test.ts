@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest';
+import {
+  applyNationalPhoneMask,
+  formatInternationalPhone,
+  normalizePhoneDefault,
+  validatePhoneValue,
+} from './phoneValue';
+
+describe('phone value contract', () => {
+  it('aplica a máscara do país como limite absoluto', () => {
+    expect(applyNationalPhoneMask('11987654321', 'BR')).toBe('(11) 98765-4321');
+    expect(applyNationalPhoneMask('1198765432199', 'BR')).toBe('(11) 98765-4321');
+    expect(applyNationalPhoneMask('4155552671', 'US')).toBe('(415) 555-2671');
+  });
+
+  it('permite telefone opcional vazio, mas bloqueia qualquer preenchimento incompleto', () => {
+    expect(validatePhoneValue(undefined)).toEqual({ valid: true });
+    expect(validatePhoneValue({ countryCode: 'BR', ddi: '+55', number: '' })).toEqual({ valid: true });
+    expect(validatePhoneValue({ countryCode: 'BR', ddi: '+55', number: '(11) 9876' })).toEqual({
+      valid: false,
+      error: 'Preencha todos os 11 dígitos do telefone',
+    });
+    expect(validatePhoneValue({ countryCode: 'BR', ddi: '+55', number: '(11) 98765-4321' })).toEqual({ valid: true });
+  });
+
+  it('bloqueia vazio obrigatório e país/DDI incoerentes', () => {
+    expect(validatePhoneValue(undefined, { required: true })).toEqual({
+      valid: false,
+      error: 'Telefone obrigatório',
+    });
+    expect(validatePhoneValue({ countryCode: 'BR', ddi: '+1', number: '(11) 98765-4321' })).toEqual({
+      valid: false,
+      error: 'Selecione um país válido para o telefone',
+    });
+  });
+
+  it('não transforma overflow em um número válido durante normalização ou troca de país', () => {
+    const normalized = normalizePhoneDefault('+55119876543210', 'BR');
+    expect(normalized).toEqual({
+      countryCode: 'BR',
+      ddi: '+55',
+      number: '',
+      invalidReason: 'mask_overflow',
+    });
+    expect(validatePhoneValue('+55119876543210', { defaultCountryCode: 'BR' }).valid).toBe(false);
+    expect(validatePhoneValue({
+      countryCode: 'US',
+      ddi: '+1',
+      number: '',
+      invalidReason: 'mask_overflow',
+    })).toEqual({
+      valid: false,
+      error: 'Digite novamente o telefone após trocar o país',
+    });
+  });
+
+  it('formata o telefone válido para analytics e webhook sem duplicar o mais', () => {
+    expect(formatInternationalPhone({
+      countryCode: 'BR',
+      ddi: '+55',
+      number: '(11) 98765-4321',
+    })).toBe('+5511987654321');
+  });
+});

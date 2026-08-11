@@ -403,7 +403,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 text-[10px] text-muted-foreground px-2 hover:text-foreground flex-1 border border-dashed border-border"
+          className="h-6 text-[10px] text-muted-foreground px-2 flex-1 border border-dashed border-border hover:bg-primary hover:text-primary-foreground focus-visible:bg-primary focus-visible:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
           onClick={addRule}
         >
           <Plus className="mr-1 h-2.5 w-2.5" />
@@ -413,7 +413,7 @@ export default function ConditionGroupEditor({ group, allInputElements = [], var
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-[10px] text-muted-foreground px-2 hover:text-foreground flex-1 border border-dashed border-border"
+            className="h-6 text-[10px] text-muted-foreground px-2 flex-1 border border-dashed border-border hover:bg-primary hover:text-primary-foreground focus-visible:bg-primary focus-visible:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
             onClick={addSubGroup}
           >
             <Group className="mr-1 h-2.5 w-2.5" />

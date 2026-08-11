@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      edge_rate_limits: {
+        Row: {
+          bucket: string
+          key_hash: string
+          request_count: number
+          window_started_at: string
+        }
+        Insert: {
+          bucket: string
+          key_hash: string
+          request_count?: number
+          window_started_at?: string
+        }
+        Update: {
+          bucket?: string
+          key_hash?: string
+          request_count?: number
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       email_validations: {
         Row: {
           can_connect_smtp: boolean | null
@@ -175,9 +217,81 @@ export type Database = {
         }
         Relationships: []
       }
+      form_response_deliveries: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          dead_lettered_at: string | null
+          delivered_at: string | null
+          delivery_type: string
+          destination: string | null
+          destination_key: string
+          form_id: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string | null
+          response_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          dead_lettered_at?: string | null
+          delivered_at?: string | null
+          delivery_type: string
+          destination?: string | null
+          destination_key: string
+          form_id: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string | null
+          response_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          dead_lettered_at?: string | null
+          delivered_at?: string | null
+          delivery_type?: string
+          destination?: string | null
+          destination_key?: string
+          form_id?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          next_attempt_at?: string | null
+          response_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_response_deliveries_response_fk"
+            columns: ["form_id", "response_id"]
+            isOneToOne: false
+            referencedRelation: "form_responses"
+            referencedColumns: ["form_id", "response_id"]
+          },
+        ]
+      }
       form_responses: {
         Row: {
           answers: Json
+          completed_at: string | null
           created_at: string
           form_id: string
           id: string
@@ -189,6 +303,7 @@ export type Database = {
         }
         Insert: {
           answers?: Json
+          completed_at?: string | null
           created_at?: string
           form_id: string
           id?: string
@@ -200,6 +315,7 @@ export type Database = {
         }
         Update: {
           answers?: Json
+          completed_at?: string | null
           created_at?: string
           form_id?: string
           id?: string
@@ -303,6 +419,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      form_workflow_executions: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          form_id: string
+          id: string
+          last_error: string | null
+          lease_until: string | null
+          node_key: string
+          response_id: string
+          result: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          form_id: string
+          id?: string
+          last_error?: string | null
+          lease_until?: string | null
+          node_key: string
+          response_id: string
+          result?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          form_id?: string
+          id?: string
+          last_error?: string | null
+          lease_until?: string | null
+          node_key?: string
+          response_id?: string
+          result?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       forms: {
         Row: {
@@ -585,6 +746,101 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_form_response_deliveries: {
+        Args: {
+          p_batch_size?: number
+          p_lease_seconds?: number
+          p_max_attempts?: number
+        }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          dead_lettered_at: string | null
+          delivered_at: string | null
+          delivery_type: string
+          destination: string | null
+          destination_key: string
+          form_id: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          lease_token: string | null
+          lease_until: string | null
+          next_attempt_at: string | null
+          response_id: string
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "form_response_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      configure_form_response_delivery_worker_schedule: {
+        Args: never
+        Returns: number
+      }
+      consume_edge_rate_limit: {
+        Args: {
+          p_bucket: string
+          p_key_hash: string
+          p_limit: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
+      get_analytics_dashboard: {
+        Args: {
+          p_form_ids: string[]
+          p_since: string
+          p_timezone?: string
+          p_until?: string
+        }
+        Returns: Json
+      }
+      get_admin_users: {
+        Args: {
+          p_after_created_at?: string
+          p_after_user_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          is_active: boolean
+          role: string
+          user_id: string
+        }[]
+      }
+      get_form_page_dropoff: {
+        Args: {
+          p_form_id: string
+        }
+        Returns: {
+          dropoff_percent: number
+          dropoffs: number
+          page_id: string | null
+          page_index: number | null
+          page_title: string | null
+          reached: number
+        }[]
+      }
+      get_forms_home_summary: {
+        Args: {
+          p_days?: number
+        }
+        Returns: {
+          bucket_dates: string[]
+          dropoffs_by_day: number[]
+          form_id: string
+          response_count: number
+          responses_by_day: number[]
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

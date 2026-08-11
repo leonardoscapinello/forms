@@ -1,84 +1,31 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { enforceRateLimit } from '../_shared/rateLimit.ts';
-import { flattenFormElements, isServiceRequest } from '../_shared/publicFormAuth.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import {
+  flattenFormElements,
+  isServiceRequest,
+} from "../_shared/publicFormAuth.ts";
+import {
+  interpolateFormHtml,
+  interpolateFormText,
+  stringifyFormValue,
+} from "../_shared/formInterpolation.ts";
+import { readResponseJsonLimited } from "../_shared/integrationReliability.ts";
+import { readLimitedJsonObject } from "../_shared/limitedJsonBody.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-// ── Stringify compound field values ──
-
-function stringifyFieldValue(val: any): string {
-  if (Array.isArray(val)) return val.map((v: any) => typeof v === 'object' ? stringifyFieldValue(v) : String(v)).join(', ');
-  if (val.ddi && val.number) return `${val.ddi}${String(val.number).replace(/\D/g, '')}`;
-  if (val.street !== undefined || val.city !== undefined) {
-    return [val.street, val.number, val.complement, val.neighborhood, val.city, val.state, val.zip].filter(Boolean).join(', ');
-  }
-  if (val.height !== undefined || val.weight !== undefined) {
-    return [val.height && `${val.height}cm`, val.weight && `${val.weight}kg`].filter(Boolean).join(' / ');
-  }
-  if (val.first !== undefined || val.last !== undefined) {
-    return [val.first, val.last].filter(Boolean).join(' ');
-  }
-  return JSON.stringify(val);
-}
-
-function resolveAnswerValue(val: any): string {
-  if (val === undefined || val === null) return '';
-  if (typeof val === 'object') return stringifyFieldValue(val);
-  return String(val);
-}
-
-// ── Variable interpolation ──
-
-function interpolate(text: string, answers: Record<string, any>, variables: any[]): string {
-  if (!text) return '';
-
-  // Handle webhook references: {{webhook:nodeId:path}}
-  let result = text.replace(/\{\{webhook:([^:}]+):([^}]+)\}\}/g, (_: string, nodeId: string, path: string) => {
-    const data = answers[`__webhook_${nodeId}`];
-    if (!data) return '';
-    const val = path.split('.').reduce((obj: any, key: string) => obj?.[key], data);
-    return val !== undefined && val !== null ? String(val) : '';
-  });
-
-  // Handle context: {{ctx.device}}
-  result = result.replace(/\{\{ctx\.(\w+)\}\}/g, (_: string, key: string) => {
-    const val = answers[`__ctx_${key}`];
-    return val !== undefined && val !== null ? String(val) : '';
-  });
-
-  // Handle params: {{param.utm_source}}
-  result = result.replace(/\{\{param\.([^}]+)\}\}/g, (_: string, key: string) => {
-    const val = answers[`__param_${key}`];
-    return val !== undefined && val !== null ? String(val) : '';
-  });
-
-  // Handle field references: {{field:elementId}}
-  result = result.replace(/\{\{field:([^}]+)\}\}/g, (_: string, elementId: string) => {
-    return resolveAnswerValue(answers[elementId]);
-  });
-
-  // Handle variable references: {{varName}} and plain answer keys
-  return result.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
-    const trimmed = key.trim();
-    const varMatch = variables.find((v: any) => v.name === trimmed || v.id === trimmed);
-    if (varMatch) {
-      const varKey = `__var_${varMatch.name}`;
-      return answers[varKey] !== undefined ? resolveAnswerValue(answers[varKey]) : varMatch.defaultValue || '';
-    }
-    if (answers[trimmed] !== undefined) {
-      return resolveAnswerValue(answers[trimmed]);
-    }
-    return '';
-  });
-}
 
 // ── Option label resolution for condition evaluation ──
 
 const OPTION_FIELD_TYPES = new Set([
-  'input_select', 'input_radio', 'input_quiz_icon', 'input_quiz_image', 'input_multi_select',
+  "input_select",
+  "input_radio",
+  "input_quiz_icon",
+  "input_quiz_image",
+  "input_multi_select",
 ]);
 
 /**
@@ -86,14 +33,14 @@ const OPTION_FIELD_TYPES = new Set([
  */
 function resolveOptionLabelServer(element: any, rawValue: any): string {
   if (!element || !rawValue || !OPTION_FIELD_TYPES.has(element.type)) {
-    return rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
+    return rawValue !== undefined && rawValue !== null ? String(rawValue) : "";
   }
   const options = element.options || [];
-  if (element.type === 'input_multi_select' && Array.isArray(rawValue)) {
+  if (element.type === "input_multi_select" && Array.isArray(rawValue)) {
     return rawValue.map((id: string) => {
       const opt = options.find((o: any) => o.id === id);
       return opt ? opt.label : String(id);
-    }).join(', ');
+    }).join(", ");
   }
   const opt = options.find((o: any) => o.id === rawValue);
   return opt ? opt.label : String(rawValue);
@@ -101,35 +48,53 @@ function resolveOptionLabelServer(element: any, rawValue: any): string {
 
 // ── Condition evaluator ──
 
-function evaluateCondition(group: any, answers: Record<string, any>, variables: any[], allElements?: any[]): boolean {
+function evaluateCondition(
+  group: any,
+  answers: Record<string, any>,
+  variables: any[],
+  allElements?: any[],
+): boolean {
   if (!group) return true;
-  const logic = group.logic || 'and';
+  const logic = group.logic || "and";
 
   const ruleResults = (group.rules || []).map((rule: any) => {
     let actual: any;
     let labelResolved: string | null = null;
 
-    if (rule.subjectType === 'variable') {
+    if (rule.subjectType === "variable") {
       const v = variables.find((vr: any) => vr.id === rule.variableId);
-      actual = v ? answers[`__var_${v.name}`] : undefined;
-    } else if (rule.subjectType === 'context') {
+      actual = v
+        ? interpolateFormText(`{{${v.name}}}`, answers, variables)
+        : undefined;
+    } else if (rule.subjectType === "context") {
       actual = answers[`__ctx_${rule.contextKey}`];
-    } else if (rule.subjectType === 'param') {
+    } else if (rule.subjectType === "param") {
       actual = answers[`__param_${rule.paramKey}`];
+    } else if (
+      rule.subjectType === "webhook_response" && rule.webhookNodeId &&
+      rule.webhookResponsePath
+    ) {
+      actual = interpolateFormText(
+        `{{webhook:${rule.webhookNodeId}:${rule.webhookResponsePath}}}`,
+        answers,
+        variables,
+      );
     } else {
       actual = answers[rule.questionId];
       // Resolve option ID → label for comparison
       if (allElements) {
-        const element = allElements.find((el: any) => el.id === rule.questionId);
+        const element = allElements.find((el: any) =>
+          el.id === rule.questionId
+        );
         if (element) {
           labelResolved = resolveOptionLabelServer(element, actual);
         }
       }
     }
     const expected = rule.value;
-    const actualStr = actual !== undefined && actual !== null ? String(actual) : '';
+    const actualStr = stringifyFormValue(actual);
     const labelStr = labelResolved ?? actualStr;
-    const expectedStr = String(expected || '');
+    const expectedStr = interpolateFormText(expected || "", answers, variables);
 
     // Helper: check match against both raw and label
     const matchAny = (check: (val: string) => boolean): boolean => {
@@ -137,47 +102,75 @@ function evaluateCondition(group: any, answers: Record<string, any>, variables: 
     };
 
     switch (rule.operator) {
-      case 'equals': return matchAny(v => v === expectedStr);
-      case 'not_equals': return actualStr !== expectedStr && labelStr !== expectedStr;
-      case 'contains': return matchAny(v => v.toLowerCase().includes(expectedStr.toLowerCase()));
-      case 'not_contains':
+      case "equals":
+        return matchAny((v) => v === expectedStr);
+      case "not_equals":
+        return actualStr !== expectedStr && labelStr !== expectedStr;
+      case "contains":
+        return matchAny((v) =>
+          v.toLowerCase().includes(expectedStr.toLowerCase())
+        );
+      case "not_contains":
         return !actualStr.toLowerCase().includes(expectedStr.toLowerCase()) &&
-               !labelStr.toLowerCase().includes(expectedStr.toLowerCase());
-      case 'greater_than': return parseFloat(actualStr) > parseFloat(expectedStr);
-      case 'less_than': return parseFloat(actualStr) < parseFloat(expectedStr);
-      case 'is_empty': return actualStr === '';
-      case 'is_not_empty': return actualStr !== '';
-      default: return true;
+          !labelStr.toLowerCase().includes(expectedStr.toLowerCase());
+      case "greater_than":
+        return parseFloat(actualStr) > parseFloat(expectedStr);
+      case "less_than":
+        return parseFloat(actualStr) < parseFloat(expectedStr);
+      case "is_empty":
+        return actualStr === "";
+      case "is_not_empty":
+        return actualStr !== "";
+      default:
+        return true;
     }
   });
 
-  const groupResults = (group.groups || []).map((g: any) => evaluateCondition(g, answers, variables, allElements));
+  const groupResults = (group.groups || []).map((g: any) =>
+    evaluateCondition(g, answers, variables, allElements)
+  );
   const all = [...ruleResults, ...groupResults];
 
-  return logic === 'and' ? all.every(Boolean) : all.some(Boolean);
+  return logic === "and" ? all.every(Boolean) : all.some(Boolean);
 }
 
 // ── Variable operation executor ──
 
-function executeVariableOp(op: any, answers: Record<string, any>, variables: any[]): Record<string, any> {
+function executeVariableOp(
+  op: any,
+  answers: Record<string, any>,
+  variables: any[],
+): Record<string, any> {
   const updated = { ...answers };
   for (const operation of op.operations || []) {
     const v = variables.find((vr: any) => vr.id === operation.variableId);
     if (!v) continue;
     const varKey = `__var_${v.name}`;
     let operandValue: number;
-    if (operation.operandType === 'field' && operation.operandFieldId) {
-      operandValue = parseFloat(answers[operation.operandFieldId] || '0');
+    if (operation.operandType === "field" && operation.operandFieldId) {
+      operandValue = parseFloat(answers[operation.operandFieldId] || "0");
     } else {
-      operandValue = parseFloat(interpolate(operation.operand, answers, variables) || '0');
+      operandValue = parseFloat(
+        interpolateFormText(operation.operand, answers, variables) || "0",
+      );
     }
-    const current = parseFloat(updated[varKey] || '0');
+    const current = parseFloat(updated[varKey] || "0");
     switch (operation.op) {
-      case 'set': updated[varKey] = operandValue; break;
-      case 'add': updated[varKey] = current + operandValue; break;
-      case 'subtract': updated[varKey] = current - operandValue; break;
-      case 'multiply': updated[varKey] = current * operandValue; break;
-      case 'divide': updated[varKey] = operandValue !== 0 ? current / operandValue : current; break;
+      case "set":
+        updated[varKey] = operandValue;
+        break;
+      case "add":
+        updated[varKey] = current + operandValue;
+        break;
+      case "subtract":
+        updated[varKey] = current - operandValue;
+        break;
+      case "multiply":
+        updated[varKey] = current * operandValue;
+        break;
+      case "divide":
+        updated[varKey] = operandValue !== 0 ? current / operandValue : current;
+        break;
     }
   }
   return updated;
@@ -211,26 +204,39 @@ async function walkWorkflow(
 
     for (const edge of outEdges) {
       const target = edge.target;
-      if (!target || target === 'end') continue;
+      if (!target || target === "end") continue;
       if (visited.has(target)) continue;
 
       // Page nodes — skip (pages are client-side only)
-      if (target.startsWith('p-')) {
+      if (target.startsWith("p-")) {
         nextNodeId = target;
         continue;
       }
 
       // Condition node
-      if (target.startsWith('c-')) {
-        const condId = target.replace('c-', '');
-        const cond = (formData.conditions || []).find((c: any) => c.id === condId);
+      if (target.startsWith("c-")) {
+        const condId = target.replace("c-", "");
+        const cond = (formData.conditions || []).find((c: any) =>
+          c.id === condId
+        );
         if (cond) {
           // Collect all elements for option-label resolution
-          const allElements = (formData.pages || []).flatMap((p: any) => flattenFormElements(p.elements || []));
+          const allElements = (formData.pages || []).flatMap((p: any) =>
+            flattenFormElements(p.elements || [])
+          );
           let matched = false;
           for (const branch of cond.branches || []) {
-            if (evaluateCondition(branch.conditionGroup, currentAnswers, variables, allElements)) {
-              const branchEdge = edges.find((e: any) => e.source === target && e.sourceHandle === `branch-${branch.id}`);
+            if (
+              evaluateCondition(
+                branch.conditionGroup,
+                currentAnswers,
+                variables,
+                allElements,
+              )
+            ) {
+              const branchEdge = edges.find((e: any) =>
+                e.source === target && e.sourceHandle === `branch-${branch.id}`
+              );
               if (branchEdge) {
                 nextNodeId = branchEdge.target;
                 matched = true;
@@ -239,7 +245,9 @@ async function walkWorkflow(
             }
           }
           if (!matched) {
-            const defaultEdge = edges.find((e: any) => e.source === target && e.sourceHandle === 'default');
+            const defaultEdge = edges.find((e: any) =>
+              e.source === target && e.sourceHandle === "default"
+            );
             if (defaultEdge) nextNodeId = defaultEdge.target;
           }
         }
@@ -247,9 +255,11 @@ async function walkWorkflow(
       }
 
       // Variable operation node
-      if (target.startsWith('vo-')) {
-        const voId = target.replace('vo-', '');
-        const voNode = (formData.variableOpNodes || []).find((n: any) => n.id === voId);
+      if (target.startsWith("vo-")) {
+        const voId = target.replace("vo-", "");
+        const voNode = (formData.variableOpNodes || []).find((n: any) =>
+          n.id === voId
+        );
         if (voNode) {
           currentAnswers = executeVariableOp(voNode, currentAnswers, variables);
         }
@@ -259,24 +269,39 @@ async function walkWorkflow(
       }
 
       // Analytics/Pixel node
-      if (target.startsWith('an-')) {
-        const anId = target.replace('an-', '');
-        const anNode = (formData.analyticsNodes || []).find((n: any) => n.id === anId);
+      if (target.startsWith("an-")) {
+        const anId = target.replace("an-", "");
+        const anNode = (formData.analyticsNodes || []).find((n: any) =>
+          n.id === anId
+        );
         if (anNode) {
           // Fire server-side pixel events
           try {
-            const platforms = anNode.platforms || (anNode.platform ? [{ platform: anNode.platform, eventType: anNode.eventType, customEventName: anNode.customEventName, enabled: true }] : []);
+            const platforms = anNode.platforms ||
+              (anNode.platform
+                ? [{
+                  platform: anNode.platform,
+                  eventType: anNode.eventType,
+                  customEventName: anNode.customEventName,
+                  enabled: true,
+                }]
+                : []);
             for (const p of platforms) {
               if (!p.enabled) continue;
               await fetch(`${supabaseUrl}/functions/v1/pixel-event`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${serviceKey}`,
+                },
                 body: JSON.stringify({
                   platform: p.platform,
-                  eventName: p.eventType === 'custom' ? p.customEventName : p.eventType,
+                  eventName: p.eventType === "custom"
+                    ? p.customEventName
+                    : p.eventType,
                   formId: formData.id,
                   responseId: answers.__responseId,
-                  triggerType: 'workflow_node',
+                  triggerType: "workflow_node",
                 }),
               });
             }
@@ -290,24 +315,49 @@ async function walkWorkflow(
       }
 
       // WhatsApp node
-      if (target.startsWith('wa-')) {
-        const waId = target.replace('wa-', '');
-        const waNode = (formData.whatsappNodes || []).find((n: any) => n.id === waId);
+      if (target.startsWith("wa-")) {
+        const waId = target.replace("wa-", "");
+        const waNode = (formData.whatsappNodes || []).find((n: any) =>
+          n.id === waId
+        );
         if (waNode) {
           try {
-            const messageText = interpolate(waNode.messageText || '', currentAnswers, variables);
-            const recipientNumber = interpolate(waNode.recipientNumber || '', currentAnswers, variables);
+            const messageText = interpolateFormText(
+              waNode.messageText || "",
+              currentAnswers,
+              variables,
+            );
+            const recipientNumber = interpolateFormText(
+              waNode.recipientNumber || "",
+              currentAnswers,
+              variables,
+            );
             await fetch(`${supabaseUrl}/functions/v1/whatsapp-send`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceKey}`,
+              },
               body: JSON.stringify({
                 instanceId: waNode.instanceId,
                 recipientNumber,
                 messageText,
                 sendMedia: waNode.sendMedia,
                 mediaType: waNode.mediaType,
-                mediaUrl: waNode.mediaUrl ? interpolate(waNode.mediaUrl, currentAnswers, variables) : undefined,
-                mediaFileName: waNode.mediaFileName,
+                mediaUrl: waNode.mediaUrl
+                  ? interpolateFormText(
+                    waNode.mediaUrl,
+                    currentAnswers,
+                    variables,
+                  )
+                  : undefined,
+                mediaFileName: waNode.mediaFileName
+                  ? interpolateFormText(
+                    waNode.mediaFileName,
+                    currentAnswers,
+                    variables,
+                  )
+                  : undefined,
               }),
             });
           } catch (err) {
@@ -320,23 +370,54 @@ async function walkWorkflow(
       }
 
       // Email node
-      if (target.startsWith('em-')) {
-        const emId = target.replace('em-', '');
-        const emNode = (formData.emailNodes || []).find((n: any) => n.id === emId);
+      if (target.startsWith("em-")) {
+        const emId = target.replace("em-", "");
+        const emNode = (formData.emailNodes || []).find((n: any) =>
+          n.id === emId
+        );
         if (emNode) {
           try {
             await fetch(`${supabaseUrl}/functions/v1/resend-send`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceKey}`,
+              },
               body: JSON.stringify({
                 instanceId: emNode.instanceId,
-                fromEmail: emNode.fromEmail,
-                fromName: emNode.fromName,
-                toEmail: interpolate(emNode.toEmail || '', currentAnswers, variables),
-                subject: interpolate(emNode.subject || '', currentAnswers, variables),
-                bodyText: interpolate(emNode.bodyText || '', currentAnswers, variables),
+                fromEmail: interpolateFormText(
+                  emNode.fromEmail || "",
+                  currentAnswers,
+                  variables,
+                ),
+                fromName: interpolateFormText(
+                  emNode.fromName || "",
+                  currentAnswers,
+                  variables,
+                ),
+                toEmail: interpolateFormText(
+                  emNode.toEmail || "",
+                  currentAnswers,
+                  variables,
+                ),
+                subject: interpolateFormText(
+                  emNode.subject || "",
+                  currentAnswers,
+                  variables,
+                ),
+                bodyText: interpolateFormText(
+                  emNode.bodyText || "",
+                  currentAnswers,
+                  variables,
+                ),
                 useHtml: emNode.useHtml,
-                bodyHtml: emNode.useHtml ? interpolate(emNode.bodyHtml || '', currentAnswers, variables) : undefined,
+                bodyHtml: emNode.useHtml
+                  ? interpolateFormHtml(
+                    emNode.bodyHtml || "",
+                    currentAnswers,
+                    variables,
+                  )
+                  : undefined,
               }),
             });
           } catch (err) {
@@ -349,44 +430,74 @@ async function walkWorkflow(
       }
 
       // Integration (webhook) node
-      if (target.startsWith('int-')) {
-        const intId = target.replace('int-', '');
-        const intNode = (formData.integrationNodes || []).find((n: any) => n.id === intId);
+      if (target.startsWith("int-")) {
+        const intId = target.replace("int-", "");
+        const intNode = (formData.integrationNodes || []).find((n: any) =>
+          n.id === intId
+        );
         if (intNode && intNode.webhookUrl) {
           try {
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            const headers: Record<string, string> = {
+              "Content-Type": "application/json",
+            };
             for (const h of intNode.webhookHeaders || []) {
-              headers[h.key] = interpolate(h.value, currentAnswers, variables);
+              headers[h.key] = interpolateFormText(
+                h.value,
+                currentAnswers,
+                variables,
+              );
             }
-            let url = interpolate(intNode.webhookUrl, currentAnswers, variables);
+            let url = interpolateFormText(
+              intNode.webhookUrl,
+              currentAnswers,
+              variables,
+            );
             const qParams = (intNode.webhookQueryParams || []).map((q: any) =>
-              `${encodeURIComponent(q.key)}=${encodeURIComponent(interpolate(q.value, currentAnswers, variables))}`
-            ).join('&');
-            if (qParams) url += (url.includes('?') ? '&' : '?') + qParams;
+              `${encodeURIComponent(q.key)}=${
+                encodeURIComponent(
+                  interpolateFormText(q.value, currentAnswers, variables),
+                )
+              }`
+            ).join("&");
+            if (qParams) url += (url.includes("?") ? "&" : "?") + qParams;
 
             const bodyParams: Record<string, any> = {};
             for (const bp of intNode.webhookBodyParams || []) {
-              bodyParams[bp.key] = interpolate(bp.value, currentAnswers, variables);
+              bodyParams[bp.key] = interpolateFormText(
+                bp.value,
+                currentAnswers,
+                variables,
+              );
             }
 
             const res = await fetch(url, {
-              method: intNode.webhookMethod || 'POST',
+              method: intNode.webhookMethod || "POST",
               headers,
-              body: intNode.webhookMethod === 'GET' ? undefined : JSON.stringify({
-                formId: formData.id,
-                answers: currentAnswers,
-                ...bodyParams,
-              }),
+              body: intNode.webhookMethod === "GET"
+                ? undefined
+                : JSON.stringify({
+                  formId: formData.id,
+                  answers: currentAnswers,
+                  ...bodyParams,
+                }),
             });
 
             // Map response fields to variables
             if (intNode.responseMappings?.length) {
               try {
-                const resBody = await res.json();
+                const resBody = await readResponseJsonLimited<Record<string, unknown>>(
+                  res,
+                  1_000_000,
+                );
                 for (const mapping of intNode.responseMappings) {
-                  const v = variables.find((vr: any) => vr.id === mapping.variableId);
+                  const v = variables.find((vr: any) =>
+                    vr.id === mapping.variableId
+                  );
                   if (v) {
-                    const value = mapping.responsePath.split('.').reduce((obj: any, key: string) => obj?.[key], resBody);
+                    const value = mapping.responsePath.split(".").reduce(
+                      (obj: any, key: string) => obj?.[key],
+                      resBody,
+                    );
                     if (value !== undefined) {
                       currentAnswers[`__var_${v.name}`] = value;
                     }
@@ -404,27 +515,37 @@ async function walkWorkflow(
       }
 
       // A/B Test node
-      if (target.startsWith('ab-')) {
-        const abId = target.replace('ab-', '');
-        const abNode = (formData.abTestNodes || []).find((n: any) => n.id === abId);
+      if (target.startsWith("ab-")) {
+        const abId = target.replace("ab-", "");
+        const abNode = (formData.abTestNodes || []).find((n: any) =>
+          n.id === abId
+        );
         if (abNode && abNode.variants?.length) {
-          const totalWeight = abNode.variants.reduce((s: number, v: any) => s + v.weight, 0);
+          const totalWeight = abNode.variants.reduce(
+            (s: number, v: any) => s + v.weight,
+            0,
+          );
           let random = Math.random() * totalWeight;
           let chosen = abNode.variants[0];
           for (const variant of abNode.variants) {
             random -= variant.weight;
-            if (random <= 0) { chosen = variant; break; }
+            if (random <= 0) {
+              chosen = variant;
+              break;
+            }
           }
           // Handle ID matches ABTestNode component: `ab-${variant.id}`
-          const variantEdge = edges.find((e: any) => e.source === target && e.sourceHandle === `ab-${chosen.id}`);
+          const variantEdge = edges.find((e: any) =>
+            e.source === target && e.sourceHandle === `ab-${chosen.id}`
+          );
           if (variantEdge) nextNodeId = variantEdge.target;
         }
         continue;
       }
 
       // AI node
-      if (target.startsWith('ai-')) {
-        const aiId = target.replace('ai-', '');
+      if (target.startsWith("ai-")) {
+        const aiId = target.replace("ai-", "");
         const aiNode = (formData.aiNodes || []).find((n: any) => n.id === aiId);
         if (aiNode) {
           try {
@@ -433,10 +554,13 @@ async function walkWorkflow(
             for (const sourceId of aiNode.inputSources || []) {
               const val = currentAnswers[sourceId];
               if (val !== undefined && val !== null) {
-                const element = (formData.pages || []).flatMap((p: any) => p.elements || []).find((el: any) => el.id === sourceId);
-                const label = element?.label || element?.placeholder || sourceId;
+                const element = (formData.pages || []).flatMap((p: any) =>
+                  p.elements || []
+                ).find((el: any) => el.id === sourceId);
+                const label = element?.label || element?.placeholder ||
+                  sourceId;
                 // Serialize objects to readable strings to avoid [object Object]
-                if (typeof val === 'object' && val !== null) {
+                if (typeof val === "object" && val !== null) {
                   inputData[label] = JSON.stringify(val, null, 2);
                 } else {
                   inputData[label] = String(val);
@@ -444,26 +568,46 @@ async function walkWorkflow(
               }
             }
 
-            const resolvedPrompt = interpolate(aiNode.prompt || '', currentAnswers, variables);
+            const resolvedPrompt = interpolateFormText(
+              aiNode.prompt || "",
+              currentAnswers,
+              variables,
+            );
+            const resolvedSystemPrompt = interpolateFormText(
+              aiNode.systemPrompt || "",
+              currentAnswers,
+              variables,
+            );
 
-            const aiResponse = await fetch(`${supabaseUrl}/functions/v1/ai-process`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
-              body: JSON.stringify({
-                objective: aiNode.objective || 'custom',
-                prompt: resolvedPrompt,
-                systemPrompt: aiNode.systemPrompt || '',
-                inputData,
-                model: aiNode.model,
-                maxTokens: aiNode.maxTokens || 500,
-                temperature: aiNode.temperature ?? 0.7,
-              }),
-            });
+            const aiResponse = await fetch(
+              `${supabaseUrl}/functions/v1/ai-process`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${serviceKey}`,
+                },
+                body: JSON.stringify({
+                  objective: aiNode.objective || "custom",
+                  prompt: resolvedPrompt,
+                  systemPrompt: resolvedSystemPrompt,
+                  inputData,
+                  model: aiNode.model,
+                  maxTokens: aiNode.maxTokens || 500,
+                  temperature: aiNode.temperature ?? 0.7,
+                }),
+              },
+            );
 
             if (aiResponse.ok) {
-              const aiData = await aiResponse.json();
+              const aiData = await readResponseJsonLimited<Record<string, unknown>>(
+                aiResponse,
+                1_000_000,
+              );
               if (aiData.success && aiData.result && aiNode.outputVariableId) {
-                const outVar = variables.find((v: any) => v.id === aiNode.outputVariableId);
+                const outVar = variables.find((v: any) =>
+                  v.id === aiNode.outputVariableId
+                );
                 if (outVar) {
                   currentAnswers[`__var_${outVar.name}`] = aiData.result;
                 }
@@ -482,16 +626,18 @@ async function walkWorkflow(
       }
 
       // Wait node — server-side just passes through (wait is client-side only)
-      if (target.startsWith('wt-')) {
+      if (target.startsWith("wt-")) {
         const wtOut = edges.find((e: any) => e.source === target);
         if (wtOut) nextNodeId = wtOut.target;
         continue;
       }
 
       // Jump node
-      if (target.startsWith('jp-')) {
-        const jpId = target.replace('jp-', '');
-        const jpNode = (formData.jumpNodes || []).find((n: any) => n.id === jpId);
+      if (target.startsWith("jp-")) {
+        const jpId = target.replace("jp-", "");
+        const jpNode = (formData.jumpNodes || []).find((n: any) =>
+          n.id === jpId
+        );
         if (jpNode?.targetPageId) {
           nextNodeId = `p-${jpNode.targetPageId}`;
         }
@@ -509,73 +655,123 @@ async function walkWorkflow(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
+      status: 405,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        Allow: "POST, OPTIONS",
+      },
+    });
   }
 
   try {
+    // The browser runtime is the canonical workflow executor. This older bulk
+    // orchestrator predates the per-node idempotency ledger and must stay off
+    // unless it is explicitly migrated and enabled for a trusted internal job.
+    // Keeping the default fail-closed also prevents an accidental scheduler
+    // from duplicating e-mail, WhatsApp, AI, pixel or webhook side effects.
+    if (Deno.env.get("ENABLE_LEGACY_EXECUTE_WORKFLOW") !== "true") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "legacy_workflow_executor_disabled",
+        }),
+        {
+          status: 410,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     // The public respondent flow executes authorized nodes individually. This
     // legacy bulk orchestrator is reserved for trusted server-side jobs so it
     // cannot be abused to replay email, WhatsApp, AI or webhook side effects.
     if (!isServiceRequest(req)) {
-      return new Response(JSON.stringify({ success: false, error: 'unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ success: false, error: "unauthorized" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
-    const rawBody = await req.text();
-    if (rawBody.length > 500_000) {
-      return new Response(JSON.stringify({ success: false, error: 'payload_too_large' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const body = JSON.parse(rawBody);
+    const parsedBody = await readLimitedJsonObject(
+      req,
+      500_000,
+      corsHeaders,
+    );
+    if (!parsedBody.ok) return parsedBody.response;
+    const body: any = parsedBody.value;
     const { formId, answers, responseId, metadata } = body;
 
-    if (!formId || typeof formId !== 'string' || formId.length > 100) {
-      return new Response(JSON.stringify({ success: false, error: 'invalid_formId' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!formId || typeof formId !== "string" || formId.length > 100) {
+      return new Response(
+        JSON.stringify({ success: false, error: "invalid_formId" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
-    if (!responseId || typeof responseId !== 'string' || responseId.length > 100) {
-      return new Response(JSON.stringify({ success: false, error: 'invalid_responseId' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (
+      !responseId || typeof responseId !== "string" || responseId.length > 100
+    ) {
+      return new Response(
+        JSON.stringify({ success: false, error: "invalid_responseId" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
-    if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
-      return new Response(JSON.stringify({ success: false, error: 'invalid_answers' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "invalid_answers" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const admin = createClient(supabaseUrl, serviceKey);
     const limited = await enforceRateLimit(
-      admin, req, 'execute-workflow', 10, 60, formId, serviceKey, corsHeaders,
+      admin,
+      req,
+      "execute-workflow",
+      10,
+      60,
+      formId,
+      serviceKey,
+      corsHeaders,
     );
     if (limited) return limited;
 
     // Load full form data from DB
     const { data: formRow, error: formError } = await admin
-      .from('forms')
-      .select('id, title, data')
-      .eq('id', formId)
+      .from("forms")
+      .select("id, title, data")
+      .eq("id", formId)
       .single();
 
     if (formError || !formRow) {
-      return new Response(JSON.stringify({ success: false, error: 'form_not_found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ success: false, error: "form_not_found" }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const formData = {
@@ -589,24 +785,24 @@ Deno.serve(async (req) => {
 
     // Save the response via form-public-save
     await fetch(`${supabaseUrl}/functions/v1/form-public-save`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({
-        kind: 'response',
-        action: 'upsert',
-        onConflict: 'form_id,response_id',
+        kind: "response",
+        action: "upsert",
+        onConflict: "form_id,response_id",
         payload: {
           form_id: formId,
           response_id: responseId,
           answers,
           metadata: {
             ...metadata,
-            status: 'complete',
+            status: "complete",
             submitted_at: new Date().toISOString(),
-            execution_mode: 'server_workflow',
+            execution_mode: "server_workflow",
           },
           total_time_ms: metadata?.totalTimeMs || null,
           pages_visited: metadata?.pagesVisited || null,
@@ -616,7 +812,7 @@ Deno.serve(async (req) => {
 
     // Walk the workflow from the last page node
     const lastPageId = metadata?.lastPageId;
-    const startNode = lastPageId ? `p-${lastPageId}` : 'start';
+    const startNode = lastPageId ? `p-${lastPageId}` : "start";
 
     const { updatedAnswers, errors } = await walkWorkflow(
       startNode,
@@ -632,8 +828,8 @@ Deno.serve(async (req) => {
     if (completionWebhookUrl) {
       try {
         await fetch(completionWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             formId,
             responseId,
@@ -646,17 +842,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      errors: errors.length > 0 ? errors : undefined,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        errors: errors.length > 0 ? errors : undefined,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown_error';
+    const message = err instanceof Error ? err.message : "unknown_error";
     return new Response(JSON.stringify({ success: false, error: message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

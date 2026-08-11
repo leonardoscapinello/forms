@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Type, FileText, Volume2 } from 'lucide-react';
-import { parseWhatsAppMarkdown } from './WhatsAppMessageEditor';
+import { parseWhatsAppMarkdown } from './whatsappMarkdown';
 import type { ElementLookup } from '../shared/VariableHighlightOverlay';
 
 interface Props {
