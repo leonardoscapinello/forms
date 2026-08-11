@@ -223,6 +223,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | ✅ | Filtrar outliers de tempo por página | Média limitada e testada |
 | ✅ | Alternar análise entre drop-off por resposta e por página | Visão Página publicada mantém cada campo em sua coluna e não cria bloco extra |
 | ✅ | Agrupar colunas sob um cabeçalho mesclado por página | Cabeçalho adicional funciona como célula mesclada do Excel: `colSpan` + `scope="colgroup"` sobre as colunas individuais; produção validada visualmente |
+| ✅ | Manter o indicador de drop-off compacto e visível na rolagem horizontal | Card limitado a 288 px, responsivo e congelado no centro útil da tabela; Chromium confirmou posição estável após 1.200 px de rolagem e transição correta entre páginas |
 | ✅ | Testar cálculo de drop-off multipágina/condicional | Última visita real, conclusão e páginas puladas cobertas por fixtures; RPC elimina limite de 10 mil em produção |
 | ✅ | Remover limites silenciosos dos KPIs e funis | `get_analytics_dashboard` agrega o período completo no PostgreSQL; dashboards usam timezone do navegador e só fazem fallback explícito quando a RPC ainda não existe |
 | ✅ | Consolidar retries de sessão | Linhas repetidas do mesmo `response_id` são unificadas antes do cálculo, evitando contagem simultânea como concluída e incompleta |

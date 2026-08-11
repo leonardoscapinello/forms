@@ -504,9 +504,15 @@ export default function FormResponses({ form }: Props) {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div
+        className="flex-1 overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [container-type:inline-size]"
+        data-testid="responses-scroll-viewport"
+        role="region"
+        aria-label="Tabela de respostas com rolagem horizontal"
+        tabIndex={0}
+      >
         <div className="min-w-max">
-          <Table>
+          <Table containerClassName="overflow-visible">
             <TableHeader>
               {dropoffView === 'page' && (
                 <TableRow
@@ -556,7 +562,10 @@ export default function FormResponses({ form }: Props) {
                         data-page-group={group.id}
                         aria-label={`Página ${group.index + 1}, ${group.title}: ${dropoffPercent}% de drop-off`}
                       >
-                        <div className="min-w-0 space-y-1">
+                        <div
+                          className="sticky left-[max(10rem,calc(50cqw-4.5rem))] z-[1] w-[min(18rem,calc(100cqw-11rem))] max-w-[calc(100%-0.5rem)] space-y-1 rounded-lg border border-border/80 bg-background/95 px-3 py-2 shadow-sm backdrop-blur-sm"
+                          data-page-dropoff-panel={group.id}
+                        >
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <span className="block text-[9px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
@@ -573,10 +582,10 @@ export default function FormResponses({ form }: Props) {
                               <span className="text-[8px] font-normal text-muted-foreground">drop-off</span>
                             </div>
                           </div>
-                          <div className="h-1 overflow-hidden rounded-full bg-muted">
+                          <div className="h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
                             <div className={`h-full rounded-full ${bar}`} style={{ width: `${dropoffPercent}%` }} />
                           </div>
-                          <div className="flex items-center justify-between gap-2 text-[8px] font-normal tabular-nums text-muted-foreground">
+                          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[8px] font-normal tabular-nums text-muted-foreground">
                             <span>{group.fields.length} {group.fields.length === 1 ? 'campo' : 'campos'}</span>
                             <span>{stat?.reached || 0} chegaram · {stat?.dropoffs || 0} saíram</span>
                           </div>

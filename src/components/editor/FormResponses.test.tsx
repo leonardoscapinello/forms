@@ -225,6 +225,28 @@ describe('FormResponses drop-off view', () => {
       'Sem perguntas: sem campos de resposta',
     );
 
+    const scrollViewport = screen.getByTestId('responses-scroll-viewport');
+    expect(scrollViewport).toHaveAttribute('role', 'region');
+    expect(scrollViewport).toHaveAttribute('aria-label', 'Tabela de respostas com rolagem horizontal');
+    expect(scrollViewport).toHaveAttribute('tabindex', '0');
+    const table = container.querySelector('table');
+    expect(table?.parentElement).toHaveClass('overflow-visible');
+    expect(table?.parentElement).not.toHaveClass('overflow-auto');
+
+    const panels = Array.from(container.querySelectorAll('[data-page-dropoff-panel]'));
+    expect(panels).toHaveLength(2);
+    expect(panels.map((panel) => panel.getAttribute('data-page-dropoff-panel'))).toEqual([
+      'page-contact',
+      'page-company',
+    ]);
+    for (const panel of panels) {
+      expect(panel.parentElement).toHaveAttribute('data-page-group', panel.getAttribute('data-page-dropoff-panel'));
+      expect(panel).toHaveClass('sticky');
+      expect(panel.className).toContain('left-[max(10rem,calc(50cqw-4.5rem))]');
+      expect(panel.className).toContain('w-[min(18rem,calc(100cqw-11rem))]');
+      expect(panel.className).toContain('max-w-[calc(100%-0.5rem)]');
+    }
+
     const groupRow = screen.getByTestId('page-group-header-row');
     const groupedColumnCount = Array.from(groupRow.querySelectorAll('th'))
       .reduce((total, cell) => total + cell.colSpan, 0);
