@@ -44,6 +44,15 @@ const COUNTRY_MASK: Record<string, string> = {
   UY: '00 000 000',
 };
 
+// Some calling codes are shared by more than one country (notably +1). When
+// the configured country is not one of the matches, use the same practical
+// default exposed first by the public picker instead of depending on object
+// insertion order.
+const COUNTRY_INFERENCE_PRIORITY = [
+  'US', 'CA', 'BR', 'PT', 'AR', 'CL', 'CO', 'MX', 'UY', 'PY', 'PE',
+  'GB', 'DE', 'FR', 'ES', 'IT', 'JP', 'CN', 'IN', 'AU',
+];
+
 function digits(value: unknown): string {
   return String(value ?? '').replace(/\D/g, '');
 }
@@ -71,7 +80,36 @@ export function applyNationalPhoneMask(value: unknown, countryCode?: string): st
     else result += mask[maskIndex];
   }
 
-  return result;
+  // Preserve overflow visibly. Silently dropping pasted digits can transform a
+  // mistyped phone into a different, apparently valid lead identifier.
+  return digitIndex < valueDigits.length
+    ? `${result} ${valueDigits.slice(digitIndex)}`
+    : result;
+}
+
+function inferInternationalCountry(
+  rawDigits: string,
+  preferredCountryCode?: string,
+): { countryCode: string; ddi: string; nationalDigits: string } | undefined {
+  const preferred = String(preferredCountryCode || '').toUpperCase();
+  const matches = Object.entries(COUNTRY_DDI)
+    .map(([countryCode, ddi]) => ({ countryCode, ddi, ddiDigits: digits(ddi) }))
+    .filter(candidate => rawDigits.startsWith(candidate.ddiDigits))
+    .sort((left, right) => {
+      const lengthDifference = right.ddiDigits.length - left.ddiDigits.length;
+      if (lengthDifference !== 0) return lengthDifference;
+      if (left.countryCode === preferred) return -1;
+      if (right.countryCode === preferred) return 1;
+      return COUNTRY_INFERENCE_PRIORITY.indexOf(left.countryCode)
+        - COUNTRY_INFERENCE_PRIORITY.indexOf(right.countryCode);
+    });
+  const match = matches[0];
+  if (!match) return undefined;
+  return {
+    countryCode: match.countryCode,
+    ddi: match.ddi,
+    nationalDigits: rawDigits.slice(match.ddiDigits.length),
+  };
 }
 
 /**
@@ -103,7 +141,7 @@ export interface NormalizedPhoneValue {
   ddi: string;
   number: string;
   /** Keeps a visually empty reset invalid until the respondent explicitly edits it. */
-  invalidReason?: 'mask_overflow';
+  invalidReason?: 'mask_overflow' | 'unsupported_country';
 }
 
 export interface PhoneValidationResult {
@@ -119,26 +157,27 @@ export function validatePhoneValue(
   const objectValue = typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
-  if (objectValue?.invalidReason === 'mask_overflow') {
-    return { valid: false, error: 'Digite novamente o telefone após trocar o país' };
-  }
-
   const normalized = normalizePhoneDefault(value, defaultCountryCode);
-  let rawNationalDigits: string;
-  if (objectValue) {
-    rawNationalDigits = digits(objectValue.number);
-  } else {
-    const raw = String(value ?? '').trim();
-    const rawDigits = digits(raw);
-    const configuredDdiDigits = digits(getCountryDdi(defaultCountryCode));
-    rawNationalDigits = raw.startsWith('+') && rawDigits.startsWith(configuredDdiDigits)
-      ? rawDigits.slice(configuredDdiDigits.length)
-      : rawDigits;
-  }
+  const rawNationalDigits = objectValue
+    ? digits(objectValue.number)
+    : digits(normalized?.number);
   if (!normalized || !rawNationalDigits) {
+    if (normalized?.invalidReason === 'mask_overflow') {
+      return { valid: false, error: 'O telefone possui mais dígitos do que a máscara permite' };
+    }
+    if (normalized?.invalidReason === 'unsupported_country') {
+      return { valid: false, error: 'Selecione um país válido para o telefone' };
+    }
     return required
       ? { valid: false, error: 'Telefone obrigatório' }
       : { valid: true };
+  }
+
+  if (normalized.invalidReason === 'mask_overflow') {
+    return { valid: false, error: 'O telefone possui mais dígitos do que a máscara permite' };
+  }
+  if (normalized.invalidReason === 'unsupported_country') {
+    return { valid: false, error: 'Selecione um país válido para o telefone' };
   }
 
   const countryCode = normalized.countryCode.toUpperCase();
@@ -165,42 +204,104 @@ export function normalizePhoneDefault(value: unknown, defaultCountryCode = 'BR')
 
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const phone = value as Record<string, unknown>;
+    if (phone.full_number !== undefined && phone.full_number !== null) {
+      return normalizePhoneDefault(phone.full_number, String(phone.countryCode || countryCode));
+    }
     const resolvedCountryCode = String(phone.countryCode || countryCode).toUpperCase();
+    if (!COUNTRY_DDI[resolvedCountryCode]) {
+      return {
+        countryCode: resolvedCountryCode,
+        ddi: String(phone.ddi || defaultDdi),
+        number: applyNationalPhoneMask(phone.number, countryCode),
+        invalidReason: 'unsupported_country',
+      };
+    }
     const ddiDigits = digits(phone.ddi || getCountryDdi(resolvedCountryCode));
     const ddi = `+${ddiDigits}`;
     if (phone.invalidReason === 'mask_overflow') {
-      return { countryCode: resolvedCountryCode, ddi, number: '', invalidReason: 'mask_overflow' };
+      return {
+        countryCode: resolvedCountryCode,
+        ddi,
+        number: applyNationalPhoneMask(phone.number, resolvedCountryCode),
+        invalidReason: 'mask_overflow',
+      };
+    }
+    if (phone.invalidReason === 'unsupported_country') {
+      return {
+        countryCode: resolvedCountryCode,
+        ddi,
+        number: applyNationalPhoneMask(phone.number, resolvedCountryCode),
+        invalidReason: 'unsupported_country',
+      };
     }
     const nationalDigits = digits(phone.number);
     if (!nationalDigits) return undefined;
     const hasOverflow = nationalDigits.length > getExpectedNationalPhoneDigits(resolvedCountryCode);
-    const number = hasOverflow ? '' : applyNationalPhoneMask(nationalDigits, resolvedCountryCode);
-    if (hasOverflow) {
-      return { countryCode: resolvedCountryCode, ddi, number, invalidReason: 'mask_overflow' };
-    }
-    return { countryCode: resolvedCountryCode, ddi, number };
+    return {
+      countryCode: resolvedCountryCode,
+      ddi,
+      number: applyNationalPhoneMask(nationalDigits, resolvedCountryCode),
+      ...(hasOverflow ? { invalidReason: 'mask_overflow' as const } : {}),
+    };
   }
 
-  const raw = String(value ?? '').trim();
+  const source = String(value ?? '');
+  // URLSearchParams follows application/x-www-form-urlencoded semantics and
+  // decodes a literal leading `+` as a space. Recover that common query-string
+  // representation before deciding whether this is an international number.
+  const hasDecodedLeadingPlus = /^ \d/.test(source);
+  const raw = source.trim();
   if (!raw) return undefined;
 
-  // An international default may already include the configured DDI. Keep the
-  // national portion in `number`, matching what PhoneFieldPreview emits.
   const rawDigits = digits(raw);
-  const ddiDigits = digits(defaultDdi);
-  const nationalDigits = raw.startsWith('+') && rawDigits.startsWith(ddiDigits)
-    ? rawDigits.slice(ddiDigits.length)
-    : raw;
+  let resolvedCountryCode = countryCode;
+  let resolvedDdi = defaultDdi;
+  let nationalDigits: string;
+
+  if (raw.startsWith('+') || hasDecodedLeadingPlus) {
+    const inferred = inferInternationalCountry(rawDigits, countryCode);
+    if (!inferred) {
+      return {
+        countryCode,
+        ddi: defaultDdi,
+        number: '',
+        invalidReason: 'unsupported_country',
+      };
+    }
+    resolvedCountryCode = inferred.countryCode;
+    resolvedDdi = inferred.ddi;
+    nationalDigits = inferred.nationalDigits;
+  } else {
+    if (!COUNTRY_DDI[countryCode]) {
+      return {
+        countryCode,
+        ddi: defaultDdi,
+        number: applyNationalPhoneMask(rawDigits, 'BR'),
+        invalidReason: 'unsupported_country',
+      };
+    }
+    const inferredWithoutPlus = inferInternationalCountry(rawDigits, countryCode);
+    const unambiguousInternationalValue = inferredWithoutPlus
+      && rawDigits.length > getExpectedNationalPhoneDigits(countryCode)
+      && inferredWithoutPlus.nationalDigits.length
+        === getExpectedNationalPhoneDigits(inferredWithoutPlus.countryCode);
+    if (unambiguousInternationalValue && inferredWithoutPlus) {
+      resolvedCountryCode = inferredWithoutPlus.countryCode;
+      resolvedDdi = inferredWithoutPlus.ddi;
+      nationalDigits = inferredWithoutPlus.nationalDigits;
+    } else {
+      nationalDigits = rawDigits;
+    }
+  }
 
   const normalizedNationalDigits = digits(nationalDigits);
   if (!normalizedNationalDigits) return undefined;
-  const hasOverflow = normalizedNationalDigits.length > getExpectedNationalPhoneDigits(countryCode);
-  const number = hasOverflow ? '' : applyNationalPhoneMask(normalizedNationalDigits, countryCode);
+  const hasOverflow = normalizedNationalDigits.length > getExpectedNationalPhoneDigits(resolvedCountryCode);
 
   return {
-    countryCode,
-    ddi: defaultDdi,
-    number,
+    countryCode: resolvedCountryCode,
+    ddi: resolvedDdi,
+    number: applyNationalPhoneMask(normalizedNationalDigits, resolvedCountryCode),
     ...(hasOverflow ? { invalidReason: 'mask_overflow' as const } : {}),
   };
 }

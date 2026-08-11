@@ -151,6 +151,49 @@ Deno.test("linear completion enforces required fields and validates typed values
   ]);
 });
 
+Deno.test("optional empty phone state is accepted while required empty phone fails", () => {
+  const optionalForm = {
+    pages: [{
+      id: "contact",
+      elements: [{ id: "phone", type: "input_phone", required: false }],
+    }],
+    flowEdges: [
+      { source: "start", target: "p-contact" },
+      { source: "p-contact", target: "end" },
+    ],
+  };
+  const selectedCountryWithoutNumber = {
+    countryCode: "US",
+    ddi: "+1",
+    number: "",
+  };
+
+  const optional = validateFormSubmission(
+    optionalForm,
+    { phone: selectedCountryWithoutNumber },
+    {},
+    { completion: true, now: NOW },
+  );
+  assert(optional.ok);
+  assertEquals(optional.answers.phone, selectedCountryWithoutNumber);
+
+  const requiredForm = {
+    ...optionalForm,
+    pages: [{
+      id: "contact",
+      elements: [{ id: "phone", type: "input_phone", required: true }],
+    }],
+  };
+  const required = validateFormSubmission(
+    requiredForm,
+    { phone: selectedCountryWithoutNumber },
+    {},
+    { completion: true, now: NOW },
+  );
+  assert(!required.ok);
+  assertEquals(required.fields, ["phone"]);
+});
+
 Deno.test("conditional completion enforces only required fields on the resolved branch", () => {
   const conditional = {
     pages: [

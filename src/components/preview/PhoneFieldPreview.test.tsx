@@ -61,12 +61,12 @@ describe('PhoneFieldPreview', () => {
     expect(onChange).toHaveBeenLastCalledWith({
       countryCode: 'US',
       ddi: '+1',
-      number: '',
+      number: '(119) 876-5432 1',
       invalidReason: 'mask_overflow',
     });
     expect(screen.getByRole('button', { name: 'País selecionado: Estados Unidos, +1' })).toBeInTheDocument();
     const phoneInput = screen.getByPlaceholderText('(000) 000-0000');
-    expect(phoneInput).toHaveValue('');
+    expect(phoneInput).toHaveValue('(119) 876-5432 1');
 
     fireEvent.change(phoneInput, { target: { value: '4155552671' } });
     expect(onChange).toHaveBeenLastCalledWith({
@@ -74,6 +74,35 @@ describe('PhoneFieldPreview', () => {
       ddi: '+1',
       number: '(415) 555-2671',
     });
+  });
+
+  it('infere e exibe o país de um valor internacional pré-populado', () => {
+    render(
+      <PhoneFieldPreview
+        value="+14155552671"
+        defaultCountryCode="BR"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'País selecionado: Estados Unidos, +1' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('(000) 000-0000')).toHaveValue('(415) 555-2671');
+  });
+
+  it('preserva overflow digitado e o marca como inválido até o usuário corrigir', () => {
+    const onChange = vi.fn();
+    render(<ControlledPhone onChange={onChange} initialNumber="" />);
+
+    const phoneInput = screen.getByPlaceholderText('(00) 00000-0000');
+    fireEvent.change(phoneInput, { target: { value: '1198765432199' } });
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      countryCode: 'BR',
+      ddi: '+55',
+      number: '(11) 98765-4321 99',
+      invalidReason: 'mask_overflow',
+    });
+    expect(phoneInput).toHaveValue('(11) 98765-4321 99');
   });
 
   it('mantém texto legível nos estados selecionado, hover e foco por teclado', () => {

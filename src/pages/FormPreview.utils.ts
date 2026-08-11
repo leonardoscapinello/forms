@@ -7,6 +7,7 @@ import {
   readAnswerValue,
   resolveConfiguredVariableValue,
   resolveTemplateValue,
+  stringifyInterpolationValue,
 } from '@/lib/variableInterpolation';
 import { formatInternationalPhone, normalizePhoneDefault, validatePhoneValue } from '@/lib/phoneValue';
 
@@ -125,6 +126,13 @@ function normalizeDateDefault(element: PageElement, value: unknown): string | un
 
 function normalizeElementDefault(element: PageElement, value: unknown): unknown {
   switch (element.type) {
+    case 'input_text':
+    case 'input_email':
+    case 'input_textarea':
+      // Exact interpolation tokens preserve their source type. Text controls,
+      // however, must never receive an object/number as their React value.
+      return stringifyInterpolationValue(value);
+
     case 'input_phone':
       return normalizePhoneDefault(value, element.defaultCountryCode);
 
@@ -338,6 +346,7 @@ export function applyPageVariableAssignments(
   form: AppFormData,
   page: FunnelPage,
   currentAnswers: Record<string, any>,
+  assignedKeys?: Set<string>,
 ): Record<string, any> {
   if (!page.variableAssignments?.length || !form.variables?.length) return currentAnswers;
 
@@ -363,7 +372,9 @@ export function applyPageVariableAssignments(
     }
 
     if (value !== undefined && value !== null) {
-      updated[`__var_${variable.name}`] = value;
+      const storeKey = `__var_${variable.name}`;
+      updated[storeKey] = value;
+      assignedKeys?.add(storeKey);
     }
   }
   return updated;
@@ -464,6 +475,88 @@ function sameDefaultValue(left: unknown, right: unknown): boolean {
   }
 }
 
+function isEmptyDefaultValue(value: unknown): boolean {
+  return value === undefined || value === null || value === '';
+}
+
+export interface DynamicDefaultsRefreshResult {
+  answers: Record<string, any>;
+  defaults: Record<string, any>;
+}
+
+export interface DynamicDefaultsRefreshOptions {
+  /** Values observed after the initial synchronous context, such as geolocation. */
+  runtimeAnswers?: Record<string, any>;
+  /** Respondent-touched and resumed values are immutable default sources. */
+  protectedKeys?: ReadonlySet<string>;
+  /** Workflow/assignment values produced while entering the page. */
+  sourceKeys?: ReadonlySet<string>;
+}
+
+/**
+ * Re-evaluate defaults against the latest runtime state.
+ *
+ * Values that are still equal to their previous default are deliberately left
+ * out of the seed so `buildDefaults` can calculate them again. Actual answers,
+ * workflow outputs and protected values remain in the seed and can therefore be
+ * referenced by fields on the page being entered.
+ */
+export function refreshDynamicDefaults(
+  form: AppFormData,
+  currentAnswers: Record<string, any>,
+  previousDefaults: Record<string, any>,
+  options: DynamicDefaultsRefreshOptions = {},
+): DynamicDefaultsRefreshResult {
+  const runtimeAnswers = options.runtimeAnswers || {};
+  const protectedKeys = options.protectedKeys || new Set<string>();
+  const sourceKeys = options.sourceKeys || new Set<string>();
+  const currentWithRuntime = { ...currentAnswers, ...runtimeAnswers };
+  const seedAnswers: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(currentWithRuntime)) {
+    const hasPreviousDefault = Object.prototype.hasOwnProperty.call(previousDefaults, key);
+    const isStillPreviousDefault = hasPreviousDefault && sameDefaultValue(value, previousDefaults[key]);
+    const isRuntimeKey = key.startsWith('__ctx_') || key.startsWith('__param_') ||
+      key.startsWith('__webhook_');
+    const isPersistedVariableOverride = key.startsWith('__var_') && !hasPreviousDefault;
+
+    if (
+      isRuntimeKey || isPersistedVariableOverride || protectedKeys.has(key) || sourceKeys.has(key) ||
+      (!isEmptyDefaultValue(value) && !isStillPreviousDefault)
+    ) {
+      seedAnswers[key] = value;
+    }
+  }
+
+  const refreshedDefaults = buildDefaults(form, seedAnswers);
+  const nextAnswers = { ...currentWithRuntime };
+  const candidateKeys = new Set([
+    ...Object.keys(previousDefaults),
+    ...Object.keys(refreshedDefaults),
+  ]);
+
+  for (const key of candidateKeys) {
+    if (protectedKeys.has(key) || sourceKeys.has(key)) continue;
+
+    const currentValue = currentWithRuntime[key];
+    const hadPreviousDefault = Object.prototype.hasOwnProperty.call(previousDefaults, key);
+    const wasPreviousDefault = hadPreviousDefault &&
+      sameDefaultValue(currentValue, previousDefaults[key]);
+    const isEmpty = isEmptyDefaultValue(currentValue);
+    const hasRefreshedDefault = Object.prototype.hasOwnProperty.call(refreshedDefaults, key);
+
+    if (hasRefreshedDefault && (isEmpty || wasPreviousDefault)) {
+      nextAnswers[key] = refreshedDefaults[key];
+    } else if (!hasRefreshedDefault && wasPreviousDefault) {
+      // A dynamic source can legitimately become empty. Do not retain the stale
+      // value merely because a newer default no longer exists.
+      delete nextAnswers[key];
+    }
+  }
+
+  return { answers: nextAnswers, defaults: refreshedDefaults };
+}
+
 /**
  * Merge context that only becomes available after first paint (currently geo)
  * without overwriting respondent edits or resumed values.
@@ -475,26 +568,10 @@ export function mergeLateContextDefaults(
   lateContextAnswers: Record<string, any>,
   protectedKeys: ReadonlySet<string> = new Set(),
 ): Record<string, any> {
-  const seedAnswers: Record<string, any> = {};
-  for (const [key, value] of Object.entries(currentAnswers)) {
-    if (
-      key.startsWith('__ctx_') || key.startsWith('__param_') ||
-      key.startsWith('__webhook_') || protectedKeys.has(key)
-    ) seedAnswers[key] = value;
-  }
-  Object.assign(seedAnswers, lateContextAnswers);
-  const refreshedDefaults = buildDefaults(form, seedAnswers);
-  const next = { ...currentAnswers, ...lateContextAnswers };
-
-  for (const [key, refreshedValue] of Object.entries(refreshedDefaults)) {
-    if (protectedKeys.has(key)) continue;
-    const currentValue = currentAnswers[key];
-    const wasInitiallyDefaulted = Object.prototype.hasOwnProperty.call(initialDefaults, key) &&
-      sameDefaultValue(currentValue, initialDefaults[key]);
-    const isStillEmpty = currentValue === undefined || currentValue === null || currentValue === '';
-    if (isStillEmpty || wasInitiallyDefaulted) next[key] = refreshedValue;
-  }
-  return next;
+  return refreshDynamicDefaults(form, currentAnswers, initialDefaults, {
+    runtimeAnswers: lateContextAnswers,
+    protectedKeys,
+  }).answers;
 }
 
 /** Resolve userData (email, phone, name) from a UserDataMapping and current answers */

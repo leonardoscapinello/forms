@@ -92,13 +92,25 @@ interface Props {
 }
 
 export default function PhoneFieldPreview({ value, onChange, defaultCountryCode = 'BR', error, errorId, labelledBy }: Props) {
-  const defaultCountry = COUNTRIES.find(c => c.code === defaultCountryCode) || COUNTRIES[0];
-  const phoneValue: PhoneValue = useMemo(() => (
-    typeof value === 'object' && value !== null && 'countryCode' in value
-      ? value as PhoneValue
-      : normalizePhoneDefault(value, defaultCountry.code)
-        || { countryCode: defaultCountry.code, ddi: defaultCountry.ddi, number: '' }
-  ), [value, defaultCountry.code, defaultCountry.ddi]);
+  const normalizedDefaultCountryCode = String(defaultCountryCode || 'BR').toUpperCase();
+  const defaultCountry = COUNTRIES.find(c => c.code === normalizedDefaultCountryCode) || COUNTRIES[0];
+  const phoneValue: PhoneValue = useMemo(() => {
+    const normalized = normalizePhoneDefault(value, defaultCountry.code);
+    if (normalized) return normalized;
+
+    // Keep a country explicitly selected on an otherwise empty optional field.
+    // This state is valid in the browser and must remain coherent with the Edge
+    // validator, which also treats an empty national number as absent.
+    if (typeof value === 'object' && value !== null && 'countryCode' in value) {
+      const emptyCountryCode = String((value as PhoneValue).countryCode || '').toUpperCase();
+      const emptyCountry = COUNTRIES.find(country => country.code === emptyCountryCode);
+      if (emptyCountry) {
+        return { countryCode: emptyCountry.code, ddi: emptyCountry.ddi, number: '' };
+      }
+    }
+
+    return { countryCode: defaultCountry.code, ddi: defaultCountry.ddi, number: '' };
+  }, [value, defaultCountry.code, defaultCountry.ddi]);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -126,7 +138,7 @@ export default function PhoneFieldPreview({ value, onChange, defaultCountryCode 
     onChange({
       countryCode: country.code,
       ddi: country.ddi,
-      number: hasOverflow ? '' : applyNationalPhoneMask(nationalDigits, country.code),
+      number: applyNationalPhoneMask(nationalDigits, country.code),
       ...(hasOverflow ? { invalidReason: 'mask_overflow' as const } : {}),
     });
     setOpen(false);
@@ -135,8 +147,15 @@ export default function PhoneFieldPreview({ value, onChange, defaultCountryCode 
   }, [phoneValue, onChange]);
 
   const handleInput = useCallback((raw: string) => {
+    const nationalDigits = raw.replace(/\D/g, '');
+    const hasOverflow = nationalDigits.length > getExpectedNationalPhoneDigits(selectedCountry.code);
     const masked = applyNationalPhoneMask(raw, selectedCountry.code);
-    onChange({ countryCode: selectedCountry.code, ddi: selectedCountry.ddi, number: masked });
+    onChange({
+      countryCode: selectedCountry.code,
+      ddi: selectedCountry.ddi,
+      number: masked,
+      ...(hasOverflow ? { invalidReason: 'mask_overflow' as const } : {}),
+    });
   }, [selectedCountry, onChange]);
 
   // Close dropdown on outside click

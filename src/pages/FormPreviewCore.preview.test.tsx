@@ -287,6 +287,74 @@ describe('FormPreviewCore preview isolation', () => {
     ));
   });
 
+  it('reatualiza defaults ao entrar na página sem sobrescrever um campo tocado', async () => {
+    const source = createDefaultPageElement('input_text');
+    source.label = 'Resposta de origem';
+    const copied = createDefaultPageElement('input_text');
+    copied.label = 'Resposta copiada';
+    copied.defaultValue = `{{field:${source.id}}}`;
+    const assigned = createDefaultPageElement('input_text');
+    assigned.label = 'Valor atribuído';
+    assigned.defaultValue = '{{segmento}}';
+    const form = {
+      id: 'reactive-defaults-form',
+      title: 'Defaults reativos',
+      status: 'draft',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      questions: [],
+      style: {},
+      responseCount: 0,
+      completionRate: 0,
+      showWelcomeScreen: false,
+      variables: [{ id: 'segment', name: 'segmento', type: 'text', defaultValue: 'Antes' }],
+      pages: [
+        { id: 'source', title: 'Origem', elements: [source] },
+        {
+          id: 'destination',
+          title: 'Destino',
+          elements: [copied, assigned],
+          variableAssignments: [{
+            id: 'assignment',
+            variableId: 'segment',
+            sourceType: 'free',
+            value: 'Depois',
+          }],
+        },
+      ],
+      flowEdges: [
+        { id: 'start', source: 'start', target: 'p-source' },
+        { id: 'next', source: 'p-source', target: 'p-destination' },
+        { id: 'end', source: 'p-destination', target: 'end' },
+      ],
+    } as FormData;
+
+    render(
+      <MemoryRouter initialEntries={['/f/reactive-defaults-form?editorPreview=1']}>
+        <Routes>
+          <Route path="/f/:id" element={<FormPreviewCore form={form} isEditorPreview />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const sourceInput = await screen.findByRole('textbox', { name: 'Resposta de origem' });
+    fireEvent.change(sourceInput, { target: { value: 'Primeiro valor' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Avançar' }));
+
+    const copiedInput = await screen.findByRole('textbox', { name: 'Resposta copiada' });
+    expect(copiedInput).toHaveValue('Primeiro valor');
+    expect(screen.getByRole('textbox', { name: 'Valor atribuído' })).toHaveValue('Depois');
+
+    fireEvent.change(copiedInput, { target: { value: 'Mantido pelo respondente' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
+    const sourceAgain = await screen.findByRole('textbox', { name: 'Resposta de origem' });
+    fireEvent.change(sourceAgain, { target: { value: 'Segundo valor' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Avançar' }));
+
+    expect(await screen.findByRole('textbox', { name: 'Resposta copiada' }))
+      .toHaveValue('Mantido pelo respondente');
+  });
+
   it('reloads a signed resume into the same lead identity and completes response A instead of creating B', async () => {
     window.history.pushState({}, '', '/f/resume-form');
     mocks.invokeEdge.mockResolvedValue({ data: { success: true }, error: null });

@@ -37,6 +37,7 @@ import {
   WidthSelector,
   VariableInput,
   ImageSourcePicker,
+  InitialValueEditor,
 } from '@/components/editor/shared';
 
 interface Props {
@@ -411,16 +412,6 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                 <Switch
                   checked={element.allowUnitToggle !== false}
                   onCheckedChange={v => onChange({ allowUnitToggle: v })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Valor padrão</Label>
-                <Input
-                  type="number"
-                  value={element.defaultValue ?? ''}
-                  onChange={e => onChange({ defaultValue: e.target.value ? Number(e.target.value) : undefined })}
-                  placeholder={element.type === 'input_height' ? '170' : '70'}
                 />
               </div>
 
@@ -2260,47 +2251,13 @@ export default function ElementSettingsPanel({ element, onChange, onClose, pages
                     </div>
                   )}
 
-                  {isFormField(element.type) && !['input_height', 'input_weight', 'input_checkbox', 'input_rating', 'input_nps'].includes(element.type) && (
-                    <div className="space-y-2">
-                      <Label>Valor inicial</Label>
-                      <VariableInput
-                        value={String(element.defaultValue ?? '')}
-                        onChange={v => onChange({ defaultValue: v || undefined })}
-                        placeholder="Deixe vazio para iniciar sem resposta"
-                        {...varProps}
-                      />
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">
-                        Preenche o campo ao abrir. Você pode usar <code className="rounded bg-muted px-1 font-mono text-[10px]">{`{{variavel}}`}</code>.
-                      </p>
-                    </div>
-                  )}
-
-                  {element.type === 'input_checkbox' && (
-                      <div className="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-border/60 p-3">
-                      <div className="min-w-0 flex-1">
-                        <Label>Iniciar marcado</Label>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">O checkbox já aparece selecionado para o respondente.</p>
-                      </div>
-                      <Switch
-                        checked={element.defaultValue === true}
-                        onCheckedChange={v => onChange({ defaultValue: v || undefined })}
-                        aria-label="Iniciar checkbox marcado"
-                      />
-                    </div>
-                  )}
-
-                  {(element.type === 'input_rating' || element.type === 'input_nps') && (
-                    <div className="space-y-2">
-                      <Label>Nota inicial</Label>
-                      <Input
-                        type="number"
-                        value={element.defaultValue ?? ''}
-                        onChange={e => onChange({ defaultValue: e.target.value ? Number(e.target.value) : undefined })}
-                        placeholder="Sem nota inicial"
-                        min={0}
-                        max={element.maxRating || 5}
-                      />
-                    </div>
+                  {isFormField(element.type) && (
+                    <InitialValueEditor
+                      key={element.id}
+                      element={element}
+                      onChange={value => onChange({ defaultValue: value })}
+                      {...varProps}
+                    />
                   )}
 
                   {element.type === 'input_email' && (

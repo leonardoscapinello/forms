@@ -7,10 +7,35 @@ import {
 } from './phoneValue';
 
 describe('phone value contract', () => {
-  it('aplica a máscara do país como limite absoluto', () => {
+  it('aplica a máscara do país sem descartar overflow silenciosamente', () => {
     expect(applyNationalPhoneMask('11987654321', 'BR')).toBe('(11) 98765-4321');
-    expect(applyNationalPhoneMask('1198765432199', 'BR')).toBe('(11) 98765-4321');
+    expect(applyNationalPhoneMask('1198765432199', 'BR')).toBe('(11) 98765-4321 99');
     expect(applyNationalPhoneMask('4155552671', 'US')).toBe('(415) 555-2671');
+  });
+
+  it('infere país e DDI de um valor internacional mesmo com outro país configurado', () => {
+    expect(normalizePhoneDefault('+14155552671', 'BR')).toEqual({
+      countryCode: 'US',
+      ddi: '+1',
+      number: '(415) 555-2671',
+    });
+    expect(normalizePhoneDefault('+351912345678', 'BR')).toEqual({
+      countryCode: 'PT',
+      ddi: '+351',
+      number: '912 345 678',
+    });
+    // URLSearchParams decodes a literal leading + as one space.
+    expect(normalizePhoneDefault(' 14155552671', 'BR')).toEqual({
+      countryCode: 'US',
+      ddi: '+1',
+      number: '(415) 555-2671',
+    });
+    expect(normalizePhoneDefault('5511987654321', 'US')).toEqual({
+      countryCode: 'BR',
+      ddi: '+55',
+      number: '(11) 98765-4321',
+    });
+    expect(validatePhoneValue('+14155552671', { defaultCountryCode: 'BR' })).toEqual({ valid: true });
   });
 
   it('permite telefone opcional vazio, mas bloqueia qualquer preenchimento incompleto', () => {
@@ -39,7 +64,7 @@ describe('phone value contract', () => {
     expect(normalized).toEqual({
       countryCode: 'BR',
       ddi: '+55',
-      number: '',
+      number: '(11) 98765-4321 0',
       invalidReason: 'mask_overflow',
     });
     expect(validatePhoneValue('+55119876543210', { defaultCountryCode: 'BR' }).valid).toBe(false);
@@ -50,7 +75,7 @@ describe('phone value contract', () => {
       invalidReason: 'mask_overflow',
     })).toEqual({
       valid: false,
-      error: 'Digite novamente o telefone após trocar o país',
+      error: 'O telefone possui mais dígitos do que a máscara permite',
     });
   });
 

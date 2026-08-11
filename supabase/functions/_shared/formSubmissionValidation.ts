@@ -711,6 +711,16 @@ function isPresent(value: unknown): boolean {
   return Object.values(value).some((entry) => isPresent(entry));
 }
 
+function isFieldPresent(field: PlainObject, value: unknown): boolean {
+  // A phone object always contains its selected country and DDI, even when the
+  // respondent leaves an optional national number empty. Those structural
+  // values must not turn an empty optional answer into an invalid submission.
+  if (field.type === "input_phone" && isPlainObject(value)) {
+    return value.invalidReason !== undefined || digits(value.number).length > 0;
+  }
+  return isPresent(value);
+}
+
 function validEmail(value: unknown): boolean {
   return typeof value === "string" && value.length <= 254 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -1033,7 +1043,7 @@ export function validateFormSubmission(
       continue;
     }
     const field = fieldsById.get(key);
-    if (field && isPresent(value) && !validFieldValue(field, value, now)) {
+    if (field && isFieldPresent(field, value) && !validFieldValue(field, value, now)) {
       invalidFields.add(key);
       continue;
     }
@@ -1055,7 +1065,7 @@ export function validateFormSubmission(
     enforceRequired = true;
     for (const fieldId of route.reachedFieldIds) {
       const field = fieldsById.get(fieldId);
-      if (field?.required === true && !isPresent(sanitizedAnswers[fieldId])) {
+      if (field && field.required === true && !isFieldPresent(field, sanitizedAnswers[fieldId])) {
         invalidFields.add(fieldId);
       }
     }

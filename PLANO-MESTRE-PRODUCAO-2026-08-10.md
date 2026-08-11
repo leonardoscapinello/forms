@@ -27,7 +27,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 |---|---|
 | ✅ | Vercel publicada em `https://forms-olive-three.vercel.app`; deployment final `dpl_7qFpqdmgsYvL8RL9Edem6qxGmo4Y` em estado `READY`; HTML inicial, SEO/OG, thumbnail 1200×630 e headers de segurança respondem no domínio real |
 | ✅ | Supabase `gxotayvavefhlcvbuczq` atualizado: **48 migrations** aplicadas do zero em PostgreSQL 15 no ensaio limpo, **159 testes pgTAP**, migrations remotas alinhadas, **25 Edge Functions** verificadas e worker periódico ativo |
-| ✅ | Snapshot final aprovado: **73 arquivos / 548 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **82 testes Deno** |
+| ✅ | Snapshot final aprovado: **75 arquivos / 568 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
 | ✅ | E2E publicado concluiu um fluxo real com condição/A-B, variável pré-populada, analytics não configurado tratado sem perder lead e página terminal vazia; resposta canônica ficou concluída e criptografada |
 | ✅ | Preview publicado validado em desktop, tablet e celular; durante a prova a contagem permaneceu **25 → 25**, sem novo efeito persistido. Depois, uma limpeza atômica removeu somente fixtures históricas de preview e deixou o banco em **23 respostas**, sem sessão de preview |
 | ✅ | Reoon foi salvo pelo servidor, testado no provedor, marcado ativo e mantido mascarado/criptografado |
@@ -164,6 +164,19 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | 📋 | Comparar recursos oficiais de Typeform e Typebot | Backlog de produto após estabilizar os itens objetivos; não copiar complexidade sem critério |
 | 📋 | Propor expansão de eventos, lógica e integrações | Backlog priorizado depende de decisão de produto antes de implementação adicional |
 
+### 6.1. Valor inicial e pré-preenchimento universal
+
+| Status | Entrega | Evidência / próximo gate |
+|---|---|---|
+| ✅ | Disponibilizar valor inicial em todo campo de preenchimento | Texto/nome, e-mail, telefone, textarea, números, data, escolhas, checkbox, rating/NPS, altura, peso e campos compostos usam o mesmo editor na seção Comportamento |
+| ✅ | Escolher claramente a origem do valor | Editor separado em **Valor fixo**, **Variável** e **Parâmetro GET**, sem exigir que o construtor conheça a sintaxe interna |
+| ✅ | Aceitar qualquer parâmetro GET autorizado | Chave customizada vira `{{param.chave}}`; parâmetros rastreados continuam disponíveis como atalhos e nomes reservados/perigosos são recusados |
+| ✅ | Manter validação e formatação após resolver o valor | E-mail continua validado; telefone infere país/DDI, aplica a máscara correspondente e bloqueia incompleto ou overflow sem cortar dígitos |
+| ✅ | Atualizar valor inicial quando a origem surge durante o fluxo | Campo anterior, assignment de página, variável de workflow e retorno de webhook são reavaliados na entrada e no retorno de página |
+| ✅ | Preservar a precedência do respondente | Valor digitado, campo tocado vazio e resposta retomada nunca são sobrescritos por default, variável, contexto ou GET tardio |
+| ✅ | Alertar sobre dados pessoais em URLs | Nome, e-mail e telefone exibem aviso de que o valor fica visível na URL/histórico e recomendam identificador opaco quando possível |
+| ✅ | Regressão automatizada e visual | **68 testes focados**, suíte completa **75/568**, Edge **83/83**, `deno check` das 25 funções e inspeção local autenticada do painel passaram |
+
 ## 7. Persistência de leads, parciais e entregas externas
 
 | Status | Entrega | Evidência / próximo gate |
@@ -249,8 +262,8 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 ### Automatizados
 
 - [x] Testes unitários de data, telefone, workflow, validação, URLs, ratings, analytics, persistência, contraste, SSRF e idempotência.
-- [x] Snapshot final: **73 arquivos / 548 testes Vitest**.
-- [x] Snapshot final: **82 testes Deno**, com `deno check --frozen` das **25 Edge Functions**.
+- [x] Snapshot final: **75 arquivos / 568 testes Vitest**.
+- [x] Snapshot final: **83 testes Deno**, com `deno check --frozen` das **25 Edge Functions**.
 - [x] `npm run verify`: TypeScript, ESLint, Vitest, probe unitário, build Vite e orçamento de bundle aprovados no Node 24.
 - [x] `npm audit --omit=dev`: **0 vulnerabilidades**.
 - [x] Probe read-only do domínio publicado: **70/70** requisições válidas, erro **0%**, p95 agregado **500,44 ms**; todos os sete cenários ficaram dentro do budget.

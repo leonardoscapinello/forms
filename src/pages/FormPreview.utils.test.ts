@@ -9,6 +9,7 @@ import {
   getRequiredFieldErrors,
   hasUnansweredInputFields,
   mergeLateContextDefaults,
+  refreshDynamicDefaults,
   resolveUserData,
 } from './FormPreview.utils';
 
@@ -219,6 +220,95 @@ describe('nested page elements', () => {
       [field.id]: 'Leonardo',
       __var_nome_salvo: 'Leonardo',
     });
+  });
+
+  it('entrega strings seguras para defaults de texto, e-mail e textarea', () => {
+    const text = createDefaultPageElement('input_text');
+    text.defaultValue = '{{param.numeric}}';
+    const email = createDefaultPageElement('input_email');
+    email.defaultValue = '{{param.boolean}}';
+    const textarea = createDefaultPageElement('input_textarea');
+    textarea.defaultValue = '{{payload}}';
+    const form = createForm([text, email, textarea]);
+    form.variables = [{ id: 'payload', name: 'payload', type: 'text' }];
+
+    const defaults = buildDefaults(form, {
+      __param_numeric: 42,
+      __param_boolean: true,
+      __var_payload: { nested: 'value' },
+    });
+
+    expect(defaults[text.id]).toBe('42');
+    expect(defaults[email.id]).toBe('true');
+    expect(defaults[textarea.id]).toBe('{"nested":"value"}');
+  });
+
+  it('reatualiza defaults com respostas e saídas de workflow sem tocar valores protegidos', () => {
+    const source = createDefaultPageElement('input_text');
+    const copied = createDefaultPageElement('input_text');
+    copied.defaultValue = `{{field:${source.id}}}`;
+    const fromVariable = createDefaultPageElement('input_text');
+    fromVariable.defaultValue = '{{segmento}}';
+    const fromWebhook = createDefaultPageElement('input_text');
+    fromWebhook.defaultValue = '{{webhook:hook:data.label}}';
+    const protectedField = createDefaultPageElement('input_text');
+    protectedField.defaultValue = '{{segmento}}';
+    const form = createForm([source, copied, fromVariable, fromWebhook, protectedField]);
+    form.variables = [{ id: 'segment', name: 'segmento', type: 'text', defaultValue: 'Inicial' }];
+
+    const previousDefaults = buildDefaults(form);
+    const currentAnswers = {
+      ...previousDefaults,
+      [source.id]: 'Resposta anterior',
+      [protectedField.id]: 'Valor retomado',
+      __var_segmento: 'Workflow atualizado',
+      __webhook_hook: { data: { label: 'Webhook pronto' } },
+    };
+    const refreshed = refreshDynamicDefaults(form, currentAnswers, previousDefaults, {
+      protectedKeys: new Set([source.id, protectedField.id]),
+      sourceKeys: new Set(['__var_segmento']),
+    });
+
+    expect(refreshed.answers[copied.id]).toBe('Resposta anterior');
+    expect(refreshed.answers[fromVariable.id]).toBe('Workflow atualizado');
+    expect(refreshed.answers[fromWebhook.id]).toBe('Webhook pronto');
+    expect(refreshed.answers[protectedField.id]).toBe('Valor retomado');
+    expect(refreshed.defaults).toMatchObject({
+      [copied.id]: 'Resposta anterior',
+      [fromVariable.id]: 'Workflow atualizado',
+      [fromWebhook.id]: 'Webhook pronto',
+    });
+  });
+
+  it('preserva campo tocado vazio e remove default antigo quando a origem some', () => {
+    const untouched = createDefaultPageElement('input_text');
+    untouched.defaultValue = '{{origem}}';
+    const touchedEmpty = createDefaultPageElement('input_text');
+    touchedEmpty.defaultValue = '{{origem}}';
+    const form = createForm([untouched, touchedEmpty]);
+    form.variables = [{ id: 'origin', name: 'origem', type: 'text', defaultValue: 'Antes' }];
+    const previousDefaults = buildDefaults(form);
+    const currentAnswers = {
+      ...previousDefaults,
+      [touchedEmpty.id]: '',
+      __var_origem: '',
+    };
+
+    const refreshed = refreshDynamicDefaults(form, currentAnswers, previousDefaults, {
+      protectedKeys: new Set([touchedEmpty.id]),
+      sourceKeys: new Set(['__var_origem']),
+    });
+
+    expect(refreshed.answers).not.toHaveProperty(untouched.id);
+    expect(refreshed.answers[touchedEmpty.id]).toBe('');
+    expect(refreshed.answers.__var_origem).toBe('');
+    expect(refreshed.defaults).not.toHaveProperty(untouched.id);
+
+    const nextPageRefresh = refreshDynamicDefaults(form, refreshed.answers, refreshed.defaults, {
+      protectedKeys: new Set([touchedEmpty.id]),
+    });
+    expect(nextPageRefresh.answers.__var_origem).toBe('');
+    expect(nextPageRefresh.answers).not.toHaveProperty(untouched.id);
   });
 
   it('aplica contexto geo tardio sem sobrescrever resposta tocada ou retomada', () => {

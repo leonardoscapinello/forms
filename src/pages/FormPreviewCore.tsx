@@ -54,7 +54,7 @@ import {
   flattenPageElements,
   getRequiredFieldErrors,
   hasUnansweredInputFields,
-  mergeLateContextDefaults,
+  refreshDynamicDefaults,
   resolveUserData,
   prefetchLazyComponentsForElements,
 } from './FormPreview.utils';
@@ -95,6 +95,15 @@ function deterministicWorkflowFraction(seed: string): number {
     hash = Math.imul(hash, 0x01000193);
   }
   return (hash >>> 0) / 0x1_0000_0000;
+}
+
+function sameRuntimeValue(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
 }
 
 function workflowPathFields(context: WorkflowPathContext) {
@@ -521,15 +530,18 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             __ctx_geoCep: geo.geoCep,
             __ctx_geoSource: geo.source,
           };
-          const nextAnswers = mergeLateContextDefaults(
+          const refreshed = refreshDynamicDefaults(
             form,
             answersRef.current,
             initialDefaultsRef.current,
-            geoAnswers,
-            protectedDefaultKeysRef.current,
+            {
+              runtimeAnswers: geoAnswers,
+              protectedKeys: protectedDefaultKeysRef.current,
+            },
           );
-          answersRef.current = nextAnswers;
-          setAnswers(nextAnswers);
+          initialDefaultsRef.current = refreshed.defaults;
+          answersRef.current = refreshed.answers;
+          setAnswers(refreshed.answers);
         });
       };
       // Only trigger on user interaction — never auto-trigger to avoid blocking rendering.
@@ -554,8 +566,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
           Object.keys(snapshot.answers).filter((key) => !key.startsWith('__ctx_')),
         );
         const resumedAnswers = { ...initialAnswers, ...snapshot.answers };
-        answersRef.current = resumedAnswers;
-        setAnswers(resumedAnswers);
+        const refreshed = refreshDynamicDefaults(form, resumedAnswers, defaults, {
+          protectedKeys: protectedDefaultKeysRef.current,
+        });
+        initialDefaultsRef.current = refreshed.defaults;
+        answersRef.current = refreshed.answers;
+        setAnswers(refreshed.answers);
         setCurrentPageIndex(parsedPageIndex);
         maxPageVisitedRef.current = Math.max(parsedPageIndex, Number(snapshot.maxPage) || 0);
         initialFlowPendingRef.current = false;
@@ -1030,9 +1046,13 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   }, [currentValidationElements, isPageBlocked, revealInvalidField]);
 
   /** Apply variableAssignments for a given page when entering it */
-  const applyPageVariableAssignments = useCallback((page: import('@/types/form').FunnelPage, currentAnswers: Record<string, any>) => {
+  const applyPageVariableAssignments = useCallback((
+    page: import('@/types/form').FunnelPage,
+    currentAnswers: Record<string, any>,
+    assignedKeys?: Set<string>,
+  ) => {
     const f = formRef.current;
-    return f ? applyConfiguredPageAssignments(f, page, currentAnswers) : currentAnswers;
+    return f ? applyConfiguredPageAssignments(f, page, currentAnswers, assignedKeys) : currentAnswers;
   }, []);
 
   const authorizeWorkflowCheckpoint = useCallback(async (
@@ -1536,17 +1556,47 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     return { nextNodeId: null, updatedAnswers: currentAns };
   }, [authorizeWorkflowCheckpoint]);
 
+  const preparePageEntryAnswers = useCallback((
+    targetIndex: number | null,
+    newAnswers: Record<string, any>,
+  ) => {
+    const currentForm = formRef.current;
+    const page = targetIndex === null ? currentForm?.welcomePage : pages[targetIndex];
+    if (!page || !currentForm) return newAnswers;
+
+    const sourceKeys = new Set<string>();
+    for (const [key, value] of Object.entries(newAnswers)) {
+      if (
+        key.startsWith('__var_') &&
+        !sameRuntimeValue(value, answersRef.current[key])
+      ) sourceKeys.add(key);
+    }
+
+    const assignedAnswers = applyPageVariableAssignments(page, newAnswers, sourceKeys);
+    const refreshed = refreshDynamicDefaults(
+      currentForm,
+      assignedAnswers,
+      initialDefaultsRef.current,
+      {
+        protectedKeys: protectedDefaultKeysRef.current,
+        sourceKeys,
+      },
+    );
+    initialDefaultsRef.current = refreshed.defaults;
+    return refreshed.answers;
+  }, [applyPageVariableAssignments, pages]);
+
   // Helper: navigate forward to a page index, pushing current to history
   const navigateToPage = useCallback((targetIndex: number, newAnswers: Record<string, any>) => {
     if (currentPageIndex !== null) {
       pageHistoryRef.current.push(currentPageIndex);
     }
-    const finalAnswers = applyPageVariableAssignments(pages[targetIndex], newAnswers);
+    const finalAnswers = preparePageEntryAnswers(targetIndex, newAnswers);
     answersRef.current = finalAnswers;
     setAnswers(finalAnswers);
     setWorkflowError(null);
     setCurrentPageIndex(targetIndex);
-  }, [currentPageIndex, pages, applyPageVariableAssignments]);
+  }, [currentPageIndex, preparePageEntryAnswers]);
 
   const waitForWorkflowNode = useCallback(async (pending: PendingWorkflowWait) => {
     const fb = pending.feedback || { mode: 'button_countdown' as WaitFeedbackMode };
@@ -1928,20 +1978,31 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       completionRedirectTemplateRef.current = null;
       setResolvedRedirectUrl(null);
       setCompletionError(null);
+      if (currentPageIndex !== null) {
+        const refreshedAnswers = preparePageEntryAnswers(currentPageIndex, answersRef.current);
+        answersRef.current = refreshedAnswers;
+        setAnswers(refreshedAnswers);
+      }
       return;
     }
     // Use navigation history to go back to the actual previous page in the flow
     const history = pageHistoryRef.current;
     if (history.length > 0) {
       const prevIndex = history.pop()!;
+      const refreshedAnswers = preparePageEntryAnswers(prevIndex, answersRef.current);
+      answersRef.current = refreshedAnswers;
+      setAnswers(refreshedAnswers);
       setCurrentPageIndex(prevIndex);
       return;
     }
     // No history — go to welcome if available
     if (currentPageIndex !== null && form?.showWelcomeScreen) {
+      const refreshedAnswers = preparePageEntryAnswers(null, answersRef.current);
+      answersRef.current = refreshedAnswers;
+      setAnswers(refreshedAnswers);
       setCurrentPageIndex(null);
     }
-  }, [currentPageIndex, finished, form?.showWelcomeScreen, isPreviewMode]);
+  }, [currentPageIndex, finished, form?.showWelcomeScreen, isPreviewMode, preparePageEntryAnswers]);
 
   const setAnswer = useCallback((elementId: string, value: any) => {
     protectedDefaultKeysRef.current.add(elementId);
