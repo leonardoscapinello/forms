@@ -43,7 +43,7 @@ export function requestOrigin(request: Request): string {
   } catch {
     // Fall through to the canonical production origin.
   }
-  return 'https://forms-olive-three.vercel.app';
+  return 'https://pulse.leonardoscapinello.com';
 }
 
 function supabaseConfiguration() {

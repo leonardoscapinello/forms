@@ -3,7 +3,7 @@
 > Proprietário: Leonardo Scapinello
 > Atualizado em: 11/08/2026
 > Repositório: `leonardoscapinello/forms`
-> Produção-alvo: Vercel + Supabase, sem dependência do Lovable
+> Produção-alvo: Vercel `twobrainbr/forms` + Supabase, no domínio `pulse.leonardoscapinello.com`, sem dependência do Lovable
 > Estado geral: **GO TÉCNICO DA RELEASE — produção publicada e rodada integrada final aprovada**
 
 Este é o checklist operacional único dos pedidos feitos nesta sequência de trabalho. Um item só recebe **CONCLUÍDO** quando a implementação e o teste proporcional ao risco já passaram. A aprovação global abaixo foi concedida após suíte completa, validação das migrations, smoke test no domínio publicado e conferência dos dados persistidos.
@@ -25,9 +25,9 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 
 | Estado | Evidência em 11/08/2026 |
 |---|---|
-| ✅ | Vercel publicada em `https://forms-olive-three.vercel.app`; deployment final `dpl_9sJyHWLBys9USbXTpSLjZQCZEh1s` em estado `READY`; editor autenticado e formulário público responderam no domínio real após a entrega de pré-preenchimento |
+| ✅ | Vercel publicada no projeto correto `twobrainbr/forms`, com `https://pulse.leonardoscapinello.com` como domínio público; DNS Cloudflare, TLS e acesso público pelo domínio customizado foram confirmados |
 | ✅ | Supabase `gxotayvavefhlcvbuczq` atualizado: **48 migrations** aplicadas do zero em PostgreSQL 15 no ensaio limpo, **159 testes pgTAP**, migrations remotas alinhadas, **25 Edge Functions** verificadas e worker periódico ativo |
-| ✅ | Snapshot final aprovado: **75 arquivos / 568 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
+| ✅ | Snapshot final aprovado: **76 arquivos / 593 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
 | ✅ | CI final da entrega aprovado no run `31469619874`: verificação web, auditoria de dependências, Edge Functions, migrations limpas e pgTAP concluíram sem falhas |
 | ✅ | E2E publicado concluiu um fluxo real com condição/A-B, variável pré-populada, analytics não configurado tratado sem perder lead e página terminal vazia; resposta canônica ficou concluída e criptografada |
 | ✅ | Preview publicado validado em desktop, tablet e celular; durante a prova a contagem permaneceu **25 → 25**, sem novo efeito persistido. Depois, uma limpeza atômica removeu somente fixtures históricas de preview e deixou o banco em **23 respostas**, sem sessão de preview |
@@ -48,8 +48,8 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | 🧪 | Recuperação autônoma de senha | Solicitação neutra por e-mail e tela de nova senha com mínimo de 12 caracteres implementadas; falta homologar callback no domínio publicado |
 | ✅ | Elevar senha mínima | Supabase configurado com mínimo de 12 caracteres |
 | ⚠️ | Proteção de senha vazada/HIBP | Recurso recusado pelo Supabase por exigir plano Pro; não bloqueará o restante sem decisão de plano |
-| ✅ | Remover vínculo técnico com Lovable | Integração, dependência e arquivos Lovable removidos; alvo é Vercel |
-| ✅ | Confirmar ausência total de referências Lovable | Varredura final encontrou apenas a documentação histórica da remoção; código, pacote e runtime não contêm Lovable |
+| ✅ | Remover vínculo técnico com Lovable | Integração, dependência e arquivos Lovable removidos; o GitHub App `lovable.dev` foi restringido aos outros 45 repositórios atuais e não tem mais acesso ao `forms` |
+| ✅ | Confirmar ausência total de referências Lovable | Código, pacote e runtime não contêm Lovable; a configuração do GitHub também exclui explicitamente este repositório |
 | ✅ | Rebranding pessoal | Autor, título-base, ícones e copyright Leonardo Scapinello aplicados |
 | ✅ | Permitir editar o nome do sistema | Persistência global, tela Geral e consumo no login/sidebar publicados; migration aplicada |
 | ✅ | Permitir editar proprietário e descrição do sistema | Configuração global publicada e propagada também para SEO/thumbnail |
@@ -176,7 +176,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | ✅ | Atualizar valor inicial quando a origem surge durante o fluxo | Campo anterior, assignment de página, variável de workflow e retorno de webhook são reavaliados na entrada e no retorno de página |
 | ✅ | Preservar a precedência do respondente | Valor digitado, campo tocado vazio e resposta retomada nunca são sobrescritos por default, variável, contexto ou GET tardio |
 | ✅ | Alertar sobre dados pessoais em URLs | Nome, e-mail e telefone exibem aviso de que o valor fica visível na URL/histórico e recomendam identificador opaco quando possível |
-| ✅ | Regressão automatizada e visual | **68 testes focados**, suíte completa **75/568**, Edge **83/83**, `deno check` das 25 funções e inspeção local autenticada do painel passaram |
+| ✅ | Regressão automatizada e visual | **68 testes focados**, suíte completa **76/593**, Edge **83/83**, `deno check` das 25 funções e inspeção local autenticada do painel passaram |
 
 ## 7. Persistência de leads, parciais e entregas externas
 
@@ -241,7 +241,9 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | ✅ | Twitter/X Card completo | Card, title, description, image e alt confirmados no HTML publicado |
 | ✅ | Compatibilidade de link com WhatsApp, Instagram, Facebook, LinkedIn, Pinterest e TikTok | Contratos OG/Twitter/Pinterest/Schema estão no HTML server-side; cache de cada rede continua sob controle externo |
 | ✅ | SEO técnico | canonical, robots, keywords, autor/marca, favicon, tema e JSON-LD escapado confirmados no domínio |
-| ✅ | Validar crawler sem JavaScript no domínio Vercel | HTML inicial e imagem foram lidos diretamente, sem executar a SPA |
+| ✅ | Metadados da plataforma por rota | O HTML inicial traz um shell completo e `noindex`; após o roteador carregar, home, login, recuperação, dashboard, galeria, configurações, editor e fallback recebem título, descrição, keywords, canonical, OG, Twitter, Pinterest e JSON-LD específicos |
+| ✅ | Evitar conflito entre SEO da plataforma e formulário | `/f/:id` preserva integralmente o HTML server-side específico do formulário; o controlador de rotas administrativas não sobrescreve título, canonical, OG ou JSON-LD público |
+| ✅ | Validar crawler sem JavaScript no domínio Vercel | O HTML específico e a imagem de `/f/:id` foram lidos diretamente, sem executar a SPA; rotas administrativas permanecem deliberadamente privadas e `noindex` |
 
 ## 11. Segurança e limites de produção
 
@@ -264,7 +266,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 ### Automatizados
 
 - [x] Testes unitários de data, telefone, workflow, validação, URLs, ratings, analytics, persistência, contraste, SSRF e idempotência.
-- [x] Snapshot final: **75 arquivos / 568 testes Vitest**.
+- [x] Snapshot final: **76 arquivos / 593 testes Vitest**.
 - [x] Snapshot final: **83 testes Deno**, com `deno check --frozen` das **25 Edge Functions**.
 - [x] `npm run verify`: TypeScript, ESLint, Vitest, probe unitário, build Vite e orçamento de bundle aprovados no Node 24.
 - [x] `npm audit --omit=dev`: **0 vulnerabilidades**.
@@ -292,9 +294,10 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 - [x] Aplicar migrations no Supabase `gxotayvavefhlcvbuczq`.
 - [x] Publicar Edge Functions da release.
 - [x] Configurar Vault + cron do outbox e comprovar execução.
-- [x] Publicar build no Vercel e confirmar `dpl_7qFpqdmgsYvL8RL9Edem6qxGmo4Y` em estado `READY` no alias de produção.
-- [x] Validar login autenticado, editor, respostas, preview e formulário em `forms-olive-three.vercel.app`.
+- [x] Publicar build no projeto Vercel `twobrainbr/forms` e confirmar estado `READY` no alias `pulse.leonardoscapinello.com`.
+- [x] Validar login autenticado, editor, respostas, preview e formulário em `pulse.leonardoscapinello.com`.
 - [x] Inspecionar HTML inicial/SEO/thumbnail por crawler sem JavaScript.
+- [x] Configurar deploy automático de `main` somente depois dos gates `verify`, `edge-functions` e `database`, com ambiente GitHub `production` restrito à branch `main` e token Vercel limitado ao projeto `forms`.
 - [x] Enviar uma resposta completa sintética e conferir banco/painel; o registro QA concluído foi mantido como evidência.
 - [x] Testar Reoon, única integração de credencial ativa nesta rodada; integrações sem credencial permanecem desativadas.
 - [x] Conferir registros de workflow/pixel sem resposta, chave ou PII em claro.

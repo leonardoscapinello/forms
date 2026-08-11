@@ -1,0 +1,40 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="background" x1="88" y1="38" x2="1110" y2="604" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171717"/>
+      <stop offset="0.55" stop-color="#080808"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="172" y1="128" x2="1025" y2="530" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" rx="44" fill="url(#background)"/>
+  <circle cx="1100" cy="-24" r="310" fill="#FFFFFF" fill-opacity="0.035"/>
+  <circle cx="102" cy="680" r="330" fill="#FFFFFF" fill-opacity="0.025"/>
+  <rect x="52" y="52" width="1096" height="526" rx="34" stroke="url(#accent)" stroke-width="2"/>
+
+  <g filter="url(#shadow)">
+    <rect x="108" y="118" width="152" height="152" rx="38" fill="#F8F8F8"/>
+    <rect x="128" y="138" width="112" height="112" rx="26" fill="#050505"/>
+    <path d="M178.078 155.507V164.91H151.088L140.258 175.741V213.076L151.088 223.906H178.078V233.309H147.194L130.855 217.0V171.847L147.194 155.507H178.078Z" fill="white"/>
+    <path d="M189.922 233.309V223.906H216.912L227.742 213.076V175.741L216.912 164.91H189.922V155.507H220.806L237.145 171.847V217L220.806 233.309H189.922Z" fill="white"/>
+  </g>
+
+  <text x="108" y="358" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="700" letter-spacing="-3">Forms</text>
+  <text x="112" y="420" fill="#FFFFFF" fill-opacity="0.72" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="400">Leonardo Scapinello</text>
+  <text x="112" y="500" fill="#FFFFFF" fill-opacity="0.48" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="400" letter-spacing="1">CRIE  ·  PUBLIQUE  ·  ANALISE</text>
+
+  <g opacity="0.9">
+    <rect x="790" y="154" width="282" height="314" rx="28" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <rect x="824" y="195" width="136" height="18" rx="9" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="824" y="231" width="206" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.24"/>
+    <rect x="824" y="260" width="214" height="56" rx="14" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.16"/>
+    <rect x="824" y="334" width="214" height="56" rx="14" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.16"/>
+    <rect x="824" y="411" width="98" height="30" rx="15" fill="#FFFFFF"/>
+  </g>
+</svg>

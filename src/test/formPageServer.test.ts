@@ -45,6 +45,14 @@ describe('public form server shell', () => {
       .toBe('http://127.0.0.1:8080');
   });
 
+  it('falls back to the canonical Pulse domain when no trusted request origin exists', () => {
+    const invalidRequest = {
+      get url() { throw new Error('unavailable request URL'); },
+    } as unknown as Request;
+
+    expect(requestOrigin(invalidRequest)).toBe('https://pulse.leonardoscapinello.com');
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();

@@ -7,11 +7,13 @@
 
 ## 0. Estado conhecido do snapshot publicado
 
-- URL: `https://forms-olive-three.vercel.app`.
+- URL pública canônica: `https://pulse.leonardoscapinello.com`.
+- Vercel: equipe `twobrainbr`, projeto `forms` (`prj_NJzp69LXGU9sWNE3EyGZdoqb4mdY`).
 - Supabase: `gxotayvavefhlcvbuczq`, com 48 migrations alinhadas, Edge Functions da release publicadas, Vault configurado e worker periódico ativo a cada 10 segundos.
 - Banco limpo de referência: 159 testes pgTAP aprovados em PostgreSQL 15.
-- Aplicação: snapshot final aprovado com 73 arquivos / 548 testes Vitest, TypeScript, ESLint, build/orçamento de bundle, 25 Edge Functions no `deno check`, 82 testes Deno e `npm audit --omit=dev` com 0 vulnerabilidades.
-- Produção: deployment Vercel `dpl_7qFpqdmgsYvL8RL9Edem6qxGmo4Y` em estado `READY`; probe read-only 70/70, erro 0% e p95 agregado 500,44 ms.
+- Aplicação: snapshot final aprovado com 76 arquivos / 593 testes Vitest, TypeScript, ESLint, build/orçamento de bundle, 25 Edge Functions no `deno check`, 83 testes Deno e `npm audit --omit=dev` com 0 vulnerabilidades.
+- Produção: alias customizado público em estado saudável; probe read-only 70/70, erro 0% e p95 agregado 500,44 ms.
+- Entrega contínua: pushes em `main` só publicam após `verify`, `edge-functions` e `database`; o job usa o ambiente GitHub `production`, permitido somente para `main`, e token Vercel dedicado ao projeto com rotação até 12/08/2027.
 - E2E real: condição/A-B, variável pré-populada, analytics não configurado e página terminal vazia chegaram à tela de obrigado; a resposta canônica ficou concluída e criptografada.
 - Preview: desktop/tablet/celular exercitados; a prova permaneceu 25 → 25. A limpeza posterior de fixtures históricas deixou 23 respostas (8 completas/15 parciais), todas criptografadas, e 0 sessões de preview.
 - Dumps pré-release preservados fora do repositório: `/tmp/forms-production-pre-release-schema-20260811.sql` e `/tmp/forms-production-pre-release-data-20260811.sql`. Arquivos em `/tmp` não substituem backup/PITR durável.
@@ -150,6 +152,13 @@ Zero linhas no `RETURNING` significa “não confirmado”; não repita no escur
 3. Valide login, `/f/:id`, HTML/OG, preview sem persistência e uma resposta QA.
 4. Não reutilize um bundle antigo com migrations/funções incompatíveis.
 
+O caminho normal de entrega é o job `deploy-production` de `.github/workflows/ci.yml`.
+Ele usa o artefato do mesmo SHA que passou nos três gates e serializa publicações
+com `concurrency: vercel-production`. Não execute um deploy manual em paralelo.
+Se o token expirar ou for revogado, crie outro limitado a `twobrainbr/forms`,
+substitua somente o segredo `VERCEL_TOKEN` do ambiente `production` e revogue o
+anterior depois de um deploy aprovado.
+
 ### Edge Functions
 
 Redeploye as funções a partir do SHA aprovado e respeite `supabase/config.toml`.
@@ -235,7 +244,8 @@ prefira hashes/IDs e limite o acesso pelo menor tempo necessário.
 
 ### Situação desta release
 
-- Já comprovado: deploy Vercel/Supabase, migrations, funções, cron/worker,
+- Já comprovado: deploy no projeto Vercel `twobrainbr/forms`, domínio customizado,
+  Supabase, migrations, funções, cron/worker,
   HTML/OG/thumb, headers, Reoon, E2E concluído e preview responsivo sem insert.
 - Higiene de fixtures: três sessões históricas `editorPreview`, duas respostas e
   oito page events sintéticos foram removidos atomicamente; não havia pixel,

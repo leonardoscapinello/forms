@@ -65,3 +65,43 @@ jobs:
       - name: Encerrar banco efêmero
         if: always()
         run: supabase stop --no-backup
+
+  deploy-production:
+    needs: [verify, edge-functions, database]
+    if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://pulse.leonardoscapinello.com
+    concurrency:
+      group: vercel-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Instalar Vercel CLI fixada
+        run: npm install --global vercel@58.9.3 --ignore-scripts --no-audit --no-fund
+      - name: Carregar configuração de produção
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --scope twobrainbr --token="$VERCEL_TOKEN"
+      - name: Construir artefato de produção
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel build --prod --scope twobrainbr --token="$VERCEL_TOKEN"
+      - name: Publicar artefato validado
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel deploy --yes --prebuilt --prod --scope twobrainbr --token="$VERCEL_TOKEN"

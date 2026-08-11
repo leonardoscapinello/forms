@@ -125,7 +125,7 @@ function normalizeOrigin(origin: string): string {
     if ((parsed.protocol !== 'https:' && !localHttp) || parsed.username || parsed.password) throw new Error('invalid');
     return parsed.origin;
   } catch {
-    return 'https://forms-olive-three.vercel.app';
+    return 'https://pulse.leonardoscapinello.com';
   }
 }
 
@@ -341,7 +341,7 @@ export function injectFormSeoIntoHtml(html: string, seo: ResolvedFormSeo): strin
     .replace(new RegExp(`<meta\\b(?=[^>]*\\bname=["'](?:${MANAGED_META_NAMES})["'])[^>]*>`, 'gi'), '')
     .replace(new RegExp(`<meta\\b(?=[^>]*\\bproperty=["'](?:${MANAGED_META_PROPERTIES})["'])[^>]*>`, 'gi'), '')
     .replace(/<link\b(?=[^>]*\brel=["'](?:canonical|icon|apple-touch-icon)["'])[^>]*>/gi, '')
-    .replace(/<script\b[^>]*\bid=["'](?:form-seo-jsonld|seo-jsonld)["'][^>]*>[\s\S]*?<\/script>/gi, '');
+    .replace(/<script\b[^>]*\bid=["'](?:form-seo-jsonld|platform-seo-jsonld|seo-jsonld)["'][^>]*>[\s\S]*?<\/script>/gi, '');
   const tags = buildFormSeoTags(seo);
   if (/<\/head>/i.test(withoutManagedTags)) {
     return withoutManagedTags.replace(/<\/head>/i, `    ${tags}\n  </head>`);

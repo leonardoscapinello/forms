@@ -1,9 +1,9 @@
 project_id = "gxotayvavefhlcvbuczq"
 
 [auth]
-site_url = "https://forms-olive-three.vercel.app"
+site_url = "https://pulse.leonardoscapinello.com"
 additional_redirect_urls = [
-  "https://forms-olive-three.vercel.app/reset-password",
+  "https://pulse.leonardoscapinello.com/reset-password",
   "http://127.0.0.1:8080/reset-password",
   "http://localhost:8080/reset-password",
 ]

@@ -35,11 +35,14 @@ async function handleRequest(request: Request): Promise<Response> {
     const formText = safeHex(preview.textColor, '#111827');
     const titleSize = seo.title.length > 72 ? 45 : seo.title.length > 46 ? 53 : 62;
     const fields = (preview.fields || ['Sua resposta']).slice(0, 4);
+    // ImageResponse's defaults use lowercase keys and are merged with a plain
+    // object spread. Keep these keys lowercase too so our policy replaces the
+    // defaults instead of Headers combining case variants into duplicate values.
     const imageHeaders = {
-      'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400',
-      'Content-Disposition': `inline; filename="form-${formId}.png"`,
-      'Content-Type': 'image/png',
-      'X-Content-Type-Options': 'nosniff',
+      'cache-control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400',
+      'content-disposition': `inline; filename="form-${formId}.png"`,
+      'content-type': 'image/png',
+      'x-content-type-options': 'nosniff',
     };
 
     // Social crawlers frequently probe with HEAD first. Avoid paying the image

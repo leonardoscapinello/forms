@@ -34,17 +34,6 @@ export function BrandProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void refreshBrand(); }, [refreshBrand]);
 
-  useEffect(() => {
-    document.title = `${brand.productName} — ${brand.ownerName}`;
-    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
-    if (!favicon) {
-      favicon = document.createElement('link');
-      favicon.rel = 'icon';
-      document.head.appendChild(favicon);
-    }
-    favicon.href = brand.faviconUrl;
-  }, [brand]);
-
   const saveBrand = useCallback(async (next: BrandSettings) => {
     const normalized = normalizeBrandSettings(next);
     const { data, error } = await supabase

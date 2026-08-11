@@ -26,7 +26,7 @@ describe('form SEO', () => {
     const insecure = resolveFormSeo({ id: ID }, { origin: 'http://forms.example.com' });
     const local = resolveFormSeo({ id: ID }, { origin: 'http://127.0.0.1:8080' });
 
-    expect(insecure.canonicalUrl).toBe(`https://forms-olive-three.vercel.app/f/${ID}`);
+    expect(insecure.canonicalUrl).toBe(`https://pulse.leonardoscapinello.com/f/${ID}`);
     expect(insecure.imageUrl).toMatch(/^https:\/\//);
     expect(local.canonicalUrl).toBe(`http://127.0.0.1:8080/f/${ID}`);
   });
@@ -94,13 +94,14 @@ describe('form SEO', () => {
   it('replaces stale SPA tags instead of creating duplicate titles or descriptions', () => {
     const seo = resolveFormSeo({ id: ID, title: 'Pesquisa anual' }, { origin: 'https://forms.example.com' });
     const result = injectFormSeoIntoHtml(
-      '<!doctype html><html><head><title>Forms</title><meta name="description" content="antiga"><link rel="icon" href="/old.ico"></head><body><div id="root"></div></body></html>',
+      '<!doctype html><html><head><title>Forms</title><meta name="description" content="antiga"><link rel="icon" href="/old.ico"><script id="platform-seo-jsonld" type="application/ld+json">{"name":"shell"}</script></head><body><div id="root"></div></body></html>',
       seo,
     );
 
     expect(result.match(/<title>/g)).toHaveLength(1);
     expect(result.match(/name="description"/g)).toHaveLength(1);
     expect(result).not.toContain('content="antiga"');
+    expect(result).not.toContain('platform-seo-jsonld');
     expect(result).toContain('property="og:image:width" content="1200"');
     expect(result).toContain('name="pinterest-rich-pin" content="true"');
     expect(result).toContain('<div id="root"></div>');

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { AuthProvider } from "@/hooks/useAuth";
 import { useAuth } from "@/hooks/authContext";
 import { FormStoreProvider } from "@/hooks/useFormStore";
+import PlatformRouteSeo from '@/components/PlatformRouteSeo';
 
 import { BrandProvider } from '@/hooks/useBrand';
 
@@ -100,6 +101,7 @@ export default function AdminApp() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <PlatformRouteSeo />
             <ScrollToTop />
             <Suspense fallback={<PageLoader />}>
               <Routes>
