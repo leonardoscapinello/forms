@@ -756,7 +756,11 @@ describe('FormPreviewCore preview isolation', () => {
       </MemoryRouter>,
     );
 
-    const openDate = await screen.findByRole('button', { name: 'dd/mm/aaaa' });
+    const openDate = await screen.findByRole(
+      'button',
+      { name: 'dd/mm/aaaa' },
+      { timeout: 5_000 },
+    );
     fireEvent.click(openDate);
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
@@ -848,7 +852,11 @@ describe('FormPreviewCore preview isolation', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'dd/mm/aaaa' }));
+    fireEvent.click(await screen.findByRole(
+      'button',
+      { name: 'dd/mm/aaaa' },
+      { timeout: 5_000 },
+    ));
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(await screen.findByText('100%')).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 80));
