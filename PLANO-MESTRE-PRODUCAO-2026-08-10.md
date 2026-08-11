@@ -25,9 +25,10 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 
 | Estado | Evidência em 11/08/2026 |
 |---|---|
-| ✅ | Vercel publicada em `https://forms-olive-three.vercel.app`; deployment final `dpl_7qFpqdmgsYvL8RL9Edem6qxGmo4Y` em estado `READY`; HTML inicial, SEO/OG, thumbnail 1200×630 e headers de segurança respondem no domínio real |
+| ✅ | Vercel publicada em `https://forms-olive-three.vercel.app`; deployment final `dpl_9sJyHWLBys9USbXTpSLjZQCZEh1s` em estado `READY`; editor autenticado e formulário público responderam no domínio real após a entrega de pré-preenchimento |
 | ✅ | Supabase `gxotayvavefhlcvbuczq` atualizado: **48 migrations** aplicadas do zero em PostgreSQL 15 no ensaio limpo, **159 testes pgTAP**, migrations remotas alinhadas, **25 Edge Functions** verificadas e worker periódico ativo |
 | ✅ | Snapshot final aprovado: **75 arquivos / 568 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
+| ✅ | CI final da entrega aprovado no run `31469619874`: verificação web, auditoria de dependências, Edge Functions, migrations limpas e pgTAP concluíram sem falhas |
 | ✅ | E2E publicado concluiu um fluxo real com condição/A-B, variável pré-populada, analytics não configurado tratado sem perder lead e página terminal vazia; resposta canônica ficou concluída e criptografada |
 | ✅ | Preview publicado validado em desktop, tablet e celular; durante a prova a contagem permaneceu **25 → 25**, sem novo efeito persistido. Depois, uma limpeza atômica removeu somente fixtures históricas de preview e deixou o banco em **23 respostas**, sem sessão de preview |
 | ✅ | Reoon foi salvo pelo servidor, testado no provedor, marcado ativo e mantido mascarado/criptografado |
