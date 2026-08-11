@@ -30,6 +30,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Instalar tipos compartilhados do workspace
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
