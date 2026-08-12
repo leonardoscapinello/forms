@@ -363,7 +363,7 @@ export function buildFormFirstPaintShell(metadata: PublicFormMetadata, seo: Reso
     @keyframes form-boot-loader-spin{to{transform:rotate(360deg)}}
     @keyframes form-boot-loader-breathe{0%,100%{transform:scale(.94)}50%{transform:scale(1)}}
     #form-ssr-shell .form-boot-loader-orbit{position:absolute;inset:0;border:5px solid rgb(127 127 127/.24);border-top-color:${escapeHtml(foreground)};border-right-color:${escapeHtml(foreground)};border-radius:9999px;animation:form-boot-loader-spin .9s linear infinite;will-change:transform}
-    #form-ssr-shell .form-boot-loader-mark{width:52px;height:52px;overflow:hidden;box-shadow:0 10px 30px rgb(0 0 0/.16),0 0 0 1px rgb(255 255 255/.18);animation:form-boot-loader-breathe 1.8s cubic-bezier(.4,0,.2,1) infinite;will-change:transform}
+    #form-ssr-shell .form-boot-loader-mark{width:52px;height:52px;overflow:hidden;border-radius:9999px;box-shadow:0 8px 22px rgb(0 0 0/.12),0 0 0 1px rgb(255 255 255/.22);animation:form-boot-loader-breathe 1.8s cubic-bezier(.4,0,.2,1) infinite;will-change:transform}
     #form-ssr-shell .form-boot-loader-mark svg{display:block;width:100%;height:100%}
     @media(prefers-reduced-motion:reduce){#form-ssr-shell .form-boot-loader-orbit,#form-ssr-shell .form-boot-loader-mark{animation:none!important;transform:none!important}}
   </style>
@@ -372,7 +372,7 @@ export function buildFormFirstPaintShell(metadata: PublicFormMetadata, seo: Reso
       <div class="form-boot-loader-orbit"></div>
       <div class="form-boot-loader-mark">
         <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="100" height="100" fill="black"/>
+          <circle cx="50" cy="50" r="50" fill="black"/>
           <path d="M46.7682 29.0001V32.9752H31.5534L26.9751 37.5535V61.8008L31.5534 66.3791H46.7682V70.3542H29.9075L23 63.4467V35.9076L29.9075 29.0001H46.7682Z" fill="white"/>
           <path d="M53.1283 70.354V66.3789H68.3431L72.9214 61.8006L72.9214 37.5534L68.3431 32.9751L53.1283 32.9751V29L69.989 29L76.8965 35.9075V63.4466L69.989 70.354H53.1283Z" fill="white"/>
         </svg>

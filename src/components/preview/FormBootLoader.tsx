@@ -21,7 +21,7 @@ const brandMark = (
     aria-hidden="true"
     focusable="false"
   >
-    <rect width="100" height="100" fill="black" />
+    <circle cx="50" cy="50" r="50" fill="black" />
     <path
       d="M46.7682 29.0001V32.9752H31.5534L26.9751 37.5535V61.8008L31.5534 66.3791H46.7682V70.3542H29.9075L23 63.4467V35.9076L29.9075 29.0001H46.7682Z"
       fill="white"
