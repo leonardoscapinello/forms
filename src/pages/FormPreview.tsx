@@ -12,25 +12,21 @@ import {
   readStoredFormResumeIdentity,
 } from '@/lib/formResume';
 import { clearDurablePublicSavesForForm } from '@/lib/publicSaveQueue';
+import FormBootLoader, { FormChunkFallback } from '@/components/preview/FormBootLoader';
 
 // Start loading Core chunk IMMEDIATELY — runs in parallel with data fetch
 const coreModule = import('./FormPreviewCore');
 const FormPreviewCore = lazy(() => coreModule);
-
-function LoadingSpinner() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="h-5 w-5 rounded-full border-2 border-foreground/20 border-t-foreground animate-spin" />
-    </div>
-  );
-}
 
 function dismissServerRenderedShell() {
   const shell = document.getElementById('form-ssr-shell');
   if (!shell || shell.dataset.dismissing === 'true') return;
   shell.dataset.dismissing = 'true';
   shell.style.opacity = '0';
-  window.setTimeout(() => shell.remove(), 220);
+  window.setTimeout(() => {
+    shell.remove();
+    document.getElementById('form-boot-loader-inline-styles')?.remove();
+  }, 220);
 }
 
 function SafeRedirect({ template, variables = [] }: Pick<AppFormData, 'variables'> & { template: string }) {
@@ -47,7 +43,7 @@ function SafeRedirect({ template, variables = [] }: Pick<AppFormData, 'variables
     return () => window.clearTimeout(timeout);
   }, [contextAnswers, destination, template, variables]);
 
-  return destination ? <LoadingSpinner /> : null;
+  return destination ? <FormBootLoader /> : null;
 }
 
 export default function FormPreview() {
@@ -56,7 +52,6 @@ export default function FormPreview() {
   const storeForm = store?.getForm(id!) ?? null;
   const [publicForm, setPublicForm] = useState<AppFormData | null>(null);
   const [publicLoading, setPublicLoading] = useState(!storeForm);
-  const [showPublicSkeleton, setShowPublicSkeleton] = useState(true);
   const [unavailableRedirectUrl, setUnavailableRedirectUrl] = useState<string | null>(null);
   const previewParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const previewSession = previewParams?.get('previewSession') || '';
@@ -204,13 +199,9 @@ export default function FormPreview() {
   }
   const isEditorPreview = isEditorPreviewRef.current;
 
-  useEffect(() => {
-    if (!publicLoading) setShowPublicSkeleton(false);
-  }, [publicLoading]);
-
   // Loading state
   if (publicLoading) {
-    return showPublicSkeleton ? <LoadingSpinner /> : <div className="min-h-screen bg-background" />;
+    return <FormBootLoader />;
   }
 
   // Not found
@@ -252,7 +243,7 @@ export default function FormPreview() {
 
   // Form ready → lazy-load the heavy Core (framer-motion, lucide, workflow engine)
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <Suspense fallback={<FormChunkFallback />}>
       <FormPreviewCore form={form} isEditorPreview={isEditorPreview} />
     </Suspense>
   );

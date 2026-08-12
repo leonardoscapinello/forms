@@ -27,7 +27,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 |---|---|
 | ✅ | Vercel publicada no projeto correto `twobrainbr/forms`, com `https://pulse.leonardoscapinello.com` como domínio público; DNS Cloudflare, TLS e acesso público pelo domínio customizado foram confirmados |
 | ✅ | Supabase `gxotayvavefhlcvbuczq` atualizado: **48 migrations** aplicadas do zero em PostgreSQL 15 no ensaio limpo, **159 testes pgTAP**, migrations remotas alinhadas, **25 Edge Functions** verificadas e worker periódico ativo |
-| ✅ | Snapshot final aprovado: **76 arquivos / 593 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
+| ✅ | Snapshot final aprovado: **78 arquivos / 601 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
 | ✅ | CI e deploy automático finais aprovados no run [`31548453868`](https://github.com/leonardoscapinello/forms/actions/runs/31548453868): o commit `c19a7d7` passou por verificação web, auditoria de dependências, Edge Functions, migrations limpas e pgTAP antes de gerar a implantação Vercel `dpl_2Ua5Mnq1TXgaHxF713dPvpyZwLU2`, em estado `READY` no domínio canônico |
 | ✅ | E2E publicado concluiu um fluxo real com condição/A-B, variável pré-populada, analytics não configurado tratado sem perder lead e página terminal vazia; resposta canônica ficou concluída e criptografada |
 | ✅ | Preview publicado validado em desktop, tablet e celular; durante a prova a contagem permaneceu **25 → 25**, sem novo efeito persistido. Depois, uma limpeza atômica removeu somente fixtures históricas de preview e deixou o banco em **23 respostas**, sem sessão de preview |
@@ -176,7 +176,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | ✅ | Atualizar valor inicial quando a origem surge durante o fluxo | Campo anterior, assignment de página, variável de workflow e retorno de webhook são reavaliados na entrada e no retorno de página |
 | ✅ | Preservar a precedência do respondente | Valor digitado, campo tocado vazio e resposta retomada nunca são sobrescritos por default, variável, contexto ou GET tardio |
 | ✅ | Alertar sobre dados pessoais em URLs | Nome, e-mail e telefone exibem aviso de que o valor fica visível na URL/histórico e recomendam identificador opaco quando possível |
-| ✅ | Regressão automatizada e visual | **68 testes focados**, suíte completa **76/593**, Edge **83/83**, `deno check` das 25 funções e inspeção local autenticada do painel passaram |
+| ✅ | Regressão automatizada e visual | **68 testes focados**, suíte completa **78/601**, Edge **83/83**, `deno check` das 25 funções e inspeção local autenticada do painel passaram |
 
 ## 7. Persistência de leads, parciais e entregas externas
 
@@ -266,7 +266,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 ### Automatizados
 
 - [x] Testes unitários de data, telefone, workflow, validação, URLs, ratings, analytics, persistência, contraste, SSRF e idempotência.
-- [x] Snapshot final: **76 arquivos / 593 testes Vitest**.
+- [x] Snapshot final: **78 arquivos / 601 testes Vitest**.
 - [x] Snapshot final: **83 testes Deno**, com `deno check --frozen` das **25 Edge Functions**.
 - [x] `npm run verify`: TypeScript, ESLint, Vitest, probe unitário, build Vite e orçamento de bundle aprovados no Node 24.
 - [x] `npm audit --omit=dev`: **0 vulnerabilidades**.
@@ -311,7 +311,9 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | Status | Entrega | Evidência / próximo gate |
 |---|---|---|
 | ✅ | Servir HTML inicial e SEO do link pelo servidor/edge | Vercel Function e metadados públicos minimizados confirmados em produção |
-| ✅ | Server-render da primeira tela do formulário publicado | First-paint cacheável sem token/identidade publicado; runtime real concluiu o E2E sem duplicar resposta |
+| ✅ | Server-render do estado de boot público | O HTML inicial cacheável exibe somente o loader vetorial da marca, sem título, campos ou CTA fictícios; o formulário real entra depois de dados, fluxo inicial e módulos da primeira tela estarem prontos |
+| ✅ | Loader único até o formulário estar pronto | Shell server-side, carregamento da rota pública, módulos lazy e preview do editor usam o mesmo estado visual; rede lenta local confirmou zero títulos, campos e botões provisórios, transição direta para a tela real e respeito a `prefers-reduced-motion` |
+| ✅ | Boot público sem bloqueio infinito | Prefetch e módulo interativo possuem deadline fail-open; um chunk ainda pendente troca o loader por erro recuperável, e um Wait iniciado no nó Start exibe sua própria UI pulável em vez de permanecer escondido |
 | ✅ | Definir a arquitetura desta release sem reescrita cega | ADR 001 adota shell híbrido em `/f/:id`, mantém o editor interativo e exige benchmark antes de SSR React completo |
 | ✅ | Provar hidratação sem evento ou lead duplicado | E2E publicado produziu uma única resposta concluída; preview responsivo não alterou a contagem durante a prova |
 | 📋 | Benchmark SSR/híbrido × SPA otimizada | Comparar TTFB, LCP, INP, JS, custo, cache e taxa de erro após RUM suficiente |

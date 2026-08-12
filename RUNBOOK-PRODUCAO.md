@@ -11,7 +11,8 @@
 - Vercel: equipe `twobrainbr`, projeto `forms` (`prj_NJzp69LXGU9sWNE3EyGZdoqb4mdY`).
 - Supabase: `gxotayvavefhlcvbuczq`, com 48 migrations alinhadas, Edge Functions da release publicadas, Vault configurado e worker periódico ativo a cada 10 segundos.
 - Banco limpo de referência: 159 testes pgTAP aprovados em PostgreSQL 15.
-- Aplicação: snapshot final aprovado com 76 arquivos / 593 testes Vitest, TypeScript, ESLint, build/orçamento de bundle, 25 Edge Functions no `deno check`, 83 testes Deno e `npm audit --omit=dev` com 0 vulnerabilidades.
+- Aplicação: snapshot final aprovado com 78 arquivos / 601 testes Vitest, TypeScript, ESLint, build/orçamento de bundle, 25 Edge Functions no `deno check`, 83 testes Deno e `npm audit --omit=dev` com 0 vulnerabilidades.
+- Primeiro paint público: `/f/:id` deve exibir somente o loader vetorial da marca até dados, fluxo inicial e módulos da primeira tela estarem prontos; título, campos e CTA provisórios são regressão bloqueante.
 - Produção: alias customizado público em estado saudável; probe read-only 70/70, erro 0% e p95 agregado 500,44 ms.
 - Entrega contínua: pushes em `main` só publicam após `verify`, `edge-functions` e `database`; o job usa o ambiente GitHub `production`, permitido somente para `main`, uma credencial dedicada ao CI com rotação até 12/08/2027 e IDs fixos da equipe/projeto. A prova publicada é o run `31548453868`, commit `c19a7d7`, implantação `dpl_2Ua5Mnq1TXgaHxF713dPvpyZwLU2`, estado `READY` no domínio canônico.
 - Fonte do deploy: o GitHub Actions é o único mecanismo automático ativo. A conexão Git nativa da Vercel permanece `link: null` porque a identidade GitHub vinculada à sessão da Vercel não é a proprietária de `leonardoscapinello/forms`; não habilite os dois mecanismos em paralelo.

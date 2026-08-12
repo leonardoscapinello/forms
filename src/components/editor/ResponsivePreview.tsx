@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Monitor, Tablet, Smartphone, X, Loader2, RefreshCw } from 'lucide-react';
+import { Monitor, Tablet, Smartphone, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { FormData as AppFormData } from '@/types/form';
+import FormBootLoader from '@/components/preview/FormBootLoader';
 
 interface Props {
   form: AppFormData;
@@ -151,11 +152,9 @@ export default function ResponsivePreview({ form, onClose }: Props) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 z-20 flex items-center justify-center bg-background/95 px-6 text-center"
-                role="status"
-                aria-live="polite"
               >
                 {previewTimedOut ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3" role="alert">
                     <p className="text-sm font-medium text-foreground">O preview demorou para carregar</p>
                     <p className="text-xs text-muted-foreground">O rascunho continua salvo. Tente recarregar somente esta visualização.</p>
                     <Button type="button" size="sm" variant="outline" className="gap-2" onClick={retryPreview}>
@@ -164,10 +163,7 @@ export default function ResponsivePreview({ form, onClose }: Props) {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Preparando preview…
-                  </div>
+                  <FormBootLoader contained />
                 )}
               </motion.div>
             )}

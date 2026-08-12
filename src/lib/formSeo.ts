@@ -350,36 +350,33 @@ export function injectFormSeoIntoHtml(html: string, seo: ResolvedFormSeo): strin
 }
 
 /**
- * Server-rendered first paint for public links. It intentionally contains no
- * submission token and no workflow configuration, so the HTML can be cached by
- * the CDN without sharing a respondent identity. React removes it only after
- * the real form runtime is ready, avoiding the former blank loading screen.
+ * Server-rendered first paint for public links. It intentionally contains only
+ * the brand loader: no form title, fake field, CTA, submission token or workflow
+ * configuration can flash before the real first screen is ready.
  */
 export function buildFormFirstPaintShell(metadata: PublicFormMetadata, seo: ResolvedFormSeo): string {
   const preview = metadata.preview || {};
-  const title = truncateSeoText(stripMarkup(preview.pageTitle) || seo.title, 100);
-  const unavailable = metadata.status === 'closed';
-  const fields = (Array.isArray(preview.fields) ? preview.fields : [])
-    .map((field) => truncateSeoText(stripMarkup(field), 72))
-    .filter(Boolean)
-    .slice(0, 3);
-  if (!fields.length) fields.push('Sua resposta');
-  const button = truncateSeoText(stripMarkup(preview.buttonLabel) || 'Continuar', 32);
-  const primary = safeThemeColor(preview.primaryColor, seo.themeColor);
   const background = safeThemeColor(preview.backgroundColor, '#f8fafc');
-  const foreground = safeThemeColor(preview.textColor, '#111827');
+  const foreground = safeThemeColor(preview.textColor, seo.themeColor);
 
-  return `<div id="form-ssr-shell" aria-hidden="true" style="position:fixed;inset:0;z-index:2147483000;display:flex;min-height:100vh;align-items:center;justify-content:center;overflow:auto;padding:24px;background:${escapeHtml(background)};color:${escapeHtml(foreground)};font-family:Arial,sans-serif;transition:opacity .18s ease;pointer-events:none">
-    <div style="width:100%;max-width:672px;margin:auto">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px;color:inherit;opacity:.72;font-size:13px">
-        <span style="display:flex;width:30px;height:30px;align-items:center;justify-content:center;border-radius:9px;background:${escapeHtml(primary)};color:#fff;font-weight:800">F</span>
-        <span>${escapeHtml(seo.productName)} · ${escapeHtml(seo.ownerName)}</span>
+  return `<style id="form-boot-loader-inline-styles">
+    @keyframes form-boot-loader-spin{to{transform:rotate(360deg)}}
+    @keyframes form-boot-loader-breathe{0%,100%{transform:scale(.94)}50%{transform:scale(1)}}
+    #form-ssr-shell .form-boot-loader-orbit{position:absolute;inset:0;border:2px solid rgb(127 127 127/.24);border-top-color:${escapeHtml(foreground)};border-right-color:${escapeHtml(foreground)};border-radius:9999px;animation:form-boot-loader-spin .9s linear infinite;will-change:transform}
+    #form-ssr-shell .form-boot-loader-mark{width:52px;height:52px;overflow:hidden;border-radius:14px;box-shadow:0 10px 30px rgb(0 0 0/.16),0 0 0 1px rgb(255 255 255/.18);animation:form-boot-loader-breathe 1.8s cubic-bezier(.4,0,.2,1) infinite;will-change:transform}
+    #form-ssr-shell .form-boot-loader-mark svg{display:block;width:100%;height:100%}
+    @media(prefers-reduced-motion:reduce){#form-ssr-shell .form-boot-loader-orbit,#form-ssr-shell .form-boot-loader-mark{animation:none!important;transform:none!important}}
+  </style>
+  <div id="form-ssr-shell" data-form-boot-loader="true" aria-hidden="true" style="position:fixed;inset:0;z-index:2147483000;display:grid;min-height:100vh;min-height:100svh;place-items:center;overflow:hidden;background:${escapeHtml(background)};transition:opacity .18s ease;pointer-events:none">
+    <div style="position:relative;display:grid;width:72px;height:72px;place-items:center">
+      <div class="form-boot-loader-orbit"></div>
+      <div class="form-boot-loader-mark">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="100" height="100" rx="20" fill="#050505"/>
+          <path d="M44.714 15.6311V22.2384H19.4243L11.8143 29.8484V70.1515L19.4243 77.7615H44.714V84.3688H16.6885L5.20703 72.8874V27.1125L16.6885 15.6311H44.714Z" fill="white"/>
+          <path d="M55.2856 84.3686V77.7613H80.5753L88.1853 70.1513L88.1853 29.8481L80.5753 22.2382L55.2856 22.2381V15.6309L83.3111 15.6309L94.7926 27.1123V72.8871L83.3111 84.3686H55.2856Z" fill="white"/>
+        </svg>
       </div>
-      <h1 style="margin:0 0 24px;font-size:clamp(28px,5vw,46px);line-height:1.08;letter-spacing:-.02em">${escapeHtml(title)}</h1>
-      ${unavailable
-        ? '<div style="border:1px solid currentColor;border-radius:13px;padding:18px;color:inherit;opacity:.72;font-size:16px;line-height:1.5">Este formulário está encerrado ou indisponível no momento.</div>'
-        : `<div style="display:grid;gap:12px">${fields.map((field) => `<div style="display:flex;min-height:58px;align-items:center;border:1px solid currentColor;border-radius:13px;padding:0 18px;color:inherit;opacity:.62;font-size:16px">${escapeHtml(field)}</div>`).join('')}</div>
-      <div style="display:flex;width:max-content;min-width:132px;min-height:52px;align-items:center;justify-content:center;margin-top:24px;border-radius:12px;background:${escapeHtml(primary)};padding:0 24px;color:#fff;font-size:16px;font-weight:700">${escapeHtml(button)} →</div>`}
     </div>
   </div>`;
 }

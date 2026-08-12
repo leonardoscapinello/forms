@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDefaultPageElement } from '@/types/pageElements';
 import type { FormData } from '@/types/form';
 import {
@@ -11,6 +11,7 @@ import {
   mergeLateContextDefaults,
   refreshDynamicDefaults,
   resolveUserData,
+  settleLazyPrefetchWithin,
 } from './FormPreview.utils';
 
 function createForm(elements: ReturnType<typeof createDefaultPageElement>[]): FormData {
@@ -400,6 +401,26 @@ describe('nested page elements', () => {
     expect(getRequiredFieldErrors([date], {
       [date.id]: past.toISOString(),
     })).toEqual({});
+  });
+});
+
+describe('lazy first-screen prefetch', () => {
+  it('fails open within the configured deadline when a module request never settles', async () => {
+    vi.useFakeTimers();
+    try {
+      const never = new Promise<never>(() => undefined);
+      const result = settleLazyPrefetchWithin([never], 250);
+
+      await vi.advanceTimersByTimeAsync(250);
+
+      await expect(result).resolves.toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reports a completed prefetch without waiting for the deadline', async () => {
+    await expect(settleLazyPrefetchWithin([Promise.resolve('ready')], 250)).resolves.toBe(true);
   });
 });
 

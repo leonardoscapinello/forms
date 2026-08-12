@@ -632,11 +632,38 @@ export const loadBeforeAfterSlider = () => import('@/components/preview/BeforeAf
 export const loadSectionPreviews = () => import('@/components/editor/page-builder/SectionPreviews');
 export const loadWhatsAppInvite = () => import('@/components/preview/WhatsAppInvitePreview');
 
+export const FORM_LAZY_PREFETCH_TIMEOUT_MS = 8_000;
+
+/**
+ * A stalled module request must not leave the public boot screen spinning
+ * forever. `false` means the caller may continue into the recoverable
+ * Suspense fallback while the original requests are still allowed to settle.
+ */
+export function settleLazyPrefetchWithin(
+  promises: Promise<unknown>[],
+  timeoutMs = FORM_LAZY_PREFETCH_TIMEOUT_MS,
+): Promise<boolean> {
+  if (promises.length === 0) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    let finished = false;
+    const finish = (settled: boolean) => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timeoutId);
+      resolve(settled);
+    };
+    const timeoutId = window.setTimeout(() => finish(false), timeoutMs);
+
+    void Promise.allSettled(promises).then(() => finish(true));
+  });
+}
+
 export function prefetchLazyComponentsForElements(
   elements?: PageElement[],
   priority: 'immediate' | 'idle' = 'idle'
-) {
-  if (!elements || elements.length === 0) return;
+): Promise<void> {
+  if (!elements || elements.length === 0) return Promise.resolve();
 
   const loaders = new Set<() => Promise<unknown>>();
 
@@ -649,6 +676,7 @@ export function prefetchLazyComponentsForElements(
         case 'input_email':
           loaders.add(loadEmailDomainSuggestions);
           break;
+        case 'input_height':
         case 'input_weight':
           loaders.add(loadHeightWeightField);
           break;
@@ -713,20 +741,22 @@ export function prefetchLazyComponentsForElements(
   };
 
   collect(elements);
-  if (loaders.size === 0) return;
+  if (loaders.size === 0) return Promise.resolve();
 
-  const run = () => {
-    Promise.allSettled([...loaders].map((loader) => loader())).catch(() => {});
-  };
+  const run = () => settleLazyPrefetchWithin(
+    [...loaders].map((loader) => Promise.resolve().then(loader)),
+  ).then(() => undefined);
 
   if (priority === 'immediate') {
-    run();
-    return;
+    return run();
   }
 
-  if (typeof requestIdleCallback === 'function') {
-    requestIdleCallback(run);
-  } else {
-    setTimeout(run, 0);
-  }
+  return new Promise((resolve) => {
+    const load = () => { void run().then(resolve); };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(load);
+    } else {
+      setTimeout(load, 0);
+    }
+  });
 }

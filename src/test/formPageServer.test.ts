@@ -58,7 +58,7 @@ describe('public form server shell', () => {
     vi.unstubAllEnvs();
   });
 
-  it('renders metadata, social tags and a safe first paint before the client runtime', async () => {
+  it('renders metadata and only the brand loader before the client runtime', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/functions/v1/form-public-metadata')) {
@@ -86,7 +86,13 @@ describe('public form server shell', () => {
     expect(html).toContain(`/api/form-og?id=${FORM_ID}`);
     expect(html).toContain('id="form-seo-jsonld"');
     expect(html).toContain('id="form-ssr-shell"');
-    expect(html).toContain('Conte um pouco sobre você');
+    expect(html).toContain('data-form-boot-loader="true"');
+    expect(html).toContain('form-boot-loader-mark');
+    expect(html).toContain('prefers-reduced-motion:reduce');
+    expect(html).not.toContain('Conte um pouco sobre você');
+    expect(html).not.toContain('Continuar →');
+    expect(html).not.toContain('<input');
+    expect(html).not.toContain('<button');
     expect(html).not.toContain('secret.example.test');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

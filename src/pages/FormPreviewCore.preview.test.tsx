@@ -170,6 +170,76 @@ describe('FormPreviewCore preview isolation', () => {
     expect(localStorage.getItem('form_resume_preview-form')).toContain('REAL_DRAFT_SECRET');
   });
 
+  it('keeps only the brand loader visible until the preview runtime is ready, then removes the server shell', async () => {
+    const inlineStyles = document.createElement('style');
+    inlineStyles.id = 'form-boot-loader-inline-styles';
+    const serverShell = document.createElement('div');
+    serverShell.id = 'form-ssr-shell';
+    serverShell.dataset.formBootLoader = 'true';
+    document.body.append(inlineStyles, serverShell);
+
+    render(
+      <MemoryRouter initialEntries={['/f/preview-form?editorPreview=1']}>
+        <Routes>
+          <Route path="/f/:id" element={<FormPreviewCore form={previewForm()} isEditorPreview />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('form-boot-loader')).toHaveTextContent('Carregando formulário');
+    const runtimeSurface = screen.getByTestId('form-runtime-surface');
+    expect(runtimeSurface).toHaveAttribute('aria-hidden', 'true');
+    expect(runtimeSurface).toHaveAttribute('inert', '');
+    expect(document.getElementById('form-ssr-shell')).toBe(serverShell);
+
+    expect(await screen.findByText('Valor: FIRST_PAGE_ASSIGNED')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByTestId('form-boot-loader')).not.toBeInTheDocument());
+    await waitFor(() => expect(runtimeSurface).not.toHaveAttribute('aria-hidden'));
+    expect(runtimeSurface).not.toHaveAttribute('inert');
+    await waitFor(() => expect(document.getElementById('form-ssr-shell')).not.toBeInTheDocument());
+    expect(document.getElementById('form-boot-loader-inline-styles')).not.toBeInTheDocument();
+  });
+
+  it('shows and lets the respondent skip a Wait node reached directly from Start', async () => {
+    const form = previewForm();
+    const content = createDefaultPageElement('rich_text');
+    content.content = 'Primeira página depois da espera';
+    form.id = 'initial-wait-form';
+    form.pages = [{ id: 'page-after-wait', title: 'Depois', elements: [content] }];
+    form.flowEdges = [
+      { id: 'start-wait', source: 'start', target: 'wt-initial' },
+      { id: 'wait-page', source: 'wt-initial', target: 'p-page-after-wait' },
+    ];
+    form.waitNodes = [{
+      id: 'initial',
+      duration: 60,
+      unit: 'seconds',
+      feedback: {
+        mode: 'button_countdown',
+        buttonText: 'Preparando próxima etapa',
+        allowSkip: true,
+        skipAction: 'continue',
+        skipButtonText: 'Continuar agora',
+      },
+    }];
+
+    render(
+      <MemoryRouter initialEntries={['/f/initial-wait-form?editorPreview=1']}>
+        <Routes>
+          <Route path="/f/:id" element={<FormPreviewCore form={form} isEditorPreview />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Preparando próxima etapa')).toBeInTheDocument();
+    expect(screen.queryByTestId('form-boot-loader')).not.toBeInTheDocument();
+    expect(screen.getByTestId('form-runtime-surface')).not.toHaveAttribute('inert');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar agora' }));
+
+    expect(await screen.findByText('Primeira página depois da espera')).toBeInTheDocument();
+  });
+
   it('does not let a naked editorPreview query disable public persistence', async () => {
     window.history.pushState({}, '', '/f/query-is-not-preview?editorPreview=1');
     mocks.invokeEdge.mockResolvedValue({ data: { success: true }, error: null });
@@ -949,7 +1019,7 @@ describe('FormPreviewCore preview isolation', () => {
     );
 
     expect(await screen.findByText('Página com botão decorativo')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Enviar' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Enviar' })).toBeInTheDocument();
   });
 
   it('does not hijack arrow keys owned by a respondent field', async () => {
@@ -1027,7 +1097,7 @@ describe('FormPreviewCore preview isolation', () => {
     );
 
     const welcomeScreen = await screen.findByTestId('form-screen-welcome');
-    fireEvent.click(screen.getByRole('button', { name: 'Começar' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Começar' }));
     const pageScreen = await screen.findByTestId('form-screen-page:page-one');
     expect(pageScreen).not.toBe(welcomeScreen);
 

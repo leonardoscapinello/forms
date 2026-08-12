@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DEFAULT_FONT_STACK } from '@/lib/fontUtils';
 import { appErrorMessage } from '@/lib/appErrorMessage';
 import { refreshCurrentRuntime } from '@/lib/chunkRecovery';
+import { FormChunkFallback } from '@/components/preview/FormBootLoader';
 
 /** Catches render errors so the user sees a message instead of a blank screen */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -41,7 +42,7 @@ const FormPreview = lazy(() => import("./pages/FormPreview"));
 // ─── Admin app: lazy-loaded with all admin deps (Auth, Store, Toasters…) ────
 const AdminApp = lazy(() => import("./AdminApp"));
 
-/** Public-route fallback: keep it invisible/minimal so the first meaningful paint is the real animated page */
+/** Administrative fallback stays neutral; public links always use the branded boot loader. */
 function FormSkeleton() {
   return <div className="min-h-screen bg-background" />;
 }
@@ -56,7 +57,7 @@ const App = () => {
     return (
       <ErrorBoundary>
         <BrowserRouter>
-          <Suspense fallback={<FormSkeleton />}>
+          <Suspense fallback={<FormChunkFallback />}>
             <Routes>
               <Route path="/f/:id" element={<FormPreview />} />
               <Route path="*" element={<Navigate to="/" replace />} />

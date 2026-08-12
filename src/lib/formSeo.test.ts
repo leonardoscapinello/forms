@@ -107,7 +107,7 @@ describe('form SEO', () => {
     expect(result).toContain('<div id="root"></div>');
   });
 
-  it('renders a cache-safe first paint beside the React root and escapes form content', () => {
+  it('renders only the cache-safe brand loader beside the React root', () => {
     const metadata = {
       id: ID,
       title: '<img src=x onerror=alert(1)> Pesquisa',
@@ -126,14 +126,24 @@ describe('form SEO', () => {
     );
 
     expect(result).toContain('id="form-ssr-shell"');
+    expect(result).toContain('data-form-boot-loader="true"');
+    expect(result).toContain('form-boot-loader-orbit');
+    expect(result).toContain('form-boot-loader-mark');
+    expect(result).toContain('prefers-reduced-motion:reduce');
     expect(result).toContain('<div id="root"></div>');
+    expect(result).not.toContain('Contato');
+    expect(result).not.toContain('Nome');
+    expect(result).not.toContain('Começar');
     expect(result).not.toContain('<script>alert(1)</script>');
     expect(result).not.toContain('background:url');
-    expect(result).toContain('E-mail&quot; onmouseover=&quot;alert(1)');
+    expect(result).not.toContain('E-mail&quot; onmouseover=&quot;alert(1)');
+    expect(result).not.toContain('<input');
+    expect(result).not.toContain('<button');
+    expect(result).not.toContain('<h1');
     expect(result).not.toContain('submissionToken');
   });
 
-  it('never renders fake inputs or a continue action for a closed form', () => {
+  it('keeps the same loader-only first paint for a closed form', () => {
     const metadata = {
       id: ID,
       status: 'closed',
@@ -147,7 +157,8 @@ describe('form SEO', () => {
       seo,
     );
 
-    expect(result).toContain('encerrado ou indisponível');
+    expect(result).toContain('data-form-boot-loader="true"');
+    expect(result).not.toContain('encerrado ou indisponível');
     expect(result).not.toContain('E-mail');
     expect(result).not.toContain('Enviar →');
   });

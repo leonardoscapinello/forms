@@ -47,6 +47,7 @@ import {
   clearStoredFormResume,
   writeStoredFormResume,
 } from '@/lib/formResume';
+import FormBootLoader, { FormChunkFallback } from '@/components/preview/FormBootLoader';
 import {
   buildDefaults,
   applyElementVariableBinding,
@@ -56,6 +57,7 @@ import {
   hasUnansweredInputFields,
   refreshDynamicDefaults,
   resolveUserData,
+  FORM_LAZY_PREFETCH_TIMEOUT_MS,
   prefetchLazyComponentsForElements,
 } from './FormPreview.utils';
 
@@ -67,12 +69,6 @@ const InteractiveElement = lazy(() => interactiveElementModule);
 // Lazy-loaded heavy preview component used only in loading screen overlay
 const loadLoadingPreview = () => import('@/components/preview/LoadingPreview');
 const LoadingPreview = lazy(loadLoadingPreview);
-
-// Wrapper to keep Suspense local and avoid route-level blank/loading screens
-function LazyWrap({ children }: { children: React.ReactNode }) {
-  // Static placeholder only (no skeleton animation) — placeholders must never “consume” entrance motion
-  return <Suspense fallback={<div className="w-full min-h-24 rounded-xl bg-muted/20" />}>{children}</Suspense>;
-}
 
 type WorkflowDeliveryResponse = {
   success?: boolean;
@@ -172,41 +168,31 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const isPreviewMode = isEditorPreview;
   const [isInitialStateReady, setIsInitialStateReady] = useState(false);
   const [isInteractiveElementReady, setIsInteractiveElementReady] = useState(false);
+  const [isInitialScreenAssetsReady, setIsInitialScreenAssetsReady] = useState(false);
   const [animationFrameReady, setAnimationFrameReady] = useState(false);
   const prevMountReadyRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    const markReady = () => {
+      if (!cancelled) setIsInteractiveElementReady(true);
+    };
+    const timeoutId = window.setTimeout(markReady, FORM_LAZY_PREFETCH_TIMEOUT_MS);
     interactiveElementModule
-      .then(() => {
-        if (!cancelled) setIsInteractiveElementReady(true);
-      })
-      // Fail-open: never get stuck behind a chunk error
-      .catch(() => {
-        if (!cancelled) setIsInteractiveElementReady(true);
-      });
-    return () => { cancelled = true; };
+      .then(markReady)
+      // Fail-open: the route boundary owns the recoverable chunk error UI.
+      .catch(markReady);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, []);
-
-  // The parent keeps its loading cover visible until the actual form renderer
-  // is ready. A session nonce binds this acknowledgement to the current iframe
-  // instance, including device switches and retries.
-  useEffect(() => {
-    if (!isPreviewMode || window.parent === window || !isInitialStateReady || !isInteractiveElementReady) return;
-    const previewSession = new URLSearchParams(window.location.search).get('previewSession');
-    if (!previewSession) return;
-    window.parent.postMessage({
-      type: 'forms-editor-preview-mounted',
-      formId: form.id,
-      previewSession,
-    }, '*');
-  }, [form.id, isInitialStateReady, isInteractiveElementReady, isPreviewMode]);
 
   // --- First-load animation gate ---
   // Ensures the browser paints the initial (opacity:0) state before framer-motion
   // starts animating to center. Without this, React batches mount + animate in the
   // same frame, causing the animation to be visually skipped on first load.
-  const isBootstrappingEarly = !isInitialStateReady;
+  const isBootstrappingEarly = !isInitialStateReady || !isInteractiveElementReady || !isInitialScreenAssetsReady;
 
   useEffect(() => {
     if (isBootstrappingEarly) {
@@ -230,16 +216,6 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       frameIds.forEach(cancelAnimationFrame);
     };
   }, [isBootstrappingEarly]);
-
-  useEffect(() => {
-    if (isPreviewMode || !animationFrameReady || !isInitialStateReady || !isInteractiveElementReady) return;
-    const shell = document.getElementById('form-ssr-shell');
-    if (!shell || shell.dataset.dismissing === 'true') return;
-    shell.dataset.dismissing = 'true';
-    shell.style.opacity = '0';
-    const timer = window.setTimeout(() => shell.remove(), 220);
-    return () => window.clearTimeout(timer);
-  }, [animationFrameReady, isInitialStateReady, isInteractiveElementReady, isPreviewMode]);
 
   // Preview ref for stable access in callbacks
   const isEditorPreviewRef = useRef(isPreviewMode);
@@ -267,6 +243,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     allowSkip?: boolean;
   } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const runtimeSurfaceRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
   const [isFlowProcessing, setIsFlowProcessing] = useState(false);
   const lastWorkflowActionRef = useRef<
@@ -503,6 +480,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   useEffect(() => {
     if (!form) return;
     setIsInitialStateReady(false);
+    setIsInitialScreenAssetsReady(false);
     protectedDefaultKeysRef.current = new Set();
 
     // Start-node conditions and assignments may depend on context/GET params, so
@@ -576,7 +554,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         maxPageVisitedRef.current = Math.max(parsedPageIndex, Number(snapshot.maxPage) || 0);
         initialFlowPendingRef.current = false;
 
-        prefetchLazyComponentsForElements(form.pages?.[parsedPageIndex]?.elements || [], 'immediate');
+        void prefetchLazyComponentsForElements(form.pages?.[parsedPageIndex]?.elements || [], 'immediate');
         setIsInitialStateReady(true);
         return registerGeolocation();
       }
@@ -587,7 +565,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
       ? (form.welcomePage?.elements || [])
       : (form.pages?.[0]?.elements || []);
 
-    prefetchLazyComponentsForElements(initialElements, 'immediate');
+    void prefetchLazyComponentsForElements(initialElements, 'immediate');
     answersRef.current = initialAnswers;
     setAnswers(initialAnswers);
     setCurrentPageIndex(null);
@@ -964,6 +942,34 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   const journeyStep = pageHistoryRef.current.length + (currentPageIndex !== null ? 1 : 0);
   const progress = isWelcome ? 0 : isThankYou ? 100 : totalSteps > 0 ? Math.min((journeyStep / totalSteps) * 100, 100) : 0;
 
+  // The first respondent-visible screen is a hard boot gate. Nested lazy
+  // fields (date, phone, charts, etc.) must settle before the loader can leave.
+  useEffect(() => {
+    if (!isInitialStateReady || isInitialScreenAssetsReady) return;
+    let active = true;
+    const initialElements = isWelcome
+      ? (form.showWelcomeScreen ? (form.welcomePage?.elements || []) : [])
+      : isThankYou
+        ? (form.thankYouPage?.elements || [])
+        : (currentPage?.elements || []);
+
+    void prefetchLazyComponentsForElements(initialElements, 'immediate')
+      .finally(() => {
+        if (active) setIsInitialScreenAssetsReady(true);
+      });
+
+    return () => { active = false; };
+  }, [
+    currentPage?.elements,
+    form.showWelcomeScreen,
+    form.thankYouPage?.elements,
+    form.welcomePage?.elements,
+    isInitialScreenAssetsReady,
+    isInitialStateReady,
+    isThankYou,
+    isWelcome,
+  ]);
+
   // Prefetch lazy preview chunks for current + next screen to avoid blank/loading between transitions
   useEffect(() => {
     if (!form) return;
@@ -974,10 +980,10 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         ? (form.thankYouPage?.elements || [])
         : (currentPage?.elements || []);
 
-    prefetchLazyComponentsForElements(currentElements, 'immediate');
+    void prefetchLazyComponentsForElements(currentElements, 'immediate');
 
     if (!isWelcome && !isThankYou && currentPageIndex !== null) {
-      prefetchLazyComponentsForElements(pages[currentPageIndex + 1]?.elements || [], 'idle');
+      void prefetchLazyComponentsForElements(pages[currentPageIndex + 1]?.elements || [], 'idle');
     }
   }, [form, pages, currentPage, currentPageIndex, isWelcome, isThankYou]);
 
@@ -2210,7 +2216,53 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
     return s;
   }, [form]);
 
-  const isBootstrapping = !isInitialStateReady;
+  const isBootstrapping = !isInitialStateReady || !isInitialScreenAssetsReady;
+  const isRuntimeReady = isInitialStateReady
+    && isInteractiveElementReady
+    && isInitialScreenAssetsReady
+    && animationFrameReady;
+  // A Wait node reached directly from Start is already real workflow UI, not
+  // application boot. It must remain visible and skippable while routing waits.
+  const isInitialWorkflowWaitVisible = !isInitialStateReady && Boolean(waitFeedback);
+  const canLeaveBootState = isRuntimeReady || isInitialWorkflowWaitVisible;
+  const shouldShowBootLoader = !canLeaveBootState;
+
+  useEffect(() => {
+    const surface = runtimeSurfaceRef.current;
+    if (!surface) return;
+    if (shouldShowBootLoader) {
+      surface.setAttribute('inert', '');
+    } else {
+      surface.removeAttribute('inert');
+    }
+  }, [shouldShowBootLoader]);
+
+  // The parent keeps its cover visible until either the real first form screen
+  // or a real initial Wait node can be used. The nonce binds the ACK to this
+  // exact iframe instance, including retries and device switches.
+  useEffect(() => {
+    if (!isPreviewMode || window.parent === window || !canLeaveBootState) return;
+    const previewSession = new URLSearchParams(window.location.search).get('previewSession');
+    if (!previewSession) return;
+    window.parent.postMessage({
+      type: 'forms-editor-preview-mounted',
+      formId: form.id,
+      previewSession,
+    }, '*');
+  }, [canLeaveBootState, form.id, isPreviewMode]);
+
+  useEffect(() => {
+    if (!canLeaveBootState) return;
+    const shell = document.getElementById('form-ssr-shell');
+    if (!shell || shell.dataset.dismissing === 'true') return;
+    shell.dataset.dismissing = 'true';
+    shell.style.opacity = '0';
+    const timer = window.setTimeout(() => {
+      shell.remove();
+      document.getElementById('form-boot-loader-inline-styles')?.remove();
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [canLeaveBootState]);
 
   const screenKey = getFormScreenKey(finished, currentPageIndex, currentPage?.id);
   const screenMotion = getFormScreenMotion(prefersReducedMotion);
@@ -2220,6 +2272,12 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
   return (
     <LazyMotion features={domAnimation} strict>
     <main role="main">
+    {shouldShowBootLoader ? <FormBootLoader /> : null}
+    <div
+      ref={runtimeSurfaceRef}
+      data-testid="form-runtime-surface"
+      aria-hidden={shouldShowBootLoader ? true : undefined}
+    >
     <motion.div
       initial={false}
       animate={{ opacity: 1 }}
@@ -2316,7 +2374,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 className="w-full mx-auto my-auto"
                 style={contentContainerStyle}
               >
-              <Suspense fallback={null}>
+              <Suspense fallback={<FormChunkFallback />}>
                 {/* Default welcome (no custom elements) */}
                 {showDefaultWelcome && (
                   <div className="text-center space-y-4 md:space-y-5">
@@ -2435,9 +2493,6 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
                 )}
 
                 {/* Page content (normal pages) */}
-                {!currentPage && !isWelcome && !isThankYou && (
-                  <p className="text-muted-foreground text-center py-8">Carregando campos...</p>
-                )}
                 {currentPage && !isThankYou && (
                   <>
                     {currentPage.elements.length === 0 ? (
@@ -2677,6 +2732,73 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         );
       })()}
 
+      {/* Start → Wait is real workflow feedback, so it replaces application boot. */}
+      <AnimatePresence>
+        {isInitialWorkflowWaitVisible && waitFeedback && waitFeedback.mode !== 'loading_screen' && (
+          <motion.div
+            key="initial-workflow-wait"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background px-6 text-center"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <Loader2 className="mb-4 h-7 w-7 animate-spin" aria-hidden="true" />
+            <p className="text-sm font-medium text-foreground">
+              {waitFeedback.buttonText || (waitFeedback.mode === 'button_countdown' ? 'Aguarde' : 'Processando...')}
+            </p>
+            {waitFeedback.mode === 'button_countdown' && (
+              <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+                {(() => {
+                  const totalSec = Math.ceil(waitFeedback.remainingMs / 1000);
+                  const h = Math.floor(totalSec / 3600);
+                  const m = Math.floor((totalSec % 3600) / 60);
+                  const s = totalSec % 60;
+                  const pad = (value: number) => String(value).padStart(2, '0');
+                  if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+                  if (m > 0) return `${pad(m)}m ${pad(s)}s`;
+                  return `${pad(s)}s`;
+                })()}
+              </p>
+            )}
+            {waitFeedback.allowSkip && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-4 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  const ref = (window as any).__waitCancelRef;
+                  const action = (window as any).__waitSkipAction || 'continue';
+                  if (ref) {
+                    if (action === 'reduce_time') {
+                      ref.reductionRequests = (ref.reductionRequests || 0) + 1;
+                    } else {
+                      ref.cancelled = true;
+                    }
+                  }
+                }}
+              >
+                {(() => {
+                  const fb = (window as any).__waitSkipFeedback;
+                  if (fb?.skipButtonText) return fb.skipButtonText;
+                  const action = (window as any).__waitSkipAction || 'continue';
+                  if (action === 'reduce_time') {
+                    const amount = fb?.skipReduceAmount || 5;
+                    const unit = fb?.skipReduceUnit || 'seconds';
+                    const unitLabel = unit === 'hours' ? 'h' : unit === 'minutes' ? 'min' : 's';
+                    return `−${amount}${unitLabel}`;
+                  }
+                  return 'Pular espera';
+                })()}
+              </Button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Loading screen overlay for wait feedback mode 'loading_screen' */}
       <AnimatePresence>
         {waitFeedback && waitFeedback.mode === 'loading_screen' && (
@@ -2687,6 +2809,9 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background"
+            role="status"
+            aria-live="polite"
+            aria-label={waitFeedback.loadingLabel || 'Carregando etapa do formulário'}
           >
             <div className="w-full max-w-xs px-6 flex flex-col items-center gap-4">
               <Suspense fallback={<div className="h-6 w-6 rounded-full border-2 border-foreground/20 border-t-foreground animate-spin" />}>
@@ -2734,6 +2859,7 @@ export default function FormPreviewCore({ form, isEditorPreview }: FormPreviewCo
         )}
       </AnimatePresence>
     </motion.div>
+    </div>
     </main>
     </LazyMotion>
   );
