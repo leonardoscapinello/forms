@@ -68,12 +68,7 @@ async function handleRequest(request: Request): Promise<Response> {
 
         <div style={{ width: '57%', height: '100%', display: 'flex', flexDirection: 'column', padding: '64px 30px 58px 68px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <div style={{
-              width: 66, height: 66, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 18, background: primary, boxShadow: `0 16px 40px ${primary}55`,
-            }}>
-              <img src={BRAND_ICON_DATA_URL} width={48} height={48} alt="" />
-            </div>
+            <img src={BRAND_ICON_DATA_URL} width={66} height={66} alt="" />
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 23, fontWeight: 700, letterSpacing: 0.2 }}>{truncateSeoText(seo.productName, 34)}</span>
               <span style={{ fontSize: 16, color: '#B8C0DC' }}>{truncateSeoText(seo.ownerName, 48)}</span>

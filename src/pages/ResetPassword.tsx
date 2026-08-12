@@ -83,9 +83,7 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-[380px]">
         <div className="flex items-center gap-2.5 mb-8">
-          <div className="h-9 w-9 rounded-lg bg-black flex items-center justify-center">
-            <img src={brand.logoUrl} alt="" className="h-5 w-5" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
-          </div>
+          <img src={brand.logoUrl} alt="" className="h-9 w-9 shrink-0 object-contain" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
           <div className="min-w-0">
             <p className="text-base font-semibold text-foreground tracking-tight">{brand.productName}</p>
             <p className="text-[11px] text-muted-foreground">por {brand.ownerName}</p>

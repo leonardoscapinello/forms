@@ -87,9 +87,7 @@ function AutomaticSocialPreview({ form, title, description, productName, ownerNa
       <div className="grid h-full grid-cols-[1.25fr_.75fr] gap-4">
         <div className="flex min-w-0 flex-col justify-between py-1">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-[8px]" style={{ backgroundColor: primary }}>
-              <img src="/images/brand-icon.svg" alt="" className="h-6 w-6" />
-            </span>
+            <img src="/images/brand-icon.svg" alt="" className="h-8 w-8 shrink-0 object-contain" />
             <span className="truncate text-[11px] font-semibold">{productName} · {ownerName}</span>
           </div>
           <div className="min-w-0 space-y-2">

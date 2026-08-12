@@ -78,9 +78,7 @@ export function AppSidebar() {
       <SidebarContent className="gap-0">
         <div className="h-14 flex items-center px-5 border-b border-sidebar-border shrink-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black">
-              <img src={brand.logoUrl} alt="" className="h-5 w-5" />
-            </div>
+            <img src={brand.logoUrl} alt="" className="h-8 w-8 shrink-0 object-contain" />
             <div className={cn('min-w-0', collapsed && 'hidden')}>
               <p className="truncate text-base font-semibold tracking-tight text-sidebar-foreground">{brand.productName}</p>
               <p className="truncate text-[10px] leading-none text-sidebar-foreground/55">{brand.ownerName}</p>
