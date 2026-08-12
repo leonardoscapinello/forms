@@ -336,15 +336,15 @@ img.emoji {
 .form-boot-loader__stage {
   position: relative;
   display: grid;
-  width: 72px;
-  height: 72px;
+  width: 92px;
+  height: 92px;
   place-items: center;
 }
 
 .form-boot-loader__orbit {
   position: absolute;
   inset: 0;
-  border: 2px solid rgb(5 5 5 / 0.12);
+  border: 5px solid rgb(5 5 5 / 0.12);
   border-top-color: #050505;
   border-right-color: rgb(5 5 5 / 0.55);
   border-radius: 9999px;
@@ -356,7 +356,6 @@ img.emoji {
   width: 52px;
   height: 52px;
   overflow: hidden;
-  border-radius: 14px;
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.16), 0 0 0 1px rgb(255 255 255 / 0.18);
   animation: form-boot-loader-breathe 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   will-change: transform;

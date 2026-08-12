@@ -20,9 +20,11 @@
 
   <g filter="url(#shadow)">
     <rect x="108" y="118" width="152" height="152" rx="38" fill="#F8F8F8"/>
-    <rect x="128" y="138" width="112" height="112" rx="26" fill="#050505"/>
-    <path d="M178.078 155.507V164.91H151.088L140.258 175.741V213.076L151.088 223.906H178.078V233.309H147.194L130.855 217.0V171.847L147.194 155.507H178.078Z" fill="white"/>
-    <path d="M189.922 233.309V223.906H216.912L227.742 213.076V175.741L216.912 164.91H189.922V155.507H220.806L237.145 171.847V217L220.806 233.309H189.922Z" fill="white"/>
+    <svg x="128" y="138" width="112" height="112" viewBox="0 0 100 100" fill="none">
+      <rect width="100" height="100" fill="black"/>
+      <path d="M46.7682 29.0001V32.9752H31.5534L26.9751 37.5535V61.8008L31.5534 66.3791H46.7682V70.3542H29.9075L23 63.4467V35.9076L29.9075 29.0001H46.7682Z" fill="white"/>
+      <path d="M53.1283 70.354V66.3789H68.3431L72.9214 61.8006L72.9214 37.5534L68.3431 32.9751L53.1283 32.9751V29L69.989 29L76.8965 35.9075V63.4466L69.989 70.354H53.1283Z" fill="white"/>
+    </svg>
   </g>
 
   <text x="108" y="358" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="700" letter-spacing="-3">Forms</text>

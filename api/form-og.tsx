@@ -11,7 +11,7 @@ import {
 // Exact vector from public/images/brand-icon.svg, embedded to keep image
 // generation independent from an extra network request back to the deployment.
 const BRAND_ICON_DATA_URL = `data:image/svg+xml,${encodeURIComponent(
-  '<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M44.714 15.6311V22.2384H19.4243L11.8143 29.8484V70.1515L19.4243 77.7615H44.714V84.3688H16.6885L5.20703 72.8874V27.1125L16.6885 15.6311H44.714Z" fill="white"/><path d="M55.2856 84.3686V77.7613H80.5753L88.1853 70.1513L88.1853 29.8481L80.5753 22.2382L55.2856 22.2381V15.6309L83.3111 15.6309L94.7926 27.1123V72.8871L83.3111 84.3686H55.2856Z" fill="white"/></svg>',
+  '<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="black"/><path d="M46.7682 29.0001V32.9752H31.5534L26.9751 37.5535V61.8008L31.5534 66.3791H46.7682V70.3542H29.9075L23 63.4467V35.9076L29.9075 29.0001H46.7682Z" fill="white"/><path d="M53.1283 70.354V66.3789H68.3431L72.9214 61.8006L72.9214 37.5534L68.3431 32.9751L53.1283 32.9751V29L69.989 29L76.8965 35.9075V63.4466L69.989 70.354H53.1283Z" fill="white"/></svg>',
 )}`;
 
 function safeHex(value: unknown, fallback: string): string {
