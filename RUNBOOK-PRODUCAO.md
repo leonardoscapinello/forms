@@ -13,7 +13,8 @@
 - Banco limpo de referência: 159 testes pgTAP aprovados em PostgreSQL 15.
 - Aplicação: snapshot final aprovado com 76 arquivos / 593 testes Vitest, TypeScript, ESLint, build/orçamento de bundle, 25 Edge Functions no `deno check`, 83 testes Deno e `npm audit --omit=dev` com 0 vulnerabilidades.
 - Produção: alias customizado público em estado saudável; probe read-only 70/70, erro 0% e p95 agregado 500,44 ms.
-- Entrega contínua: pushes em `main` só publicam após `verify`, `edge-functions` e `database`; o job usa o ambiente GitHub `production`, permitido somente para `main`, e token Vercel dedicado ao projeto com rotação até 12/08/2027.
+- Entrega contínua: pushes em `main` só publicam após `verify`, `edge-functions` e `database`; o job usa o ambiente GitHub `production`, permitido somente para `main`, uma credencial dedicada ao CI com rotação até 12/08/2027 e IDs fixos da equipe/projeto. A prova publicada é o run `31548453868`, commit `c19a7d7`, implantação `dpl_2Ua5Mnq1TXgaHxF713dPvpyZwLU2`, estado `READY` no domínio canônico.
+- Fonte do deploy: o GitHub Actions é o único mecanismo automático ativo. A conexão Git nativa da Vercel permanece `link: null` porque a identidade GitHub vinculada à sessão da Vercel não é a proprietária de `leonardoscapinello/forms`; não habilite os dois mecanismos em paralelo.
 - E2E real: condição/A-B, variável pré-populada, analytics não configurado e página terminal vazia chegaram à tela de obrigado; a resposta canônica ficou concluída e criptografada.
 - Preview: desktop/tablet/celular exercitados; a prova permaneceu 25 → 25. A limpeza posterior de fixtures históricas deixou 23 respostas (8 completas/15 parciais), todas criptografadas, e 0 sessões de preview.
 - Dumps pré-release preservados fora do repositório: `/tmp/forms-production-pre-release-schema-20260811.sql` e `/tmp/forms-production-pre-release-data-20260811.sql`. Arquivos em `/tmp` não substituem backup/PITR durável.
@@ -155,9 +156,11 @@ Zero linhas no `RETURNING` significa “não confirmado”; não repita no escur
 O caminho normal de entrega é o job `deploy-production` de `.github/workflows/ci.yml`.
 Ele usa o artefato do mesmo SHA que passou nos três gates e serializa publicações
 com `concurrency: vercel-production`. Não execute um deploy manual em paralelo.
-Se o token expirar ou for revogado, crie outro limitado a `twobrainbr/forms`,
-substitua somente o segredo `VERCEL_TOKEN` do ambiente `production` e revogue o
-anterior depois de um deploy aprovado.
+Se o token expirar ou for revogado, crie outro dedicado ao CI no escopo mínimo
+aceito pela Vercel para a equipe `twobrainbr`; os IDs fixos do workflow continuam
+limitando o destino ao projeto `forms`. Substitua somente o segredo
+`VERCEL_TOKEN` do ambiente `production` e revogue o anterior depois de um deploy
+aprovado.
 
 ### Edge Functions
 

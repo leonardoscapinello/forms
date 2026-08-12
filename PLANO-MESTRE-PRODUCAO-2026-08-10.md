@@ -28,7 +28,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | ✅ | Vercel publicada no projeto correto `twobrainbr/forms`, com `https://pulse.leonardoscapinello.com` como domínio público; DNS Cloudflare, TLS e acesso público pelo domínio customizado foram confirmados |
 | ✅ | Supabase `gxotayvavefhlcvbuczq` atualizado: **48 migrations** aplicadas do zero em PostgreSQL 15 no ensaio limpo, **159 testes pgTAP**, migrations remotas alinhadas, **25 Edge Functions** verificadas e worker periódico ativo |
 | ✅ | Snapshot final aprovado: **76 arquivos / 593 testes Vitest**, typecheck, ESLint, build e orçamento de bundle; **25 Edge Functions** no `deno check` e **83 testes Deno** |
-| ✅ | CI final da entrega aprovado no run `31469619874`: verificação web, auditoria de dependências, Edge Functions, migrations limpas e pgTAP concluíram sem falhas |
+| ✅ | CI e deploy automático finais aprovados no run [`31548453868`](https://github.com/leonardoscapinello/forms/actions/runs/31548453868): o commit `c19a7d7` passou por verificação web, auditoria de dependências, Edge Functions, migrations limpas e pgTAP antes de gerar a implantação Vercel `dpl_2Ua5Mnq1TXgaHxF713dPvpyZwLU2`, em estado `READY` no domínio canônico |
 | ✅ | E2E publicado concluiu um fluxo real com condição/A-B, variável pré-populada, analytics não configurado tratado sem perder lead e página terminal vazia; resposta canônica ficou concluída e criptografada |
 | ✅ | Preview publicado validado em desktop, tablet e celular; durante a prova a contagem permaneceu **25 → 25**, sem novo efeito persistido. Depois, uma limpeza atômica removeu somente fixtures históricas de preview e deixou o banco em **23 respostas**, sem sessão de preview |
 | ✅ | Reoon foi salvo pelo servidor, testado no provedor, marcado ativo e mantido mascarado/criptografado |
@@ -236,7 +236,7 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 | ✅ | Título e descrição automáticos nunca vazios | Defaults e identidade editável confirmados no HTML inicial de produção |
 | ✅ | Thumbnail automática 1200×630 | PNG real 1200×630 confirmada no domínio publicado |
 | ✅ | Permitir substituir thumbnail automática | `ogImage` customizado tem prioridade e pode ser removido para voltar ao automático |
-| ✅ | Servir metatags no HTML inicial | Vercel Function injeta HTML antes do JavaScript; `curl` de produção confirmou o conteúdo |
+| ✅ | Servir metatags no HTML inicial | Vercel Function injeta HTML antes do JavaScript em `/f/:id`; `curl` de produção confirmou o conteúdo. As rotas administrativas mantêm shell privado `noindex` e completam seus metadados por rota no runtime |
 | ✅ | Open Graph completo | Título, descrição, URL, site, locale, imagem, MIME, dimensões e alt confirmados no HTML publicado |
 | ✅ | Twitter/X Card completo | Card, title, description, image e alt confirmados no HTML publicado |
 | ✅ | Compatibilidade de link com WhatsApp, Instagram, Facebook, LinkedIn, Pinterest e TikTok | Contratos OG/Twitter/Pinterest/Schema estão no HTML server-side; cache de cada rede continua sob controle externo |
@@ -297,7 +297,8 @@ Este snapshot registra o que já foi comprovado sem antecipar a aprovação fina
 - [x] Publicar build no projeto Vercel `twobrainbr/forms` e confirmar estado `READY` no alias `pulse.leonardoscapinello.com`.
 - [x] Validar login autenticado, editor, respostas, preview e formulário em `pulse.leonardoscapinello.com`.
 - [x] Inspecionar HTML inicial/SEO/thumbnail por crawler sem JavaScript.
-- [x] Configurar deploy automático de `main` somente depois dos gates `verify`, `edge-functions` e `database`, com ambiente GitHub `production` restrito à branch `main` e token Vercel limitado ao projeto `forms`.
+- [x] Configurar deploy automático de `main` somente depois dos gates `verify`, `edge-functions` e `database`, com ambiente GitHub `production` restrito à branch `main`, credencial dedicada ao CI e IDs fixos da equipe `twobrainbr` e do projeto `forms`; o run `31548453868` publicou o SHA aprovado em produção.
+- [x] Manter um único mecanismo de publicação automática: a integração Git nativa permanece desconectada (`link: null`) devido à divergência entre a identidade GitHub da sessão Vercel e a proprietária do repositório; o GitHub Actions é o mecanismo ativo e comprovado, evitando dois deploys concorrentes por push.
 - [x] Enviar uma resposta completa sintética e conferir banco/painel; o registro QA concluído foi mantido como evidência.
 - [x] Testar Reoon, única integração de credencial ativa nesta rodada; integrações sem credencial permanecem desativadas.
 - [x] Conferir registros de workflow/pixel sem resposta, chave ou PII em claro.
